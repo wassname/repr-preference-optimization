@@ -1,3 +1,23 @@
+# Repr Preference Optimization
+
+A fork of [DPO](https://github.com/eric-mitchell/direct-preference-optimization) to test the hypothesis:
+
+> If we optimize internal representations associated with behavioral preferences, the model with generalize further to new tasks
+
+If you allow some anthropomorphic metaphor, aligning internet representations is a bit like aligning thoughts, values, or concepts. Changing someone's values is expected to be more robust than changing their behavior. This is supported by recent work such as https://github.com/blackswan-ai/short-circuiting/issues
+
+Status: WIP
+
+## Plan
+
+- [ ] Get it running
+- [ ] Switch to circuit breaking losses
+- [ ] see if we can get coherent output
+- [ ] measure generalization of baseline vs ReprPO
+
+----- 
+OLD README: 
+
 # DPO: Direct Preference Optimization
 
 **New:** in addition to the original DPO algorithm, this repo now supports ['conservative' DPO](https://ericmitchell.ai/cdpo.pdf) and [IPO](https://arxiv.org/pdf/2310.12036.pdf).
