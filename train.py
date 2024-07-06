@@ -14,6 +14,9 @@ import socket
 from typing import Optional, Set
 import resource
 
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from peft import LoraConfig, LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
 
 OmegaConf.register_new_resolver("get_local_run_dir", lambda exp_name, local_dirs: get_local_run_dir(exp_name, local_dirs))
 
@@ -79,17 +82,40 @@ def main(config: DictConfig):
     os.environ['XDG_CACHE_HOME'] = get_local_dir(config.local_dirs)
     print('building policy')
     model_kwargs = {'device_map': 'balanced'} if config.trainer == 'BasicTrainer' else {}
+    model_kwargs['quantization_config'] = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_use_double_quant=True,
+        llm_int4_threshold=6.0,
+        llm_int4_has_fp16_weight=False,
+    )
+
     policy_dtype = getattr(torch, config.model.policy_dtype)
     policy = transformers.AutoModelForCausalLM.from_pretrained(
         config.model.name_or_path, cache_dir=get_local_dir(config.local_dirs), low_cpu_mem_usage=True, torch_dtype=policy_dtype, **model_kwargs)
+    config = LoraConfig(
+        r=16,
+        lora_alpha=16,
+        bias="none",
+        task_type="CAUSAL_LM",
+        target_modules=['up_proj', 'down_proj', 'gate_proj', 'k_proj', 'q_proj', 'v_proj', 'o_proj'],
+        use_rslora=True,
+    )
+    policy = prepare_model_for_kbit_training(policy)
+    policy = get_peft_model(policy, config)
+
     disable_dropout(policy)
+
 
     if config.loss.name in {'dpo', 'ipo'}:
         print('building reference model')
-        reference_model_dtype = getattr(torch, config.model.reference_dtype)
-        reference_model = transformers.AutoModelForCausalLM.from_pretrained(
-            config.model.name_or_path, cache_dir=get_local_dir(config.local_dirs), low_cpu_mem_usage=True, torch_dtype=reference_model_dtype, **model_kwargs)
-        disable_dropout(reference_model)
+        # reference_model_dtype = getattr(torch, config.model.reference_dtype)
+        # reference_model = transformers.AutoModelForCausalLM.from_pretrained(
+        #     config.model.name_or_path, cache_dir=get_local_dir(config.local_dirs), low_cpu_mem_usage=True, torch_dtype=reference_model_dtype, **model_kwargs)
+        # disable_dropout(reference_model)
+
+        reference_model = policy
     else:
         reference_model = None
 
