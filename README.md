@@ -10,10 +10,10 @@ Status: WIP
 
 ## Plan
 
-- [ ] Get it running
-- [ ] add bnb and lora to speed it up
-- [ ] Switch to circuit breaking losses
-- [ ] see if we can get coherent output
+- [x] Get it running
+- [x] add bnb and lora to speed it up
+- [x] Switch to circuit breaking losses
+- [x] see if we can get coherent output
 - [ ] measure generalization of baseline vs ReprPO
 
 ```sh
