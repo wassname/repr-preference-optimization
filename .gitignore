@@ -1,2 +1,5 @@
 .cache/
 outputs/
+output-dir/
+runs/
+wandb/
