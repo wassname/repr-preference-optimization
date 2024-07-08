@@ -1,5 +1,5 @@
 .cache/
 outputs/
-output-dir/
+output-dir*/
 runs/
 wandb/

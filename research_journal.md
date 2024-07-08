@@ -41,3 +41,48 @@ It's kinda working! Now for a direct comparison
 - without sft
 - shall I use GENIE? or a tiny subet https://github.com/Joshuaclymer/GENIES/blob/22c8afb2551851fb3f2d1a2dcf70e7608908f6b1/src/api/compute_generalization_metrics.py#L11
   - Train the base model on each source distribution and then evaluate it on the target distribution.
+
+# 2024-07-07 17:38:16
+
+OK it seems to be running now
+- try on base model
+- for longer
+
+
+# 2024-07-08 08:15:56
+
+Weird errors with some adapters not changing
+
+    What are the normal training details?
+    - https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
+    - batch_size: 4
+    -  batch_size / (grad_accumulation_steps * num_gpus)
+    -  lr: 5e-7
+    -  gradient_accumulation_steps: 1
+    -  max_grad_norm: 10.0
+    -  
+    # the maximum allowed length for an input (prompt + response)
+    max_length: 512
+
+    # the maximum allowed length for a prompt
+    max_prompt_length: 256
+    n_eval_examples: 256
+    hh has how many train: 169,352
+
+# 2024-07-08 18:51:28
+
+Ok yeah only the default adapter is changing?
+
+Hmm this seems to be working? this was with toxic dpo though
+
+- repro default    0.555029
+- None             0.554399
+- drpo default     0.531139
+
+# 2024-07-08 20:58:59
+
+Ah found the problem1!! I was passing peft_config to the trainer, which unloaded merged ! and then made it's own adapter, fn hell man
+
+Data plan:
+- train on my prefered mix of https://huggingface.co/datasets/nvidia/HelpSteer
+- then test on TruthfulQA, and Sycophancy :)
