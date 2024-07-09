@@ -85,4 +85,23 @@ Ah found the problem1!! I was passing peft_config to the trainer, which unloaded
 
 Data plan:
 - train on my prefered mix of https://huggingface.co/datasets/nvidia/HelpSteer
-- then test on TruthfulQA, and Sycophancy :)
+  - https://huggingface.co/datasets/sablo/HelpSteer_binarized  best and worst scoring (average of helpfulness and correctness) 
+- then test on TruthfulQA, and anthropic or eluether Sycophancy :)
+
+note 1e-6 does work for reprPO, I think, no wait it was a random walk, too low
+
+## HelpSteer
+
+of https://huggingface.co/datasets/nvidia/HelpSteer
+  - https://huggingface.co/datasets/sablo/HelpSteer_binarized  best and worst scoring (average of helpfulness and correctness) 
+
+
+
+https://github.com/jondurbin/bagel has great dpo
+https://github.com/jondurbin/bagel/blob/3c7d2410a5a5ad2fd31b63529ef541135feefce4/bagel/data_sources/helpsteer.py#L4
+
+https://huggingface.co/datasets/Columbia-NLP/DPO-HelpSteer
+  We reformat the nvidia/HelpSteer dataset into a common format used across all DPO datasets in this collection. Specifically, we:
+
+      convert all scores to a [1, 10] scale by np.mean([helpfulness+1, correctness+1, coherence+1, complexity+1, 4-verbosity])*2.0
+      the original dset considers 4 responses per prompt. We construct preference pairs by 1) take the best scoring response as chosen, and 2) randomly sample responses with score lower than best response as rejected. We skip prompts/data rows where all responses have the same score.
