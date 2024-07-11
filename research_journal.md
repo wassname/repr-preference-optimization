@@ -105,3 +105,35 @@ https://huggingface.co/datasets/Columbia-NLP/DPO-HelpSteer
 
       convert all scores to a [1, 10] scale by np.mean([helpfulness+1, correctness+1, coherence+1, complexity+1, 4-verbosity])*2.0
       the original dset considers 4 responses per prompt. We construct preference pairs by 1) take the best scoring response as chosen, and 2) randomly sample responses with score lower than best response as rejected. We skip prompts/data rows where all responses have the same score.
+
+# 2024-07-11 14:00:21
+
+Circuit breaker was released?!
+
+what can I learn?
+
+## norm
+they used norm instead of mse in a few places
+  - the adapter_good or retain control
+  - `retain_loss = torch.norm(lora_retain_hidden - orig_retain_hidden, dim=-1, p=2, dtype=torch.float).nanmean()`
+  - mean(or p2 norm over the last dim). not the same as mse it seems
+  - the norm is over the h dim of each layer
+
+## mask
+they use a hidden layer mask
+
+
+```
+retain_attention_mask # this is the normal attention mask for the good inputs
+# times by layers
+layers_retain_attention_mask = retain_attention_mask.repeat(len(orig_retain_outputs), 1, 1).unsqueeze(-1)
+```
+
+## log
+
+they log the cosine similarlity, good idea
+they do evals.. good idea
+
+## detach
+
+yes they detach the orig hs
