@@ -119,8 +119,15 @@ they used norm instead of mse in a few places
   - mean(or p2 norm over the last dim). not the same as mse it seems
   - the norm is over the h dim of each layer
 
+The circuit breaker loss is diff, as it's just eradicating instead of shifting bad behaviour, but they also do a layer norm... which gives me ideas
+
+
+maybe I should retain magnitude and direction, but change only direction?
+That kind of makes sense, focus on that!
+
 ## mask
-they use a hidden layer mask
+
+- [x] they use a hidden layer mask
 
 
 ```
@@ -131,9 +138,36 @@ layers_retain_attention_mask = retain_attention_mask.repeat(len(orig_retain_outp
 
 ## log
 
-they log the cosine similarlity, good idea
+they log the cosine similarity, good idea
 they do evals.. good idea
 
 ## detach
 
 yes they detach the orig hs
+
+
+## hparams
+
+
+150 steps only!  but I might need more
+lora dropout 0.05
+all modules
+num_train_epochs=3.0,
+model_max_length=8192,
+per_device_train_batch_size=16,
+learning_rate = 1e-4
+wd 0
+bg16 true
+tf32 true
+gradient_checkpointing True !!
+
+
+# 2024-07-11 15:14:34
+
+- [x] Masking
+- [x] mean sum error over hs, not mse over all
+- [x] hparams
+- [ ] they didn't use 4bit! 
+  - [ ] 8bit
+  - [x] grad checkpoint
+- [ ] try only changing directions? hmm but then it will try to make it -1e-12 to satify both?
