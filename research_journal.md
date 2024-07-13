@@ -171,3 +171,98 @@ gradient_checkpointing True !!
   - [ ] 8bit
   - [x] grad checkpoint
 - [ ] try only changing directions? hmm but then it will try to make it -1e-12 to satify both?
+
+
+# ideas
+https://claude.ai/chat/6683ae44-b3bb-4ef7-b29d-292aaf752501
+- 8bit
+- from claude
+  - cosine
+  - norm mse
+  - gradient penalty like gans use to stabalise
+
+
+# chat with claude 2024-07-12 12:06:05
+
+Certainly. After our discussion and refinements, here are the remaining promising ideas, rated on a scale of 1-10 based on their potential effectiveness, stability, and ease of implementation for your specific use case:
+
+1. Normalized MSE (8/10):
+```python
+def normalized_mse(x, y):
+    x_norm = x / (torch.norm(x, dim=-1, keepdim=True) + 1e-8)
+    y_norm = y / (torch.norm(y, dim=-1, keepdim=True) + 1e-8)
+    return torch.mean((x_norm - y_norm)**2)
+```
+Pros: Focuses on direction while maintaining MSE's stable gradients.
+Cons: May still be sensitive to outliers.
+
+2. Combined Magnitude and Direction Loss (9/10):
+```python
+def combined_loss(x, y, alpha=0.5):
+    cos_sim = torch.nn.functional.cosine_similarity(x, y, dim=-1)
+    direction_loss = 1 - cos_sim
+    magnitude_loss = torch.norm(x, dim=-1) - torch.norm(y, dim=-1)
+    return alpha * direction_loss + (1-alpha) * magnitude_loss
+```
+Pros: Balances both direction and magnitude, adaptable via alpha parameter.
+Cons: May require tuning to find the optimal alpha.
+
+3. Adaptive Loss (8/10):
+```python
+def adaptive_loss(x, y, threshold=0.9):
+    cos_sim = torch.nn.functional.cosine_similarity(x, y, dim=-1)
+    mse = torch.mean((x - y)**2, dim=-1)
+    return torch.where(cos_sim > threshold, mse, 1 - cos_sim)
+```
+Pros: Adapts based on current similarity, potentially combining benefits of different approaches.
+Cons: Threshold selection may require tuning.
+
+4. Top-k MSE (7/10):
+```python
+def top_k_mse(x, y, k):
+    diff = (x - y)**2
+    top_k_diff = torch.topk(diff, k, dim=-1).values
+    return torch.mean(top_k_diff)
+```
+Pros: Focuses on most significant differences, can reduce noise.
+Cons: Choosing k may require tuning, may lose some information.
+
+5. Weight Decay (as a form of regularization) (7/10):
+```python
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.01)
+```
+Pros: Simple to implement, helps prevent overfitting.
+Cons: Affects all weights uniformly, which may not always be desirable.
+
+6. Gradient Clipping (6/10):
+```python
+torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+```
+Pros: Can help stabilize training, especially useful if you encounter exploding gradients.
+Cons: Doesn't address vanishing gradients, may slow convergence if threshold is too low.
+
+These methods are ordered roughly by their potential effectiveness for your task. The Combined Magnitude and Direction Loss seems particularly promising as it allows you to balance the importance of direction and magnitude explicitly.
+
+Would you like to discuss how to implement or combine any of these approaches in your specific use case?
+
+# 2024-07-14 07:29:15 experments
+
+
+None      0.521159
+DPO       0.522979
+TQA scores (mean prob on correct ans)
+- original mse ReprPO    0.555155
+- Using only RR loss and weight decay: ReprPO: 0.536886 (this seems lik it could beenfit from longer training) as logits/rejected and so on started improving, meaning increased coherency
+- topk 0.5%    0.319544 (try more here...)
+- direction ReprPO    0.554511
+- CKA ReprPO    0.175671 (this one never even shows a hint of success)
+
+| Method                                         | TQA Score |
+|------------------------------------------------|-----------|
+| CKA ReprPO                                     | 0.175671  |
+| Topk 0.5%                                      | 0.319544  |
+| None                                           | 0.521159  |
+| DPO                                            | 0.522979  |
+| Using only RR loss and weight decay: ReprPO    | 0.536886  |
+| Direction ReprPO                               | 0.554511  |
+| Original mse ReprPO                            | 0.555155  |
