@@ -253,16 +253,32 @@ DPO       0.522979
 TQA scores (mean prob on correct ans)
 - original mse ReprPO    0.555155
 - Using only RR loss and weight decay: ReprPO: 0.536886 (this seems lik it could beenfit from longer training) as logits/rejected and so on started improving, meaning increased coherency
+  - I didn't even finish the run
 - topk 0.5%    0.319544 (try more here...)
 - direction ReprPO    0.554511
 - CKA ReprPO    0.175671 (this one never even shows a hint of success)
 
-| Method                                         | TQA Score |
+| Method                                         | TQA Prob Score |
 |------------------------------------------------|-----------|
 | CKA ReprPO                                     | 0.175671  |
-| Topk 0.5%                                      | 0.319544  |
-| None                                           | 0.521159  |
-| DPO                                            | 0.522979  |
+| Topk 0.5%   ReprPO                             | 0.319544  |
+| Topk 0.5%   ReprPO                             | 0.504023  |
+| *Base model*                                   | 0.521159  |
+| *DPO - baseline*                               | 0.522979  |
 | Using only RR loss and weight decay: ReprPO    | 0.536886  |
 | Direction ReprPO                               | 0.554511  |
 | Original mse ReprPO                            | 0.555155  |
+
+
+# experiment with topk 
+
+TODO also eval on in sample
+
+alpha=140
+Topk 0.5%
+- alpgha=140 0.319544
+- alpha=1000 0.504023
+- alpha 3000 53.38
+
+
+alphg

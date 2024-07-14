@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "repr-preference-optimization"
+name = "reprpo"
 version = "0.1.0"
 description = ""
 authors = ["wassname <github@wassname.org>"]
@@ -26,6 +26,8 @@ jaxtyping = "^0.2.31"
 setuptools = "^70.2.0"
 tensorboardx = "^2.6.2.2"
 matplotlib = "^3.9.1"
+peft = "0.11.1"
+wandb = "^0.17.4"
 
 [build-system]
 requires = ["poetry-core"]
