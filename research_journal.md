@@ -282,3 +282,37 @@ Topk 0.5%
 
 
 alphg
+
+
+Hmm maybe I should calc the same DPO accuracy in the eval? or the margin
+
+
+Oh, when mormalising, should I consider all tokens, and all layers? That would make the distribution more r
+
+
+I can try triplet loss in scratch
+
+# 2024-07-14 19:21:49
+
+With SteerLM 2.0
+
+- 07_hf_wd 42.22 (52.59%)
+- 07_hf_direction 54.19 (48.21%)
+- 07_hf_topk 64.44 (48.84)
+
+  🥇OOD TQA results 🥇
+  base_model=	53.49
+  ReprPO    =	54.19
+  🥈dpo reward acc train🥈
+  ReprPO    =	48.21%
+
+  {'per_device_train_batch_size': 4, 'gradient_accumulation_steps': 4, 'learning_rate': 0.0001, 'num_train_epochs': 1, 'lr_scheduler_type': 'constant', 'logging_dir': './output-dir/07_hf_direction_TODO-2024-07-14-17-52-55/runs/Jul14_17-52-55_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'run_name': '07_hf_direction_TODO-2024-07-14-17-52-55', 'remove_unused_columns': False, 'optim': 'adamw_8bit', 'gradient_checkpointing': True, 'max_length': 512, 'max_prompt_length': 256, 'model_adapter_name': 'ReprPO', 'alpha': 10}
+
+07_hf_topk (but we added layer 26/32 too!)
+  🥇OOD TQA results 🥇
+  base_model=	53.49
+  ReprPO    =	64.44
+  🥈dpo reward acc train🥈
+  ReprPO    =	48.84%
+
+  {'per_device_train_batch_size': 4, 'gradient_accumulation_steps': 4, 'learning_rate': 0.0001, 'num_train_epochs': 1, 'lr_scheduler_type': 'constant', 'logging_dir': './output-dir/07_hf_topk_TODO-2024-07-14-20-19-43/runs/Jul14_20-19-43_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'run_name': '07_hf_topk_TODO-2024-07-14-20-19-43', 'remove_unused_columns': False, 'optim': 'adamw_8bit', 'gradient_checkpointing': True, 'max_length': 512, 'max_prompt_length': 256, 'model_adapter_name': 'ReprPO', 'alpha': 3000}

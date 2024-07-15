@@ -7,6 +7,46 @@ import gc
 from torch import nn
 import torch.nn.functional as F
 
+def sum_squared_error(input, target):
+    # from https://github.com/GraySwanAI/circuit-breakers/blob/main/src/lorra_circuit_breaker.py
+    return torch.norm(input - target, dim=-1, p=2, dtype=torch.float)#.nanmean()
+
+def combined_loss(x, y, alpha=0.5):
+    cos_sim = torch.nn.functional.cosine_similarity(x, y, dim=-1)
+    direction_loss = 1 - cos_sim
+    magnitude_loss = F.l1_loss(torch.norm(x, dim=-1), torch.norm(y, dim=-1))
+    return alpha * direction_loss + (1-alpha) * magnitude_loss
+
+def cka_inspired_similarity(x, y):
+    """This is inspired by CKA, which has been used to compare neural network representations. It's invariant to orthogonal transformations and isotropic scaling, which can be beneficial for comparing hidden states."""
+
+    # treat all tokens as the same
+    x = rearrange(x, "b l t h -> b l (t h)")
+    y = rearrange(y, "b l t h -> b l (t h)")
+
+    x_centered = x - x.mean(dim=-1, keepdim=True)
+    y_centered = y - y.mean(dim=-1, keepdim=True)
+    dot_product = torch.sum(x_centered * y_centered, dim=-1)
+    norm_x = torch.norm(x_centered, dim=-1)
+    norm_y = torch.norm(y_centered, dim=-1)
+    return dot_product / (norm_x * norm_y + 1e-8)
+
+
+def norm_smooth_l1_loss(x, y):
+    """error between the norms of two tensors."""
+    x_centered = x - x.mean(dim=-1, keepdim=True)
+    y_centered = y - y.mean(dim=-1, keepdim=True)
+    norm_x = torch.norm(x_centered, dim=-1)
+    norm_y = torch.norm(y_centered, dim=-1)
+    return F.smooth_l1_loss(norm_x, norm_y)
+
+def top_k_mse(x, y, k=0.005):
+    k = int(k * x.shape[-1])+1
+    diff = (x - y)**2
+    # get the top k differences along dim
+    top_k_diff = torch.topk(diff, k, dim=-1).values
+    return torch.mean(top_k_diff, dim=-1)
+
 
 def coeffecient(t, T):
     c = t / (2 * T)
@@ -17,8 +57,9 @@ def coeffecient(t, T):
 
 @dataclass
 class ReprPOConfig(DPOConfig):
-    collection_layers: tuple = (10, 20)
+    collection_layers: tuple = (10, 20, 26)
     alpha: int = 1
+    print_every: int = 10
 
 
 def collect_hs(hs):
@@ -27,12 +68,12 @@ def collect_hs(hs):
     return rearrange(hs, "l b t h -> b l t h")
 
 
-def wmean(x, w):
+def wmean(x, w, dim=0):
     """weighted mean per neuron over batch."""
-    w = w - w.min() + 0.1
+    # assert w.sum(-1)==1
     while w.dim() < x.dim():
         w = w.unsqueeze(-1)
-    return (x * w).sum(0) / w.sum(0)
+    return (x * w).sum(dim) / w.sum(dim)
 
 
 class ReprPOTrainer(DPOTrainer):
@@ -122,7 +163,7 @@ class ReprPOTrainer(DPOTrainer):
         del outs
         gc.collect()
 
-        if self.state.global_step % 10 == 0:
+        if self.state.global_step % self.args.print_every == 0:
             # print the last 5 tokens, for the first in batch
             s = model.tokenizer.batch_decode(
                 all_logits.detach().cpu().softmax(-1).argmax(-1)[0, :5:]
@@ -135,6 +176,10 @@ class ReprPOTrainer(DPOTrainer):
         attn_mask = concatenated_batch["concatenated_attention_mask"]
         layers_attn_mask = attn_mask[:, None, :, None].repeat(1, hs.shape[1], 1, 1)
         hs = hs * layers_attn_mask
+
+        # now flatten tokens and layers, removing masked dims
+        # hs = rearrange(hs, "b l t h -> b l (t h)")
+
 
         all_logps, size_completion = self.get_batch_logps(
             all_logits,
@@ -157,6 +202,9 @@ class ReprPOTrainer(DPOTrainer):
         chosen_hs = hs[:len_chosen]
         rejected_hs = hs[len_chosen:]
 
+        chosen_attn_mask = attn_mask[:len_chosen]
+        rejected_attn_mask = attn_mask[len_chosen:]
+
         return (
             chosen_logps,
             rejected_logps,
@@ -165,6 +213,8 @@ class ReprPOTrainer(DPOTrainer):
             chosen_logps_avg,
             chosen_hs,
             rejected_hs,
+            chosen_attn_mask,
+            rejected_attn_mask
         )
 
     def get_batch_loss_metrics(
@@ -188,6 +238,8 @@ class ReprPOTrainer(DPOTrainer):
                     _,
                     reference_chosen_hs,
                     _,
+                    _,
+                    _
                 ) = self.concatenated_forward(self.model, batch)
         reference_chosen_hs = reference_chosen_hs.detach()
         reference_chosen_logps = reference_chosen_logps.detach()
@@ -202,6 +254,8 @@ class ReprPOTrainer(DPOTrainer):
             policy_chosen_logps_avg,
             policy_chosen_hs,
             policy_rejected_hs,
+            chosen_attn_mask,
+            rejected_attn_mask
         ) = self.concatenated_forward(model, batch)
 
         loss, loss_info = self.reprpo_loss(
@@ -212,6 +266,8 @@ class ReprPOTrainer(DPOTrainer):
             reference_chosen_logps,
             reference_rejected_logps,
             reference_chosen_hs,
+            chosen_attn_mask,
+            rejected_attn_mask
         )
         # losses, chosen_rewards, rejected_rewards, loss_retain, loss_rr = loss_info
         chosen_rewards, rejected_rewards = (
@@ -223,13 +279,9 @@ class ReprPOTrainer(DPOTrainer):
         if self.args.rpo_alpha is not None:
             loss = loss * self.args.rpo_alpha - policy_chosen_logps_avg
 
+
         prefix = "eval_" if train_eval == "eval" else ""
-        # log(p_policy/p_ref) for X responses, between policy and reference model
-        # log ratios, so -1 means ref is 3x better, 0 is the same, 1 means policy is 3x better
-        metrics[f"{prefix}rewards/chosen"] = loss_info["chosen_rewards"].mean().cpu()
-        metrics[f"{prefix}rewards/rejected"] = (
-            loss_info["rejected_rewards"].mean().cpu()
-        )
+        
         # how often the policy model is better at choosing the right response
         metrics[f"{prefix}rewards/accuracies"] = reward_accuracies.mean().cpu()
         # how much the policy model is better
@@ -237,23 +289,35 @@ class ReprPOTrainer(DPOTrainer):
             (chosen_rewards - rejected_rewards).mean().cpu()
         )
 
+        # the log probability that the model would generate the tokens of the rejected string
         metrics[f"{prefix}logps/rejected"] = policy_rejected_logps.detach().mean().cpu()
         metrics[f"{prefix}logps/chosen"] = policy_chosen_logps.detach().mean().cpu()
 
-        # metrics[f"{prefix}logits/rejected"] = policy_rejected_logits.detach().mean().cpu()
-        # metrics[f"{prefix}logits/chosen"] = policy_chosen_logits.detach().mean().cpu()
 
-        if "loss_retain" in loss_info:
-            metrics[f"{prefix}losses/loss_retain"] = (
-                loss_info["loss_retain"].mean().detach().cpu()
-            )
-        if "loss_rr" in loss_info:
-            metrics[f"{prefix}losses/loss_rr"] = (
-                loss_info["loss_rr"].mean().detach().cpu()
-            )
+        for k in loss_info.keys():
+            if '_' in k:
+                a,b = k.split('_', 1)
+                k2 = f"{b}/{a}"
+            else:
+                k2 = k
+            v = loss_info[k]
+            if isinstance(v, torch.Tensor):
+                v = v.mean().detach().cpu().item()
+            metrics[f"{prefix}{k2}"] = float(v)
 
-        if self.state.global_step % 10 == 0:
+        if self.state.global_step % self.args.print_every == 0:
             print({k: f"{v:.2g}" for k, v in metrics.items()})
+
+            retain_cosine = F.cosine_similarity(
+                policy_chosen_hs, reference_chosen_hs, dim=-1
+            ).mean()
+            rr_cosine = F.cosine_similarity(
+                policy_rejected_hs, reference_chosen_hs, dim=-1
+            ).mean()
+            print(
+                self.state.global_step,
+                f"retain_cos_sim: {retain_cosine:.4f}. rr_cos_sim: {rr_cosine:.4f}",
+            )
 
         return loss.mean(), metrics
 
@@ -266,6 +330,8 @@ class ReprPOTrainer(DPOTrainer):
         reference_chosen_logps: torch.FloatTensor,
         reference_rejected_logps: torch.FloatTensor,
         reference_chosen_hs: torch.FloatTensor,
+        chosen_attn_mask: torch.BoolTensor,
+        rejected_attn_mask: torch.BoolTensor
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
         """Compute the DPO loss for a batch of policy and reference model log probabilities.
 
@@ -280,17 +346,6 @@ class ReprPOTrainer(DPOTrainer):
             The losses tensor contains the DPO loss for each example in the batch.
             The chosen_rewards and rejected_rewards tensors contain the rewards for the chosen and rejected responses, respectively.
         """
-        if self.state.global_step % 10 == 0:
-            retain_cosine = F.cosine_similarity(
-                policy_chosen_hs, reference_chosen_hs, dim=-1
-            ).mean()
-            rr_cosine = F.cosine_similarity(
-                policy_rejected_hs, reference_chosen_hs, dim=-1
-            ).mean()
-            print(
-                self.state.global_step,
-                f"retain_cos_sim: {retain_cosine:.4f}. rr_cos_sim: {rr_cosine:.4f}",
-            )
 
         pi_logratios = policy_chosen_logps - policy_rejected_logps
         if self.reference_free:
@@ -309,24 +364,25 @@ class ReprPOTrainer(DPOTrainer):
         T = 30
         weight_correct = torch.softmax(-logits * T, 0).detach()
 
-        def top_k_mse(x, y, k=0.005):
-            k = int(k * x.shape[-1]) + 1
-            diff = (x - y) ** 2
-            # get the top k differences along dim
-            top_k_diff = torch.topk(diff, k, dim=-1).values
-            return torch.mean(top_k_diff, dim=-1)
+
 
         # mean of bad repr should be more similar to the mean of good behavior
-        loss_rr = top_k_mse(policy_rejected_hs, reference_chosen_hs)
-        loss_rr = wmean(loss_rr, 1 - weight_correct).mean()
+        # print('rejected_attn_mask', rejected_attn_mask.shape, 'policy_rejected_hs', policy_rejected_hs.shape)
+        # jected_attn_mask torch.Size([4, 512]) policy_rejected_hs torch.Size([4, 3, 512, 4096])
+        layers_rejected_attn_mask = rejected_attn_mask[:, None, :, None].repeat(1, policy_rejected_hs.shape[1], 1, 1)
+        loss_rr = sum_squared_error(policy_rejected_hs * layers_rejected_attn_mask, reference_chosen_hs * layers_rejected_attn_mask)
+        loss_rr = wmean(loss_rr, 1 - weight_correct)
+        loss_rr = loss_rr.sum() / layers_rejected_attn_mask.sum()
 
         #  b l t h
         # a mean, norm, loss over the hidden dim of each layer
         # This loss says the good repr should be retained, weighted by how good this samples was
-        loss_retain = F.mse_loss(
-            policy_chosen_hs, reference_chosen_hs, reduction="none"
+        layers_chosen_attn_mask = chosen_attn_mask[:, None, :, None].repeat(1, policy_rejected_hs.shape[1], 1, 1)
+        loss_retain = sum_squared_error(
+            policy_chosen_hs* layers_chosen_attn_mask, reference_chosen_hs * layers_chosen_attn_mask
         )
-        loss_retain = wmean(loss_retain, weight_correct).mean()
+        loss_retain = wmean(loss_retain, weight_correct)
+        loss_retain = loss_retain.sum() / layers_chosen_attn_mask.sum()
 
         steps = self.state.global_step + 1
         total_steps = len(self.train_dataset)
@@ -362,7 +418,6 @@ class ReprPOTrainer(DPOTrainer):
             ref_logratios=ref_logratios.detach(),
             weighting=weight_correct.mean(),
             logits=logits.mean().detach(),
-            # TODO coeffecients
-            # TODO alpha
-            # TODO loss components
+            loss_component_rr = loss_rr * c_rr,
+            loss_component_retain = loss_retain * c_retain * self.alpha,
         )
