@@ -36,10 +36,18 @@ def calc_mc_log_ratio(last_token_logits: Float[Tensor, 'b h'], choice_ids: Int[T
     logp_right = torch.gather(per_token_logps, 1, labels[:, None].long())
     logp_wrong = (per_token_logps.exp().sum()-logp_right.exp()).log()
     log_ratio = logp_right - logp_wrong
-    return per_token_logps, log_ratio
+
+    correct = per_token_logps.argmax(-1)==labels[:, None].long()
+    return per_token_logps, log_ratio, correct
 
 @torch.no_grad
-def eval_tqa(model, tokenizer, dataset2, choice_ids, adapter_names = None):
+def eval_tqa_mc(model, tokenizer, dataset2, choice_ids, adapter_names = None):
+    """Here we eval truthfulqa with multiple choice questions.
+    
+    How do we eval? The model has a choice of answer 1, 2, 3, etc. And a single shot prompt.
+
+    We look at the probability mass it puts over all the hcocies and get the probability of P_Atrue/P_Aothers
+    """
     model.config.use_cache = False
     if adapter_names is None:
         adapter_names = [None]+list(model.peft_config.keys())
@@ -55,8 +63,8 @@ def eval_tqa(model, tokenizer, dataset2, choice_ids, adapter_names = None):
         }
         for adapter_name in adapter_names:
             with torch.cuda.amp.autocast():
-                if adapter_name is not None:
-                    model.set_adapter(adapter_name)
+                # if adapter_name is not None:
+                #     model.set_adapter(adapter_name)
                 with set_adapter(model, adapter_name):
                     out = model(**inputs, use_cache=False)
 
@@ -65,7 +73,7 @@ def eval_tqa(model, tokenizer, dataset2, choice_ids, adapter_names = None):
                 b_choice_ids = torch.tensor(choice_ids[:n]).unsqueeze(0).to(model.device).unsqueeze(-1)
                 label = b["label"][j, 0]
 
-                per_token_logps, log_ratios = calc_mc_log_ratio(out["logits"][j, -1][None], b_choice_ids, label[None].cuda())
+                per_token_logps, log_ratios, correct = calc_mc_log_ratio(out["logits"][j, -1][None], b_choice_ids, label[None].cuda())
                 
                 ans = tokenizer.batch_decode(out["logits"][j, -1][None].argmax(-1))[0]
 
@@ -74,6 +82,7 @@ def eval_tqa(model, tokenizer, dataset2, choice_ids, adapter_names = None):
                     coverage=per_token_logps.exp().sum().item(),
                     ans=ans,
                     i=i*batch_size+j,
+                    correct=correct.item(),
                 ))
     dfs = []
     for k in data.keys():

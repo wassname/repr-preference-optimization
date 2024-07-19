@@ -4,8 +4,48 @@ from trl import DPOConfig, DPOTrainer
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 import torch
 import gc
-from torch import nn
+from torch import nn, Tensor
 import torch.nn.functional as F
+from jaxtyping import Float
+
+# def norm(a: Float[Tensor, 'b l t h']) ->  Float[Tensor, 'b l t h']:
+#     """normalise the hidden states."""
+#     im = rearrange(a, 'b l t h -> b t (l h)')
+#     # print(torch.norm(im, dim=-1, keepdim=True, p=1)+1)
+#     im = im / (torch.norm(np.abs(im), dim=-1, keepdim=True, p=2)+1)
+#     im = rearrange(im, 'b t (l h) -> b l t h', l=a.shape[1], h=a.shape[-1])
+#     return im
+
+
+def norm_t_h(a):
+    eps = 1e-7
+    im = rearrange(a, 'b l t h -> (b l) t h')
+    im = im /  (torch.abs(im).max(0, keepdim=True).values+eps)
+    im = rearrange(im, '(b l) t h -> b l t h', b=a.shape[0], l=a.shape[1])
+    return im
+
+def norm_h(a):
+    eps = 1e-7
+    im = rearrange(a, 'b l t h -> (b l t) h')
+    im = im /  (torch.abs(im).max(0, keepdim=True).values+eps)
+    im = rearrange(im, '(b l t) h -> b l t h', b=a.shape[0], l=a.shape[1], t=a.shape[2])
+    return im
+
+
+def mean_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t']) -> Float[Tensor, 'b l h']:
+    """mean of x, weighted by the attention mask."""
+    attn_mask = attn_mask[:, None, :, None].repeat(1, x.shape[1], 1, 1)
+    return (x * attn_mask).sum(2) / attn_mask.sum(2)
+
+def symlog(x, eps=1e-6):
+    return torch.sign(x) * torch.log(torch.abs(x)+eps)
+
+
+def symlog_loss(x, y, eps=1e-6):
+    # maybe a simple norm or x and y the same here? just to scale the outputs
+    e = symlog(x)-symlog(y)
+    # e = norm_h(e)
+    return e**2
 
 def sum_squared_error(input, target):
     # from https://github.com/GraySwanAI/circuit-breakers/blob/main/src/lorra_circuit_breaker.py
@@ -47,10 +87,19 @@ def top_k_mse(x, y, k=0.005):
     top_k_diff = torch.topk(diff, k, dim=-1).values
     return torch.mean(top_k_diff, dim=-1)
 
+def top_k_mse_all(x, y, k=0.005):
+    x = rearrange(x, "b l t h -> b (l t h)")
+    y = rearrange(y, "b l t h -> b (l t h)")
+    k = int(k * x.shape[-1])+1
+    diff = (x - y)**2
+    # get the top k differences along dim
+    top_k_diff = torch.topk(diff, k, dim=-1).values
+    return torch.mean(top_k_diff, dim=-1)
+
 
 def coeffecient(t, T):
+    t = t % T
     c = t / (2 * T)
-    # why apply alpha to both... this seems like a bug?
     c_retain, c_rr = c, (1 - c)
     return c_retain, c_rr
 
@@ -83,6 +132,19 @@ class ReprPOTrainer(DPOTrainer):
         super().__init__(args=args, **kwargs)
         self.collection_layers = args.collection_layers
         self.alpha = args.alpha
+
+        self.num_training_steps = self.args.max_steps
+        if self.num_training_steps==-1:
+            self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader())
+
+    def get_training_progress(self):
+        # in the paper they claim it's schedule but they end up making it loop every 300 steps, but then use 1500 steps for the loss
+        return self.state.global_step / self.num_training_steps
+    
+    def get_coeff(self):
+        c = 2 * self.get_training_progress() % 1
+        c_retain, c_rr = c, (1 - c)
+        return c_retain, c_rr        
 
     @staticmethod
     def get_batch_logps(
@@ -163,22 +225,17 @@ class ReprPOTrainer(DPOTrainer):
         del outs
         gc.collect()
 
-        if self.state.global_step % self.args.print_every == 0:
-            # print the last 5 tokens, for the first in batch
-            s = model.tokenizer.batch_decode(
-                all_logits.detach().cpu().softmax(-1).argmax(-1)[0, :5:]
-            )
-            print(
-                f'last_N_tok {model.active_adapter if model.get_model_status().enabled else ""} {s}'
-            )
+        # if self.state.global_step % self.args.print_every == 0:
+        #     # print the last 5 tokens, for the first in batch
+        #     s = model.tokenizer.batch_decode(
+        #         all_logits.detach().cpu().softmax(-1).argmax(-1)[0, :5:]
+        #     )
+        #     print(
+        #         f'last_N_tok {model.active_adapter if model.get_model_status().enabled else ""} {s}'
+        #     )
 
         # multiply by attention mask
         attn_mask = concatenated_batch["concatenated_attention_mask"]
-        layers_attn_mask = attn_mask[:, None, :, None].repeat(1, hs.shape[1], 1, 1)
-        hs = hs * layers_attn_mask
-
-        # now flatten tokens and layers, removing masked dims
-        # hs = rearrange(hs, "b l t h -> b l (t h)")
 
 
         all_logps, size_completion = self.get_batch_logps(
@@ -249,8 +306,8 @@ class ReprPOTrainer(DPOTrainer):
         (
             policy_chosen_logps,
             policy_rejected_logps,
-            policy_chosen_logits,
-            policy_rejected_logits,
+            _,
+            _,
             policy_chosen_logps_avg,
             policy_chosen_hs,
             policy_rejected_hs,
@@ -306,7 +363,6 @@ class ReprPOTrainer(DPOTrainer):
             metrics[f"{prefix}{k2}"] = float(v)
 
         if self.state.global_step % self.args.print_every == 0:
-            print({k: f"{v:.2g}" for k, v in metrics.items()})
 
             retain_cosine = F.cosine_similarity(
                 policy_chosen_hs, reference_chosen_hs, dim=-1
@@ -318,7 +374,11 @@ class ReprPOTrainer(DPOTrainer):
                 self.state.global_step,
                 f"retain_cos_sim: {retain_cosine:.4f}. rr_cos_sim: {rr_cosine:.4f}",
             )
+            metrics[f"{prefix}retain_cosine"] = retain_cosine
+            metrics[f"{prefix}rr_cosine"] = rr_cosine
 
+            print({k: f"{v:.2g}" for k, v in metrics.items()})
+        
         return loss.mean(), metrics
 
     def reprpo_loss(

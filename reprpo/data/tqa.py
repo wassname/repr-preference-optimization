@@ -49,10 +49,12 @@ def tokenization(example, tokenizer, max_length=512):
     return o
 
 
-def load_tqa(tokenizer, max_length, N=200):
-    dataset_tqa = load_dataset("truthfulqa/truthful_qa", 'multiple_choice')["validation"].select(range(N))
+def load_tqa(tokenizer, max_length, N=np.inf, split="validation"):
+    dataset_tqa = load_dataset("truthfulqa/truthful_qa", 'multiple_choice')[split]
+    N = min(N, len(dataset_tqa))
     dataset2_tqa = (
         dataset_tqa
+        .select(range(N))
         .map(format_text_prompt)
         .map(lambda s: tokenization(s, tokenizer, max_length), batched=False)
         .select_columns(["label", "input_ids", "attention_mask", "num_choices"])

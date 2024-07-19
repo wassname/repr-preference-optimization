@@ -296,9 +296,20 @@ I can try triplet loss in scratch
 
 With SteerLM 2.0
 
-- 07_hf_wd 42.22 (52.59%)
-- 07_hf_direction 54.19 (48.21%)
+- 07_hf_wd 42.22 (52.59%) -- inalid
+- 07_hf_direction 54.19 (48.21%) -- invalud
+
+With layer 26:
+ood (train)
 - 07_hf_topk 64.44 (48.84)
+- 07_hf_direction 51.82 (51.88)
+- wd 50.63 (56) -- redo with low wd
+- dpo[baseline]  53.44 (58)
+- regular 54.58 (46)
+- cka or similar?
+- topk(2) 54 (48)
+- topk( long) 61 ( 47)
+- symlog 54(49)
 
   🥇OOD TQA results 🥇
   base_model=	53.49
@@ -316,3 +327,217 @@ With SteerLM 2.0
   ReprPO    =	48.84%
 
   {'per_device_train_batch_size': 4, 'gradient_accumulation_steps': 4, 'learning_rate': 0.0001, 'num_train_epochs': 1, 'lr_scheduler_type': 'constant', 'logging_dir': './output-dir/07_hf_topk_TODO-2024-07-14-20-19-43/runs/Jul14_20-19-43_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'run_name': '07_hf_topk_TODO-2024-07-14-20-19-43', 'remove_unused_columns': False, 'optim': 'adamw_8bit', 'gradient_checkpointing': True, 'max_length': 512, 'max_prompt_length': 256, 'model_adapter_name': 'ReprPO', 'alpha': 3000}
+
+  🥇OOD TQA results 🥇
+  base_model=	53.49
+  ReprPO    =	51.82
+  🥈dpo reward acc train🥈
+  ReprPO    =	51.88%
+
+  {'per_device_train_batch_size': 4, 'gradient_accumulation_steps': 4, 'learning_rate': 0.0001, 'num_train_epochs': 1, 'lr_scheduler_type': 'constant', 'logging_dir': './output-dir/07_hf_direction_TODO-2024-07-15-10-10-44/runs/Jul15_10-10-44_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'run_name': '07_hf_direction_TODO-2024-07-15-10-10-44', 'remove_unused_columns': False, 'optim': 'adamw_8bit', 'gradient_checkpointing': True, 'max_length': 512, 'max_prompt_length': 256, 'model_adapter_name': 'ReprPO', 'alpha': 10}
+
+07_hf_wd-2024-07-15-16-25-59
+🥇OOD TQA results 🥇
+base_model=	53.49
+ReprPO    =	50.63
+🥈dpo reward acc train🥈
+ReprPO    =	56.03%
+
+{'per_device_train_batch_size': 4, 'gradient_accumulation_steps': 4, 'learning_rate': 0.0001, 'weight_decay': 0.02, 'num_train_epochs': 1, 'lr_scheduler_type': 'constant', 'logging_dir': './output-dir/07_hf_wd-2024-07-15-16-25-59/runs/Jul15_16-25-59_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'run_name': '07_hf_wd-2024-07-15-16-25-59', 'remove_unused_columns': False, 'optim': 'adamw_8bit', 'gradient_checkpointing': True, 'max_length': 512, 'max_prompt_length': 256, 'model_adapter_name': 'ReprPO'}
+
+# 2024-07-15 16:24:05
+
+Should I normalise by h or by l t h?
+
+mean(0).std() 0.117105395
+mean(1).std() 0.086123265
+mean(2).std() 0.16894156
+mean(3).std() 0.14556476
+
+
+std(0).mean() 0.117105395
+std(1).mean() 0.086123265
+std(2).mean() 0.16894156
+std(3).mean() 0.14556476
+
+
+So we see the highest variable is between neurons. And so it doesn make sense to normalise by neuron, over all other variables. Which is what I'm doing anyway
+
+# 2024-07-17 12:19:29
+
+Hmm topk is not doing consistently well.... I might need a larger eval size,  200->1000 (4x)
+and I might as well use the whole DPO training set
+- also why has my batch size gone down to 5->3?? 
+
+
+- idea use all layers, out of mem
+- idea longer answers... only if everything works
+- [~] idea train for longer? - didn't help
+- [~] all layers, and diff of hs?... nah this doesn't really make sense if I'm using gradient and more layers take us heaps of grad
+- [/] idea smaller topk?: trying also flatten
+- [/] idea very large batches! 4x batch size, and 4x lr?... trying
+- idea what if I make an adapter that's just -1 or 1, a switch. And grad descent just gets to switch them.... hmm interesting but a lot of work
+
+# 2024-07-18 08:49:02
+
+How does this work? Laymans terms
+
+Instead of saying, reward good bahaviour over bad I'm saying reward brain activity associated with good behaviour over bad
+
+
+Or since we are using backprop. Instead of saying, nudge the brain toward enacting good bahaviour over bad I'm saying nudge the brain scan toward showing brain activity associated with good behaviour over bad
+
+# 2024-07-18 09:05:00 Visualising hidden states
+
+Hmm those zeroes tokens are anomolous... I should change to -1 I guess or -inf. 
+
+Notably the attn masks are not the same. Ways to deal with it
+- apply attn mask after loss, before reduction
+- apply it to the hs, then mean over tokens... this kinda makes sense
+
+
+tweaks:
+- don't mask anything to one, this messes with means, just mask it after loss fn
+- later tokens have more diff, and so do some activations
+  - oh no wait they deviate more with each token!
+
+
+when we show a and b next to each other they are very similar
+- already centered, mean=0, std=0.5
+- mean by each layer is much more effective
+- I see distinct patterns in prompt vs answer
+- it makes a lot more sense with logsym
+- I do see vertical stripes which must be things going through all tokens. even all layers. This mean norm by neuron?
+- I might see a difference beween start and end, maybe that's prompt vs answer bt I'm not sure
+- there are some tokens that go across all neurons.... but maybe those are just the grammer ones
+
+
+
+theres some whitespace at the beginning where it's the prompt
+then at the end where it's paddded
+So I think I have been using the prompt... good
+
+
+- [ ] idea: mse in logsym domain? this would focus on smaller values rather than all the massive ones
+
+
+norm?
+- by attn for all layer, token, batch (3*2*256)
+- by attn and token for all layer batch (3*2)
+- by attn and token and layer for batch (3)
+
+# 2024-07-18 14:12:50 wait how is tokenising working?
+
+So it concat the chosen an rejected along the batch dim
+
+we tokenizer prompt left padded
+and reply right padded
+
+build_tokenized_answer
+            return dict(
+                prompt_input_ids=prompt_input_ids,
+                prompt_attention_mask=prompt_attention_mask,
+                input_ids=answer_input_ids,
+                at
+
+
+I end up with 
+dict_keys(['prompt', 'chosen', 'rejected', 'chosen_input_ids', 'chosen_attention_mask', 'chosen_labels', 'rejected_input_ids', 'rejected_attention_mask', 'rejected_labels', 'prompt_input_ids', 'prompt_attention_mask'])
+
+
+UPTO # fixme why can't I norm after symlog?
+
+What does it means that we are using the tokens in a whole gen?
+it all seems to assume that reading is generatging but perhaps that ok since thats how it was trained
+
+
+- measure properly with train, test, and OOD x2
+- topk and direction are promising
+- there might be other thing like topk, but balanced and not relative. e.g mse vs mae?
+
+
+How long is help steer in llama tokens:
+
+```py
+from datasets import load_dataset
+dataset = load_dataset('Atsunori/HelpSteer2-DPO')
+from transformers import AutoTokenizer, AutoModelForCausalLM
+model_name = "NousResearch/Meta-Llama-3-8B-Instruct"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+def proc(row):
+    s = row['prompt'] + ' ' + row['chosen_response']
+    return tokenizer(s, return_tensors='pt')
+d = dataset.map(proc)
+import pandas as pd
+d2 = d.map(lambda x: {'len':len(x['input_ids'][0])})
+pd.Series(d2['train']['len']).describe()
+count    7221.000000
+mean      480.050270
+std       294.003984
+min         7.000000
+25%       267.000000
+50%       422.000000
+75%       648.000000
+max      2611.000000
+```
+
+
+
+Why is the loss component lower than the loss_retrain? it shoudl be higher by 5
+Oh I think total steps mihtn ot be working
+
+
+OK I need to 
+self.num_training_steps = self.args.max_steps
+if self.num_training_steps==-1:
+    self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader())
+
+
+# 2024-07-19 11:03:14
+
+Balancing loss
+- make sure hte oceffecients are good
+- rr went from 16 to 9
+- retrain 15 to 9
+- alpha 10, should work but didn't hmm
+next tyr alpha=100, batch 1--
+
+# working on evals
+
+saved a good dpo one...
+DPO       53.034825
+None      53.753872
+
+'./output-dir/dpo'
+
+and topk
+'./output-dir/07_hf_topk_TODO-2024-07-14-20-19-43'
+
+yes loading works :)
+
+
+## So I want to eval:
+- like truthfull llama or circuit breakers on a range of ds
+- and clearly label in sample and oos
+
+I want:
+- same methodology for all
+- train and OOD and any DPO dataset
+
+How did I do it?
+- Right now I am doing it multi choice, and looking at the relative prob mass for the right answer over the other choices....
+
+So how did they do it?
+- cb:
+  - evaluate.py Run evaluation using LLM judge
+- honest_llamas
+
+How shall I do it?
+- just like DPO, prob per token, ratio of right to wrong
+
+What is harmbench? oh it's just for refusals. Maybe I can try that too
+- they trained a LR on one dataset's hs, then eval on other datasets... hmm
+
+# 2024-07-19 13:08:24
+
+Made a mistake in the symlog notebook... retry
