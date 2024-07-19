@@ -135,7 +135,8 @@ class ReprPOTrainer(DPOTrainer):
 
         self.num_training_steps = self.args.max_steps
         if self.num_training_steps==-1:
-            self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader())
+            self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
+        print('TODO QC: self.num_training_steps', self.num_training_steps)
 
     def get_training_progress(self):
         # in the paper they claim it's schedule but they end up making it loop every 300 steps, but then use 1500 steps for the loss

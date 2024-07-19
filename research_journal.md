@@ -541,3 +541,11 @@ What is harmbench? oh it's just for refusals. Maybe I can try that too
 # 2024-07-19 13:08:24
 
 Made a mistake in the symlog notebook... retry
+
+# 2024-07-19 18:37:20
+
+at step 88/225
+
+ 'rr/c': '0.91', 'retain/c': '0.089',
+
+ this is not right, should be 33% of the way.
