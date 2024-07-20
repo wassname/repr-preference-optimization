@@ -549,3 +549,37 @@ at step 88/225
  'rr/c': '0.91', 'retain/c': '0.089',
 
  this is not right, should be 33% of the way.
+
+# 2024-07-20 09:49:54 reading about dpo variants
+
+trl.dpo.loss_type
+
+
+```py
+# the log prob ratio of each completion
+# logratios = `log(p_ch/p_re)`
+logratios = chosen_logps - rejected_logps
+# logist = log(pPi_ch/pPi_re) - log(pRef_ch/pRef_re) = log((pPi_ch/pPi_re) / (pRef_ch/pRef_re))
+# logits = log((pPi_ch * pRef_ch)/(pPi_re * pRef_re))`
+logits = pi_logratios - ref_logratios
+# so how to think about this intuitivly?? it's still in the log domain
+```
+
+note `logits = pi_logratios - ref_logratios` or `logits = log(prob_pichosen-prob_pi_rej) - log(ref_logratios`
+
+- [IPO](https://arxiv.org/pdf/2310.12036)
+  - > Hmm IPO finds that dpo tends to overfit for ratios close to 0 or one so they go `(logratio -1 / (2 * betA))**2` I wonder if I should do that for hs? If I use a symlog that is
+- sigmoid
+  - logsigmoid(logits)
+- hinge
+- exo_pair
+  - > eqn (16) of the EXO paper: https://arxiv.org/pdf/2402.00856
+- robust
+- bco_pair
+- nca_pair
+- aot
+- aot_pair
+- sppo_hard
+  - > In the paper (https://arxiv.org/pdf/2405.00675), SPPO employs a soft probability approach, estimated using the PairRM score. The probability calculation is conducted outside of the trainer class. The version described here is the hard probability version, where P in Equation (4.7) of Algorithm 1 is set to 1 for the winner and 0 for the loser.
+
+

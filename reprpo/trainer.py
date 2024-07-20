@@ -132,6 +132,7 @@ class ReprPOTrainer(DPOTrainer):
         super().__init__(args=args, **kwargs)
         self.collection_layers = args.collection_layers
         self.alpha = args.alpha
+        self.loss_type = 'ipo'
 
         self.num_training_steps = self.args.max_steps
         if self.num_training_steps==-1:
@@ -143,9 +144,10 @@ class ReprPOTrainer(DPOTrainer):
         return self.state.global_step / self.num_training_steps
     
     def get_coeff(self):
-        c = 2 * self.get_training_progress() % 1
+        c = self.get_training_progress() % 1
+        c /= 2
         c_retain, c_rr = c, (1 - c)
-        return c_retain, c_rr        
+        return c_retain, c_rr
 
     @staticmethod
     def get_batch_logps(
@@ -248,8 +250,9 @@ class ReprPOTrainer(DPOTrainer):
         )
         chosen_logps_avg = all_logps[:len_chosen] / size_completion[:len_chosen]
 
-        # Like IPO we will use the log prob per token, for stability?
-        all_logps = all_logps / size_completion
+        # So we want sum of logprobs or mean of logprobs? Like IPO we will use the log prob per token, https://github.com/eric-mitchell/direct-preference-optimization/issues/40
+        if self.loss_type == "ipo":
+            all_logps = all_logps / size_completion
 
         chosen_logps = all_logps[:len_chosen]
         rejected_logps = all_logps[len_chosen:]
@@ -428,26 +431,20 @@ class ReprPOTrainer(DPOTrainer):
 
 
         # mean of bad repr should be more similar to the mean of good behavior
-        # print('rejected_attn_mask', rejected_attn_mask.shape, 'policy_rejected_hs', policy_rejected_hs.shape)
-        # jected_attn_mask torch.Size([4, 512]) policy_rejected_hs torch.Size([4, 3, 512, 4096])
-        layers_rejected_attn_mask = rejected_attn_mask[:, None, :, None].repeat(1, policy_rejected_hs.shape[1], 1, 1)
-        loss_rr = sum_squared_error(policy_rejected_hs * layers_rejected_attn_mask, reference_chosen_hs * layers_rejected_attn_mask)
+        loss_rr = sum_squared_error(policy_rejected_hs, reference_chosen_hs)
         loss_rr = wmean(loss_rr, 1 - weight_correct)
-        loss_rr = loss_rr.sum() / layers_rejected_attn_mask.sum()
+        loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask).mean()
 
         #  b l t h
         # a mean, norm, loss over the hidden dim of each layer
         # This loss says the good repr should be retained, weighted by how good this samples was
-        layers_chosen_attn_mask = chosen_attn_mask[:, None, :, None].repeat(1, policy_rejected_hs.shape[1], 1, 1)
         loss_retain = sum_squared_error(
-            policy_chosen_hs* layers_chosen_attn_mask, reference_chosen_hs * layers_chosen_attn_mask
+            policy_chosen_hs, reference_chosen_hs
         )
         loss_retain = wmean(loss_retain, weight_correct)
-        loss_retain = loss_retain.sum() / layers_chosen_attn_mask.sum()
+        loss_retain = mean_with_attention(loss_retain, chosen_attn_mask).mean()
 
-        steps = self.state.global_step + 1
-        total_steps = len(self.train_dataset)
-        c_retain, c_rr = coeffecient(steps, total_steps)
+        c_retain, c_rr = self.get_coeff()
         loss = (loss_rr * c_rr + loss_retain * c_retain * self.alpha).sum()
 
         # difference in logps for chosen responses, between policy and reference model
@@ -469,7 +466,7 @@ class ReprPOTrainer(DPOTrainer):
             ).detach()
         )
 
-        return loss, dict(
+        loss_dict = dict(
             loss=loss,
             chosen_rewards=chosen_rewards,
             rejected_rewards=rejected_rewards,
@@ -479,6 +476,13 @@ class ReprPOTrainer(DPOTrainer):
             ref_logratios=ref_logratios.detach(),
             weighting=weight_correct.mean(),
             logits=logits.mean().detach(),
-            loss_component_rr = loss_rr * c_rr,
+            loss_component_rr = (loss_rr * c_rr).detach().mean(),
             loss_component_retain = loss_retain * c_retain * self.alpha,
+            c_rr=c_rr,
+            c_retain=c_retain,
         )
+
+        # now mean any with ndim>0, and detach an cpu
+        loss_dict = {k: v.mean().detach().cpu().item() for k, v in loss_dict.items()}
+
+        return loss, loss_dict

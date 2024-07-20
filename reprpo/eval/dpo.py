@@ -30,6 +30,8 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
 
     # model = trainer._wrap_model(trainer.model, training=False, dataloader=eval_dataloader)
     # model = trainer.accelerator.prepare_model(model, evaluation_mode=True)
+
+    assert trainer.loss_type == 'ipo', 'only ipo is supported, since it gives us the avg of logps, and is not biased by response length'
     
     with torch.cuda.amp.autocast():
         for step, batch in enumerate(tqdm(eval_dataloader, unit='batch')):
@@ -41,14 +43,25 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
                 rejected_logps,
             ) = forward_output[:2]
 
-            # FIXME: if we are using ipo or reprpo this will be adjusted for length, but otherwise not which would bias the results
+            # Note: if we are using ipo or reprpo this will be adjusted for length, but otherwise not which would bias the results
             logratio = chosen_logps-rejected_logps
-            # TODO add length to check it not always the longest
-            data.append(logratio.detach().cpu())
-    data = torch.cat(data, dim=0)
 
-    df = pd.Series(data).to_frame('logratio')
+            batch['chosen_input_ids'].shape
+            batch['rejected_input_ids'].shape
+            data.append(dict(
+                logratio=logratio.detach().cpu(),
+                l_chosen=(batch['chosen_labels']>0).sum(-1).detach().cpu(),
+                l_rejected=(batch['rejected_labels']>0).sum(-1).detach().cpu(),
+            ))
+    # now concat the elements of data
+    data = {k:torch.cat([d[k] for d in data], dim=0).numpy() for k in data[0].keys()}
+
+    df = pd.DataFrame(data)
     df['correct'] = df['logratio'] > 0.
+
+    # prob mass on correct answer
+    odds = np.exp(df['logratio'])
+    df['prob'] = odds / (1 + odds)
     return df
 
 def eval_dpo_dataset_adapters(trainer, model, dataset, adapter_names = None, **kwargs):
@@ -108,11 +121,11 @@ def eval(trainer, model, N=1000):
     # crop of N
 
     dfs = []
-    for dataset_name, dataset in tqdm(datasets.items(), item='dataset', total=len(datasets)):
+    for dataset_name, dataset in tqdm(datasets.items(), total=len(datasets), desc='datasets'):
         df = eval_dpo_dataset_adapters(trainer, model, dataset)
         df['dataset'] = dataset_name
         dfs.append(df)
     df = pd.concat(dfs)
 
-    res =  df.groupby(['adapter', 'dataset'], dropna=False).mean()
+    res =  df.groupby(['adapter', 'dataset'], dropna=False).mean()['correct'].unstack()
     return res, df
