@@ -20,7 +20,7 @@ def print_trainable_parameters(model):
     )
 
 
-def load_model(model_name, adapter_name='default'):
+def load_model(model_name, bnb=True):
     model = None
     clear_mem()
 
@@ -29,15 +29,19 @@ def load_model(model_name, adapter_name='default'):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        low_cpu_mem_usage=True,
-        torch_dtype=torch.bfloat16,
-        load_in_4bit=True,
-        attn_implementation="flash_attention_2",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_quant_type="nf4",
-    )
+    if bnb:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            low_cpu_mem_usage=True,
+            torch_dtype=torch.bfloat16,
+            load_in_4bit=True,
+            attn_implementation="flash_attention_2",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_quant_type="nf4",
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(model_name, low_cpu_mem_usage=True,
+            torch_dtype=torch.bfloat16, attn_implementation="flash_attention_2",)
     model.resize_token_embeddings(len(tokenizer))
     model.config.pad_token_id = tokenizer.pad_token_id
     model.config.use_cache = False    

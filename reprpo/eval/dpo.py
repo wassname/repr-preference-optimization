@@ -9,6 +9,10 @@ from torch.utils.data import DataLoader
 from reprpo.helpers.adapters import set_adapter
 from reprpo.helpers.torch import clear_mem
 
+from datasets import load_dataset
+import numpy as np
+
+
 @torch.no_grad()
 def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: Dataset):
     """
@@ -18,6 +22,7 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
 
     see trainer.evaluation_loop
     """
+    clear_mem(trainer)
     model.eval()
     model.config.use_cache = False
 
@@ -69,8 +74,6 @@ def eval_dpo_dataset_adapters(trainer, model, dataset, adapter_names = None, **k
     if adapter_names is None:
         adapter_names = [None]+list(model.peft_config.keys())
     for adapter_name in tqdm(adapter_names, desc='adapters'):
-        clear_mem()
-        trainer.accelerator.free_memory()
         with set_adapter(model, adapter_name):
             df = eval_dpo_dataset(trainer, model, dataset, **kwargs)
         df['adapter'] = adapter_name if adapter_name is not None else 'base'
@@ -80,16 +83,15 @@ def eval_dpo_dataset_adapters(trainer, model, dataset, adapter_names = None, **k
     return df
 
 
-from datasets import load_dataset
-import numpy as np
-
 def ds_select(ds, N=np.inf):
     N = min(N, len(ds))
     return ds.select(range(N))
 
 
-def load_tqa_dpo():
-    dataset_tqab = load_dataset("EleutherAI/truthful_qa_binary")['validation']
+def load_tqa_dpo(N=None):
+
+    slice = '' if N is None else f'[:{N}]'
+    dataset_tqab = load_dataset("EleutherAI/truthful_qa_binary")[f'validation{slice}']
     def proc(row):
         l = row['label']
         return {
@@ -101,9 +103,17 @@ def load_tqa_dpo():
 
 def eval(trainer, model, N=1000):
 
-    dataset1 = load_dataset('Atsunori/HelpSteer2-DPO')['validation'].rename_column('chosen_response', 'chosen').rename_column('rejected_response', 'rejected') # training set
-    dataset2 = load_tqa_dpo() # OOS honesty in the fase of ~800 common misconceptions
-    dataset3 = load_dataset('unalignment/toxic-dpo-v0.2')['train']
+
+
+    slice = f'[:{N}]' if N is not None else ''
+    
+
+
+    # TODO some of the https://github.dev/AI-secure/DecodingTrust datasetsm e.g. turned into dpo. E.g. ethics
+
+    dataset1 = load_dataset('Atsunori/HelpSteer2-DPO')[f'validation{slice}'].rename_column('chosen_response', 'chosen').rename_column('rejected_response', 'rejected') # training set
+    dataset2 = load_tqa_dpo(N) # OOS honesty in the fase of ~800 common misconceptions
+    dataset3 = load_dataset('unalignment/toxic-dpo-v0.2')[f'train{slice}']
 
     # TODO add these other ones
     # ds = load_dataset("HuggingFaceH4/ultrachat_200k", split="test_sft")
@@ -117,6 +127,7 @@ def eval(trainer, model, N=1000):
         'train_HelpSteer2': dataset1, 'OOD_trufullqa': dataset2, 'OOD_toxic': dataset3
     }
     datasets = {k: ds_select(v, N) for k,v in datasets.items()}
+    clear_mem()
 
     # crop of N
 

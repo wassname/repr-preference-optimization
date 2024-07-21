@@ -516,7 +516,9 @@ and topk
 yes loading works :)
 
 
-## So I want to eval:
+## So I want to eval: eval datasets
+
+
 - like truthfull llama or circuit breakers on a range of ds
 - and clearly label in sample and oos
 
@@ -537,6 +539,23 @@ How shall I do it?
 
 What is harmbench? oh it's just for refusals. Maybe I can try that too
 - they trained a LR on one dataset's hs, then eval on other datasets... hmm
+
+So thye have a range of datasets... geeze they really are making it complex
+- ethics: bnary
+- privacy: must answer the q without revealing private info
+- ood: knowledge, qa
+- sterotype: rate as agree disagree
+- toxicity using perspective api?
+- adv_glue_plus: adv version of glue
+
+
+
+mm bench is good but is for vision
+
+
+math would be good? HRA uses GSM8K and MATH. GSM8k get ~50% so it's nice. I suppose glue would be good too
+
+
 
 # 2024-07-19 13:08:24
 
@@ -567,19 +586,115 @@ logits = pi_logratios - ref_logratios
 
 note `logits = pi_logratios - ref_logratios` or `logits = log(prob_pichosen-prob_pi_rej) - log(ref_logratios`
 
-- [IPO](https://arxiv.org/pdf/2310.12036)
-  - > Hmm IPO finds that dpo tends to overfit for ratios close to 0 or one so they go `(logratio -1 / (2 * betA))**2` I wonder if I should do that for hs? If I use a symlog that is
 - sigmoid
   - logsigmoid(logits)
-- hinge
+- hinge: relu
+- robust: smoothing
+- bco_pair: running mean
+- nca_pair: ?
+- aot: sorting
+- [IPO](https://arxiv.org/pdf/2310.12036)
+  - > Hmm IPO finds that dpo tends to overfit for ratios close to 0 or one so they go `(logratio -1 / (2 * betA))**2` I wonder if I should do that for hs? If I use a symlog that is
 - exo_pair
   - > eqn (16) of the EXO paper: https://arxiv.org/pdf/2402.00856
-- robust
-- bco_pair
-- nca_pair
-- aot
-- aot_pair
+  - > We show that DPO derived based on the optimal solution of the problem leads to a compromised mean-seeking approximation of the optimal solution in practice. In this paper, we propose efficient exact optimization (EXO) of the alignment objective. EXO is guaranteed to optimize in the sam.e direction as RL algorithms asymptotically for arbitrary policy parametrization
 - sppo_hard
   - > In the paper (https://arxiv.org/pdf/2405.00675), SPPO employs a soft probability approach, estimated using the PairRM score. The probability calculation is conducted outside of the trainer class. The version described here is the hard probability version, where P in Equation (4.7) of Algorithm 1 is set to 1 for the winner and 0 for the loser.
 
 
+# peft lora versions 2024-07-20 15:18:31
+
+- HRA 24 May 2024
+- > Another strategy is Orthogonal Fine-Tuning (OFT) [33, 30], which multiplies the weight matrix with a structured orthogonal matrix 𝑹∈ℝd×d determined by limited trainable parameters, 
+- also mentions OFT, and BOFT
+  - OFT 
+    - > It preserves the pairwise angles between neuron vectors
+    - But then it wouldn't learn much?
+    - > by constraining the orthogonality of these models’ weight matrices, we can ensure the models are 1-Lipschtize in theory and thus make them achieve provable robustness against adversarial perturbations [42, 25] and generalization bounds [38, 20].
+    - hmm 
+  - > The BOFT [30] introduces butterfly factorization to generate a denser orthogonal matrix from a chain of structured sparse matrices, which improves OFT’s performance with fewer trainable parameters.
+- > Essentially, LoRA hypothesizes that the additive modifications of weight matrices are intrinsically low-rank, while OFT preserves the pairwise angles between neuron vectors and theoretically penalizes the discrepancy between pre-trained and fine-tuned models. 
+- > . This method provides a new perspective connecting LoRA to OFT and achieves encouraging performance in various downstream tasks. As illustrated in Figure 1(a), our method adapts a pre-trained model by multiplying each frozen weight matrix with a chain of r learnable Householder reflections (HRs) [15]. HRA can be interpreted as either an OFT adapter or an adaptive LoRA. Consequently, it harnesses the advantages of both strategies, reducing parameters and computation costs while penalizing the loss of pre-training knowledge.
+
+damn I would like to use OFT but no bnb, version so I can't een load it
+
+AdaLoraConfig
+FourierFTModel
+ia3
+LoHa
+lokr
+vera: https://arxiv.org/abs/2310.11454 2023  Vector-based Random Matrix Adaptation
+  - > In this work, we present Vector-based Random Matrix Adaptation (VeRA), which significantly reduces the number of trainable parameters compared to LoRA, yet maintains the same performance. I
+  - not as good as DORA https://arxiv.org/pdf/2402.09353
+- It shares some between layers too 
+- XLora
+
+
+- MosLoRA https://arxiv.org/pdf/2406.11909v1
+  - >equivalently decompose the weights of LoRA
+into two subspaces, and find that simply mix-
+ing them can enhance performance
+- FLoRA https://arxiv.org/pdf/2405.14739
+- > However, FLoRA does not impose
+any constraints on G, which offers several advantages: firstly, it broadens the range of parameter
+adjustments and enhances the flexibility of parameter learning. Secondly, FLoRA removes the strong
+orthogonality constraint on G. Since orthogonality is not a characteristic of all downstream tasks,
+enforcing orthogonal constraints during the learning process could potentially degrade performanc
+
+- DoRA [29] decomposes each original weight matrix into magnitudes and directions for fine-tuning. 
+- PiSSA [31] performs singular value decomposition (SVD) on each original weight matrix, where the low-rank principal matrix serves as trainable parameters, while the residual matrix is frozen.
+
+# 2024-07-20 16:36:39
+
+Tried to run OFT and BOFT and HRA but they all failed to load. Problems: 1 increased mem due to lack of bnb. Also they have a matrix mult fail on some layers, do they need layers with equal ins and outs? In any case this is the experiment I would like to run
+- HFT
+- with wd
+- and just RR loss
+- maybe the other constrains will be enougth. Also with retrain loss too just in case its still needed
+
+
+so we have a problem with
+- q_prj `RuntimeError: mat1 and mat2 shapes cannot be multiplied (8388608x1 and 4096x4096)`
+- and mlp `RuntimeError: mat1 and mat2 shapes cannot be multiplied (29360128x1 and 4096x4096)`
+
+boft
+`RuntimeError: mat1 and mat2 shapes cannot be multiplied (4096x4096 and 1x8388608)`
+
+if must be a bnb thing
+
+
+and iwthout bnb I can't even train a single batch.... failure. Need a smaller model or a bigger gpu
+
+Look at https://github.com/huggingface/peft/pull/1864
+
+
+Now running with phi.... a little incoherent... testing
+
+
+⭐ run=no_train, N=120
+
+| adapter   |   train_HelpSteer2 |   OOD_trufullqa |   OOD_toxic |
+|:----------|-------------------:|----------------:|------------:|
+| base      |           0.583333 |        0.55     |    0.875    |
+| ReprPO    |           0.475    |        0.516667 |    0.833333 |
+
+
+
+# 2024-07-21 09:46:40
+
+
+I already have
+- train
+- truthfulqa
+- toxic
+
+It woudl be good to have code, math (GSM8K/) reasoning, another language, knowledge, ethics. Might be good to reuse Eluther?
+
+harmbench has some good stuff but it's all over the place. dont forget genie and honest_llamas
+
+i WANT TO understand OFT and HRA
+
+
+why crash? prob mem, just during eval, after re-init acc hgmm
+
+> AttributeError: `AcceleratorState` object has no attribute `distributed_type`. This happens if `AcceleratorState._reset_state()` was called and an `Accelerator` or `PartialState` was not reinitialized.

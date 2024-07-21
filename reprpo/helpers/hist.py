@@ -63,7 +63,7 @@ def plot_paired_hist(trainer: DPOTrainer):
     x = df_hist1[[c for c in df_hist1.columns if 'cosine' in c]].dropna()
     if len(x.columns) > 0:
         x.plot(**plt_kwargs)
-        plt.title('cosine similarity\nboth should stay high, with some tradeoff\notherwise incoherent/degenerate state', fontdict={'fontsize': fontsize})
+        plt.title('cosine similarity\nboth should stay high, with some tradeoff\notherwise indicates a incoherent/degenerate state', fontdict={'fontsize': fontsize})
         plt.legend(fontsize=fontsize-2)
         plt.show()
 
