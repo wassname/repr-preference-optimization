@@ -41,7 +41,9 @@ def load_model(model_name, bnb=True):
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name, low_cpu_mem_usage=True,
-            torch_dtype=torch.bfloat16, attn_implementation="flash_attention_2",)
+            torch_dtype=torch.bfloat16, 
+            attn_implementation="flash_attention_2",
+            )
     model.resize_token_embeddings(len(tokenizer))
     model.config.pad_token_id = tokenizer.pad_token_id
     model.config.use_cache = False    

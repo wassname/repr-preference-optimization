@@ -53,10 +53,13 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
 
             batch['chosen_input_ids'].shape
             batch['rejected_input_ids'].shape
+            bs = batch['chosen_input_ids'].shape[0]
+            i = bs * step + torch.arange(bs)
             data.append(dict(
                 logratio=logratio.detach().cpu(),
                 l_chosen=(batch['chosen_labels']>0).sum(-1).detach().cpu(),
                 l_rejected=(batch['rejected_labels']>0).sum(-1).detach().cpu(),
+                i=i
             ))
     # now concat the elements of data
     data = {k:torch.cat([d[k] for d in data], dim=0).numpy() for k in data[0].keys()}
@@ -75,6 +78,7 @@ def eval_dpo_dataset_adapters(trainer, model, dataset, adapter_names = None, **k
         adapter_names = [None]+list(model.peft_config.keys())
     for adapter_name in tqdm(adapter_names, desc='adapters'):
         with set_adapter(model, adapter_name):
+            print('adapter', adapter_name)
             df = eval_dpo_dataset(trainer, model, dataset, **kwargs)
         df['adapter'] = adapter_name if adapter_name is not None else 'base'
         dfs.append(df)
@@ -90,8 +94,8 @@ def ds_select(ds, N=np.inf):
 
 def load_tqa_dpo(N=None):
 
-    slice = '' if N is None else f'[:{N}]'
-    dataset_tqab = load_dataset("EleutherAI/truthful_qa_binary")[f'validation{slice}']
+    slice = '' if N is None else f'[:{N}]' # https://huggingface.co/docs/datasets/en/loading#slice-splits
+    dataset_tqab = load_dataset("EleutherAI/truthful_qa_binary", split=f'validation{slice}')
     def proc(row):
         l = row['label']
         return {
@@ -105,15 +109,18 @@ def eval(trainer, model, N=1000):
 
 
 
-    slice = f'[:{N}]' if N is not None else ''
+    slice = f'[0:{N}]' if N is not None else ''
     
 
 
     # TODO some of the https://github.dev/AI-secure/DecodingTrust datasetsm e.g. turned into dpo. E.g. ethics
 
-    dataset1 = load_dataset('Atsunori/HelpSteer2-DPO')[f'validation{slice}'].rename_column('chosen_response', 'chosen').rename_column('rejected_response', 'rejected') # training set
-    dataset2 = load_tqa_dpo(N) # OOS honesty in the fase of ~800 common misconceptions
-    dataset3 = load_dataset('unalignment/toxic-dpo-v0.2')[f'train{slice}']
+    dataset1 = load_dataset('Atsunori/HelpSteer2-DPO', split=f'validation{slice}').rename_column('chosen_response', 'chosen').rename_column('rejected_response', 'rejected') # training set
+    print('ds1')
+    dataset2 = load_tqa_dpo(N) # OOS honesty in the fase of ~800 common misconceptions\
+    print('ds2')
+    dataset3 = load_dataset('unalignment/toxic-dpo-v0.2', split=f'train{slice}')
+    print('ds3')
 
     # TODO add these other ones
     # ds = load_dataset("HuggingFaceH4/ultrachat_200k", split="test_sft")
@@ -128,11 +135,13 @@ def eval(trainer, model, N=1000):
     }
     datasets = {k: ds_select(v, N) for k,v in datasets.items()}
     clear_mem()
+    print('clearedmem')
 
     # crop of N
 
     dfs = []
     for dataset_name, dataset in tqdm(datasets.items(), total=len(datasets), desc='datasets'):
+        print(dataset_name)
         df = eval_dpo_dataset_adapters(trainer, model, dataset)
         df['dataset'] = dataset_name
         dfs.append(df)

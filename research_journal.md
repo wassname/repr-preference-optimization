@@ -668,6 +668,8 @@ and iwthout bnb I can't even train a single batch.... failure. Need a smaller mo
 Look at https://github.com/huggingface/peft/pull/1864
 
 
+# 2024-07-21 11:32:25 exp phi, HRA
+
 Now running with phi.... a little incoherent... testing
 
 
@@ -677,6 +679,36 @@ Now running with phi.... a little incoherent... testing
 |:----------|-------------------:|----------------:|------------:|
 | base      |           0.583333 |        0.55     |    0.875    |
 | ReprPO    |           0.475    |        0.516667 |    0.833333 |
+
+next...
+https://wandb.ai/wassname/repo-dpo/runs/rxz7gr5z?nw=nwuserwassname
+crashed during eval, grr
+
+
+so this one was coherent but not better... also quite a large file
+
+| adapter   |   train_HelpSteer2 |   OOD_trufullqa |   OOD_toxic |
+|:----------|-------------------:|----------------:|------------:|
+| base      |           0.533333 |        0.55     |    0.675    |
+| ReprPO    |           0.525    |        0.558333 |    0.666667 |
+
+
+BOFT
+
+
+peft_config = BOFTConfig(
+    boft_block_size=8,
+    boft_n_butterfly_factor=2,
+    
+    target_modules=["qkv_proj", "down_proj"
+                    # "o_proj", "up_gate_proj",
+                    ],
+)
+# 2024-07-21 11:46:57 crash?
+
+why crash? prob mem, just during eval, after re-init acc hgmm
+
+> AttributeError: `AcceleratorState` object has no attribute `distributed_type`. This happens if `AcceleratorState._reset_state()` was called and an `Accelerator` or `PartialState` was not reinitialized.
 
 
 
@@ -694,7 +726,17 @@ harmbench has some good stuff but it's all over the place. dont forget genie and
 
 i WANT TO understand OFT and HRA
 
+what about just on Houstfolder direciton/?
 
-why crash? prob mem, just during eval, after re-init acc hgmm
+# 2024-07-23 18:32:18
 
-> AttributeError: `AcceleratorState` object has no attribute `distributed_type`. This happens if `AcceleratorState._reset_state()` was called and an `Accelerator` or `PartialState` was not reinitialized.
+Break for work. Why did my batch size change from 14->0, wth?
+
+It did seem like boft adapters is more stable, which is very interesting! It look coherent but didn't always get a good score. Too stable? I'm still trying with lower alphas...
+
+even with the notebook that used to work, it no longer does. Is it a version?
+
+Hmm, is it:
+- my nb code? no, I reran a good one, same prob
+- my lib code? try reversing
+- my deps? try reinstall from lock

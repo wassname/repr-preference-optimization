@@ -19,7 +19,7 @@ def generation_test(model, tokenizer, s: str=None, inputs=None, do_sample=False,
     if (inputs is None) and (s is None):
         # default test
         s = "Q1: (30 words): Which Science Fiction Utopia is preferable and why? [ The Polity, The Culture, Utopia!LOL, Permutation City, 2 more of your choice]', "
-        max_new_tokens = 96
+        max_new_tokens = 128
 
     if inputs is None:
         inputs = tokenizer.apply_chat_template(
