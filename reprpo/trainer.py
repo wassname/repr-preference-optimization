@@ -35,7 +35,7 @@ def norm_h(a):
 def mean_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t']) -> Float[Tensor, 'b l h']:
     """mean of x, weighted by the attention mask."""
     attn_mask = attn_mask[:, None, :, None].repeat(1, x.shape[1], 1, 1)
-    return (x * attn_mask).sum(2) / attn_mask.sum(2)
+    return (x * attn_mask).sum(2, keepdim=True) / attn_mask.sum(2, keepdim=True)
 
 def symlog(x, eps=1e-6):
     return torch.sign(x) * torch.log(torch.abs(x)+eps)
@@ -49,7 +49,7 @@ def symlog_loss(x, y, eps=1e-6):
 
 def sum_squared_error(input, target):
     # from https://github.com/GraySwanAI/circuit-breakers/blob/main/src/lorra_circuit_breaker.py
-    return torch.norm(input - target, dim=-1, p=2, dtype=torch.float)#.nanmean()
+    return torch.norm(input - target, dim=-1, p=2, dtype=torch.float, keepdim=True)#.nanmean()
 
 def combined_loss(x, y, alpha=0.5):
     cos_sim = torch.nn.functional.cosine_similarity(x, y, dim=-1)
@@ -122,7 +122,7 @@ def wmean(x, w, dim=0):
     # assert w.sum(-1)==1
     while w.dim() < x.dim():
         w = w.unsqueeze(-1)
-    return (x * w).sum(dim) / w.sum(dim)
+    return (x * w).sum(dim, keepdim=True) / w.sum(dim, keepdim=True)
 
 
 class ReprPOTrainer(DPOTrainer):
@@ -331,11 +331,11 @@ class ReprPOTrainer(DPOTrainer):
             rejected_attn_mask
         )
         # losses, chosen_rewards, rejected_rewards, loss_retain, loss_rr = loss_info
-        chosen_rewards, rejected_rewards = (
-            loss_info["chosen_rewards"],
-            loss_info["rejected_rewards"],
-        )
-        reward_accuracies = (chosen_rewards > rejected_rewards).float()
+        # chosen_rewards, rejected_rewards = (
+        #     loss_info["chosen_rewards"],
+        #     loss_info["rejected_rewards"],
+        # )
+        # reward_accuracies = (chosen_rewards > rejected_rewards).float()
 
         if self.args.rpo_alpha is not None:
             loss = loss * self.args.rpo_alpha - policy_chosen_logps_avg
@@ -344,11 +344,11 @@ class ReprPOTrainer(DPOTrainer):
         prefix = "eval_" if train_eval == "eval" else ""
         
         # how often the policy model is better at choosing the right response
-        metrics[f"{prefix}rewards/accuracies"] = reward_accuracies.mean().cpu()
-        # how much the policy model is better
-        metrics[f"{prefix}rewards/margins"] = (
-            (chosen_rewards - rejected_rewards).mean().cpu()
-        )
+        # metrics[f"{prefix}rewards/accuracies"] = reward_accuracies.mean().cpu()
+        # # how much the policy model is better
+        # metrics[f"{prefix}rewards/margins"] = (
+        #     (chosen_rewards - rejected_rewards).mean().cpu()
+        # )
 
         # the log probability that the model would generate the tokens of the rejected string
         metrics[f"{prefix}logps/rejected"] = policy_rejected_logps.detach().mean().cpu()
@@ -432,8 +432,8 @@ class ReprPOTrainer(DPOTrainer):
 
         # mean of bad repr should be more similar to the mean of good behavior
         loss_rr = sum_squared_error(policy_rejected_hs, reference_chosen_hs)
-        loss_rr = wmean(loss_rr, 1 - weight_correct)
-        loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask).mean()
+        loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask)
+        loss_rr = wmean(loss_rr, 1 - weight_correct).mean()
 
         #  b l t h
         # a mean, norm, loss over the hidden dim of each layer
@@ -441,8 +441,8 @@ class ReprPOTrainer(DPOTrainer):
         loss_retain = sum_squared_error(
             policy_chosen_hs, reference_chosen_hs
         )
-        loss_retain = wmean(loss_retain, weight_correct)
-        loss_retain = mean_with_attention(loss_retain, chosen_attn_mask).mean()
+        loss_retain = mean_with_attention(loss_retain, chosen_attn_mask)
+        loss_retain = wmean(loss_retain, weight_correct).mean()
 
         c_retain, c_rr = self.get_coeff()
         loss = (loss_rr * c_rr + loss_retain * c_retain * self.alpha).sum()
@@ -486,3 +486,16 @@ class ReprPOTrainer(DPOTrainer):
         loss_dict = {k: v.mean().detach().cpu().item() for k, v in loss_dict.items()}
 
         return loss, loss_dict
+
+
+
+def normalize_output(x):
+    """
+    if it's a tensor, detach and move to cpu, then to numpy
+    if ndim>0, mean
+    """
+    if isinstance(x, torch.Tensor):
+        x = x.detach().cpu()
+    if hasattr(x, 'ndim') and x.ndim > 0:
+        x = x.mean()
+    return x * 1.0 # to float
