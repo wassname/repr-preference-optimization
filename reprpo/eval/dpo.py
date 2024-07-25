@@ -107,6 +107,8 @@ def load_tqa_dpo(N=None):
 
 def eval(trainer, model, N=1000):
 
+    # FIXME I might need to remake the adapter here to avoid OOM
+
 
 
     slice = f'[0:{N}]' if N is not None else ''

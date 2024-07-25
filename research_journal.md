@@ -740,3 +740,29 @@ Hmm, is it:
 - my nb code? no, I reran a good one, same prob
 - my lib code? try reversing
 - my deps? try reinstall from lock
+
+# 2024-07-25 08:31:09
+
+OK it seesm to work again... weird. maybe it was just BOFT the whole time?
+
+Note that cosine doesn't seem sufficient to measure coherency. The OFT adapters maintain cosine, but not coherency. Cosine measures direction so maybe this shows that there is something ese involved?
+
+This was in a notebook where we had OFT and only RR loss. Hmm
+
+TODO:
+- [ ] play with representations
+  - Hypothesis: rejected and chosen will on mean have hs that are rotations from each other
+  - alternate: either mean mass diff (linear) or no repr will be better
+  - metric: manual generation getting output while maintaining coherency, prediction other sets of hs
+- [ ] my eval still crashes, maybe I should try resetting trainer?
+- [ ] read/watch
+  - [ ] OFT paper
+  - [ ] 45+ mechinterp ideas
+
+
+BACKLOG:
+- [ ] eventually make my own help steer
+- [ ] tru on llama3.1 for fun
+
+
+TODO put model name, adapter type in name

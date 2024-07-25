@@ -110,6 +110,8 @@ class ReprPOConfig(DPOConfig):
     alpha: int = 1
     print_every: int = 10
 
+    # NOTE to self, do not pass both peft_config and model_adapter_name. peft_config creates a new adapter
+
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
