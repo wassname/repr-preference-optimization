@@ -1,5 +1,5 @@
 
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 
 from reprpo.helpers.torch import clear_mem
@@ -30,14 +30,21 @@ def load_model(model_name, bnb=True):
         tokenizer.pad_token = tokenizer.eos_token
 
     if bnb:
+        quantization_config = BitsAndBytesConfig(
+            # https://huggingface.co/docs/transformers/v4.43.2/quantization/bitsandbytes#4-bit-qlora-algorithm
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.bfloat16, # faster
+            bnb_4bit_quant_type="nf4", # for trainng
+        )
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             low_cpu_mem_usage=True,
             torch_dtype=torch.bfloat16,
-            load_in_4bit=True,
-            attn_implementation="flash_attention_2",
-            bnb_4bit_compute_dtype=torch.bfloat16,
-            bnb_4bit_quant_type="nf4",
+            quantization_config = quantization_config,
+            # load_in_4bit=True,
+            # attn_implementation="flash_attention_2",
+            # bnb_4bit_compute_dtype=torch.bfloat16,
+            # bnb_4bit_quant_type="nf4",
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name, low_cpu_mem_usage=True,

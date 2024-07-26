@@ -766,3 +766,88 @@ BACKLOG:
 
 
 TODO put model name, adapter type in name
+
+Here A is chosen, B is rejected. 1 is batch 1, 2 is batch 2. So 1 and 2 are unrelated and A and B are opposite
+
+We see a larger difference in the opposite ones
+There is also a larger difference between batches
+
+![alt text](./docs/img/by_h.png)
+
+
+Now if I look at it per token
+![alt text](./docs/img/by_token.png)
+- similar amplifutes
+- but the opposites are just noisier and more unpredictable with some neurons correlated a little through the tokens
+  - this looks to have some signal! but it's not clear, maybe I can find a transform that will make it clear
+- the unrelated ones though have some highly correlated neurons (wrt tokens)
+  - looking at raw hs, not the diffs, this look similar. It seems that by subtracting related ones we have removed the common patterns, and left the individual samples pattern
+
+
+
+So after looking these pics:
+- the diff between chosen and reject is very noisy, and difficult to reduce, the signal is hard to extract (although I'm sure gradient descent can do it, but most of what it's trying to do is just reduce the noise). It would be _really_ usefull to seperate this out. For example rejected, and Rotations of chosen
+
+**So the retain loss is super easy, the rr loss is super noisy, thats the difficulty**
+
+So that means just ramping up the rr loss is not enougth
+
+- [ ] Experiment: see if a transform will show a pattern in the plotted image, or histogram?
+- It's also really important to have a big batch for the rr loss, and make sure the loss flows
+- [ ] norm
+  - [ ] by neuron
+  - [ ] and batch
+    - [ ] but **is this correlated with logp.... **
+
+### Embedding idea? 2024-07-25 19:48:32
+
+Lets assume that each layer can be unembedded (can it), but we do embedding logic, this should be in this direction from that? king - queen = woman?
+
+It would be
+- A1-B1 = A2-B2 (preference direction)
+- B1-B2 = A1-A2 (sample directions - probobly quite diverse)
+- A1-B2 = A2-B1 (sample direction, and preference direction, which should equal both of the above?)
+
+then I will be moving around the internal embedding untill this is true? What would that mean? Incoherence probobly
+
+But I could also do logic? I guess that's what the linear mean mass difference does already.
+
+#### V2
+
+Ok so the above doesn't work, as that's what mean mass difference does. But can we find a transform where it does work? Then we can do manipulation in that space
+
+Or can I find a transform WHERE THIS IS TRUE?
+
+ - [ ] Ask Claude about transforms, or how to search for one?
+ 
+ 
+ - [ ] try unbmedding
+ - [ ] try rotating before taking any mean or anything?
+
+
+# 2024-07-26 15:39:30
+
+Many experiments trying to correlate properties of a hs sampler it's prob ratio
+- prob ratio is better than log ratio
+- norm by hidden state and batch helps
+- choose a layer
+- the unprojected ones have a much stronger relation
+
+# 2024-07-26 17:06:22
+
+Oh, so one of my tests successed
+
+unprojected_hidden_states.softmax(-1) was more correlated with logratio than permuted sets :), so I could try using this in my loss!!
+
+  cosine similarity of related ones should be higher than unrelated
+  hypothesis: ( c111 / c112 - 1 )	> 0 ?
+  working:    ( 0.471 / 0.211 - 1 ) = 1.23	> 0	∴ ✅
+
+  hypothesis: ( c222 / c221 - 1 )	> 0 ?
+  working:    ( 0.424 / 0.351 - 1 ) = 0.21	> 0	∴ ✅
+
+  hypothesis: ( c111 / c221 - 1 )	> 0 ?
+  working:    ( 0.471 / 0.351 - 1 ) = 0.344	> 0	∴ ✅
+
+  hypothesis: ( c222 / c112 - 1 )	> 0 ?
+  working:    ( 0.424 / 0.211 - 1 ) = 1.01	> 0	∴ ✅

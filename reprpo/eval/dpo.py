@@ -95,7 +95,7 @@ def ds_select(ds, N=np.inf):
 def load_tqa_dpo(N=None):
 
     slice = '' if N is None else f'[:{N}]' # https://huggingface.co/docs/datasets/en/loading#slice-splits
-    dataset_tqab = load_dataset("EleutherAI/truthful_qa_binary", split=f'validation{slice}')
+    dataset_tqab = load_dataset("EleutherAI/truthful_qa_binary", split=f'validation{slice}', keep_in_memory=False)
     def proc(row):
         l = row['label']
         return {
@@ -113,15 +113,16 @@ def eval(trainer, model, N=1000):
 
     slice = f'[0:{N}]' if N is not None else ''
     
-
+    # import datasets.config
+    # datasets.config.IN_MEMORY_MAX_SIZE
 
     # TODO some of the https://github.dev/AI-secure/DecodingTrust datasetsm e.g. turned into dpo. E.g. ethics
 
-    dataset1 = load_dataset('Atsunori/HelpSteer2-DPO', split=f'validation{slice}').rename_column('chosen_response', 'chosen').rename_column('rejected_response', 'rejected') # training set
+    dataset1 = load_dataset('Atsunori/HelpSteer2-DPO', split=f'validation{slice}', keep_in_memory=False).rename_column('chosen_response', 'chosen').rename_column('rejected_response', 'rejected') # training set
     print('ds1')
     dataset2 = load_tqa_dpo(N) # OOS honesty in the fase of ~800 common misconceptions\
     print('ds2')
-    dataset3 = load_dataset('unalignment/toxic-dpo-v0.2', split=f'train{slice}')
+    dataset3 = load_dataset('unalignment/toxic-dpo-v0.2', split=f'train{slice}', keep_in_memory=False)
     print('ds3')
 
     # TODO add these other ones

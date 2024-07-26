@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from einops import rearrange
+from einops import rearrange, repeat
 from trl import DPOConfig, DPOTrainer
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 import torch
@@ -7,6 +7,13 @@ import gc
 from torch import nn, Tensor
 import torch.nn.functional as F
 from jaxtyping import Float
+from transformers import (
+    PreTrainedModel,
+)
+from trl.trainer.utils import (
+    pad_to_length,
+)
+
 
 # def norm(a: Float[Tensor, 'b l t h']) ->  Float[Tensor, 'b l t h']:
 #     """normalise the hidden states."""
@@ -16,26 +23,29 @@ from jaxtyping import Float
 #     im = rearrange(im, 'b t (l h) -> b l t h', l=a.shape[1], h=a.shape[-1])
 #     return im
 
+def normalize_per(a, norm_dims=(1, 2, 3), eps=1e-12):
+    """normalize per norm_dims
 
-def norm_t_h(a):
-    eps = 1e-7
-    im = rearrange(a, 'b l t h -> (b l) t h')
-    im = im /  (torch.abs(im).max(0, keepdim=True).values+eps)
-    im = rearrange(im, '(b l) t h -> b l t h', b=a.shape[0], l=a.shape[1])
-    return im
+    this means dividing by the norm of the other dims
+    """
+    if not isinstance(norm_dims, list):
+        norm_dims = [norm_dims]
+    # change negative to positive
+    norm_dims = [n if n >= 0 else a.ndim + n for n in norm_dims]
+    # get other dims
+    all_dims = set(range(a.ndim))
+    assert set(norm_dims).issubset(all_dims)
+    dims = list(all_dims - set(norm_dims))
+    return a / (torch.norm(a, dim=dims, p=2, keepdim=True) + eps)
 
-def norm_h(a):
-    eps = 1e-7
-    im = rearrange(a, 'b l t h -> (b l t) h')
-    im = im /  (torch.abs(im).max(0, keepdim=True).values+eps)
-    im = rearrange(im, '(b l t) h -> b l t h', b=a.shape[0], l=a.shape[1], t=a.shape[2])
-    return im
-
+def mult_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t']) -> Float[Tensor, 'b l h']:
+    layer_attn_mask = repeat(attn_mask, 'b t -> b l t h', l=x.shape[1], h=1)
+    return (x * layer_attn_mask)
 
 def mean_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t']) -> Float[Tensor, 'b l h']:
-    """mean of x, weighted by the attention mask."""
-    attn_mask = attn_mask[:, None, :, None].repeat(1, x.shape[1], 1, 1)
-    return (x * attn_mask).sum(2) / attn_mask.sum(2)
+    """mean of x, weighted by the attention mask, over token dim"""
+    layer_attn_mask = repeat(attn_mask, 'b t -> b l t h', l=x.shape[1], h=1)
+    return (x * layer_attn_mask).sum(2) / layer_attn_mask.sum(2)
 
 def symlog(x, eps=1e-6):
     return torch.sign(x) * torch.log(torch.abs(x)+eps)
@@ -47,9 +57,11 @@ def symlog_loss(x, y, eps=1e-6):
     # e = norm_h(e)
     return e**2
 
-def sum_squared_error(input, target):
+def norm_error(input: Float[Tensor, 'b l t h'], target: Float[Tensor, 'b l t h']) -> Float[Tensor, 'b l t h']:
     # from https://github.com/GraySwanAI/circuit-breakers/blob/main/src/lorra_circuit_breaker.py
-    return torch.norm(input - target, dim=-1, p=2, dtype=torch.float, keepdim=True)#.nanmean()
+    return torch.norm(input - target, dim=-1, p=2, 
+                    #   dtype=torch.float, 
+                      keepdim=True)#.nanmean()
 
 def combined_loss(x, y, alpha=0.5):
     cos_sim = torch.nn.functional.cosine_similarity(x, y, dim=-1)
@@ -203,6 +215,7 @@ class ReprPOTrainer(DPOTrainer):
             label_pad_token_id=self.label_pad_token_id,
             padding_value=self.padding_value,
             device=self.accelerator.device,
+            max_length=self.max_length
         )
         len_chosen = batch["chosen_labels"].shape[0]
 
@@ -228,15 +241,6 @@ class ReprPOTrainer(DPOTrainer):
         hs = collect_hs(outs.hidden_states)[:, self.collection_layers]
         del outs
         gc.collect()
-
-        # if self.state.global_step % self.args.print_every == 0:
-        #     # print the last 5 tokens, for the first in batch
-        #     s = model.tokenizer.batch_decode(
-        #         all_logits.detach().cpu().softmax(-1).argmax(-1)[0, :5:]
-        #     )
-        #     print(
-        #         f'last_N_tok {model.active_adapter if model.get_model_status().enabled else ""} {s}'
-        #     )
 
         # multiply by attention mask
         attn_mask = concatenated_batch["concatenated_attention_mask"]
@@ -430,23 +434,26 @@ class ReprPOTrainer(DPOTrainer):
         weight_correct = torch.softmax(-logits * T, 0).detach()
 
 
+        policy_chosen_hsa = mult_with_attention(policy_chosen_hs, chosen_attn_mask)
+        policy_rejected_hsa = mult_with_attention(policy_rejected_hs, rejected_attn_mask)
+        reference_chosen_hsa = mult_with_attention(reference_chosen_hs, chosen_attn_mask)
+
+
 
         # mean of bad repr should be more similar to the mean of good behavior
-        loss_rr = sum_squared_error(policy_rejected_hs, reference_chosen_hs)
+        loss_rr = norm_error(policy_rejected_hsa, reference_chosen_hsa)
         loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask)
-        loss_rr = wmean(loss_rr, 1 - weight_correct).mean()
+        # loss_rr = wmean(loss_rr, 1 - weight_correct)
 
         #  b l t h
         # a mean, norm, loss over the hidden dim of each layer
         # This loss says the good repr should be retained, weighted by how good this samples was
-        loss_retain = sum_squared_error(
-            policy_chosen_hs, reference_chosen_hs
-        )
+        loss_retain = norm_error(policy_chosen_hsa, reference_chosen_hsa)
         loss_retain = mean_with_attention(loss_retain, chosen_attn_mask)
-        loss_retain = wmean(loss_retain, weight_correct).mean()
+        # loss_retain = wmean(loss_retain, weight_correct)
 
         c_retain, c_rr = self.get_coeff()
-        loss = (loss_rr * c_rr + loss_retain * c_retain * self.alpha).sum()
+        loss = (loss_rr.mean() * c_rr + loss_retain.mean() * c_retain * self.alpha)
 
         # difference in logps for chosen responses, between policy and reference model
         # # The beta is a temperature parameter for the DPO loss, typically something in the range of 0.1 to 0.5.
@@ -488,6 +495,67 @@ class ReprPOTrainer(DPOTrainer):
         return loss, loss_dict
     
 
+    @staticmethod
+    def concatenated_inputs(
+        batch: Dict[str, Union[List, torch.LongTensor]],
+        is_encoder_decoder: bool = False,
+        is_vision_model: bool = False,
+        label_pad_token_id: int = -100,
+        padding_value: int = 0,
+        device: Optional[torch.device] = None,
+        max_length: Optional[int] = None
+    ) -> Dict[str, torch.LongTensor]:
+        """Concatenate the chosen and rejected inputs into a single tensor.
+
+        Args:
+            batch: A batch of data. Must contain the keys 'chosen_input_ids' and 'rejected_input_ids', which are tensors of shape (batch_size, sequence_length).
+            is_encoder_decoder: Whether the model is an encoder-decoder model.
+            label_pad_token_id: The label pad token id.
+            padding_value: The padding value to use for the concatenated inputs_ids.
+            device: The device for the concatenated inputs.
+
+        Returns:
+            A dictionary containing the concatenated inputs under the key 'concatenated_input_ids'.
+        """
+        # note subclassed to ensure max length each time
+        concatenated_batch = {}
+
+        if is_encoder_decoder:
+            raise NotImplementedError("Encoder-decoder models are not supported yet.")
+        else:
+            pass
+            # max_length = max(batch["chosen_input_ids"].shape[1], batch["rejected_input_ids"].shape[1])
+
+        for k in batch:
+            if k.startswith("chosen") and isinstance(batch[k], torch.Tensor):
+                if "labels" in k or is_encoder_decoder:
+                    pad_value = label_pad_token_id
+                elif k.endswith("_input_ids"):
+                    pad_value = padding_value
+                elif k.endswith("_attention_mask"):
+                    pad_value = 0
+                concatenated_key = k.replace("chosen", "concatenated")
+                concatenated_batch[concatenated_key] = pad_to_length(batch[k], max_length, pad_value=pad_value)
+        for k in batch:
+            if k.startswith("rejected") and isinstance(batch[k], torch.Tensor):
+                if "labels" in k or is_encoder_decoder:
+                    pad_value = label_pad_token_id
+                elif k.endswith("_input_ids"):
+                    pad_value = padding_value
+                elif k.endswith("_attention_mask"):
+                    pad_value = 0
+                concatenated_key = k.replace("rejected", "concatenated")
+                concatenated_batch[concatenated_key] = torch.cat(
+                    (
+                        concatenated_batch[concatenated_key],
+                        pad_to_length(batch[k], max_length, pad_value=pad_value),
+                    ),
+                    dim=0,
+                ).to(device=device)
+
+        if is_vision_model:
+            raise NotImplementedError("Vision models are not supported yet.")
+        return concatenated_batch
 
 def normalize_output(x):
     """
@@ -499,3 +567,4 @@ def normalize_output(x):
     if hasattr(x, 'ndim') and x.ndim > 0:
         x = x.mean()
     return x * 1.0 # to float
+
