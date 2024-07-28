@@ -835,6 +835,8 @@ Many experiments trying to correlate properties of a hs sampler it's prob ratio
 
 # 2024-07-26 17:06:22
 
+https://claude.ai/chat/ebf31340-3adb-4786-b119-d1d0f78c84b2
+
 Oh, so one of my tests successed
 
 unprojected_hidden_states.softmax(-1) was more correlated with logratio than permuted sets :), so I could try using this in my loss!!
@@ -851,3 +853,155 @@ unprojected_hidden_states.softmax(-1) was more correlated with logratio than per
 
   hypothesis: ( c222 / c112 - 1 )	> 0 ?
   working:    ( 0.424 / 0.211 - 1 ) = 1.01	> 0	∴ ✅
+
+
+
+TODO try iterative QR
+try cosine on hidden states
+
+Another unexpected result. When try take the norm_fro of C-R vs C-R_rotated_to_c. We are wondering if rotation can reduce the difference. It turns out it can't do much for the pairs ones, but it can with the rest. This implies that the info we are intested in is NOT stored in the rotation of the hidden states, and maybe something orthogonal, what could that be?
+
+  passing means the paired samples can be rotated
+  hypothesis: ( diff_norm-rot_diff_norm-1 )	> 0 ?
+  working:    ( 5.04-4.89-1 ) = -0.846	> 0	∴ ❌
+
+  passing means the paired samples can be rotated
+  tensor(5.1680) tensor(5.0171)
+  hypothesis: ( diff_norm-rot_diff_norm-1 )	> 0 ?
+  working:    ( 5.17-5.02-1 ) = -0.849	> 0	∴ ❌
+
+  passing means the unrelated samples can be rotated
+  tensor(14.9215) tensor(12.6504)
+  hypothesis: ( diff_norm-rot_diff_norm-1 )	> 0 ?
+  working:    ( 14.9-12.7-1 ) = 1.27	> 0	∴ ✅
+
+  passing means the unrelated samples can be rotated
+  tensor(15.1148) tensor(12.8819)
+  hypothesis: ( diff_norm-rot_diff_norm-1 )	> 0 ?
+  working:    ( 15.1-12.9-1 ) = 1.23	> 0	∴ ✅
+
+
+ideas from Claude:
+- Project C1, R1, C2, R2 onto these PCA components. Visualize in 2D/3D, color by logratio. Look for clusters or gradients.
+- CKA norm
+- learn a transformation with triplet or contrastive learning
+  - this could be most effective, if it's just some non-linear transformation as I suspect
+
+
+
+- it's not the rotation
+- or the overall magnitude
+- not sparsity or subspace scaling (?)
+
+
+> The negative correlations indicate that as the difference between samples increases, the logratio tends to decrease. This is more pronounced in the unrelated pairs.
+> Similarity preservation: The model might be maintaining similarity between C1 and R1 pairs even when expressing a preference. This could explain why their difference is less correlated with the logratio
+> Global structure: The stronger correlation in unrelated pairs might indicate that the preference is encoded in how samples relate to the global structure of the embedding space, rather than in direct pairwise comparisons.
+
+
+
+Ok so it seems softmax lets me get sensible correlations out. not log softmax, not other norms. But this might be becase I'm comparing to logprobs!
+
+TODO: So I should get raw logits instead and try to correlate those to internal states. Then run some of these experiments again! It will require modifying the get log probs part of trainer. 
+
+
+# 2024-07-27 08:32:25
+
+Ok now lets try correlating with
+
+
+  mean unbmedded logits - 2
+  'chosen_gthr_unemb',
+  'rejection_gthr_unemb',
+
+  the mean logits - 1
+  'chosen_gthr_logits',
+  'rejected_gthr_logits']
+
+
+- so what carries the most correlation? direction, rotation, projection onto cosine, raw norm?
+- mutual_info_regression yes!
+- cosine_similarity_correlation: yes!
+- magnitude: yes!
+- pca: not signifint
+- info_theoretic_correlation: no
+- kenaltau and eparman: fial
+
+
+OK so I really need to see if they generalise! In the OFT paper they looks at
+- inner product
+- magnitude
+- angle
+
+Further we can consider the following:
+
+
+
+# 2024-07-27 15:49:14
+
+Consider this setup
+
+```py
+
+# we have some data collected from a transformer model, in a dpo type setup, where we have a chosen and rejected sequence
+# because it's a dpo type setup the chosen and rejected sequences differ in our chosen preference dimension - which we want to find. But the length differs so we can't directly compare tokens.
+
+# get some data samples
+layer = 1
+C = data['chosen_hs'] # we could also consider unembedding them, whith the lm head, this might make them more interpretable, but also a bit large
+R = data['rejected_hs']
+
+CA = data['chosen_attn_mask']
+RA = data['rejected_attn_mask']
+
+M = 100
+A2 = CA * RA # use both attn masks when comparing?
+
+# choose layer, mean over tokens
+C = mult_with_attention(C, A2)[:M, layer]
+C = reduce(C, 'b t h -> b h', 'mean')
+R = mult_with_attention(R, A2)[:M, layer]
+R = reduce(R, 'b t h -> b h', 'mean')
+
+# compare two unrelated sets of samples, that way we have ones that should show the difference and ones that shouldn't show the difference we arel ooking for
+n = len(C)//2
+C1 = C[:n] # chosen pair 1
+R1 = R[:n] # rejected pair 1
+C2 = C[n:] # chosen, pair 2
+R2 = R[n:] # rejected pair 2
+
+
+# now we choose what to test correlations with. At first I tried the logprobs but they have been through a softmax which makes them relative and hard to compare to the hidden states
+# so instead we are going to try the hidden states values that corresponded to the 
+
+# logratios = data['chosen_logps'] - data['rejected_logps'] # the logp is the log probability (mean per token) of this response, logratios is the log ratio of probs, this should be correlated with the direction we are seeking in the hidden states
+
+# logratios = (data['chosen_gthr_logits'] - data['rejected_gthr_logits'])#.exp()
+logratios = data['chosen_gthr_unemb'][:, layer] - data['rejection_gthr_unemb'][:, layer]
+
+# we can use this to check the null hypothesis, as the `roll` operation mixes up the batch dimension, so they are unrelated
+logratios_unrelated = logratios.roll(1, 0)
+
+logratios1 = logratios[:n]
+logratios2 = logratios[n:]
+C1.shape # [batch, layers=6, tokens, hidden_states=4096]
+```
+Goal: find a way to manipulate the hidden states that generalises better that DPO or RLHF. I'm taking inspiration from the circuit breakers paper which trains a LoRA adapter to make sure that hidden states associated with undesired bahaviours are removed, and hidden states associated with good behaviours are retained. However I want to make the bad hs look like the good hs while retaining the good hs and coherency and accuracy. So far it's a bit unstable because
+- the retain loss is easy, it just keep the model from changing
+- the reroute or rr loss is hard because one we take the difference between C and R we get a very small and subtle set of values. Which doesn't have clear structure (after we norm for each neuron), and has multiple projections that are correlate with out label logits. For example magnitude, sparsity, angle, and norm are all somewhat correlated. 
+
+Findings so far:
+- I can train adapters but it's either too little or too much, in other word it's unstable and goes between no change or inchoerence. This also implied that when the RR loss works at all it leads to large brutal changes. We want a scalpel not a saw.
+- When I try to correlate the hidden states with the target (this is the difference in output logits associates with the label tokens chosen_label_logits-rejected_label_logits). We see correlations with many things, making me think there is no simple transformation.
+
+Current direciton
+- I'm thinking there is no simple linear solution, and perhaps not a simple linear algebrate solution. I'm considering some gradient based solutions like:
+  - train a transformation layer that acts like an embedding space, using triplet loss
+  - use gradient information to get an importance matrix, and run the loss over the important part of the hidden state
+
+# 2024-07-27 16:04:40
+
+- with gathered logits ratio
+  - corr with norm: no
+  - spearman with norm: no
+  - cosine: yes

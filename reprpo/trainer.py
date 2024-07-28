@@ -168,6 +168,7 @@ class ReprPOTrainer(DPOTrainer):
         labels: torch.LongTensor,
         label_pad_token_id: int = -100,
         is_encoder_decoder: bool = False,
+        log_softmax=True
     ) -> Tuple[torch.FloatTensor, torch.LongTensor]:
         """Compute the log probabilities of the given labels under the given logits.
 
@@ -193,8 +194,11 @@ class ReprPOTrainer(DPOTrainer):
         # dummy token; we'll ignore the losses on these tokens later
         labels[labels == label_pad_token_id] = 0
 
+        if log_softmax:
+            logits = logits.log_softmax(-1)
+
         per_token_logps = torch.gather(
-            logits.log_softmax(-1), dim=2, index=labels.unsqueeze(2)
+            logits, dim=2, index=labels.unsqueeze(2)
         ).squeeze(2)
 
         # so this multiplies the probs and makes it quite small, in the log domain that's ok, it represents the log probs of the whole string
@@ -239,8 +243,8 @@ class ReprPOTrainer(DPOTrainer):
         )
         all_logits = outs.logits
         hs = collect_hs(outs.hidden_states)[:, self.collection_layers]
-        del outs
-        gc.collect()
+        # del outs
+        # gc.collect()
 
         # multiply by attention mask
         attn_mask = concatenated_batch["concatenated_attention_mask"]
