@@ -13,6 +13,7 @@ from transformers import (
 from trl.trainer.utils import (
     pad_to_length,
 )
+from reprpo.helpers.svd_decomposer import SVDDecomposer
 
 
 # def norm(a: Float[Tensor, 'b l t h']) ->  Float[Tensor, 'b l t h']:
@@ -151,6 +152,10 @@ class ReprPOTrainer(DPOTrainer):
         self.num_training_steps = self.args.max_steps
         if self.num_training_steps==-1:
             self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
+
+        # convert
+        self.decomposer = SVDDecomposer(self.model.lm_head.weight, epsilon=1e-12)
+
 
     def get_training_progress(self):
         # in the paper they claim it's schedule but they end up making it loop every 300 steps, but then use 1500 steps for the loss
@@ -437,24 +442,28 @@ class ReprPOTrainer(DPOTrainer):
         T = 30
         weight_correct = torch.softmax(-logits * T, 0).detach()
 
+        policy_chosen_hs_internal, _ = self.decomposer.decompose(policy_chosen_hs)
+        policy_rejected_hs_internal, _ = self.decomposer.decompose(policy_rejected_hs)
+        reference_chosen_hs_int, _ = self.decomposer.decompose(reference_chosen_hs)
 
-        policy_chosen_hsa = mult_with_attention(policy_chosen_hs, chosen_attn_mask)
-        policy_rejected_hsa = mult_with_attention(policy_rejected_hs, rejected_attn_mask)
-        reference_chosen_hsa = mult_with_attention(reference_chosen_hs, chosen_attn_mask)
+
+        policy_chosen_hsa_int = mult_with_attention(policy_chosen_hs_internal, chosen_attn_mask)
+        policy_rejected_hsa_int = mult_with_attention(policy_rejected_hs_internal, rejected_attn_mask)
+        reference_chosen_hsa_int = mult_with_attention(reference_chosen_hs_int, chosen_attn_mask)
 
 
 
         # mean of bad repr should be more similar to the mean of good behavior
-        loss_rr = norm_error(policy_rejected_hsa, reference_chosen_hsa)
+        loss_rr = norm_error(policy_rejected_hsa_int, reference_chosen_hsa_int)
         loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask)
-        # loss_rr = wmean(loss_rr, 1 - weight_correct)
+        loss_rr = wmean(loss_rr, 1 - weight_correct)
 
         #  b l t h
         # a mean, norm, loss over the hidden dim of each layer
         # This loss says the good repr should be retained, weighted by how good this samples was
-        loss_retain = norm_error(policy_chosen_hsa, reference_chosen_hsa)
+        loss_retain = norm_error(policy_chosen_hsa_int, reference_chosen_hsa_int)
         loss_retain = mean_with_attention(loss_retain, chosen_attn_mask)
-        # loss_retain = wmean(loss_retain, weight_correct)
+        loss_retain = wmean(loss_retain, weight_correct)
 
         c_retain, c_rr = self.get_coeff()
         loss = (loss_rr.mean() * c_rr + loss_retain.mean() * c_retain * self.alpha)

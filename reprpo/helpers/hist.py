@@ -10,14 +10,18 @@ def extract_hist(trainer: DPOTrainer):
 
     return df_hist1, df_hist2
 
-
-def plot_hist(trainer: DPOTrainer):
-
+def get_args_diff(trainer: DPOTrainer):
     current_args = trainer.args.to_dict()
     default_args = type(trainer.args)('').to_dict()
     blocklist = ['output_dir', 'per_device_eval_batch_size', 'run_name' 'remove_unused_columns']
     args_diff = {k: v for k, v in current_args.items() if v != default_args[k]}
     args_diff = {k: v for k, v in args_diff.items() if k not in blocklist}
+    return args_diff
+
+def plot_hist(trainer: DPOTrainer):
+
+    args_diff = get_args_diff(trainer)
+
 
 
     plt.style.use('ggplot')

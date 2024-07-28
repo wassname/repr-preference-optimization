@@ -11,6 +11,8 @@ from reprpo.helpers.torch import clear_mem
 
 from datasets import load_dataset
 import numpy as np
+from peft import PeftModel
+from reprpo.trainer import ReprPOTrainer
 
 
 @torch.no_grad()
@@ -39,7 +41,7 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
     assert trainer.loss_type == 'ipo', 'only ipo is supported, since it gives us the avg of logps, and is not biased by response length'
     
     with torch.cuda.amp.autocast():
-        for step, batch in enumerate(tqdm(eval_dataloader, unit='batch')):
+        for step, batch in enumerate(tqdm(eval_dataloader, unit='batch', leave=False)):
             # batch = trainer._prepare_inputs(batch)
 
             forward_output = trainer.concatenated_forward(model, batch)
@@ -78,7 +80,7 @@ def eval_dpo_dataset_adapters(trainer, model, dataset, adapter_names = None, **k
         adapter_names = [None]+list(model.peft_config.keys())
     for adapter_name in tqdm(adapter_names, desc='adapters'):
         with set_adapter(model, adapter_name):
-            print('adapter', adapter_name)
+            # print('active adapter', model.active_adapter, adapter_name)
             df = eval_dpo_dataset(trainer, model, dataset, **kwargs)
         df['adapter'] = adapter_name if adapter_name is not None else 'base'
         dfs.append(df)
@@ -105,19 +107,11 @@ def load_tqa_dpo(N=None):
         }
     return dataset_tqab.map(proc)
 
-def eval(trainer, model, N=1000):
+def eval_dpo_datasets_all_adapters(trainer: ReprPOTrainer, model: PeftModel, N=1000):
 
-    # FIXME I might need to remake the adapter here to avoid OOM
-
-
-
+    # LOAD datasets
+    # TODO  moar e.g. ethics, etc
     slice = f'[0:{N}]' if N is not None else ''
-    
-    # import datasets.config
-    # datasets.config.IN_MEMORY_MAX_SIZE
-
-    # TODO some of the https://github.dev/AI-secure/DecodingTrust datasetsm e.g. turned into dpo. E.g. ethics
-
     dataset1 = load_dataset('Atsunori/HelpSteer2-DPO', split=f'validation{slice}', keep_in_memory=False).rename_column('chosen_response', 'chosen').rename_column('rejected_response', 'rejected') # training set
     print('ds1')
     dataset2 = load_tqa_dpo(N) # OOS honesty in the fase of ~800 common misconceptions\
@@ -134,7 +128,7 @@ def eval(trainer, model, N=1000):
     # dataset = load_dataset("justinphan3110/harmful_harmless_instructions") ??
     
     datasets = {
-        'train_HelpSteer2': dataset1, 'OOD_trufullqa': dataset2, 'OOD_toxic': dataset3
+        'val_HelpSteer2': dataset1, 'OOD_trufullqa': dataset2, 'OOD_toxic': dataset3
     }
     datasets = {k: ds_select(v, N) for k,v in datasets.items()}
     clear_mem()
@@ -143,7 +137,7 @@ def eval(trainer, model, N=1000):
     # crop of N
 
     dfs = []
-    for dataset_name, dataset in tqdm(datasets.items(), total=len(datasets), desc='datasets'):
+    for dataset_name, dataset in tqdm(datasets.items(), total=len(datasets), desc='datasets', leave=True):
         print(dataset_name)
         df = eval_dpo_dataset_adapters(trainer, model, dataset)
         df['dataset'] = dataset_name

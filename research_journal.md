@@ -1005,3 +1005,63 @@ Current direciton
   - corr with norm: no
   - spearman with norm: no
   - cosine: yes
+
+
+## 2024-07-28 18:29:48
+
+we have some data collected from a transformer model, in a DPO type setup, where we have a chosen and rejected sequence
+because it's a dpo type setup the chosen and rejected sequences differ in our chosen preference dimension - which we want to find. But the length differs, so we can't directly compare tokens. Here is what we have to work with when writing tests:
+
+```python
+# get some data samples
+layer = 1
+C = data['chosen_hs'] # we could also consider unembedding them, whith the lm head, this might make them more interpretable, but also a bit large
+R = data['rejected_hs']
+CA = data['chosen_attn_mask']
+RA = data['rejected_attn_mask']
+M = 100
+A2 = CA * RA # use both attn masks when comparing?
+# choose layer, mean over tokens
+C = mult_with_attention(C, A2)[:M, layer]
+C = reduce(C, 'b t h -> b h', 'mean')
+R = mult_with_attention(R, A2)[:M, layer]
+R = reduce(R, 'b t h -> b h', 'mean')
+# compare two unrelated sets of samples, that way we have ones that should show the difference and ones that shouldn't show the difference we arel ooking for
+n = len(C)//2
+C1 = C[:n] # chosen pair 1
+R1 = R[:n] # rejected pair 1
+C2 = C[n:] # chosen, pair 2
+R2 = R[n:] # rejected pair 2
+# now we choose what to test correlations with. At first I tried the logprobs but they have been through a softmax which makes them relative and hard to compare to the hidden states
+# so instead we are going to try the hidden states values that corresponded to the
+# logratios = data['chosen_logps'] - data['rejected_logps'] # the logp is the log probability (mean per token) of this response, logratios is the log ratio of probs, this should be correlated with the direction we are seeking in the hidden states
+# logratios = (data['chosen_gthr_logits'] - data['rejected_gthr_logits'])#.exp()
+logratios = data['chosen_gthr_unemb'][:, layer] - data['rejection_gthr_unemb'][:, layer]
+# we can use this to check the null hypothesis, as the `roll` operation mixes up the batch dimension, so they are unrelated
+logratios_unrelated = logratios.roll(1, 0)
+logratios1 = logratios[:n]
+logratios2 = logratios[n:]
+C1.shape # [batch, layers=6, tokens, hidden_states=4096]
+```
+
+Goal: find a way to manipulate the hidden states that generalises better than DPO or RLHF. I'm taking inspiration from the circuit breakers paper which trains a LoRA adapter to make sure that hidden states associated with undesired bahaviours are removed, and hidden states associated with good behaviours are retained. However, I want to make the bad hs look like the good hs while retaining the good hs and coherency and accuracy. So far it's a bit unstable because
+
+
+# 2024-07-28 18:30:10
+
+Another related thought. We have these hidden states, and they are manipulated in an additive way by the residual stream. So it stands to reason that part of the values there are intended to be unembedded by the lm_head and create the output log_probabilities. But there must be other values that will not be unembedded, and serve to do all other things, like perhaps concept and steering?
+Is there a way to test this experiment? To disentangle or remove the part of the hidden state that will get embedded and leave only the residual?
+
+I'm testing the hypothesis:
+
+It does look promising, it's in line with DPO, and I didn't finish the runs.
+
+ run=, N=120
+
+| adapter   |   val_HelpSteer2 |   OOD_trufullqa |   OOD_toxic |
+|:----------|-----------------:|----------------:|------------:|
+| base      |         0.533333 |        0.55     |    0.675    |
+| ReprPO    |         0.533333 |        0.583333 |    0.658333 |
+| DPO       |         0.558333 |        0.633333 |    0.758333 |
+
+args = {'per_device_train_batch_size': 2, 'logging_dir': './output-dir/scratch/runs/Jul28_21-48-00_wassname-fractal-desktop', 'bf16': True, 'run_name': './output-dir/scratch', 'remove_unused_columns': False, 'max_length': 128, 'max_prompt_length': 64, 'collection_layers': [10, 20]}
