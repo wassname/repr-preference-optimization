@@ -1065,3 +1065,11 @@ It does look promising, it's in line with DPO, and I didn't finish the runs.
 | DPO       |         0.558333 |        0.633333 |    0.758333 |
 
 args = {'per_device_train_batch_size': 2, 'logging_dir': './output-dir/scratch/runs/Jul28_21-48-00_wassname-fractal-desktop', 'bf16': True, 'run_name': './output-dir/scratch', 'remove_unused_columns': False, 'max_length': 128, 'max_prompt_length': 64, 'collection_layers': [10, 20]}
+
+# 2024-07-29 09:08:57
+
+
+Experiments
+- [ ] try long lora 4bit phi experiment, with cosine lr
+- [ ] try with no retain
+- [ ] try with no coeffecients

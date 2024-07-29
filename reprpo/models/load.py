@@ -41,10 +41,7 @@ def load_model(model_name, bnb=True):
             low_cpu_mem_usage=True,
             torch_dtype=torch.bfloat16,
             quantization_config = quantization_config,
-            # load_in_4bit=True,
-            # attn_implementation="flash_attention_2",
-            # bnb_4bit_compute_dtype=torch.bfloat16,
-            # bnb_4bit_quant_type="nf4",
+            attn_implementation="flash_attention_2",
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name, low_cpu_mem_usage=True,

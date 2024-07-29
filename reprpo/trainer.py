@@ -14,6 +14,7 @@ from trl.trainer.utils import (
     pad_to_length,
 )
 from reprpo.helpers.svd_decomposer import SVDDecomposer
+from reprpo.gen import generation_test, get_model_generations
 
 
 # def norm(a: Float[Tensor, 'b l t h']) ->  Float[Tensor, 'b l t h']:
@@ -61,7 +62,7 @@ def symlog_loss(x, y, eps=1e-6):
 def norm_error(input: Float[Tensor, 'b l t h'], target: Float[Tensor, 'b l t h']) -> Float[Tensor, 'b l t h']:
     # from https://github.com/GraySwanAI/circuit-breakers/blob/main/src/lorra_circuit_breaker.py
     return torch.norm(input - target, dim=-1, p=2, 
-                    #   dtype=torch.float, 
+                      dtype=torch.float, 
                       keepdim=True)#.nanmean()
 
 def combined_loss(x, y, alpha=0.5):
@@ -569,6 +570,18 @@ class ReprPOTrainer(DPOTrainer):
         if is_vision_model:
             raise NotImplementedError("Vision models are not supported yet.")
         return concatenated_batch
+    
+
+    def evaluate(self, eval_dataset=None, ignore_keys=None, sanity_check=False, **kwargs):
+        self.model.eval()
+        get_model_generations(self.model, self.tokenizer)
+        if sanity_check:
+            print('Sanity check...')
+        # TODO also consider a propr DPO accurac on OOS and IS ds
+        return {}
+
+
+
 
 def normalize_output(x):
     """
