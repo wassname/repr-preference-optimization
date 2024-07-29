@@ -35,6 +35,8 @@ class SVDDecomposer:
         # Apply a soft thresholding
         S_inv = self.S / (self.S**2 + self.epsilon)
         soft_threshold = torch.sign(projection) * torch.max(torch.abs(projection) - self.epsilon, torch.zeros_like(projection))
+        # soft_threshold = projection * torch.sigmoid(torch.abs(projection) - self.epsilon)
+        
         
         # Reconstruct
         hs_ext_flat = (self.Vt.T @ (S_inv.unsqueeze(1) * soft_threshold)).T
@@ -54,10 +56,15 @@ class SVDDecomposer:
     def get_condition_number(self) -> float:
         return (self.S[0] / self.S[-1]).item()
     
-    # def reconstruct_from_residual(self, hs_r: Float[Tensor, "batch layers tokens hidden_size"]) -> Float[Tensor, "batch layers tokens hidden_size"]:
-    #     hs_r 
-    #     return hs_h
-
+    def reconstruct_from_residual(self, hs_r: Float[Tensor, "batch layers tokens hidden_size"]) -> Float[Tensor, "batch layers tokens hidden_size"]:
+        original_shape = hs_r.shape
+        hs_r_flat = hs_r.view(-1, original_shape[-1])
+        hs_r_flat = hs_r_flat.to(self.Vt.dtype).to(self.Vt.device)
+        
+        projection = self.Vt @ hs_r_flat.T
+        hs_h_flat = (self.Vt.T @ projection).T
+        
+        return hs_h_flat.view(original_shape)
 # # Usage
 # decomposer = OptimizedSVDDecomposer(lm_head, epsilon=1e-12)
 
@@ -82,3 +89,18 @@ class SVDDecomposer:
 # # Analyze the differences in the head space
 # hs_h_diff = torch.norm(hs_h_R - hs_h_C) / torch.norm(hs_h_R)
 # print(f"Relative difference in head space projections: {hs_h_diff}")
+
+
+class DualSVDDecomposer:
+    def __init__(self, W_in: Float[Tensor, 'vocab_size hidden_size'], W_out: Float[Tensor, 'hidden_size vocab_size'], epsilon: float = 1e-12):
+        self.decomposer_in = SVDDecomposer(W_in, epsilon)
+        self.decomposer_out = SVDDecomposer(W_out, epsilon)
+
+    def decompose(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> Tuple[Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"]]:
+        hs_internal_in, hs_external_in = self.decomposer_in.decompose(hs)
+        hs_internal_out, hs_external_out = self.decomposer_out.decompose(hs)
+        
+        hs_io = hs_external_in + hs_external_out - (hs_external_in * hs_external_out).sum(dim=-1, keepdim=True) * hs_external_out / (hs_external_out * hs_external_out).sum(dim=-1, keepdim=True)
+        hs_internal = hs - hs_io.detach()
+        
+        return hs_internal, hs_io, hs_external_out

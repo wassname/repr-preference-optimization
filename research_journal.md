@@ -1073,3 +1073,11 @@ Experiments
 - [ ] try long lora 4bit phi experiment, with cosine lr
 - [ ] try with no retain
 - [ ] try with no coeffecients
+
+
+# 2024-07-29 18:43:21
+
+Ah it seems someone had thought of this before
+
+https://transformer-circuits.pub/2021/framework/index.html
+

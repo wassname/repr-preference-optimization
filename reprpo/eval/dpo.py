@@ -49,9 +49,10 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
                 chosen_logps,
                 rejected_logps,
             ) = forward_output[:2]
+            chosen_logavgp, rejected_logavgp = forward_output[4:6]
 
             # Note: if we are using ipo or reprpo this will be adjusted for length, but otherwise not which would bias the results
-            logratio = chosen_logps-rejected_logps
+            logratio = chosen_logavgp-rejected_logavgp
 
             batch['chosen_input_ids'].shape
             batch['rejected_input_ids'].shape
@@ -72,6 +73,8 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
     # prob mass on correct answer
     odds = np.exp(df['logratio'])
     df['prob'] = odds / (1 + odds)
+
+    # prob mass normalised by?
     return df
 
 def eval_dpo_dataset_adapters(trainer, model, dataset, adapter_names = None, **kwargs):

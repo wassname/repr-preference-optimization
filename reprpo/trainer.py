@@ -13,7 +13,7 @@ from transformers import (
 from trl.trainer.utils import (
     pad_to_length,
 )
-from reprpo.helpers.svd_decomposer import SVDDecomposer
+from reprpo.helpers.svd_decomposer import SVDDecomposer, DualSVDDecomposer
 from reprpo.gen import generation_test, get_model_generations
 
 
@@ -155,7 +155,8 @@ class ReprPOTrainer(DPOTrainer):
             self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
 
         # convert
-        self.decomposer = SVDDecomposer(self.model.lm_head.weight, epsilon=1e-12)
+        # self.decomposer = SVDDecomposer(self.model.lm_head.weight, epsilon=1e-12)
+        self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight, self.model.lm_head.weight)
 
 
     def get_training_progress(self):
@@ -267,7 +268,9 @@ class ReprPOTrainer(DPOTrainer):
 
         # So we want sum of logprobs or mean of logprobs? Like IPO we will use the log prob per token, https://github.com/eric-mitchell/direct-preference-optimization/issues/40
         if self.loss_type == "ipo":
-            all_logps = all_logps / size_completion
+            # all_logps = all_logps / size_completion
+            all_logps = torch.log(torch.exp(all_logps) / size_completion + 1e-12)
+            # NOTE for some reason the model is still biased toward longer answers, even though this should neutralise it
 
         chosen_logps = all_logps[:len_chosen]
         rejected_logps = all_logps[len_chosen:]
@@ -443,9 +446,9 @@ class ReprPOTrainer(DPOTrainer):
         T = 30
         weight_correct = torch.softmax(-logits * T, 0).detach()
 
-        policy_chosen_hs_internal, _ = self.decomposer.decompose(policy_chosen_hs)
-        policy_rejected_hs_internal, _ = self.decomposer.decompose(policy_rejected_hs)
-        reference_chosen_hs_int, _ = self.decomposer.decompose(reference_chosen_hs)
+        policy_chosen_hs_internal, _, _ = self.decomposer.decompose(policy_chosen_hs)
+        policy_rejected_hs_internal, _, _ = self.decomposer.decompose(policy_rejected_hs)
+        reference_chosen_hs_int, _, _ = self.decomposer.decompose(reference_chosen_hs)
 
 
         policy_chosen_hsa_int = mult_with_attention(policy_chosen_hs_internal, chosen_attn_mask)
