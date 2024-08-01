@@ -1081,3 +1081,7 @@ Ah it seems someone had thought of this before
 
 https://transformer-circuits.pub/2021/framework/index.html
 
+I think I have made it more stable
+- [ ]  I think that it's learning something, but not what I had intended, add more datasets. Maybe instead of using the complex helpsteer, I can just ofcus on honesty, or turthfulness, or bluntness concisness (use helpsteer)
+- [ ] check if helpsteer accepted is always longer? if so the length bias normal
+- [ ] add eval dataset

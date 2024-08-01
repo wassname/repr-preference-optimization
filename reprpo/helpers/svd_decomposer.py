@@ -12,7 +12,7 @@ class SVDDecomposer:
     def __init__(self, W: Float[Tensor, 'hs vocab_size'], epsilon: float = 1e-12):
         dtype = W.dtype
         W = W.float()
-        U, S, Vt = torch.linalg.svd(W, full_matrices=False)
+        U, S, Vt = torch.linalg.svd(W, full_matrices=True)
         self.S = S.to(dtype)
         self.Vt = Vt.to(dtype)
         

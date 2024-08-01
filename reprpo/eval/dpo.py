@@ -41,7 +41,7 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
     assert trainer.loss_type == 'ipo', 'only ipo is supported, since it gives us the avg of logps, and is not biased by response length'
     
     with torch.cuda.amp.autocast():
-        for step, batch in enumerate(tqdm(eval_dataloader, unit='batch', leave=False)):
+        for step, batch in enumerate(eval_dataloader):
             # batch = trainer._prepare_inputs(batch)
 
             forward_output = trainer.concatenated_forward(model, batch)
@@ -49,10 +49,10 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
                 chosen_logps,
                 rejected_logps,
             ) = forward_output[:2]
-            chosen_logavgp, rejected_logavgp = forward_output[4:6]
+            # chosen_logavgp, rejected_logavgp = forward_output[4:6]
 
             # Note: if we are using ipo or reprpo this will be adjusted for length, but otherwise not which would bias the results
-            logratio = chosen_logavgp-rejected_logavgp
+            logratio = chosen_logps-rejected_logps
 
             batch['chosen_input_ids'].shape
             batch['rejected_input_ids'].shape
@@ -60,6 +60,7 @@ def eval_dpo_dataset(trainer: DPOTrainer, model: AutoModelForCausalLM, dataset: 
             i = bs * step + torch.arange(bs)
             data.append(dict(
                 logratio=logratio.detach().cpu(),
+                chosen_logps=chosen_logps.detach().cpu(),
                 l_chosen=(batch['chosen_labels']>0).sum(-1).detach().cpu(),
                 l_rejected=(batch['rejected_labels']>0).sum(-1).detach().cpu(),
                 i=i

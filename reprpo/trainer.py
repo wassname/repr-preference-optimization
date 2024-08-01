@@ -268,8 +268,8 @@ class ReprPOTrainer(DPOTrainer):
 
         # So we want sum of logprobs or mean of logprobs? Like IPO we will use the log prob per token, https://github.com/eric-mitchell/direct-preference-optimization/issues/40
         if self.loss_type == "ipo":
-            # all_logps = all_logps / size_completion
-            all_logps = torch.log(torch.exp(all_logps) / size_completion + 1e-12)
+            all_logps = all_logps / size_completion
+            # all_logps = torch.log(torch.exp(all_logps) / size_completion + 1e-12)
             # NOTE for some reason the model is still biased toward longer answers, even though this should neutralise it
 
         chosen_logps = all_logps[:len_chosen]
@@ -348,12 +348,12 @@ class ReprPOTrainer(DPOTrainer):
             chosen_attn_mask,
             rejected_attn_mask
         )
-        # # losses, chosen_rewards, rejected_rewards, loss_retain, loss_rr = loss_info
-        # chosen_rewards, rejected_rewards = (
-        #     loss_info["chosen_rewards"],
-        #     loss_info["rejected_rewards"],
-        # )
-        # reward_accuracies = (chosen_rewards > rejected_rewards).float()
+        # losses, chosen_rewards, rejected_rewards, loss_retain, loss_rr = loss_info
+        chosen_rewards, rejected_rewards = (
+            loss_info["chosen_rewards"],
+            loss_info["rejected_rewards"],
+        )
+        reward_accuracies = (chosen_rewards > rejected_rewards).float()
 
         if self.args.rpo_alpha is not None:
             loss = loss * self.args.rpo_alpha - policy_chosen_logps_avg
@@ -361,12 +361,12 @@ class ReprPOTrainer(DPOTrainer):
 
         prefix = "eval_" if train_eval == "eval" else ""
         
-        # # how often the policy model is better at choosing the right response
-        # metrics[f"{prefix}rewards/accuracies"] = reward_accuracies.mean().cpu()
-        # # how much the policy model is better
-        # metrics[f"{prefix}rewards/margins"] = (
-        #     (chosen_rewards - rejected_rewards).mean().cpu()
-        # )
+        # how often the policy model is better at choosing the right response
+        metrics[f"{prefix}rewards/accuracies"] = reward_accuracies.mean().cpu()
+        # how much the policy model is better
+        metrics[f"{prefix}rewards/margins"] = (
+            (chosen_rewards - rejected_rewards).mean().cpu()
+        )
 
         # the log probability that the model would generate the tokens of the rejected string
         metrics[f"{prefix}logps/rejected"] = policy_rejected_logps.detach().mean().cpu()
@@ -440,37 +440,42 @@ class ReprPOTrainer(DPOTrainer):
         # log(prob_chosen/prob_rejected) the prob of the chosen strings over the rejected string. 0 is not difference. -ve means rejected is larger
         pi_logratios = pi_logratios.to(self.accelerator.device)
         ref_logratios = ref_logratios.to(self.accelerator.device)
-        logits = pi_logratios - ref_logratios
+        logits = pi_logratios - ref_logratios # was pi more likely to chose the correct response or the reference model
 
         # Can we weight by how much better the reference model was
-        T = 30
-        weight_correct = torch.softmax(-logits * T, 0).detach()
+        # in dpo we minimise it, so lower is better, here we are weighting it, so take the -ve to higher is more correct
+        # NOTE: -logits is if pi is more correct than ref, and focuses on what model gets wrong, unstable, moving target
+        # -ref_logratios is is the reference model lean toward correct, and is stable
+        T = 2
+        weight_correct = torch.softmax(-ref_logratios * T, 0).detach()
 
-        policy_chosen_hs_internal, _, _ = self.decomposer.decompose(policy_chosen_hs)
+        # policy_chosen_hs_internal, _, _ = self.decomposer.decompose(policy_chosen_hs)
         policy_rejected_hs_internal, _, _ = self.decomposer.decompose(policy_rejected_hs)
         reference_chosen_hs_int, _, _ = self.decomposer.decompose(reference_chosen_hs)
 
 
-        policy_chosen_hsa_int = mult_with_attention(policy_chosen_hs_internal, chosen_attn_mask)
+        # policy_chosen_hsa_int = mult_with_attention(policy_chosen_hs_internal, chosen_attn_mask)
         policy_rejected_hsa_int = mult_with_attention(policy_rejected_hs_internal, rejected_attn_mask)
         reference_chosen_hsa_int = mult_with_attention(reference_chosen_hs_int, chosen_attn_mask)
 
+        policy_chosen_hsa = mult_with_attention(policy_chosen_hs, chosen_attn_mask)
+        reference_chosen_hsa = mult_with_attention(reference_chosen_hs, chosen_attn_mask)
 
 
-        # mean of bad repr should be more similar to the mean of good behavior
+
+        # the bad internal styles should look like the good internal styles
         loss_rr = norm_error(policy_rejected_hsa_int, reference_chosen_hsa_int)
         loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask)
         loss_rr = wmean(loss_rr, 1 - weight_correct)
 
-        #  b l t h
-        # a mean, norm, loss over the hidden dim of each layer
-        # This loss says the good repr should be retained, weighted by how good this samples was
-        loss_retain = norm_error(policy_chosen_hsa_int, reference_chosen_hsa_int)
+        # This loss says the good repr should be retained
+        loss_retain = norm_error(policy_chosen_hsa, reference_chosen_hsa)
         loss_retain = mean_with_attention(loss_retain, chosen_attn_mask)
         loss_retain = wmean(loss_retain, weight_correct)
 
         c_retain, c_rr = self.get_coeff()
         loss = (loss_rr.mean() * c_rr + loss_retain.mean() * c_retain * self.alpha)
+        # loss = (loss_rr.mean() + loss_retain.mean() * self.alpha)
 
         # difference in logps for chosen responses, between policy and reference model
         # # The beta is a temperature parameter for the DPO loss, typically something in the range of 0.1 to 0.5.
@@ -501,10 +506,10 @@ class ReprPOTrainer(DPOTrainer):
             ref_logratios=ref_logratios.detach(),
             weighting=weight_correct.mean(),
             logits=logits.mean().detach(),
-            loss_component_rr = (loss_rr * c_rr).detach().mean(),
-            loss_component_retain = loss_retain * c_retain * self.alpha,
-            c_rr=c_rr,
-            c_retain=c_retain,
+            # loss_component_rr = (loss_rr * c_rr).detach().mean(),
+            # loss_component_retain = loss_retain * c_retain * self.alpha,
+            # c_rr=c_rr,
+            # c_retain=c_retain,
         )
 
         loss_dict = {k: normalize_output(v) for k, v in loss_dict.items()}
@@ -575,13 +580,11 @@ class ReprPOTrainer(DPOTrainer):
         return concatenated_batch
     
 
-    def evaluate(self, eval_dataset=None, ignore_keys=None, sanity_check=False, **kwargs):
+    def evaluate(self, eval_dataset=None, **kwargs):
         self.model.eval()
         get_model_generations(self.model, self.tokenizer)
-        if sanity_check:
-            print('Sanity check...')
         # TODO also consider a propr DPO accurac on OOS and IS ds
-        return {}
+        return super().evaluate(eval_dataset=eval_dataset, **kwargs)
 
 
 
