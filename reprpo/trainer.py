@@ -249,6 +249,7 @@ class ReprPOTrainer(DPOTrainer):
             **model_kwargs,
         )
         all_logits = outs.logits
+        # FIXME am I just getting the completion ones or not?
         hs = collect_hs(outs.hidden_states)[:, self.collection_layers]
         # del outs
         # gc.collect()

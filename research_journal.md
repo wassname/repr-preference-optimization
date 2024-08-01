@@ -1082,6 +1082,12 @@ Ah it seems someone had thought of this before
 https://transformer-circuits.pub/2021/framework/index.html
 
 I think I have made it more stable
+- [ ] plot the residual
 - [ ]  I think that it's learning something, but not what I had intended, add more datasets. Maybe instead of using the complex helpsteer, I can just ofcus on honesty, or turthfulness, or bluntness concisness (use helpsteer)
 - [ ] check if helpsteer accepted is always longer? if so the length bias normal
-- [ ] add eval dataset
+- [ ] add eval datasets, so get other dims. ethics, math, reasoning
+  - [ ] maybe make this a seperate repo because it's seem usefull :)
+  - [ ] ideally without trl? or I could use trl even more
+
+
+it is losing coherency on everything, hmm. I'm telling it to retain hs. But maybe I should tell it to retain outputs instead of hs good?
