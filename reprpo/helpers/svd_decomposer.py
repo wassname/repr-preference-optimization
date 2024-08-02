@@ -9,98 +9,99 @@ class SVDDecomposer:
 
     These are the component that are not projected onto the LLM output and are
     """
-    def __init__(self, W: Float[Tensor, 'hs vocab_size'], epsilon: float = 1e-12):
+    def __init__(self, W: Float[Tensor, 'hs vocab_size'], full_matrices=False):
         dtype = W.dtype
-        W = W.float()
-        U, S, Vt = torch.linalg.svd(W, full_matrices=True)
+        self.W = W.float()
+        # in LORA they don't use full matrices https://github.dev/huggingface/peft/blob/46f78978f1087d9c0351ade0ec28c1b4acd3ae2c/src/peft/tuners/lora/layer.py#L202
+        U, S, Vt = torch.linalg.svd(self.W, full_matrices=full_matrices)
+
+        a,b = Vt.shape
+        assert a==b, 'Vt should be square,try transposing W'
+
+        self.U = U.to(dtype)
         self.S = S.to(dtype)
         self.Vt = Vt.to(dtype)
-        
-        self.S = S
-        self.Vt = Vt
-        self.epsilon = epsilon
 
-    def decompose(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> Tuple[Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"]]:
+
+    def __call__(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> Tuple[Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"]]:
         original_shape = hs.shape
 
-        # flatten
-        hs_flat = hs.view(-1, original_shape[-1])
+        def preshape(hs):
+            return hs.view(-1, original_shape[-1]).to(self.Vt.dtype).to(self.Vt.device)
 
-        # dtype and device
-        hs_flat = hs_flat.to(self.Vt.dtype).to(self.Vt.device)
+        hs_flat = preshape(hs)
         
         # Project onto the right singular vectors
-        projection = self.Vt @ hs_flat.T
-        
-        # Apply a soft thresholding
-        S_inv = self.S / (self.S**2 + self.epsilon)
-        soft_threshold = torch.sign(projection) * torch.max(torch.abs(projection) - self.epsilon, torch.zeros_like(projection))
-        # soft_threshold = projection * torch.sigmoid(torch.abs(projection) - self.epsilon)
-        
-        
-        # Reconstruct
-        hs_ext_flat = (self.Vt.T @ (S_inv.unsqueeze(1) * soft_threshold)).T
-        hs_int_flat = hs_flat - hs_ext_flat
-        
-        # Return to original shape
-        hs_external = hs_ext_flat.view(original_shape)
-        hs_internal = hs_int_flat.view(original_shape)
-        
-        return hs_internal, hs_external
+        assert self.Vt.shape[0]==hs_flat.shape[-1]
+        assert self.Vt.shape[1]==hs_flat.shape[-1]
+        hs_ov = hs_flat @ self.Vt.T @ self.Vt  # projection onto W's row space
 
-    def estimate_error(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> float:
-        hs_r, _ = self.decompose(hs)
-        relative_error = torch.norm(hs_r) / torch.norm(hs)
-        return relative_error.item()
-
-    def get_condition_number(self) -> float:
-        return (self.S[0] / self.S[-1]).item()
-    
-    def reconstruct_from_residual(self, hs_r: Float[Tensor, "batch layers tokens hidden_size"]) -> Float[Tensor, "batch layers tokens hidden_size"]:
-        original_shape = hs_r.shape
-        hs_r_flat = hs_r.view(-1, original_shape[-1])
-        hs_r_flat = hs_r_flat.to(self.Vt.dtype).to(self.Vt.device)
+        # hs_ov = hs @ U @ U.T  # projection onto W's row space
+        assert torch.isfinite(hs_ov).all()
         
-        projection = self.Vt @ hs_r_flat.T
-        hs_h_flat = (self.Vt.T @ projection).T
-        
-        return hs_h_flat.view(original_shape)
-# # Usage
-# decomposer = OptimizedSVDDecomposer(lm_head, epsilon=1e-12)
+        return hs_ov.view(original_shape)
 
-# # For R matrix
-# hs_r_R, hs_h_R = decomposer.decompose(R)
-# error_R = decomposer.estimate_error(R)
+    def test(self, hs):
+        hs_ov = self(hs)
+        hs_r = hs - hs_ov
 
-# # For C matrix
-# hs_r_C, hs_h_C = decomposer.decompose(C)
-# error_C = decomposer.estimate_error(C)
+        original_projection = torch.norm(self.W @ hs.T)
+        output_projection = torch.norm(self.W @ hs_ov.T)
+        internal_projection = torch.norm(self.W @ hs_r.T)
 
-# print(f"R matrix - Estimated relative error: {error_R}")
-# print(f"C matrix - Estimated relative error: {error_C}")
-# print(f"Frobenius norm of difference in residuals: {torch.norm(hs_r_R - hs_r_C)}")
-# print(f"Relative difference in residuals: {torch.norm(hs_r_R - hs_r_C) / torch.norm(hs_r_R)}")
+        print(f"Original: {original_projection}")
+        print(f"Output: {output_projection}")
+        print(f"Internal: {internal_projection}")
 
-# # Additional analysis
-# print(f"Frobenius norm of difference between R and C: {torch.norm(R - C)}")
-# print(f"Relative difference between R and C: {torch.norm(R - C) / torch.norm(R)}")
-# print(f"Condition number: {decomposer.get_condition_number()}")
+        # the internal projection should be small
+        assert torch.allclose(internal_projection, internal_projection*0, atol=10)
 
-# # Analyze the differences in the head space
-# hs_h_diff = torch.norm(hs_h_R - hs_h_C) / torch.norm(hs_h_R)
-# print(f"Relative difference in head space projections: {hs_h_diff}")
+        # the output projection should be the same as the original
+        assert torch.allclose(original_projection, output_projection, atol=19)
+
 
 
 class DualSVDDecomposer:
-    def __init__(self, W_in: Float[Tensor, 'vocab_size hidden_size'], W_out: Float[Tensor, 'hidden_size vocab_size'], epsilon: float = 1e-12):
-        self.decomposer_in = SVDDecomposer(W_in, epsilon)
-        self.decomposer_out = SVDDecomposer(W_out, epsilon)
+    """
+    d = DualSVDDecomposer(model.get_embedding_weights(), model.lm_head.weight)
+    d(hs)
+    """
+    def __init__(self, W_in: Float[Tensor, 'vocab_size hidden_size'], W_out: Float[Tensor, 'hidden_size vocab_size'], full_matrices=False):
+        self.decomposer_in = SVDDecomposer(W_in, full_matrices=full_matrices)
+        self.decomposer_out = SVDDecomposer(W_out, full_matrices=full_matrices)
 
-    def decompose(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> Tuple[Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"]]:
-        hs_internal_in, hs_external_in = self.decomposer_in.decompose(hs)
-        hs_internal_out, hs_external_out = self.decomposer_out.decompose(hs)
+    def __call__(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> Tuple[Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"]]:
+        hs_external_in = self.decomposer_in(hs)
+        hs_external_out = self.decomposer_out(hs)
         
         hs_io = hs_external_in + hs_external_out - (hs_external_in * hs_external_out).sum(dim=-1, keepdim=True) * hs_external_out / (hs_external_out * hs_external_out).sum(dim=-1, keepdim=True)
-        hs_internal = hs - hs_io.detach()
+        hs_io = hs_io.to(hs.dtype).to(hs.device)
         
-        return hs_internal, hs_io, hs_external_out
+        return hs_io
+    
+    def test(self, hs):
+        print('decomposer_in')
+        self.decomposer_in.test(hs)
+        print('decomposer_out')
+        self.decomposer_out.test(hs)
+
+        # now also test combined
+        print('combined')
+        hs_io = self(hs)
+        hs_r = hs - hs_io
+        WE = self.decomposer_in.W 
+        WO = self.decomposer_out.W
+        original_projection = torch.norm((WE @ hs.T).T @ WO)
+        output_projection = torch.norm((WE @ hs_io.T).T @ WO)
+        internal_projection = torch.norm((WE @ hs_r.T).T @ WO)
+
+        print(f"Original: {original_projection}")
+        print(f"Output: {output_projection}")
+        print(f"Internal: {internal_projection}")
+
+        torch.testing.assert_close(original_projection, output_projection, rtol=1e-3, atol=19,
+                                    msg="Output projection should be close too the original")
+
+        # the internal projection should be small
+        torch.testing.assert_close(internal_projection, torch.tensor(0.), rtol=1e-3, atol=10,
+                                    msg="Internal projection should be close to zero")

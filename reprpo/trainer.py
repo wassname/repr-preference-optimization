@@ -155,8 +155,8 @@ class ReprPOTrainer(DPOTrainer):
             self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
 
         # convert
-        # self.decomposer = SVDDecomposer(self.model.lm_head.weight, epsilon=1e-12)
-        self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight, self.model.lm_head.weight)
+        # self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight, self.model.lm_head.weight)
+        self.decomposer = SVDDecomposer(self.model.lm_head.weight)
 
 
     def get_training_progress(self):
@@ -311,41 +311,41 @@ class ReprPOTrainer(DPOTrainer):
         with torch.no_grad():
             with self.null_ref_context():
                 (
-                    reference_chosen_logps,
-                    reference_rejected_logps,
+                    ref_chosen_logps,
+                    ref_rejected_logps,
                     _,
                     _,
                     _,
-                    reference_chosen_hs,
+                    ref_chosen_hs,
                     _,
                     _,
                     _
                 ) = self.concatenated_forward(self.model, batch)
-        reference_chosen_hs = reference_chosen_hs.detach()
-        reference_chosen_logps = reference_chosen_logps.detach()
-        reference_rejected_logps = reference_rejected_logps.detach()
+        ref_chosen_hs = ref_chosen_hs.detach()
+        ref_chosen_logps = ref_chosen_logps.detach()
+        ref_rejected_logps = ref_rejected_logps.detach()
 
         model.train()
         (
-            policy_chosen_logps,
-            policy_rejected_logps,
+            pi_chosen_logps,
+            pi_rejected_logps,
             _,
             _,
-            policy_chosen_logps_avg,
-            policy_chosen_hs,
-            policy_rejected_hs,
+            pi_chosen_logps_avg,
+            pi_chosen_hs,
+            pi_rejected_hs,
             chosen_attn_mask,
             rejected_attn_mask
         ) = self.concatenated_forward(model, batch)
 
         loss, loss_info = self.reprpo_loss(
-            policy_chosen_logps,
-            policy_rejected_logps,
-            policy_chosen_hs,
-            policy_rejected_hs,
-            reference_chosen_logps,
-            reference_rejected_logps,
-            reference_chosen_hs,
+            pi_chosen_logps,
+            pi_rejected_logps,
+            pi_chosen_hs,
+            pi_rejected_hs,
+            ref_chosen_logps,
+            ref_rejected_logps,
+            ref_chosen_hs,
             chosen_attn_mask,
             rejected_attn_mask
         )
@@ -357,7 +357,7 @@ class ReprPOTrainer(DPOTrainer):
         reward_accuracies = (chosen_rewards > rejected_rewards).float()
 
         if self.args.rpo_alpha is not None:
-            loss = loss * self.args.rpo_alpha - policy_chosen_logps_avg
+            loss = loss * self.args.rpo_alpha - pi_chosen_logps_avg
 
 
         prefix = "eval_" if train_eval == "eval" else ""
@@ -370,8 +370,8 @@ class ReprPOTrainer(DPOTrainer):
         )
 
         # the log probability that the model would generate the tokens of the rejected string
-        metrics[f"{prefix}logps/rejected"] = policy_rejected_logps.detach().mean().cpu()
-        metrics[f"{prefix}logps/chosen"] = policy_chosen_logps.detach().mean().cpu()
+        metrics[f"{prefix}logps/rejected"] = pi_rejected_logps.detach().mean().cpu()
+        metrics[f"{prefix}logps/chosen"] = pi_chosen_logps.detach().mean().cpu()
 
 
         for k in loss_info.keys():
@@ -388,10 +388,10 @@ class ReprPOTrainer(DPOTrainer):
         if self.state.global_step % self.args.print_every == 0:
 
             retain_cosine = F.cosine_similarity(
-                policy_chosen_hs, reference_chosen_hs, dim=-1
+                pi_chosen_hs, ref_chosen_hs, dim=-1
             ).mean()
             rr_cosine = F.cosine_similarity(
-                policy_rejected_hs, reference_chosen_hs, dim=-1
+                pi_rejected_hs, ref_chosen_hs, dim=-1
             ).mean()
             print(
                 self.state.global_step,
@@ -406,23 +406,23 @@ class ReprPOTrainer(DPOTrainer):
 
     def reprpo_loss(
         self,
-        policy_chosen_logps: torch.FloatTensor,
-        policy_rejected_logps: torch.FloatTensor,
-        policy_chosen_hs: torch.FloatTensor,
-        policy_rejected_hs: torch.FloatTensor,
-        reference_chosen_logps: torch.FloatTensor,
-        reference_rejected_logps: torch.FloatTensor,
-        reference_chosen_hs: torch.FloatTensor,
+        pi_chosen_logps: torch.FloatTensor,
+        pi_rejected_logps: torch.FloatTensor,
+        pi_chosen_hs: torch.FloatTensor,
+        pi_rejected_hs: torch.FloatTensor,
+        ref_chosen_logps: torch.FloatTensor,
+        ref_rejected_logps: torch.FloatTensor,
+        ref_chosen_hs: torch.FloatTensor,
         chosen_attn_mask: torch.BoolTensor,
         rejected_attn_mask: torch.BoolTensor
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
         """Compute the DPO loss for a batch of policy and reference model log probabilities.
 
         Args:
-            policy_chosen_logps: Log probabilities of the policy model for the chosen responses. Shape: (batch_size,)
-            policy_rejected_logps: Log probabilities of the policy model for the rejected responses. Shape: (batch_size,)
-            reference_chosen_logps: Log probabilities of the reference model for the chosen responses. Shape: (batch_size,)
-            reference_rejected_logps: Log probabilities of the reference model for the rejected responses. Shape: (batch_size,)
+            pi_chosen_logps: Log probabilities of the policy model for the chosen responses. Shape: (batch_size,)
+            pi_rejected_logps: Log probabilities of the policy model for the rejected responses. Shape: (batch_size,)
+            ref_chosen_logps: Log probabilities of the reference model for the chosen responses. Shape: (batch_size,)
+            ref_rejected_logps: Log probabilities of the reference model for the rejected responses. Shape: (batch_size,)
 
         Returns:
             A tuple of three tensors: (losses, chosen_rewards, rejected_rewards).
@@ -430,13 +430,13 @@ class ReprPOTrainer(DPOTrainer):
             The chosen_rewards and rejected_rewards tensors contain the rewards for the chosen and rejected responses, respectively.
         """
 
-        pi_logratios = policy_chosen_logps - policy_rejected_logps
-        if self.reference_free:
+        pi_logratios = pi_chosen_logps - pi_rejected_logps
+        if self.ref_free:
             ref_logratios = torch.tensor(
                 [0], dtype=pi_logratios.dtype, device=pi_logratios.device
             )
         else:
-            ref_logratios = reference_chosen_logps - reference_rejected_logps
+            ref_logratios = ref_chosen_logps - ref_rejected_logps
 
         # log(prob_chosen/prob_rejected) the prob of the chosen strings over the rejected string. 0 is not difference. -ve means rejected is larger
         pi_logratios = pi_logratios.to(self.accelerator.device)
@@ -450,32 +450,46 @@ class ReprPOTrainer(DPOTrainer):
         T = 2
         weight_correct = torch.softmax(-ref_logratios * T, 0).detach()
 
-        # policy_chosen_hs_internal, _, _ = self.decomposer.decompose(policy_chosen_hs)
-        policy_rejected_hs_internal, _, _ = self.decomposer.decompose(policy_rejected_hs)
-        reference_chosen_hs_int, _, _ = self.decomposer.decompose(reference_chosen_hs)
+        pi_chosen_hsa = mult_with_attention(pi_chosen_hs, chosen_attn_mask)
+        ref_chosen_hsa = mult_with_attention(ref_chosen_hs, chosen_attn_mask)
+        pi_rejected_hsa = mult_with_attention(pi_rejected_hs, rejected_attn_mask)
 
+        # decompose the hidden state differences into the part that is input or output by the embedding or unembedding wieghts, then only concern outselves with the reaminder (which may contain internal only information such as style or concepts)
+        pi_rejected_internal = pi_rejected_hsa - self.decomposer(pi_rejected_hsa).detach()
+        ref_chosen_internal = ref_chosen_hsa - self.decomposer(ref_chosen_hsa).detach()
+        hsa_rr_diff_internal = pi_rejected_internal - ref_chosen_internal
 
-        # policy_chosen_hsa_int = mult_with_attention(policy_chosen_hs_internal, chosen_attn_mask)
-        policy_rejected_hsa_int = mult_with_attention(policy_rejected_hs_internal, rejected_attn_mask)
-        reference_chosen_hsa_int = mult_with_attention(reference_chosen_hs_int, chosen_attn_mask)
-
-        policy_chosen_hsa = mult_with_attention(policy_chosen_hs, chosen_attn_mask)
-        reference_chosen_hsa = mult_with_attention(reference_chosen_hs, chosen_attn_mask)
-
-
-
-        # the bad internal styles should look like the good internal styles
-        loss_rr = norm_error(policy_rejected_hsa_int, reference_chosen_hsa_int)
+        # take the p2 norm
+        loss_rr = torch.norm(hsa_rr_diff_internal, dim=-1, p=2, dtype=torch.float, keepdim=True)#.nanmean()
+        assert torch.isfinite(hsa_rr_diff_internal).all() # FIXME nans
         loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask)
         loss_rr = wmean(loss_rr, 1 - weight_correct)
 
+
+        # pi_chosen_hs_internal, _, _ = self.decomposer.decompose(pi_chosen_hs)
+        # pi_rejected_hs_internal, _, _ = self.decomposer.decompose(pi_rejected_hs)
+        # ref_chosen_hs_int, _, _ = self.decomposer.decompose(ref_chosen_hs)
+
+
+        # # pi_chosen_hsa_int = mult_with_attention(pi_chosen_hs_internal, chosen_attn_mask)
+        # pi_rejected_hsa_int = mult_with_attention(pi_rejected_hs_internal, rejected_attn_mask)
+        # ref_chosen_hsa_int = mult_with_attention(ref_chosen_hs_int, chosen_attn_mask)
+
+
+
+
+        # # the bad internal styles should look like the good internal styles
+        # loss_rr = norm_error(pi_rejected_hsa_int, ref_chosen_hsa_int)
+        # loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask)
+        # loss_rr = wmean(loss_rr, 1 - weight_correct)
+
         # This loss says the good repr should be retained
-        loss_retain = norm_error(policy_chosen_hsa, reference_chosen_hsa)
+        loss_retain = norm_error(pi_chosen_hsa, ref_chosen_hsa)
         loss_retain = mean_with_attention(loss_retain, chosen_attn_mask)
         loss_retain = wmean(loss_retain, weight_correct)
 
         c_retain, c_rr = self.get_coeff()
-        loss = (loss_rr.mean() * c_rr + loss_retain.mean() * c_retain * self.alpha)
+        loss = (hsa_rr_diff_internal.mean() * c_rr + loss_retain.mean() * c_retain * self.alpha)
         # loss = (loss_rr.mean() + loss_retain.mean() * self.alpha)
 
         # difference in logps for chosen responses, between policy and reference model
@@ -483,8 +497,8 @@ class ReprPOTrainer(DPOTrainer):
         chosen_rewards = (
             self.beta
             * (
-                policy_chosen_logps.to(self.accelerator.device)
-                - reference_chosen_logps.to(self.accelerator.device)
+                pi_chosen_logps.to(self.accelerator.device)
+                - ref_chosen_logps.to(self.accelerator.device)
             ).detach()
         )
 
@@ -492,8 +506,8 @@ class ReprPOTrainer(DPOTrainer):
         rejected_rewards = (
             self.beta
             * (
-                policy_rejected_logps.to(self.accelerator.device)
-                - reference_rejected_logps.to(self.accelerator.device)
+                pi_rejected_logps.to(self.accelerator.device)
+                - ref_rejected_logps.to(self.accelerator.device)
             ).detach()
         )
 
@@ -502,15 +516,15 @@ class ReprPOTrainer(DPOTrainer):
             chosen_rewards=chosen_rewards,
             rejected_rewards=rejected_rewards,
             loss_retain=loss_retain.detach(),
-            loss_rr=loss_rr.detach(),
+            loss_rr=hsa_rr_diff_internal.detach(),
             pi_logratios=pi_logratios.detach(),
             ref_logratios=ref_logratios.detach(),
             weighting=weight_correct.mean(),
             logits=logits.mean().detach(),
-            # loss_component_rr = (loss_rr * c_rr).detach().mean(),
-            # loss_component_retain = loss_retain * c_retain * self.alpha,
-            # c_rr=c_rr,
-            # c_retain=c_retain,
+            loss_component_rr = (loss_rr * c_rr).detach().mean(),
+            loss_component_retain = loss_retain * c_retain * self.alpha,
+            c_rr=c_rr,
+            c_retain=c_retain,
         )
 
         loss_dict = {k: normalize_output(v) for k, v in loss_dict.items()}

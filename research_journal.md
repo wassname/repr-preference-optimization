@@ -1070,9 +1070,10 @@ args = {'per_device_train_batch_size': 2, 'logging_dir': './output-dir/scratch/r
 
 
 Experiments
-- [ ] try long lora 4bit phi experiment, with cosine lr
-- [ ] try with no retain
-- [ ] try with no coeffecients
+- [x] try long lora 4bit phi experiment, with cosine lr
+- [x] try with no retain
+- [x] try with no coeffecients
+
 
 
 # 2024-07-29 18:43:21
@@ -1082,12 +1083,81 @@ Ah it seems someone had thought of this before
 https://transformer-circuits.pub/2021/framework/index.html
 
 I think I have made it more stable
-- [ ] plot the residual
-- [ ]  I think that it's learning something, but not what I had intended, add more datasets. Maybe instead of using the complex helpsteer, I can just ofcus on honesty, or turthfulness, or bluntness concisness (use helpsteer)
-- [ ] check if helpsteer accepted is always longer? if so the length bias normal
+- [x] fix wmean
+- [x] check coherency
+- [x] plot the residual against tokens - yep no pattern
+- [ ]  I think that it's learning something, but not what I had intended, add more datasets. Maybe instead of using the complex helpsteer, I can just focus on honesty, or turthfulness, or bluntness concisness (use helpsteer)
+- [x] check if helpsteer accepted is always longer? if so the length bias normal
+  - chosen 1398
+  - reject 1294
 - [ ] add eval datasets, so get other dims. ethics, math, reasoning
   - [ ] maybe make this a seperate repo because it's seem usefull :)
   - [ ] ideally without trl? or I could use trl even more
 
 
 it is losing coherency on everything, hmm. I'm telling it to retain hs. But maybe I should tell it to retain outputs instead of hs good?
+
+## 2024-08-02 11:27:37
+
+Oh it seem I can swap the decompose around
+
+```
+# Oh... I didn't realise by the decomposer can be moved
+C = data['chosen_hs_r']
+R = data['rejected_hs_r']
+
+a = decomposer.decompose(C)[0] - decomposer.decompose(R)[0]
+b = decomposer.decompose(C-R)[0]
+
+((a-b)/(abs(a)+abs(b))).mean()
+```
+
+The other order D(C-R) may lead to better gradient
+
+
+# 2024-08-02 12:45:01
+
+https://transformer-circuits.pub/2021/framework/index.html
+
+[Millidge et al](https://www.alignmentforum.org/posts/mkbGjzxD8d8XqKHzA/the-singular-value-decompositions-of-transformer-weight). explore whether the SVD of weights can be used to find interpretable feature directions.
+
+
+# 2024-08-02 13:21:00
+
+I want to project the `hidden_states` of a transformer onto the weight of it's output head  `W=model.lm_head.weights`
+
+
+Here's example of the usage of `torch.svd`
+```
+>>> h = torch.randn(5, 3)
+>>> U, S, Vh = torch.linalg.svd(A, full_matrices=False)
+>>> U.shape, S.shape, Vh.shape
+(torch.Size([5, 3]), torch.Size([3]), torch.Size([3, 3]))
+>>> torch.dist(A, U @ torch.diag(S) @ Vh)
+tensor(1.0486e-06)
+```
+
+
+Now lets say we have 
+```py
+hs = torch.randn(5, 3072) # hidden_states [batch_size, hidden_size]
+W = torch.randn(32011, 3072) # weights [vocab_size, hidden_size]
+```
+
+We want to be able to seperate `hs` into the projection on W `hs_w` and the remainder `hs_r`. Then we want to verify it, by making sure that 
+
+```py
+original_projection = torch.norm(W @ hs.T)
+internal_projection = torch.norm(W @ hs_internal.T)
+external_projection = torch.norm(W @ hs_external.T)
+# rough code
+assert torch.allclose(hs, hs_external)
+assert torch.allclose(hs_external, 0)
+```
+
+
+## 2024-08-02 16:41:48
+
+I was doing SVD wrong.
+
+I verified it (see 22_scratch_decompose), and trying to make a embedding and unembedding one, but that has nans. In fact decompose(C-R) was also. It's a very small number so I'm not sure if it will be stable... let us see

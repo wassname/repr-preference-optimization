@@ -1,5 +1,9 @@
 import sympy as sp
 from typing import Dict, Any
+from IPython.display import display
+from sympy import init_printing
+init_printing() 
+
 
 def shypothesis(hypothesis: str, variables: Dict[str, Any] = None, round=3, verbose=False):
     """
@@ -19,48 +23,62 @@ def shypothesis(hypothesis: str, variables: Dict[str, Any] = None, round=3, verb
     if variables is None:
         variables = globals()
 
+    def p(x, **kwargs):
+        return sp.pretty(x, use_unicode=True)
+
     # Parse the hypothesis
-    print(f"Hypothesis: {hypothesis}")
-    expr = sp.sympify(hypothesis)
-    if verbose:
-        print(f"          : {expr}")
+    expr = sp.sympify(hypothesis, evaluate=False)
+    print(f"H\t\t{p(expr)}")
     
     subs = dict()
+    # to show our substitution, we will treat values as symbols temporarily
+    subs_s = dict()
     for symbol in expr.free_symbols:
         if symbol.name in variables:
-            subs[symbol.name] = variables[symbol.name]
+            val = variables[symbol.name]
+            val = sp.Number(val).round(round)
+            subs[sp.Symbol(symbol.name)] = val
+            subs_s[sp.Symbol(symbol.name)] = sp.Symbol(str(val))
         else:
             raise ValueError(f"Symbol `{symbol}` not found in variables")
-    if verbose:
-        print(f'     Where: {subs}')
+        
+    if verbose>1:
+        print("Given\t\t ", end=""); print(sp.pretty(subs_s).replace('{', '').replace('}', ''))
 
-    vlhs, vrhs = expr.lhs.evalf(subs=subs), expr.rhs.evalf(subs=subs)
-    if round is not None:
-        vlhs = vlhs.round(round)
-        vrhs = vrhs.round(round)
-    print(f"          : {vlhs} {expr.rel_op} {vrhs}")
+        print("Proof")
+        # LHS
+        print(f"\t\t{p(expr.lhs)} = {p(expr.lhs.subs(subs_s))} = {p(expr.lhs.subs(subs).round(round))}")
+        # RHS
+        print(f"\t\t{p(expr.rhs)} = {p(expr.rhs.subs(subs_s))} = {p(expr.rhs.subs(subs).round(round))}")
+        
+    result = expr.subs(subs)
+
+    vlhs, vrhs = expr.lhs.subs(subs).round(round), expr.rhs.subs(subs).round(round)
+
 
     # Simplify by moving everything to one side
-    simplified = sp.simplify(expr.lhs - expr.rhs)
-    print(f"Residual  : = {simplified}")
-
-    # Determine the comparison operator
-    op = expr.func
+    simplified = sp.simplify(expr.lhs - expr.rhs, eval=False)
 
     # Evaluate the simplified expression
-    result_value = simplified.evalf(subs=subs)
-    if round is not None:
-        result_value = result_value.round(round)
+    residual_value = simplified.evalf(subs=subs).round(round)
 
-    # Determine the result
-    result = op(result_value, 0)
+    if verbose>1:
+        print(f"∴\t\t {p(vlhs)} {p(expr.rel_op)} {p(vrhs)} {'✅' if result else '❌'}")
 
-    print(f"Residual  : = {result_value} {'✅' if result else '❌'}")
+        # show the difference calc
+        print(f"\nΔ\t\t {p(simplified)} = {p(simplified.subs(subs_s))} = {residual_value}")
+    elif verbose>0:
+        print(f"\t\t{p(expr.subs(subs_s))}")
+        print(f"∴\t\t {p(vlhs)} {p(expr.rel_op)} {p(vrhs)} {'✅' if result else '❌'} [Δ = {residual_value}]")
+    else:
+        # in compact mode, just show the input via substitution, and the result
+        print(f"∴\t\t{p(expr.subs(subs_s))} {'✅' if result else '❌'} [Δ = {residual_value}]")
     print()
+    return result
 
 # Example usage
 if __name__ == "__main__":
-    x, y, z = sp.symbols('x y z')
+    # x, y, z = sp.symbols('x y z')
     variables = {
         'x': 2.5,
         'y': 2.0,
@@ -70,8 +88,8 @@ if __name__ == "__main__":
     y = 2
     z = 0.
 
-    shypothesis('x > y', globals())
-    shypothesis('x + y < 5', variables)
+    shypothesis('x > abs(y)', globals())
+    shypothesis('x + y < 5', variables, verbose=1)
     # evaluate_hypothesis('z == 0', variables)
-    shypothesis('sin(x) < cos(y)', variables)
+    shypothesis('sin(x) < cos(y)', variables, verbose=2)
     shypothesis('x**2 + y**2 > z**2', variables)
