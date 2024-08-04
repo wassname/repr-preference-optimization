@@ -13,7 +13,7 @@ from transformers import (
 from trl.trainer.utils import (
     pad_to_length,
 )
-from reprpo.helpers.svd_decomposer import SVDDecomposer, DualSVDDecomposer
+from reprpo.helpers.svd_decomposer import SVDDecomposer, DualSVDDecomposer, SoftSVDDecomposer
 from reprpo.gen import generation_test, get_model_generations
 
 
@@ -30,24 +30,17 @@ def normalize_per(a, norm_dims=(1, 2, 3), eps=1e-12):
 
     this means dividing by the norm of the other dims
     """
-    if not isinstance(norm_dims, list):
-        norm_dims = [norm_dims]
-    # change negative to positive
-    norm_dims = [n if n >= 0 else a.ndim + n for n in norm_dims]
-    # get other dims
-    all_dims = set(range(a.ndim))
-    assert set(norm_dims).issubset(all_dims)
-    dims = list(all_dims - set(norm_dims))
-    return a / (torch.norm(a, dim=dims, p=2, keepdim=True) + eps)
+    # use F.normalize?
+    return a / (torch.norm_except_dim(a, dim=norm_dims, p=2, keepdim=True) + eps)
 
-def mult_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t']) -> Float[Tensor, 'b l h']:
+def mult_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t']) -> Float[Tensor, 'b l t h']:
     layer_attn_mask = repeat(attn_mask, 'b t -> b l t h', l=x.shape[1], h=1)
     return (x * layer_attn_mask)
 
-def mean_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t']) -> Float[Tensor, 'b l h']:
-    """mean of x, weighted by the attention mask, over token dim"""
-    layer_attn_mask = repeat(attn_mask, 'b t -> b l t h', l=x.shape[1], h=1)
-    return (x * layer_attn_mask).sum(2) / layer_attn_mask.sum(2)
+def mean_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t'], dim: int = 2) -> Float[Tensor, 'b l h']:
+    """mean of x, weighted by the attention mask, over dim (token or batch)"""
+    layer_attn_mask = repeat(attn_mask, 'b t -> b l t h', l=x.shape[1], h=1).detach()
+    return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
 
 def symlog(x, eps=1e-6):
     return torch.sign(x) * torch.log(torch.abs(x)+eps)
@@ -155,8 +148,8 @@ class ReprPOTrainer(DPOTrainer):
             self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
 
         # convert
-        # self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight, self.model.lm_head.weight)
-        self.decomposer = SVDDecomposer(self.model.lm_head.weight)
+        self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight.clone().float(), self.model.lm_head.weight.clone())
+        # self.decomposer = SoftSVDDecomposer(self.model.lm_head.weight.clone().float())
 
 
     def get_training_progress(self):
@@ -317,7 +310,7 @@ class ReprPOTrainer(DPOTrainer):
                     _,
                     _,
                     ref_chosen_hs,
-                    _,
+                    ref_rejected_hs,
                     _,
                     _
                 ) = self.concatenated_forward(self.model, batch)
@@ -346,6 +339,7 @@ class ReprPOTrainer(DPOTrainer):
             ref_chosen_logps,
             ref_rejected_logps,
             ref_chosen_hs,
+            ref_rejected_hs,
             chosen_attn_mask,
             rejected_attn_mask
         )
@@ -403,7 +397,25 @@ class ReprPOTrainer(DPOTrainer):
             print({k: f"{v:.2g}" for k, v in metrics.items()})
         
         return loss.mean(), metrics
+    
+    def res_det(self, hs):
+        """use SVG to decompose hs into the output and residual components"""
+        return hs - self.decomposer(hs).detach()
 
+    def calc_loss_rr(self, chosen_hs, rejected_hs, attn):
+        loss_rr = self.res_det(rejected_hs) - self.res_det(chosen_hs)
+
+        # because the residuals have a differen't norm than the hs, lets adjust, so that the rr loss and the retain loss are on the same scale
+        loss_rr_full = rejected_hs - chosen_hs
+        scaling = torch.norm(loss_rr_full) / torch.norm(loss_rr)
+        loss_rr = loss_rr * scaling.detach()
+
+        loss_rr = mean_with_attention(loss_rr, attn)
+        assert torch.isfinite(loss_rr).all() # FIXME nans
+        # loss_rr = symlog(loss_rr)
+        # loss_rr = wmean(loss_rr, 1 - weight_correct)
+        return (loss_rr**2).mean()
+        
     def reprpo_loss(
         self,
         pi_chosen_logps: torch.FloatTensor,
@@ -413,6 +425,7 @@ class ReprPOTrainer(DPOTrainer):
         ref_chosen_logps: torch.FloatTensor,
         ref_rejected_logps: torch.FloatTensor,
         ref_chosen_hs: torch.FloatTensor,
+        ref_rejected_hs: torch.FloatTensor,
         chosen_attn_mask: torch.BoolTensor,
         rejected_attn_mask: torch.BoolTensor
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
@@ -431,7 +444,7 @@ class ReprPOTrainer(DPOTrainer):
         """
 
         pi_logratios = pi_chosen_logps - pi_rejected_logps
-        if self.ref_free:
+        if self.reference_free:
             ref_logratios = torch.tensor(
                 [0], dtype=pi_logratios.dtype, device=pi_logratios.device
             )
@@ -450,47 +463,48 @@ class ReprPOTrainer(DPOTrainer):
         T = 2
         weight_correct = torch.softmax(-ref_logratios * T, 0).detach()
 
-        pi_chosen_hsa = mult_with_attention(pi_chosen_hs, chosen_attn_mask)
-        ref_chosen_hsa = mult_with_attention(ref_chosen_hs, chosen_attn_mask)
-        pi_rejected_hsa = mult_with_attention(pi_rejected_hs, rejected_attn_mask)
+
+        # # FIXME, I sould like to scale, but it can't be a relative scale or a moving target
+        # ref_chosen_hs - ref_rejected_hs
+
 
         # decompose the hidden state differences into the part that is input or output by the embedding or unembedding wieghts, then only concern outselves with the reaminder (which may contain internal only information such as style or concepts)
-        pi_rejected_internal = pi_rejected_hsa - self.decomposer(pi_rejected_hsa).detach()
-        ref_chosen_internal = ref_chosen_hsa - self.decomposer(ref_chosen_hsa).detach()
-        hsa_rr_diff_internal = pi_rejected_internal - ref_chosen_internal
-
-        # take the p2 norm
-        loss_rr = torch.norm(hsa_rr_diff_internal, dim=-1, p=2, dtype=torch.float, keepdim=True)#.nanmean()
-        assert torch.isfinite(hsa_rr_diff_internal).all() # FIXME nans
-        loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask)
-        loss_rr = wmean(loss_rr, 1 - weight_correct)
 
 
-        # pi_chosen_hs_internal, _, _ = self.decomposer.decompose(pi_chosen_hs)
-        # pi_rejected_hs_internal, _, _ = self.decomposer.decompose(pi_rejected_hs)
-        # ref_chosen_hs_int, _, _ = self.decomposer.decompose(ref_chosen_hs)
+        loss_rr = self.calc_loss_rr(ref_chosen_hs, pi_rejected_hs, rejected_attn_mask*chosen_attn_mask)
+
+        # because the number can be very small, lets scale them. It needs to be a scale that is not a moving target or relative
+        scaling = self.calc_loss_rr(ref_chosen_hs, ref_rejected_hs, rejected_attn_mask*chosen_attn_mask).detach()
+
+        loss_rr = loss_rr / scaling
 
 
-        # # pi_chosen_hsa_int = mult_with_attention(pi_chosen_hs_internal, chosen_attn_mask)
-        # pi_rejected_hsa_int = mult_with_attention(pi_rejected_hs_internal, rejected_attn_mask)
-        # ref_chosen_hsa_int = mult_with_attention(ref_chosen_hs_int, chosen_attn_mask)
+        # # This loss says the good repr should be retained
+        # loss_retain = pi_chosen_rhsa - ref_cho_rhsa
+        # loss_retain = mean_with_attention(loss_retain, chosen_attn_mask)
+        # loss_retain = F.normalize(loss_retain, p=2, dim=-1)
+        # loss_retain = loss_retain**2
+        # loss_retain = symlog(loss_retain)
+        # # loss_retain = wmean(loss_retain, weight_correct)
 
-
-
-
-        # # the bad internal styles should look like the good internal styles
-        # loss_rr = norm_error(pi_rejected_hsa_int, ref_chosen_hsa_int)
-        # loss_rr = mean_with_attention(loss_rr, rejected_attn_mask*chosen_attn_mask)
-        # loss_rr = wmean(loss_rr, 1 - weight_correct)
 
         # This loss says the good repr should be retained
-        loss_retain = norm_error(pi_chosen_hsa, ref_chosen_hsa)
-        loss_retain = mean_with_attention(loss_retain, chosen_attn_mask)
-        loss_retain = wmean(loss_retain, weight_correct)
+        def calc_loss_retain(chosen_hs, ref_hs, attn):
+            loss_retain = chosen_hs - ref_hs
+            loss_retain = mean_with_attention(loss_retain, attn)
+            # loss_retain = F.normalize(loss_retain, p=2, dim=-1)
+            loss_retain = loss_retain**2
+            # loss_retain = symlog(loss_retain)
+            # loss_retain = wmean(loss_retain, weight_correct)
+            return loss_retain.mean()
+        
+        loss_retain = calc_loss_retain(pi_chosen_hs, ref_chosen_hs, chosen_attn_mask)
+        loss_retain = loss_retain / scaling
 
+        # Weight
         c_retain, c_rr = self.get_coeff()
-        loss = (hsa_rr_diff_internal.mean() * c_rr + loss_retain.mean() * c_retain * self.alpha)
-        # loss = (loss_rr.mean() + loss_retain.mean() * self.alpha)
+        c_rr = c_retain = 1
+        loss = (loss_rr.mean() * c_rr + loss_retain.mean() * c_retain * self.alpha)
 
         # difference in logps for chosen responses, between policy and reference model
         # # The beta is a temperature parameter for the DPO loss, typically something in the range of 0.1 to 0.5.
@@ -516,13 +530,13 @@ class ReprPOTrainer(DPOTrainer):
             chosen_rewards=chosen_rewards,
             rejected_rewards=rejected_rewards,
             loss_retain=loss_retain.detach(),
-            loss_rr=hsa_rr_diff_internal.detach(),
+            loss_rr=loss_rr.detach(),
             pi_logratios=pi_logratios.detach(),
             ref_logratios=ref_logratios.detach(),
             weighting=weight_correct.mean(),
             logits=logits.mean().detach(),
             loss_component_rr = (loss_rr * c_rr).detach().mean(),
-            loss_component_retain = loss_retain * c_retain * self.alpha,
+            loss_component_retain = (loss_retain * c_retain * self.alpha).detach().mean(),
             c_rr=c_rr,
             c_retain=c_retain,
         )
@@ -597,7 +611,7 @@ class ReprPOTrainer(DPOTrainer):
 
     def evaluate(self, eval_dataset=None, **kwargs):
         self.model.eval()
-        get_model_generations(self.model, self.tokenizer)
+        get_model_generations(self.model, self.tokenizer, N=1, max_new_tokens=64)
         # TODO also consider a propr DPO accurac on OOS and IS ds
         return super().evaluate(eval_dataset=eval_dataset, **kwargs)
 

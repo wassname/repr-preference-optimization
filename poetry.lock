@@ -2015,6 +2015,26 @@ antlr4-python3-runtime = "==4.9.*"
 PyYAML = ">=5.1.0"
 
 [[package]]
+name = "open-pref-eval"
+version = "0.1.0"
+description = "Dead Simple Open LLM Preference Evaluation"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+datasets = "^2.20.0"
+pandas = "^2.2.2"
+torch = "^2.3.0"
+transformers = "^4.43.3"
+trl = "^0.9.6"
+
+[package.source]
+type = "directory"
+url = "../open_pref_eval"
+
+[[package]]
 name = "packaging"
 version = "24.1"
 description = "Core utilities for Python packages"
@@ -3747,13 +3767,13 @@ test = ["argcomplete (>=3.0.3)", "mypy (>=1.7.0)", "pre-commit", "pytest (>=7.0,
 
 [[package]]
 name = "transformers"
-version = "4.43.2"
+version = "4.43.3"
 description = "State-of-the-art Machine Learning for JAX, PyTorch and TensorFlow"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "transformers-4.43.2-py3-none-any.whl", hash = "sha256:283c8b47cf38640c5c0caea60be0dfa948669fa48e9739b03717cbf5e8b20f11"},
-    {file = "transformers-4.43.2.tar.gz", hash = "sha256:99dbbdeef9d451cdbc1c5316dce3af3dd5bb56b6cda5d0c564253e8fa7ccaf02"},
+    {file = "transformers-4.43.3-py3-none-any.whl", hash = "sha256:6552beada5d826c25ff9b79139d237ab9050c6ea96b73d7fd2f8a8ba23ee76a4"},
+    {file = "transformers-4.43.3.tar.gz", hash = "sha256:820c5b192bb1bf47250802901a8f0bf581e06b8fded89179d4ef08a1e903ee1c"},
 ]
 
 [package.dependencies]
@@ -4259,4 +4279,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "4a590ab8659ce01a388205f85fdab9fe3e9e89f02e12f84e4b8bc098c715e027"
+content-hash = "32b65e51c3af6b1ef286d998d8c3ca9fe9b5d459a1bd0bf4ecacf855085e1579"

@@ -1,3 +1,4 @@
+*.pt
 .cache/
 outputs/
 output-dir*/
