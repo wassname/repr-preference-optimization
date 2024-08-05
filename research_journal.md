@@ -1251,3 +1251,21 @@ Just before it went incoherent I did have somewhat different results!!
 - [ ] helpsteer non verbose
 - [ ] mmlu
 - [ ] ethics... run
+
+
+
+    MMLU
+    HellaSwag
+    DROP
+    BIG-Bench Hard
+    TruthfulQA
+    HumanEval
+    GSM8K
+
+
+realtoxic
+scbibench
+
+# 2024-08-04 22:03:01
+
+Loss onl went up, so I tried removing some .detach() from the hs_io calc, and going to SVD only on output. It seems to be learning now, although I have to use a low lr or it blows up

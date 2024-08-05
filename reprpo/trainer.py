@@ -148,8 +148,8 @@ class ReprPOTrainer(DPOTrainer):
             self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
 
         # convert
-        self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight.clone().float(), self.model.lm_head.weight.clone())
-        # self.decomposer = SoftSVDDecomposer(self.model.lm_head.weight.clone().float())
+        # self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight.clone().float(), self.model.lm_head.weight.clone())
+        self.decomposer = SoftSVDDecomposer(self.model.lm_head.weight.clone().float())
 
 
     def get_training_progress(self):
@@ -157,6 +157,7 @@ class ReprPOTrainer(DPOTrainer):
         return self.state.global_step / self.num_training_steps
     
     def get_coeff(self):
+        # training schedule... I would prefer to make it stepped so it was more obvious loss
         c = self.get_training_progress() % 1
         c /= 2
         c_retain, c_rr = c, (1 - c)
@@ -410,7 +411,7 @@ class ReprPOTrainer(DPOTrainer):
         scaling = torch.norm(loss_rr_full) / torch.norm(loss_rr)
         loss_rr = loss_rr * scaling.detach()
 
-        loss_rr = mean_with_attention(loss_rr, attn)
+        loss_rr = mean_with_attention(loss_rr, attn.detach())
         assert torch.isfinite(loss_rr).all() # FIXME nans
         # loss_rr = symlog(loss_rr)
         # loss_rr = wmean(loss_rr, 1 - weight_correct)
@@ -471,9 +472,10 @@ class ReprPOTrainer(DPOTrainer):
         # decompose the hidden state differences into the part that is input or output by the embedding or unembedding wieghts, then only concern outselves with the reaminder (which may contain internal only information such as style or concepts)
 
 
-        loss_rr = self.calc_loss_rr(ref_chosen_hs, pi_rejected_hs, rejected_attn_mask*chosen_attn_mask)
+        loss_rr = self.calc_loss_rr(ref_chosen_hs, pi_rejected_hs.detach(), rejected_attn_mask*chosen_attn_mask)
 
         # because the number can be very small, lets scale them. It needs to be a scale that is not a moving target or relative
+        # now the lorr_rr will be [0, 1]
         scaling = self.calc_loss_rr(ref_chosen_hs, ref_rejected_hs, rejected_attn_mask*chosen_attn_mask).detach()
 
         loss_rr = loss_rr / scaling
@@ -498,12 +500,12 @@ class ReprPOTrainer(DPOTrainer):
             # loss_retain = wmean(loss_retain, weight_correct)
             return loss_retain.mean()
         
-        loss_retain = calc_loss_retain(pi_chosen_hs, ref_chosen_hs, chosen_attn_mask)
-        loss_retain = loss_retain / scaling
+        loss_retain = calc_loss_retain(pi_chosen_hs, ref_chosen_hs.detach(), chosen_attn_mask.detach())
+        loss_retain = loss_retain / scaling + 1
 
         # Weight
         c_retain, c_rr = self.get_coeff()
-        c_rr = c_retain = 1
+        # c_rr = c_retain = 1
         loss = (loss_rr.mean() * c_rr + loss_retain.mean() * c_retain * self.alpha)
 
         # difference in logps for chosen responses, between policy and reference model

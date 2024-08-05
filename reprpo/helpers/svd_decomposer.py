@@ -41,9 +41,9 @@ class SoftSVDDecomposer:
         a,b = Vt.shape
         assert a==b, 'Vt should be square,try transposing W'
 
-        self.U = U.to(dtype)
-        self.S = S.to(dtype)
-        self.Vt = Vt.to(dtype)
+        self.U = U.to(dtype).detach()
+        self.S = S.to(dtype).detach()
+        self.Vt = Vt.to(dtype).detach()
 
 
     def __call__(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> Tuple[Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"]]:
@@ -100,9 +100,9 @@ class SVDDecomposer:
         a,b = Vt.shape
         assert a==b, 'Vt should be square,try transposing W'
 
-        self.U = U.to(dtype)
-        self.S = S.to(dtype)
-        self.Vt = Vt.to(dtype)
+        self.U = U.to(dtype).detach()
+        self.S = S.to(dtype).detach()
+        self.Vt = Vt.to(dtype).detach()
 
 
     def __call__(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> Tuple[Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"]]:
