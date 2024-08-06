@@ -318,6 +318,7 @@ class ReprPOTrainer(DPOTrainer):
         ref_chosen_hs = ref_chosen_hs.detach()
         ref_chosen_logps = ref_chosen_logps.detach()
         ref_rejected_logps = ref_rejected_logps.detach()
+        ref_rejected_hs = ref_rejected_hs.detach()
 
         model.train()
         (
@@ -401,34 +402,22 @@ class ReprPOTrainer(DPOTrainer):
     
     def res_det(self, hs):
         """use SVG to decompose hs into the output and residual components"""
-        return hs - self.decomposer(hs).detach()
+        return hs - self.decomposer(hs)#.detach() # FIXME, should I not detatch this?
 
-    def calc_loss_rr(self, chosen_hs, rejected_hs, attn):
-        loss_rr = self.res_det(rejected_hs) - self.res_det(chosen_hs)
 
-        # because the residuals have a differen't norm than the hs, lets adjust, so that the rr loss and the retain loss are on the same scale
-        loss_rr_full = rejected_hs - chosen_hs
-        scaling = torch.norm(loss_rr_full) / torch.norm(loss_rr)
-        loss_rr = loss_rr * scaling.detach()
-
-        loss_rr = mean_with_attention(loss_rr, attn.detach())
-        assert torch.isfinite(loss_rr).all() # FIXME nans
-        # loss_rr = symlog(loss_rr)
-        # loss_rr = wmean(loss_rr, 1 - weight_correct)
-        return (loss_rr**2).mean()
         
     def reprpo_loss(
         self,
         pi_chosen_logps: torch.FloatTensor,
         pi_rejected_logps: torch.FloatTensor,
-        pi_chosen_hs: torch.FloatTensor,
-        pi_rejected_hs: torch.FloatTensor,
+        pi_cho_hs: torch.FloatTensor,
+        pi_rej_hs: torch.FloatTensor,
         ref_chosen_logps: torch.FloatTensor,
         ref_rejected_logps: torch.FloatTensor,
-        ref_chosen_hs: torch.FloatTensor,
-        ref_rejected_hs: torch.FloatTensor,
-        chosen_attn_mask: torch.BoolTensor,
-        rejected_attn_mask: torch.BoolTensor
+        ref_cho_hs: torch.FloatTensor,
+        ref_rej_hs: torch.FloatTensor,
+        cho_attn_mask: torch.BoolTensor,
+        rej_attn_mask: torch.BoolTensor
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
         """Compute the DPO loss for a batch of policy and reference model log probabilities.
 
@@ -464,49 +453,53 @@ class ReprPOTrainer(DPOTrainer):
         T = 2
         weight_correct = torch.softmax(-ref_logratios * T, 0).detach()
 
+        def dist_w_attn_mask( chosen_hs, rejected_hs, attn):
+            dist = rejected_hs - chosen_hs
+            dist = mean_with_attention(dist, attn.detach())
+            assert torch.isfinite(dist).all() # FIXME nans
+            # loss_rr = symlog(loss_rr)
+            # loss_rr = wmean(loss_rr, 1 - weight_correct)
+            return (dist**2).mean()        
 
-        # # FIXME, I sould like to scale, but it can't be a relative scale or a moving target
-        # ref_chosen_hs - ref_rejected_hs
-
+        comb_attn_mask = cho_attn_mask * rej_attn_mask
 
         # decompose the hidden state differences into the part that is input or output by the embedding or unembedding wieghts, then only concern outselves with the reaminder (which may contain internal only information such as style or concepts)
+        svd_dist_cho2rej_pi2ref = dist_w_attn_mask(
+            self.res_det(ref_cho_hs).detach(), 
+            self.res_det(pi_rej_hs),
+            comb_attn_mask
+        )
 
+        # the loss is small, express it as a fraction of the reference values
+        svd_dist_cho2rej_ref2ref = dist_w_attn_mask(
+            self.res_det(ref_cho_hs), 
+            self.res_det(ref_rej_hs), 
+            comb_attn_mask
+        )
 
-        loss_rr = self.calc_loss_rr(ref_chosen_hs, pi_rejected_hs.detach(), rejected_attn_mask*chosen_attn_mask)
+        # how much we've reduced the distance between the chosen and rejected responses, compared to reference model
+        loss_reroute = svd_dist_cho2rej_pi2ref / svd_dist_cho2rej_ref2ref.mean().detach()
 
-        # because the number can be very small, lets scale them. It needs to be a scale that is not a moving target or relative
-        # now the lorr_rr will be [0, 1]
-        scaling = self.calc_loss_rr(ref_chosen_hs, ref_rejected_hs, rejected_attn_mask*chosen_attn_mask).detach()
+        # this loss measures how much the policy model has retained the information in the chosen responses, compared to the reference model
+        hs_dist_cho2cho_pi2ref = dist_w_attn_mask(
+            pi_cho_hs, 
+            ref_cho_hs.detach(), 
+            cho_attn_mask
+        )
 
-        loss_rr = loss_rr / scaling
+        # scale it, so that it's expressed as a fraction of the dist between rej2cho on the ref model
+        hs_dist_cho2rej_ref2ref = dist_w_attn_mask(
+            ref_cho_hs, 
+            ref_rej_hs, 
+            comb_attn_mask
+        )
+        # +1 so it start on par with reroute loss, and we can see it diverge?? TODO revisit
+        loss_retain = hs_dist_cho2cho_pi2ref / hs_dist_cho2rej_ref2ref.mean().detach() + 1
 
-
-        # # This loss says the good repr should be retained
-        # loss_retain = pi_chosen_rhsa - ref_cho_rhsa
-        # loss_retain = mean_with_attention(loss_retain, chosen_attn_mask)
-        # loss_retain = F.normalize(loss_retain, p=2, dim=-1)
-        # loss_retain = loss_retain**2
-        # loss_retain = symlog(loss_retain)
-        # # loss_retain = wmean(loss_retain, weight_correct)
-
-
-        # This loss says the good repr should be retained
-        def calc_loss_retain(chosen_hs, ref_hs, attn):
-            loss_retain = chosen_hs - ref_hs
-            loss_retain = mean_with_attention(loss_retain, attn)
-            # loss_retain = F.normalize(loss_retain, p=2, dim=-1)
-            loss_retain = loss_retain**2
-            # loss_retain = symlog(loss_retain)
-            # loss_retain = wmean(loss_retain, weight_correct)
-            return loss_retain.mean()
-        
-        loss_retain = calc_loss_retain(pi_chosen_hs, ref_chosen_hs.detach(), chosen_attn_mask.detach())
-        loss_retain = loss_retain / scaling + 1
-
-        # Weight
-        c_retain, c_rr = self.get_coeff()
-        # c_rr = c_retain = 1
-        loss = (loss_rr.mean() * c_rr + loss_retain.mean() * c_retain * self.alpha)
+        # Weightings
+        c_retain, c_reroute = self.get_coeff()
+        c_reroute = c_retain = 1
+        loss = (loss_reroute.mean() * c_reroute + loss_retain.mean() * c_retain * self.alpha)
 
         # difference in logps for chosen responses, between policy and reference model
         # # The beta is a temperature parameter for the DPO loss, typically something in the range of 0.1 to 0.5.
@@ -532,14 +525,14 @@ class ReprPOTrainer(DPOTrainer):
             chosen_rewards=chosen_rewards,
             rejected_rewards=rejected_rewards,
             loss_retain=loss_retain.detach(),
-            loss_rr=loss_rr.detach(),
+            loss_reroute=loss_reroute.detach(),
             pi_logratios=pi_logratios.detach(),
             ref_logratios=ref_logratios.detach(),
             weighting=weight_correct.mean(),
             logits=logits.mean().detach(),
-            loss_component_rr = (loss_rr * c_rr).detach().mean(),
+            loss_component_rr = (loss_reroute * c_reroute).detach().mean(),
             loss_component_retain = (loss_retain * c_retain * self.alpha).detach().mean(),
-            c_rr=c_rr,
+            c_rr=c_reroute,
             c_retain=c_retain,
         )
 
