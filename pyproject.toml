@@ -34,7 +34,7 @@ pyarrow = "^17.0.0"
 scikit-learn = "^1.5.1"
 sympy = "^1.13.1"
 statsmodels = "^0.14.2"
-baukit = {git = "https://github.com/davidbau/baukit.git"}
+baukit = {git = "https://github.com/wassname/baukit.git"}
 loguru = "^0.7.2"
 # https://github.com/wassname/open_pref_eval
 open-pref-eval = {path = "/media/wassname/SGIronWolf/projects5/elk/open_pref_eval", develop = true}

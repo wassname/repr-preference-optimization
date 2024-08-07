@@ -148,9 +148,9 @@ class DualSVDDecomposer:
     d = DualSVDDecomposer(model.get_embedding_weights(), model.lm_head.weight)
     d(hs)
     """
-    def __init__(self, W_in: Float[Tensor, 'vocab_size hidden_size'], W_out: Float[Tensor, 'hidden_size vocab_size'], full_matrices=False):
-        self.decomposer_in = SoftSVDDecomposer(W_in, full_matrices=full_matrices)
-        self.decomposer_out = SoftSVDDecomposer(W_out, full_matrices=full_matrices)
+    def __init__(self, W_in: Float[Tensor, 'vocab_size hidden_size'], W_out: Float[Tensor, 'hidden_size vocab_size'], full_matrices=False, quantile=0.1):
+        self.decomposer_in = SoftSVDDecomposer(W_in, full_matrices=full_matrices, quantile=quantile)
+        self.decomposer_out = SoftSVDDecomposer(W_out, full_matrices=full_matrices, quantile=quantile)
 
     def __call__(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> Tuple[Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"]]:
         hs_external_in = self.decomposer_in(hs)
