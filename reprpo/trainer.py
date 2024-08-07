@@ -116,6 +116,8 @@ class ReprPOConfig(DPOConfig):
     collection_layers: tuple = (10, 20, 26)
     alpha: int = 1
     print_every: int = 10
+    quantile: float = 0.10
+    dual_svd: bool = False
 
     # NOTE to self, do not pass both peft_config and model_adapter_name. peft_config creates a new adapter
 
@@ -148,8 +150,10 @@ class ReprPOTrainer(DPOTrainer):
             self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
 
         # convert
-        # self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight.clone().float(), self.model.lm_head.weight.clone())
-        self.decomposer = SoftSVDDecomposer(self.model.lm_head.weight.clone().float())
+        if args.dual_svd:
+            self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight.clone().float(), self.model.lm_head.weight.clone(), quantile=args.quantile)
+        else:
+            self.decomposer = SoftSVDDecomposer(self.model.lm_head.weight.clone().float(), quantile=args.quantile)
 
 
     def get_training_progress(self):
@@ -243,7 +247,7 @@ class ReprPOTrainer(DPOTrainer):
             **model_kwargs,
         )
         all_logits = outs.logits
-        # FIXME am I just getting the completion ones or not?
+        # this includes prompt and padding
         hs = collect_hs(outs.hidden_states)[:, self.collection_layers]
         # del outs
         # gc.collect()
@@ -405,7 +409,7 @@ class ReprPOTrainer(DPOTrainer):
         return hs - self.decomposer(hs)#.detach() # FIXME, should I not detatch this?
 
 
-        
+
     def reprpo_loss(
         self,
         pi_chosen_logps: torch.FloatTensor,

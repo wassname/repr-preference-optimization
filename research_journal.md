@@ -1269,3 +1269,60 @@ scbibench
 # 2024-08-04 22:03:01
 
 Loss onl went up, so I tried removing some .detach() from the hs_io calc, and going to SVD only on output. It seems to be learning now, although I have to use a low lr or it blows up
+
+
+# 2024-08-07 13:33:44
+
+baseline
+  | dataset            |   base |   ReprPO |
+  |:-------------------|-------:|---------:|
+  | truthful_qa_binary |  0.506 |    0.521 |
+  | toxic-dpo-v0.2     |  0.619 |    0.56  |
+  | help_steer2-dpo    |  0.512 |    0.528 |
+
+
+- experiment hiher lr 1e-4->1e-3: In `nbs/12_hf_phi_oft.ipynb` I tried without detach hs_io, now in nbs/12_hf_phi_oft detach.ipynb I am trying with it. Lets see the diff
+  - result: loss blows out
+
+- experiment tau 0.1 -> 0.5 no difference??? maybe slightly better on truthfulqa
+
+  ⭐ run=12_hf_phi_oft_quantileh-2024-08-07-16-59-40, N=144
+
+  | dataset            |   base |   ReprPO |
+  |:-------------------|-------:|---------:|
+  | truthful_qa_binary |  0.506 |    0.527 |
+  | toxic-dpo-v0.2     |  0.619 |    0.58  |
+  | help_steer2-dpo    |  0.512 |    0.525 |
+- experiment hs_o -> hs_io
+
+Overall it seems to be learning, and stable, just a bit slow. It seems comparable maybe a little better than DPO which is promising
+
+I would also like to code up the experiment where I get activations read of the residual stream and do a reroute and retain loss on them
+
+
+I can also make the train better
+
+
+So what part do we focus on?
+
+up_proj_o [16384] (has to be this)
+down_proj.out [3072] - but this is the same as hidden_states.diff?
+
+qkv_proj 3072->9216/3
+o_proj 3072->3072
+
+
+o_proj.input [3072] - this is the same as hidden_states.diff?
+down_proj.input [16384]
+
+
+
+https://github.com/wassname/uncensor_llms/blob/baukit/nbs/04_refusal_baukit.ipynb
+baukit helpers
+from baukit.nethook import get_module
+from baukit import TraceDict
+
+you can use
+model.named_modules()
+
+
