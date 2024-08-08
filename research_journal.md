@@ -1295,6 +1295,17 @@ baseline
   | help_steer2-dpo    |  0.512 |    0.525 |
 - experiment hs_o -> hs_io
 
+
+  run=12_hf_phi_oft_quantileh-2024-08-07-22-13-29, N=144
+
+  | dataset            |   base |   ReprPO |
+  |:-------------------|-------:|---------:|
+  | truthful_qa_binary |  0.506 |    0.527 |
+  | toxic-dpo-v0.2     |  0.619 |    0.48  |
+  | help_steer2-dpo    |  0.512 |    0.529 |
+
+  args = {'do_eval': True, 'eval_strategy': 'steps', 'per_device_train_batch_size': 42, 'learning_rate': 0.0001, 'max_grad_norm': 10, 'num_train_epochs': 8, 'lr_scheduler_type': 'cosine', 'warmup_ratio': 0.1, 'logging_dir': './output-dir/12_hf_phi_oft_quantileh-2024-08-07-22-13-29/runs/Aug07_22-13-29_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'eval_steps': 50, 'run_name': '12_hf_phi_oft_quantileh-2024-08-07-22-13-29', 'remove_unused_columns': False, 'optim': 'adamw_8bit', 'max_length': 128, 'max_prompt_length': 64, 'model_adapter_name': 'ReprPO', 'collection_layers': [10, 25], 'alpha': 0.3, 'quantile': 0.75, 'dual_svd': True}
+
 Overall it seems to be learning, and stable, just a bit slow. It seems comparable maybe a little better than DPO which is promising
 
 I would also like to code up the experiment where I get activations read of the residual stream and do a reroute and retain loss on them
@@ -1326,3 +1337,11 @@ you can use
 model.named_modules()
 
 
+
+
+
+the hs_qkv one is not working, maybe I need to do it on outputs? as the repo did say something
+
+
+
+Oh I got it working, but crap with large mem, no n
