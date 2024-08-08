@@ -33,8 +33,8 @@ def load_model(model_name, bnb=True):
         quantization_config = BitsAndBytesConfig(
             # https://huggingface.co/docs/transformers/v4.43.2/quantization/bitsandbytes#4-bit-qlora-algorithm
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.bfloat16, # faster
-            bnb_4bit_quant_type="nf4", # for trainng
+            # bnb_4bit_compute_dtype=torch.bfloat16, # faster
+            bnb_4bit_quant_type="nf4", # for training  normalized float 4 bit data type
         )
         model = AutoModelForCausalLM.from_pretrained(
             model_name,

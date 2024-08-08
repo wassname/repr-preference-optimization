@@ -1345,3 +1345,38 @@ the hs_qkv one is not working, maybe I need to do it on outputs? as the repo did
 
 
 Oh I got it working, but crap with large mem, no n
+
+- mem, bnb=False, 16/25GB, batch=1`
+collection_layers: tuple = (21, 22,)
+  collection_keys: tuple = ('base_model.model.model.layers.{layer}.self_attn.qkv_proj', 'base_model.model.model.layers.{layer}.mlp.gate_up_proj')
+
+- is bnb ok? no
+  - with False is works
+  - [x] with True? no it doesn't work!! no
+  - so [why?] https://github.com/bitsandbytes-foundation/bitsandbytes/blob/main/bitsandbytes/nn/modules.py#L468 it seems like a normal linear layer
+  - without bnb_4bit_compute_dtype=torch.bfloat16, # faster ?
+  what about with bnb_4bit_compute_dtype=torch.bfloat32? no
+  - [ ] bnb 8bit?
+- lr 1e-4 is ok (again)
+- is lora on target layers ok?
+  - [x] works without
+  - [x] what about accessing base_layer?  yes that works! 16/25GB, same
+  - [x] do I need .base layer though? yes
+- [x] do I need requires grad? no
+- [ ] does it work on, module inputs?
+- [ ] grad accum?
+
+
+
+ok so I would really like it to work on bnb, hmm?
+
+
+print('did acc improve')
+acc_pi = res[adapter_name]['help_steer2-dpo'].item()
+acc_ref = res['base']['help_steer2-dpo'].item()
+shypothesis('acc_pi>acc_ref', locals())
+
+
+acc_pi_ood = res[adapter_name]['truthful_qa_binary'].item()
+acc_ref_ood = res['base']['truthful_qa_binary'].item()
+shypothesis('acc_pi_ood>acc_ref_ood', locals());
