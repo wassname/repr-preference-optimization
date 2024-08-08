@@ -1351,22 +1351,28 @@ collection_layers: tuple = (21, 22,)
   collection_keys: tuple = ('base_model.model.model.layers.{layer}.self_attn.qkv_proj', 'base_model.model.model.layers.{layer}.mlp.gate_up_proj')
 
 - is bnb ok? no
-  - with False is works
+  - 1. with False it works
   - [x] with True? no it doesn't work!! no
   - so [why?] https://github.com/bitsandbytes-foundation/bitsandbytes/blob/main/bitsandbytes/nn/modules.py#L468 it seems like a normal linear layer
   - without bnb_4bit_compute_dtype=torch.bfloat16, # faster ?
-  what about with bnb_4bit_compute_dtype=torch.bfloat32? no
+  what about with bnb_4bit_compute_dtype=torch.bfloat32? no doesn't help
   - [ ] bnb 8bit?
-- lr 1e-4 is ok (again)
+- 1.. lr 1e-4 is ok (again)
 - is lora on target layers ok?
-  - [x] works without
+  - [x] 1. works without
   - [x] what about accessing base_layer?  yes that works! 16/25GB, same
-  - [x] do I need .base layer though? yes
-- [x] do I need requires grad? no
-- [ ] does it work on, module inputs?
-- [ ] grad accum?
+  - [x] do I need .base layer though? yes... or wait does it?
+  - is dora
+  - and rslora ok?
+- [x] 1. do I need requires grad? no
+- [ ] does it work on, module inputs? ?
+- [ ] grad accum? seems to help a lot? does it work
+- use_gradient_checkpointing?
+- hmm I thought it was working at it didn't say one, but maybe I just included rounding errors
 
 
+
+hmm I think it's use_gradient_checkpointing, it drastically lowers the mem, but then loss doesn't change?
 
 ok so I would really like it to work on bnb, hmm?
 
@@ -1380,3 +1386,22 @@ shypothesis('acc_pi>acc_ref', locals())
 acc_pi_ood = res[adapter_name]['truthful_qa_binary'].item()
 acc_ref_ood = res['base']['truthful_qa_binary'].item()
 shypothesis('acc_pi_ood>acc_ref_ood', locals());
+
+
+Trying to fix it without going back to commit
+
+
+- this works
+  bs=1
+  bnb = False, no grad on inputs
+  use_gradient_checkpointing = False
+- use_inputs = True, works
+- use_gradient_checkpointing = True, ? no it fails with no grad on input, and with no change on output
+
+
+idea: look at how baukit handles hidden states?
+try manually running in scratch?
+
+
+
+1e-4 is too high

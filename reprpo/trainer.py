@@ -400,7 +400,7 @@ class ReprPOTrainer(DPOTrainer):
             metrics[f"{prefix}retain_cosine"] = retain_cosine
             metrics[f"{prefix}rr_cosine"] = rr_cosine
 
-            print({k: f"{v:.2g}" for k, v in metrics.items()})
+            print({k: f"{v:.4g}" for k, v in metrics.items()})
         
         return loss.mean(), metrics
     
