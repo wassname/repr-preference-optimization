@@ -1,14 +1,17 @@
 from baukit.nethook import TraceDict
 import itertools
+from dataclasses import dataclass
 
-from torch import Tensor
 import torch
-from jaxtyping import Float
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
-from einops import repeat
+import torch.nn as nn
+import torch.nn.functional as F
 from einops import rearrange, repeat
 
-from dataclasses import dataclass
+from torch import Tensor
+from jaxtyping import Float
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+
+
 from trl import DPOConfig, DPOTrainer
 from reprpo.train.trainer import ReprPOTrainer, ReprPOConfig, mean_with_attention, normalize_output
 
@@ -144,9 +147,9 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
             metrics[f"{prefix}retain_cosine"] = retain_cosine
             metrics[f"{prefix}rr_cosine"] = rr_cosine
 
-            print({k: f"{v:.2g}" for k, v in metrics.items()})
+            print({k: f"{v:.4g}" for k, v in metrics.items()})
         
-        return loss.mean(), metrics
+        return loss.nanmean(), metrics
 
     def concatenated_forward(
         self, model: nn.Module, batch: Dict[str, Union[List, torch.LongTensor]]
@@ -193,6 +196,7 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
                     reprs[p] = ret[p].input
                 else:
                     reprs[p] = ret[p].output
+                assert torch.isfinite(reprs[p]).all()
             # print(reprs[p].shape, reprs[p].dtype)
         all_logits = outs.logits
         
@@ -293,9 +297,12 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
         weight_correct = torch.softmax(-ref_logratios * T, 0).detach()
 
         def _dist_w_attn_mask(chosen_hs, rejected_hs, attn):
+            assert torch.isfinite(chosen_hs).all()
+            assert torch.isfinite(rejected_hs).all()
             dist = rejected_hs - chosen_hs
+            assert torch.isfinite(dist).all()
             dist = mean_with_attention(dist, attn.detach())
-            # assert torch.isfinite(dist).all()
+            assert torch.isfinite(dist).all()
             # loss_rr = symlog(loss_rr)
             # loss_rr = wmean(loss_rr, 1 - weight_correct)
             return (dist**2).nanmean(-1) # [b]   
@@ -389,10 +396,10 @@ class ReprPOSideChannelConfig2Outs(DPOConfig):
     alpha: int = 1
     print_every: int = 20
     collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
-    # collection_keys: tuple = ('base_model.model.model.layers.{layer}.self_attn.o_proj', 'base_model.model.model.layers.{layer}.mlp.down_proj')
-    # collect_input: bool = True
-
-    collection_keys: tuple = ('base_model.model.model.layers.{layer}.self_attn.qkv_proj', 'base_model.model.model.layers.{layer}.mlp.gate_up_proj')
+    collection_keys: tuple = (
+        'base_model.model.model.layers.{layer}.self_attn.qkv_proj.base_layer', 
+        'base_model.model.model.layers.{layer}.mlp.gate_up_proj.base_layer',
+        )
     collect_input: bool = False
 
     # NOTE to self, do not pass both peft_config and model_adapter_name. peft_config creates a new adapter
@@ -409,10 +416,8 @@ class ReprPOSideChannelkConfig2Ins(DPOConfig):
 def check_training_args(training_args, model):
     assert training_args.collection_layers is not None
     assert training_args.collection_keys is not None
-    ps = [[p.format(layer=layer) for p in training_args.collection_keys] for layer in training_args.collection_layers]
-    ps = list(itertools.chain(*ps))
-    print(ps)
-    ps2 = [model.get_submodule(p) for p in ps]
+    layer_paths = get_layer_paths(training_args)
+    ps2 = [model.get_submodule(p) for p in layer_paths]
 
 
     # also if module in model.peft_config[adapter_name].target_modules

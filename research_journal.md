@@ -1418,3 +1418,24 @@ try manually running in scratch?
 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/trainers.py
 https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py
 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
+
+
+why nans? ah it seems that after 10 updatres, without cosine
+
+
+- x bnb, and use_inputs no grad on element 0
+  - > RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn
+- [ ]  bnb, use_inputs=False
+  - same? even with adamw_torch, even with .base_layer, even if trying just one layer (qkv) or the other
+- [ ] bnb=False, use_inputs=True, grad_checkpoint
+
+But without bnb, inf after 21 steps  that's 3% so mayve warm up. lr=1e-5
+And it's always 21... warmup_ratio=0.1,?
+
+
+stable
+https://github.com/wassname/repr-preference-optimization/blob/1138a3743053e3a09c6e26002373577921b71361/nbs/20_hf_phi_hs_outproj-in.ipynb
+
+
+
+wait tf32=True seems to be essential?
