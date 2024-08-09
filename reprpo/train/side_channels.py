@@ -318,72 +318,64 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
         T = 2
         weight_correct = torch.softmax(-ref_logratios * T, 0).detach()
 
-        def _dist_w_attn_mask(
-            chosen_hs: Float[Tensor, "b t h"], rejected_hs: Float[Tensor, "b t h"], attn: Float[Tensor ,'b t'],
-            eps=1e-5,
-        ) -> Float[Tensor ,'b h']:
-            assert torch.isfinite(chosen_hs).all()
-            assert torch.isfinite(rejected_hs).all()
-            dist = rejected_hs - chosen_hs
-            assert torch.isfinite(dist).all()
-            dist = mean_with_attention(dist, attn.detach()) # reduces over tokens
-            assert torch.isfinite(dist).all()
-            # loss_rr = symlog(loss_rr)
-            # loss_rr = wmean(loss_rr, 1 - weight_correct)
-            return (dist**2) + eps # maybe norm or abs?
 
-        def dist_w_attn_mask(
-                chosen_hs: Dict[str, Float[Tensor, "b t h"]], 
-                rejected_hs, attn
-            ) -> Float[Tensor ,'b l h']:
+        def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-1, min_eps=1e-7) -> Float[Tensor, "b l"]:
+            dist = b - a
+            dist = mean_with_attention(dist, attn)**2  # reduces over tokens
+
+            dist_ref = b_ref - a_ref
+            dist_ref = (mean_with_attention(dist_ref, attn_ref)**2).detach()
+
+            # get the ratio in log space to avoid div by zero
+            log_dist_ratio = torch.log(dist + eps) - torch.log(dist_ref.detach() + eps)
+
+            # eps = max(eps * dist_ref.mean(), min_eps) # avoid div by zero
+
+            # dr =  (dist + eps) / (dist_ref.detach() + eps)
+            # dr = torch.clamp((dist + eps) / (dist_ref.detach() + eps), min=1e-6, max=1e6)
+            log_dist_ratio = reduce(log_dist_ratio, "b h -> b ", torch.nanmean)
+
+            alpha = 100
+            return log_dist_ratio * alpha
+
+        def dist_ratio(
+            a: Dict[str, Float[Tensor, "b t h"]],
+            b: Dict[str, Float[Tensor, "b t h"]],
+            attn: Float[Tensor, "b t"],
+            a_ref: Dict[str, Float[Tensor, "b t h"]],
+            b_ref: Dict[str, Float[Tensor, "b t h"]],
+            attn_ref: Float[Tensor, "b t"],
+        ) -> float:
             dists = [
-                _dist_w_attn_mask(chosen_hs[k], rejected_hs[k], attn)
-                for k in chosen_hs.keys()
+                _dist_ratio(a[k], b[k], attn, a_ref[k], b_ref[k], attn_ref)
+                for k in a.keys()
             ]
-            return dists # torch.stack(dists, dim=1)
-
+            # stack each layer now that we've removed the differing h
+            d =  torch.stack(dists, dim=1)
+            return reduce(d, "b l -> ", torch.nanmean)
+            
         comb_attn_mask = cho_attn_mask * rej_attn_mask
 
-        hs_dist_cho2rej_pi2ref = dist_w_attn_mask(
-            detach_hsd(ref_cho_hs), pi_rej_hs, comb_attn_mask
+        # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
+        # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
+        loss_reroute = dist_ratio(
+            detach_hsd(ref_cho_hs), pi_rej_hs,
+            comb_attn_mask,
+            ref_cho_hs, ref_rej_hs,
+            comb_attn_mask,
         )
-
-        # the loss is small, express it as a fraction of the reference values
-        hs_dist_cho2rej_ref2ref = dist_w_attn_mask(
-            ref_cho_hs, ref_rej_hs, comb_attn_mask
+        # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
+        # and again we scale it using the reference model as a stable target
+        loss_retain = dist_ratio(
+            detach_hsd(ref_cho_hs), pi_cho_hs, comb_attn_mask,
+            ref_cho_hs, ref_rej_hs, comb_attn_mask,
         )
-
-        # how much we've reduced the distance between the chosen and rejected responses, compared to reference model
-        # reduce(a/b.detach(), 'b h -> b', 'nanmean')
-        loss_reroute = torch.stack([
-            reduce(a/b.detach(), 'b h -> b', torch.nanmean)
-            for a, b in zip(hs_dist_cho2rej_pi2ref, hs_dist_cho2rej_ref2ref)], 1)
-        # loss_reroute = (
-        #     hs_dist_cho2rej_pi2ref / hs_dist_cho2rej_ref2ref.detach()
-        # )
-
-        # this loss measures how much the policy model has retained the information in the chosen responses, compared to the reference model
-        hs_dist_cho2cho_pi2ref = dist_w_attn_mask(
-            detach_hsd(ref_cho_hs), pi_cho_hs, cho_attn_mask
-        )
-
-        # scale it, so that it's expressed as a fraction of the dist between rej2cho on the ref model
-        hs_dist_cho2rej_ref2ref = dist_w_attn_mask(
-            ref_cho_hs, ref_rej_hs, comb_attn_mask
-        )
-        # +1 so it start on par with reroute loss, and we can see it diverge?? TODO revisit
-        loss_retain = torch.stack([
-            reduce(a/b.detach(), 'b h -> b', torch.nanmean)
-        for a, b in zip(hs_dist_cho2cho_pi2ref, hs_dist_cho2rej_ref2ref)], 1)
-        #     hs_dist_cho2cho_pi2ref / hs_dist_cho2rej_ref2ref.detach() + 1
-        # )
 
         # Weightings
         c_retain, c_reroute = self.get_coeff()
         c_reroute = c_retain = 1
         loss = (
-            loss_reroute * c_reroute
-            + loss_retain * c_retain * self.alpha
+            loss_reroute * c_reroute + loss_retain * c_retain * self.alpha
         ).nanmean()
 
         # difference in logps for chosen responses, between policy and reference model

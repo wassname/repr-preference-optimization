@@ -413,7 +413,7 @@ class ReprPOTrainer(DPOTrainer):
                 v = v.mean().detach().cpu().item()
             metrics[f"{prefix}{k2}"] = float(v)
 
-        if self.state.global_step % self.args.print_every == 0:
+        if (self.state.global_step % self.args.print_every == 0) & (prefix==""):
             retain_cosine = F.cosine_similarity(
                 pi_chosen_hs, ref_chosen_hs, dim=-1
             ).mean()
