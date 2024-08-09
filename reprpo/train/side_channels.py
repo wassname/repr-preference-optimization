@@ -320,7 +320,7 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
 
         def _dist_w_attn_mask(
             chosen_hs: Float[Tensor, "b t h"], rejected_hs: Float[Tensor, "b t h"], attn: Float[Tensor ,'b t'],
-            eps=1e-12,
+            eps=1e-5,
         ) -> Float[Tensor ,'b h']:
             assert torch.isfinite(chosen_hs).all()
             assert torch.isfinite(rejected_hs).all()
@@ -382,9 +382,9 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
         c_retain, c_reroute = self.get_coeff()
         c_reroute = c_retain = 1
         loss = (
-            loss_reroute.nanmean() * c_reroute
-            + loss_retain.nanmean() * c_retain * self.alpha
-        )
+            loss_reroute * c_reroute
+            + loss_retain * c_retain * self.alpha
+        ).nanmean()
 
         # difference in logps for chosen responses, between policy and reference model
         # # The beta is a temperature parameter for the DPO loss, typically something in the range of 0.1 to 0.5.
