@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from einops import rearrange, repeat
+from einops import rearrange, repeat, reduce
 
 from torch import Tensor
 from jaxtyping import Float
@@ -13,40 +13,52 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 
 from trl import DPOConfig, DPOTrainer
-from reprpo.train.trainer import ReprPOTrainer, ReprPOConfig, mean_with_attention, normalize_output
+from reprpo.train.trainer import (
+    ReprPOTrainer,
+    ReprPOConfig,
+    mean_with_attention,
+    normalize_output,
+)
 
-def mean_with_attention(x: Float[Tensor, 'b t h'], attn_mask: Float[Tensor, 'b t'], dim: int = 1) -> Float[Tensor, 'b h']:
+
+def mean_with_attention(
+    x: Float[Tensor, "b t h"], attn_mask: Float[Tensor, "b t"], dim: int = 1
+) -> Float[Tensor, "b h"]:
     """mean of x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, 'b t -> b t h', h=1).detach()
+    layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1).detach()
     return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
+
 
 def detach_hsd(hs):
     return {k: v.detach() for k, v in hs.items()}
 
+
 def get_layer_paths(args):
     layer_paths = [
-            [p.format(layer=layer) for p in args.collection_keys]
-            for layer in args.collection_layers
+        [p.format(layer=layer) for p in args.collection_keys]
+        for layer in args.collection_layers
     ]
     layer_paths = list(itertools.chain(*layer_paths))
     return layer_paths
 
-class ReprPOTrainerSideChannel(ReprPOTrainer):
 
+class ReprPOTrainerSideChannel(ReprPOTrainer):
     def __init__(self, args: Optional[ReprPOConfig] = None, **kwargs):
         DPOTrainer.__init__(self, args=args, **kwargs)
         self.collection_layers = args.collection_layers
         self.alpha = args.alpha
-        self.loss_type = 'ipo'
+        self.loss_type = "ipo"
 
         self.num_training_steps = self.args.max_steps
-        if self.num_training_steps==-1:
-            self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
-
+        if self.num_training_steps == -1:
+            self.num_training_steps = (
+                self.args.num_train_epochs
+                * len(self.get_train_dataloader())
+                // self.args.gradient_accumulation_steps
+            )
 
         self.layer_paths = get_layer_paths(args)
         print(self.layer_paths)
-
 
     def get_batch_loss_metrics(
         self,
@@ -69,7 +81,7 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
                     ref_chosen_hs,
                     ref_rejected_hs,
                     _,
-                    _
+                    _,
                 ) = self.concatenated_forward(self.model, batch)
         ref_chosen_hs = detach_hsd(ref_chosen_hs)
         ref_rejected_hs = detach_hsd(ref_rejected_hs)
@@ -86,7 +98,7 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
             pi_chosen_hs,
             pi_rejected_hs,
             chosen_attn_mask,
-            rejected_attn_mask
+            rejected_attn_mask,
         ) = self.concatenated_forward(model, batch)
 
         loss, loss_info = self.reprpo_loss(
@@ -99,7 +111,7 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
             ref_chosen_hs,
             ref_rejected_hs,
             chosen_attn_mask,
-            rejected_attn_mask
+            rejected_attn_mask,
         )
         # losses, chosen_rewards, rejected_rewards, loss_retain, loss_rr = loss_info
         chosen_rewards, rejected_rewards = (
@@ -111,9 +123,8 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
         if self.args.rpo_alpha is not None:
             loss = loss * self.args.rpo_alpha - pi_chosen_logps_avg
 
-
         prefix = "eval_" if train_eval == "eval" else ""
-        
+
         # how often the policy model is better at choosing the right response
         metrics[f"{prefix}rewards/accuracies"] = reward_accuracies.nanmean().cpu()
         # how much the policy model is better
@@ -125,10 +136,9 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
         metrics[f"{prefix}logps/rejected"] = pi_rejected_logps.detach().nanmean().cpu()
         metrics[f"{prefix}logps/chosen"] = pi_chosen_logps.detach().nanmean().cpu()
 
-
         for k in loss_info.keys():
-            if '_' in k:
-                a,b = k.split('_', 1)
+            if "_" in k:
+                a, b = k.split("_", 1)
                 k2 = f"{b}/{a}"
             else:
                 k2 = k
@@ -138,17 +148,23 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
             metrics[f"{prefix}{k2}"] = float(v)
 
         if self.state.global_step % self.args.print_every == 0:
-            
+
             def cosine_on_keys(hs1, hs2):
-                return torch.stack([F.cosine_similarity(hs1[k], hs2[k], dim=-1).nanmean() for k in hs1.keys()]).nanmean()
+                return torch.stack(
+                    [
+                        F.cosine_similarity(hs1[k], hs2[k], dim=-1).nanmean()
+                        for k in hs1.keys()
+                    ]
+                ).nanmean()
+
             retain_cosine = cosine_on_keys(pi_chosen_hs, ref_chosen_hs)
             rr_cosine = cosine_on_keys(pi_rejected_hs, ref_chosen_hs)
-            
+
             metrics[f"{prefix}retain_cosine"] = retain_cosine
             metrics[f"{prefix}rr_cosine"] = rr_cosine
 
             print({k: f"{v:.4g}" for k, v in metrics.items()})
-        
+
         return loss.nanmean(), metrics
 
     def concatenated_forward(
@@ -166,7 +182,7 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
             label_pad_token_id=self.label_pad_token_id,
             padding_value=self.padding_value,
             device=self.accelerator.device,
-            max_length=self.max_length
+            max_length=self.max_length,
         )
         len_chosen = batch["chosen_labels"].shape[0]
 
@@ -182,7 +198,13 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
         )
 
         reprs = {}
-        with TraceDict(model, self.layer_paths, retain_input=self.args.collect_input, retain_output=(not self.args.collect_input), retain_grad=False) as ret:
+        with TraceDict(
+            model,
+            self.layer_paths,
+            retain_input=self.args.collect_input,
+            retain_output=(not self.args.collect_input),
+            retain_grad=False,
+        ) as ret:
             outs = model(
                 concatenated_batch["concatenated_input_ids"],
                 attention_mask=concatenated_batch["concatenated_attention_mask"],
@@ -199,7 +221,7 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
                 assert torch.isfinite(reprs[p]).all()
             # print(reprs[p].shape, reprs[p].dtype)
         all_logits = outs.logits
-        
+
         # # this includes prompt and padding
         # hs = collect_hs(outs.hidden_states)[:, self.collection_layers]
         # # del outs
@@ -207,7 +229,6 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
 
         # multiply by attention mask
         attn_mask = concatenated_batch["concatenated_attention_mask"]
-
 
         all_logps, size_completion = self.get_batch_logps(
             all_logits,
@@ -245,9 +266,8 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
             chosen_hs,
             rejected_hs,
             chosen_attn_mask,
-            rejected_attn_mask
+            rejected_attn_mask,
         )
-
 
     def reprpo_loss(
         self,
@@ -260,7 +280,7 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
         ref_cho_hs: torch.FloatTensor,
         ref_rej_hs: torch.FloatTensor,
         cho_attn_mask: torch.BoolTensor,
-        rej_attn_mask: torch.BoolTensor
+        rej_attn_mask: torch.BoolTensor,
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
         """Compute the DPO loss for a batch of policy and reference model log probabilities.
 
@@ -287,7 +307,9 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
         # log(prob_chosen/prob_rejected) the prob of the chosen strings over the rejected string. 0 is not difference. -ve means rejected is larger
         pi_logratios = pi_logratios.to(self.accelerator.device)
         ref_logratios = ref_logratios.to(self.accelerator.device)
-        logits = pi_logratios - ref_logratios # was pi more likely to chose the correct response or the reference model
+        logits = (
+            pi_logratios - ref_logratios
+        )  # was pi more likely to chose the correct response or the reference model
 
         # Can we weight by how much better the reference model was
         # in dpo we minimise it, so lower is better, here we are weighting it, so take the -ve to higher is more correct
@@ -296,59 +318,73 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
         T = 2
         weight_correct = torch.softmax(-ref_logratios * T, 0).detach()
 
-        def _dist_w_attn_mask(chosen_hs, rejected_hs, attn):
+        def _dist_w_attn_mask(
+            chosen_hs: Float[Tensor, "b t h"], rejected_hs: Float[Tensor, "b t h"], attn: Float[Tensor ,'b t'],
+            eps=1e-12,
+        ) -> Float[Tensor ,'b h']:
             assert torch.isfinite(chosen_hs).all()
             assert torch.isfinite(rejected_hs).all()
             dist = rejected_hs - chosen_hs
             assert torch.isfinite(dist).all()
-            dist = mean_with_attention(dist, attn.detach())
+            dist = mean_with_attention(dist, attn.detach()) # reduces over tokens
             assert torch.isfinite(dist).all()
             # loss_rr = symlog(loss_rr)
             # loss_rr = wmean(loss_rr, 1 - weight_correct)
-            return (dist**2).nanmean(-1) # [b]   
-        
-        def dist_w_attn_mask( chosen_hs, rejected_hs, attn):
-            dists = [_dist_w_attn_mask(chosen_hs[k], rejected_hs[k], attn).nanmean() for k in chosen_hs.keys()]  
-            return torch.stack(dists, dim=-1) # [b, n]
+            return (dist**2) + eps # maybe norm or abs?
+
+        def dist_w_attn_mask(
+                chosen_hs: Dict[str, Float[Tensor, "b t h"]], 
+                rejected_hs, attn
+            ) -> Float[Tensor ,'b l h']:
+            dists = [
+                _dist_w_attn_mask(chosen_hs[k], rejected_hs[k], attn)
+                for k in chosen_hs.keys()
+            ]
+            return dists # torch.stack(dists, dim=1)
 
         comb_attn_mask = cho_attn_mask * rej_attn_mask
 
         hs_dist_cho2rej_pi2ref = dist_w_attn_mask(
-            detach_hsd(ref_cho_hs), 
-            pi_rej_hs,
-            comb_attn_mask
+            detach_hsd(ref_cho_hs), pi_rej_hs, comb_attn_mask
         )
 
         # the loss is small, express it as a fraction of the reference values
         hs_dist_cho2rej_ref2ref = dist_w_attn_mask(
-            ref_cho_hs, 
-            ref_rej_hs, 
-            comb_attn_mask
+            ref_cho_hs, ref_rej_hs, comb_attn_mask
         )
 
         # how much we've reduced the distance between the chosen and rejected responses, compared to reference model
-        loss_reroute = hs_dist_cho2rej_pi2ref / hs_dist_cho2rej_ref2ref.nanmean().detach()
+        # reduce(a/b.detach(), 'b h -> b', 'nanmean')
+        loss_reroute = torch.stack([
+            reduce(a/b.detach(), 'b h -> b', torch.nanmean)
+            for a, b in zip(hs_dist_cho2rej_pi2ref, hs_dist_cho2rej_ref2ref)], 1)
+        # loss_reroute = (
+        #     hs_dist_cho2rej_pi2ref / hs_dist_cho2rej_ref2ref.detach()
+        # )
 
         # this loss measures how much the policy model has retained the information in the chosen responses, compared to the reference model
         hs_dist_cho2cho_pi2ref = dist_w_attn_mask(
-            detach_hsd(ref_cho_hs),
-            pi_cho_hs, 
-            cho_attn_mask
+            detach_hsd(ref_cho_hs), pi_cho_hs, cho_attn_mask
         )
 
         # scale it, so that it's expressed as a fraction of the dist between rej2cho on the ref model
         hs_dist_cho2rej_ref2ref = dist_w_attn_mask(
-            ref_cho_hs, 
-            ref_rej_hs, 
-            comb_attn_mask
+            ref_cho_hs, ref_rej_hs, comb_attn_mask
         )
         # +1 so it start on par with reroute loss, and we can see it diverge?? TODO revisit
-        loss_retain = hs_dist_cho2cho_pi2ref / hs_dist_cho2rej_ref2ref.nanmean().detach() + 1
+        loss_retain = torch.stack([
+            reduce(a/b.detach(), 'b h -> b', torch.nanmean)
+        for a, b in zip(hs_dist_cho2cho_pi2ref, hs_dist_cho2rej_ref2ref)], 1)
+        #     hs_dist_cho2cho_pi2ref / hs_dist_cho2rej_ref2ref.detach() + 1
+        # )
 
         # Weightings
         c_retain, c_reroute = self.get_coeff()
         c_reroute = c_retain = 1
-        loss = (loss_reroute.nanmean() * c_reroute + loss_retain.nanmean() * c_retain * self.alpha)
+        loss = (
+            loss_reroute.nanmean() * c_reroute
+            + loss_retain.nanmean() * c_retain * self.alpha
+        )
 
         # difference in logps for chosen responses, between policy and reference model
         # # The beta is a temperature parameter for the DPO loss, typically something in the range of 0.1 to 0.5.
@@ -379,8 +415,10 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
             ref_logratios=ref_logratios.detach(),
             weighting=weight_correct.nanmean(),
             logits=logits.nanmean().detach(),
-            loss_component_rr = (loss_reroute * c_reroute).detach().nanmean(),
-            loss_component_retain = (loss_retain * c_retain * self.alpha).detach().nanmean(),
+            loss_component_rr=(loss_reroute * c_reroute).detach().nanmean(),
+            loss_component_retain=(loss_retain * c_retain * self.alpha)
+            .detach()
+            .nanmean(),
             c_rr=c_reroute,
             c_retain=c_retain,
         )
@@ -389,7 +427,9 @@ class ReprPOTrainerSideChannel(ReprPOTrainer):
 
         return loss, loss_dict
 
+
 from dataclasses import dataclass
+
 
 @dataclass
 class ReprPOSideChannelConfig2Outs(DPOConfig):
@@ -397,9 +437,9 @@ class ReprPOSideChannelConfig2Outs(DPOConfig):
     print_every: int = 20
     collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
     collection_keys: tuple = (
-        'base_model.model.model.layers.{layer}.self_attn.qkv_proj.base_layer', 
-        'base_model.model.model.layers.{layer}.mlp.gate_up_proj.base_layer',
-        )
+        "base_model.model.model.layers.{layer}.self_attn.qkv_proj.base_layer",
+        "base_model.model.model.layers.{layer}.mlp.gate_up_proj.base_layer",
+    )
     collect_input: bool = False
 
     # NOTE to self, do not pass both peft_config and model_adapter_name. peft_config creates a new adapter
@@ -410,15 +450,18 @@ class ReprPOSideChannelkConfig2Ins(DPOConfig):
     alpha: int = 1
     print_every: int = 20
     collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
-    collection_keys: tuple = ('base_model.model.model.layers.{layer}.self_attn.o_proj', 'base_model.model.model.layers.{layer}.mlp.down_proj')
+    collection_keys: tuple = (
+        "base_model.model.model.layers.{layer}.self_attn.o_proj",
+        "base_model.model.model.layers.{layer}.mlp.down_proj",
+    )
     collect_input: bool = True
+
 
 def check_training_args(training_args, model):
     assert training_args.collection_layers is not None
     assert training_args.collection_keys is not None
     layer_paths = get_layer_paths(training_args)
     ps2 = [model.get_submodule(p) for p in layer_paths]
-
 
     # also if module in model.peft_config[adapter_name].target_modules
 

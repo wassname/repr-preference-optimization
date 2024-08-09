@@ -13,7 +13,11 @@ from transformers import (
 from trl.trainer.utils import (
     pad_to_length,
 )
-from reprpo.helpers.svd_decomposer import SVDDecomposer, DualSVDDecomposer, SoftSVDDecomposer
+from reprpo.helpers.svd_decomposer import (
+    SVDDecomposer,
+    DualSVDDecomposer,
+    SoftSVDDecomposer,
+)
 from reprpo.gen import generation_test, get_model_generations
 
 
@@ -25,6 +29,7 @@ from reprpo.gen import generation_test, get_model_generations
 #     im = rearrange(im, 'b t (l h) -> b l t h', l=a.shape[1], h=a.shape[-1])
 #     return im
 
+
 def normalize_per(a, norm_dims=(1, 2, 3), eps=1e-12):
     """normalize per norm_dims
 
@@ -33,36 +38,51 @@ def normalize_per(a, norm_dims=(1, 2, 3), eps=1e-12):
     # use F.normalize?
     return a / (torch.norm_except_dim(a, dim=norm_dims, p=2, keepdim=True) + eps)
 
-def mult_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t']) -> Float[Tensor, 'b l t h']:
-    layer_attn_mask = repeat(attn_mask, 'b t -> b l t h', l=x.shape[1], h=1)
-    return (x * layer_attn_mask)
 
-def mean_with_attention(x: Float[Tensor, 'b l t h'], attn_mask: Float[Tensor, 'b t'], dim: int = 2) -> Float[Tensor, 'b l h']:
+def mult_with_attention(
+    x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], eps=1e-12
+) -> Float[Tensor, "b l t h"]:
+    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1)
+    return x * layer_attn_mask
+
+
+def mean_with_attention(
+    x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2,
+    eps=1e-12
+) -> Float[Tensor, "b l h"]:
     """mean of x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, 'b t -> b l t h', l=x.shape[1], h=1).detach()
-    return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
+    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
+    return ((x * layer_attn_mask).nansum(dim) + eps) / (
+        layer_attn_mask.nansum(dim) + eps
+    )
+
 
 def symlog(x, eps=1e-6):
-    return torch.sign(x) * torch.log(torch.abs(x)+eps)
+    return torch.sign(x) * torch.log(torch.abs(x) + eps)
 
 
 def symlog_loss(x, y, eps=1e-6):
     # maybe a simple norm or x and y the same here? just to scale the outputs
-    e = symlog(x)-symlog(y)
+    e = symlog(x) - symlog(y)
     # e = norm_h(e)
     return e**2
 
-def norm_error(input: Float[Tensor, 'b l t h'], target: Float[Tensor, 'b l t h']) -> Float[Tensor, 'b l t h']:
+
+def norm_error(
+    input: Float[Tensor, "b l t h"], target: Float[Tensor, "b l t h"]
+) -> Float[Tensor, "b l t h"]:
     # from https://github.com/GraySwanAI/circuit-breakers/blob/main/src/lorra_circuit_breaker.py
-    return torch.norm(input - target, dim=-1, p=2, 
-                      dtype=torch.float, 
-                      keepdim=True)#.nanmean()
+    return torch.norm(
+        input - target, dim=-1, p=2, dtype=torch.float, keepdim=True
+    )  # .nanmean()
+
 
 def combined_loss(x, y, alpha=0.5):
     cos_sim = torch.nn.functional.cosine_similarity(x, y, dim=-1)
     direction_loss = 1 - cos_sim
     magnitude_loss = F.l1_loss(torch.norm(x, dim=-1), torch.norm(y, dim=-1))
-    return alpha * direction_loss + (1-alpha) * magnitude_loss
+    return alpha * direction_loss + (1 - alpha) * magnitude_loss
+
 
 def cka_inspired_similarity(x, y):
     """This is inspired by CKA, which has been used to compare neural network representations. It's invariant to orthogonal transformations and isotropic scaling, which can be beneficial for comparing hidden states."""
@@ -87,18 +107,20 @@ def norm_smooth_l1_loss(x, y):
     norm_y = torch.norm(y_centered, dim=-1)
     return F.smooth_l1_loss(norm_x, norm_y)
 
+
 def top_k_mse(x, y, k=0.005):
-    k = int(k * x.shape[-1])+1
-    diff = (x - y)**2
+    k = int(k * x.shape[-1]) + 1
+    diff = (x - y) ** 2
     # get the top k differences along dim
     top_k_diff = torch.topk(diff, k, dim=-1).values
     return torch.mean(top_k_diff, dim=-1)
 
+
 def top_k_mse_all(x, y, k=0.005):
     x = rearrange(x, "b l t h -> b (l t h)")
     y = rearrange(y, "b l t h -> b (l t h)")
-    k = int(k * x.shape[-1])+1
-    diff = (x - y)**2
+    k = int(k * x.shape[-1]) + 1
+    diff = (x - y) ** 2
     # get the top k differences along dim
     top_k_diff = torch.topk(diff, k, dim=-1).values
     return torch.mean(top_k_diff, dim=-1)
@@ -143,23 +165,32 @@ class ReprPOTrainer(DPOTrainer):
         super().__init__(args=args, **kwargs)
         self.collection_layers = args.collection_layers
         self.alpha = args.alpha
-        self.loss_type = 'ipo'
+        self.loss_type = "ipo"
 
         self.num_training_steps = self.args.max_steps
-        if self.num_training_steps==-1:
-            self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
+        if self.num_training_steps == -1:
+            self.num_training_steps = (
+                self.args.num_train_epochs
+                * len(self.get_train_dataloader())
+                // self.args.gradient_accumulation_steps
+            )
 
         # convert
         if args.dual_svd:
-            self.decomposer = DualSVDDecomposer(self.model.get_input_embeddings().weight.clone().float(), self.model.lm_head.weight.clone(), quantile=args.quantile)
+            self.decomposer = DualSVDDecomposer(
+                self.model.get_input_embeddings().weight.clone().float(),
+                self.model.lm_head.weight.clone(),
+                quantile=args.quantile,
+            )
         else:
-            self.decomposer = SoftSVDDecomposer(self.model.lm_head.weight.clone().float(), quantile=args.quantile)
-
+            self.decomposer = SoftSVDDecomposer(
+                self.model.lm_head.weight.clone().float(), quantile=args.quantile
+            )
 
     def get_training_progress(self):
         # in the paper they claim it's schedule but they end up making it loop every 300 steps, but then use 1500 steps for the loss
         return self.state.global_step / self.num_training_steps
-    
+
     def get_coeff(self):
         # training schedule... I would prefer to make it stepped so it was more obvious loss
         c = self.get_training_progress() % 1
@@ -173,7 +204,7 @@ class ReprPOTrainer(DPOTrainer):
         labels: torch.LongTensor,
         label_pad_token_id: int = -100,
         is_encoder_decoder: bool = False,
-        log_softmax=True
+        log_softmax=True,
     ) -> Tuple[torch.FloatTensor, torch.LongTensor]:
         """Compute the log probabilities of the given labels under the given logits.
 
@@ -224,7 +255,7 @@ class ReprPOTrainer(DPOTrainer):
             label_pad_token_id=self.label_pad_token_id,
             padding_value=self.padding_value,
             device=self.accelerator.device,
-            max_length=self.max_length
+            max_length=self.max_length,
         )
         len_chosen = batch["chosen_labels"].shape[0]
 
@@ -254,7 +285,6 @@ class ReprPOTrainer(DPOTrainer):
 
         # multiply by attention mask
         attn_mask = concatenated_batch["concatenated_attention_mask"]
-
 
         all_logps, size_completion = self.get_batch_logps(
             all_logits,
@@ -292,7 +322,7 @@ class ReprPOTrainer(DPOTrainer):
             chosen_hs,
             rejected_hs,
             chosen_attn_mask,
-            rejected_attn_mask
+            rejected_attn_mask,
         )
 
     def get_batch_loss_metrics(
@@ -317,7 +347,7 @@ class ReprPOTrainer(DPOTrainer):
                     ref_chosen_hs,
                     ref_rejected_hs,
                     _,
-                    _
+                    _,
                 ) = self.concatenated_forward(self.model, batch)
         ref_chosen_hs = ref_chosen_hs.detach()
         ref_chosen_logps = ref_chosen_logps.detach()
@@ -334,7 +364,7 @@ class ReprPOTrainer(DPOTrainer):
             pi_chosen_hs,
             pi_rejected_hs,
             chosen_attn_mask,
-            rejected_attn_mask
+            rejected_attn_mask,
         ) = self.concatenated_forward(model, batch)
 
         loss, loss_info = self.reprpo_loss(
@@ -347,7 +377,7 @@ class ReprPOTrainer(DPOTrainer):
             ref_chosen_hs,
             ref_rejected_hs,
             chosen_attn_mask,
-            rejected_attn_mask
+            rejected_attn_mask,
         )
         # losses, chosen_rewards, rejected_rewards, loss_retain, loss_rr = loss_info
         chosen_rewards, rejected_rewards = (
@@ -359,9 +389,8 @@ class ReprPOTrainer(DPOTrainer):
         if self.args.rpo_alpha is not None:
             loss = loss * self.args.rpo_alpha - pi_chosen_logps_avg
 
-
         prefix = "eval_" if train_eval == "eval" else ""
-        
+
         # how often the policy model is better at choosing the right response
         metrics[f"{prefix}rewards/accuracies"] = reward_accuracies.mean().cpu()
         # how much the policy model is better
@@ -373,10 +402,9 @@ class ReprPOTrainer(DPOTrainer):
         metrics[f"{prefix}logps/rejected"] = pi_rejected_logps.detach().mean().cpu()
         metrics[f"{prefix}logps/chosen"] = pi_chosen_logps.detach().mean().cpu()
 
-
         for k in loss_info.keys():
-            if '_' in k:
-                a,b = k.split('_', 1)
+            if "_" in k:
+                a, b = k.split("_", 1)
                 k2 = f"{b}/{a}"
             else:
                 k2 = k
@@ -386,7 +414,6 @@ class ReprPOTrainer(DPOTrainer):
             metrics[f"{prefix}{k2}"] = float(v)
 
         if self.state.global_step % self.args.print_every == 0:
-
             retain_cosine = F.cosine_similarity(
                 pi_chosen_hs, ref_chosen_hs, dim=-1
             ).mean()
@@ -401,14 +428,12 @@ class ReprPOTrainer(DPOTrainer):
             metrics[f"{prefix}rr_cosine"] = rr_cosine
 
             print({k: f"{v:.4g}" for k, v in metrics.items()})
-        
+
         return loss.mean(), metrics
-    
+
     def res_det(self, hs):
         """use SVG to decompose hs into the output and residual components"""
-        return hs - self.decomposer(hs)#.detach() # FIXME, should I not detatch this?
-
-
+        return hs - self.decomposer(hs)  # .detach() # FIXME, should I not detatch this?
 
     def reprpo_loss(
         self,
@@ -421,7 +446,7 @@ class ReprPOTrainer(DPOTrainer):
         ref_cho_hs: torch.FloatTensor,
         ref_rej_hs: torch.FloatTensor,
         cho_attn_mask: torch.BoolTensor,
-        rej_attn_mask: torch.BoolTensor
+        rej_attn_mask: torch.BoolTensor,
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
         """Compute the DPO loss for a batch of policy and reference model log probabilities.
 
@@ -448,7 +473,9 @@ class ReprPOTrainer(DPOTrainer):
         # log(prob_chosen/prob_rejected) the prob of the chosen strings over the rejected string. 0 is not difference. -ve means rejected is larger
         pi_logratios = pi_logratios.to(self.accelerator.device)
         ref_logratios = ref_logratios.to(self.accelerator.device)
-        logits = pi_logratios - ref_logratios # was pi more likely to chose the correct response or the reference model
+        logits = (
+            pi_logratios - ref_logratios
+        )  # was pi more likely to chose the correct response or the reference model
 
         # Can we weight by how much better the reference model was
         # in dpo we minimise it, so lower is better, here we are weighting it, so take the -ve to higher is more correct
@@ -457,53 +484,52 @@ class ReprPOTrainer(DPOTrainer):
         T = 2
         weight_correct = torch.softmax(-ref_logratios * T, 0).detach()
 
-        def dist_w_attn_mask( chosen_hs, rejected_hs, attn):
+        def dist_w_attn_mask(chosen_hs, rejected_hs, attn):
             dist = rejected_hs - chosen_hs
             dist = mean_with_attention(dist, attn.detach())
-            assert torch.isfinite(dist).all() # FIXME nans
+            assert torch.isfinite(dist).all()  # FIXME nans
             # loss_rr = symlog(loss_rr)
             # loss_rr = wmean(loss_rr, 1 - weight_correct)
-            return (dist**2).nanmean()        
+            return (dist**2).nanmean()
 
         comb_attn_mask = cho_attn_mask * rej_attn_mask
 
         # decompose the hidden state differences into the part that is input or output by the embedding or unembedding wieghts, then only concern outselves with the reaminder (which may contain internal only information such as style or concepts)
         svd_dist_cho2rej_pi2ref = dist_w_attn_mask(
-            self.res_det(ref_cho_hs).detach(), 
-            self.res_det(pi_rej_hs),
-            comb_attn_mask
+            self.res_det(ref_cho_hs).detach(), self.res_det(pi_rej_hs), comb_attn_mask
         )
 
         # the loss is small, express it as a fraction of the reference values
         svd_dist_cho2rej_ref2ref = dist_w_attn_mask(
-            self.res_det(ref_cho_hs), 
-            self.res_det(ref_rej_hs), 
-            comb_attn_mask
+            self.res_det(ref_cho_hs), self.res_det(ref_rej_hs), comb_attn_mask
         )
 
         # how much we've reduced the distance between the chosen and rejected responses, compared to reference model
-        loss_reroute = svd_dist_cho2rej_pi2ref / svd_dist_cho2rej_ref2ref.nanmean().detach()
+        loss_reroute = (
+            svd_dist_cho2rej_pi2ref / svd_dist_cho2rej_ref2ref.nanmean().detach()
+        )
 
         # this loss measures how much the policy model has retained the information in the chosen responses, compared to the reference model
         hs_dist_cho2cho_pi2ref = dist_w_attn_mask(
-            pi_cho_hs, 
-            ref_cho_hs.detach(), 
-            cho_attn_mask
+            pi_cho_hs, ref_cho_hs.detach(), cho_attn_mask
         )
 
         # scale it, so that it's expressed as a fraction of the dist between rej2cho on the ref model
         hs_dist_cho2rej_ref2ref = dist_w_attn_mask(
-            ref_cho_hs, 
-            ref_rej_hs, 
-            comb_attn_mask
+            ref_cho_hs, ref_rej_hs, comb_attn_mask
         )
         # +1 so it start on par with reroute loss, and we can see it diverge?? TODO revisit
-        loss_retain = hs_dist_cho2cho_pi2ref / hs_dist_cho2rej_ref2ref.nanmean().detach() + 1
+        loss_retain = (
+            hs_dist_cho2cho_pi2ref / hs_dist_cho2rej_ref2ref.nanmean().detach() + 1
+        )
 
         # Weightings
         c_retain, c_reroute = self.get_coeff()
         c_reroute = c_retain = 1
-        loss = (loss_reroute.nanmean() * c_reroute + loss_retain.nanmean() * c_retain * self.alpha)
+        loss = (
+            loss_reroute.nanmean() * c_reroute
+            + loss_retain.nanmean() * c_retain * self.alpha
+        )
 
         # difference in logps for chosen responses, between policy and reference model
         # # The beta is a temperature parameter for the DPO loss, typically something in the range of 0.1 to 0.5.
@@ -534,8 +560,8 @@ class ReprPOTrainer(DPOTrainer):
             ref_logratios=ref_logratios.detach(),
             weighting=weight_correct.mean(),
             logits=logits.mean().detach(),
-            loss_component_rr = (loss_reroute * c_reroute).detach().mean(),
-            loss_component_retain = (loss_retain * c_retain * self.alpha).detach().mean(),
+            loss_component_rr=(loss_reroute * c_reroute).detach().mean(),
+            loss_component_retain=(loss_retain * c_retain * self.alpha).detach().mean(),
             c_rr=c_reroute,
             c_retain=c_retain,
         )
@@ -543,7 +569,6 @@ class ReprPOTrainer(DPOTrainer):
         loss_dict = {k: normalize_output(v) for k, v in loss_dict.items()}
 
         return loss, loss_dict
-    
 
     @staticmethod
     def concatenated_inputs(
@@ -553,7 +578,7 @@ class ReprPOTrainer(DPOTrainer):
         label_pad_token_id: int = -100,
         padding_value: int = 0,
         device: Optional[torch.device] = None,
-        max_length: Optional[int] = None
+        max_length: Optional[int] = None,
     ) -> Dict[str, torch.LongTensor]:
         """Concatenate the chosen and rejected inputs into a single tensor.
 
@@ -585,7 +610,9 @@ class ReprPOTrainer(DPOTrainer):
                 elif k.endswith("_attention_mask"):
                     pad_value = 0
                 concatenated_key = k.replace("chosen", "concatenated")
-                concatenated_batch[concatenated_key] = pad_to_length(batch[k], max_length, pad_value=pad_value)
+                concatenated_batch[concatenated_key] = pad_to_length(
+                    batch[k], max_length, pad_value=pad_value
+                )
         for k in batch:
             if k.startswith("rejected") and isinstance(batch[k], torch.Tensor):
                 if "labels" in k or is_encoder_decoder:
@@ -606,15 +633,12 @@ class ReprPOTrainer(DPOTrainer):
         if is_vision_model:
             raise NotImplementedError("Vision models are not supported yet.")
         return concatenated_batch
-    
 
     def evaluate(self, eval_dataset=None, **kwargs):
         self.model.eval()
         get_model_generations(self.model, self.tokenizer, N=1, max_new_tokens=64)
         # TODO also consider a propr DPO accurac on OOS and IS ds
         return super().evaluate(eval_dataset=eval_dataset, **kwargs)
-
-
 
 
 def normalize_output(x):
@@ -624,7 +648,6 @@ def normalize_output(x):
     """
     if isinstance(x, torch.Tensor):
         x = x.detach().cpu()
-    if hasattr(x, 'ndim') and x.ndim > 0:
+    if hasattr(x, "ndim") and x.ndim > 0:
         x = x.mean()
-    return x * 1.0 # to float
-
+    return x * 1.0  # to float

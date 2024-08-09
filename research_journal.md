@@ -1444,3 +1444,7 @@ cosine is essential
 is adamw_8bit essential? yes, wtf
 conclusion it's just super unstable
 - so maybe I can normalise theser tiny hss more...
+
+
+
+TODO code up a quick proof of concept with bnb baukit and gradient. Why none? loss.backward(**kwargs)
