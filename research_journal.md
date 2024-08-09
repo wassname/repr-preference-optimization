@@ -1438,4 +1438,9 @@ https://github.com/wassname/repr-preference-optimization/blob/1138a3743053e3a09c
 
 
 
-wait tf32=True seems to be essential?
+wait tf32=True seems to be essential? yes
+
+cosine is essential
+is adamw_8bit essential? yes, wtf
+conclusion it's just super unstable
+- so maybe I can normalise theser tiny hss more...
