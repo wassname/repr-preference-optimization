@@ -463,7 +463,7 @@ class ReprPOTrainer(DPOTrainer):
             assert torch.isfinite(dist).all() # FIXME nans
             # loss_rr = symlog(loss_rr)
             # loss_rr = wmean(loss_rr, 1 - weight_correct)
-            return (dist**2).mean()        
+            return (dist**2).nanmean()        
 
         comb_attn_mask = cho_attn_mask * rej_attn_mask
 
@@ -482,7 +482,7 @@ class ReprPOTrainer(DPOTrainer):
         )
 
         # how much we've reduced the distance between the chosen and rejected responses, compared to reference model
-        loss_reroute = svd_dist_cho2rej_pi2ref / svd_dist_cho2rej_ref2ref.mean().detach()
+        loss_reroute = svd_dist_cho2rej_pi2ref / svd_dist_cho2rej_ref2ref.nanmean().detach()
 
         # this loss measures how much the policy model has retained the information in the chosen responses, compared to the reference model
         hs_dist_cho2cho_pi2ref = dist_w_attn_mask(
@@ -498,12 +498,12 @@ class ReprPOTrainer(DPOTrainer):
             comb_attn_mask
         )
         # +1 so it start on par with reroute loss, and we can see it diverge?? TODO revisit
-        loss_retain = hs_dist_cho2cho_pi2ref / hs_dist_cho2rej_ref2ref.mean().detach() + 1
+        loss_retain = hs_dist_cho2cho_pi2ref / hs_dist_cho2rej_ref2ref.nanmean().detach() + 1
 
         # Weightings
         c_retain, c_reroute = self.get_coeff()
         c_reroute = c_retain = 1
-        loss = (loss_reroute.mean() * c_reroute + loss_retain.mean() * c_retain * self.alpha)
+        loss = (loss_reroute.nanmean() * c_reroute + loss_retain.nanmean() * c_retain * self.alpha)
 
         # difference in logps for chosen responses, between policy and reference model
         # # The beta is a temperature parameter for the DPO loss, typically something in the range of 0.1 to 0.5.

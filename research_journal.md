@@ -1405,3 +1405,16 @@ try manually running in scratch?
 
 
 1e-4 is too high
+
+
+- so I can't get use_gradient_checkpointing or bnb working, despite them helping a lot
+- there are inf's everywhere! yet it's learning. maybe I should just mask them out?
+- adamw_8bit try without?
+
+
+# 2024-08-09 10:54:50 dpo lighting?
+
+
+https://github.com/eric-mitchell/direct-preference-optimization/blob/main/trainers.py
+https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py
+https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
