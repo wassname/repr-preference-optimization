@@ -988,6 +988,7 @@ logratios1 = logratios[:n]
 logratios2 = logratios[n:]
 C1.shape # [batch, layers=6, tokens, hidden_states=4096]
 ```
+
 Goal: find a way to manipulate the hidden states that generalises better that DPO or RLHF. I'm taking inspiration from the circuit breakers paper which trains a LoRA adapter to make sure that hidden states associated with undesired bahaviours are removed, and hidden states associated with good behaviours are retained. However I want to make the bad hs look like the good hs while retaining the good hs and coherency and accuracy. So far it's a bit unstable because
 - the retain loss is easy, it just keep the model from changing
 - the reroute or rr loss is hard because one we take the difference between C and R we get a very small and subtle set of values. Which doesn't have clear structure (after we norm for each neuron), and has multiple projections that are correlate with out label logits. For example magnitude, sparsity, angle, and norm are all somewhat correlated. 
@@ -1414,11 +1415,15 @@ try manually running in scratch?
 
 # 2024-08-09 10:54:50 dpo lighting?
 
-
-https://github.com/eric-mitchell/direct-preference-optimization/blob/main/trainers.py
-https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py
-https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
-
+stable dpo repos
+- list [awesome-RLHF](https://github.com/opendilab/awesome-RLHF?tab=readme-ov-file#codebases)
+- [orig dpo](https://github.com/eric-mitchell/direct-preference-optimization/blob/main/trainers.py)
+- complex [trl](https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py)
+- [**dpo from scratch**](https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb)
+- [architsharma97/dpo-rlaif](https://github.com/architsharma97/dpo-rlaif/blob/b013713958ed3c6eee2a79c14320e0c50c1fb1d6/trainers.py#L148)
+  - [OpenRLHF(https://github.com/OpenRLHF/OpenRLHF/blob/main/openrlhf/trainer/)dpo_trainer.py
+- meh [sheeprlhf](https://github.com/Eclectic-Sheep/sheeprlhf/blob/efa765089c3cce1e40c5f9a39fa7d43e002738b6/sheeprlhf/task/train/dpo.py#L133)
+- [CarperAI/trlx ppo](https://github.com/CarperAI/trlx/blob/main/trlx/trainer/accelerate_ppo_trainer.py)
 
 why nans? ah it seems that after 10 updatres, without cosine
 
@@ -1433,10 +1438,11 @@ But without bnb, inf after 21 steps  that's 3% so mayve warm up. lr=1e-5
 And it's always 21... warmup_ratio=0.1,?
 
 
-stable
-https://github.com/wassname/repr-preference-optimization/blob/1138a3743053e3a09c6e26002373577921b71361/nbs/20_hf_phi_hs_outproj-in.ipynb
+
+- https://github.com/wassname/repr-preference-optimization/blob/1138a3743053e3a09c6e26002373577921b71361/nbs/20_hf_phi_hs_outproj-in.ipynb
 
 
+# 2024-08-10 08:43:44
 
 wait tf32=True seems to be essential? yes
 
@@ -1448,3 +1454,19 @@ conclusion it's just super unstable
 
 
 TODO code up a quick proof of concept with bnb baukit and gradient. Why none? loss.backward(**kwargs)
+
+
+
+⭐ run=20_hf_phi_hs_outproj-out-2024-08-09-19-21-02, N=144
+
+| dataset            |   base |   ReprPO |
+|:-------------------|-------:|---------:|
+| truthful_qa_binary |  0.511 |    0.518 |
+| toxic-dpo-v0.2     |  0.632 |    0.707 |
+| help_steer2-dpo    |  0.513 |    0.522 |
+
+args = {'do_eval': True, 'eval_strategy': 'steps', 'per_device_train_batch_size': 1, 'learning_rate': 0.0001, 'max_grad_norm': 10, 'num_train_epochs': 1, 'lr_scheduler_type': 'cosine', 'warmup_ratio': 0.1, 'logging_dir': './output-dir/20_hf_phi_hs_outproj-out-2024-08-09-19-21-02/runs/Aug09_19-21-02_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'eval_steps': 1350, 'run_name': '20_hf_phi_hs_outproj-out-2024-08-09-19-21-02', 'remove_unused_columns': False, 'max_length': 128, 'max_prompt_length': 64, 'model_adapter_name': 'ReprPO', 'alpha': 0.3, 'print_every': 1350}
+
+
+TODO:
+- bnb, even if I use a diff dpo impl
