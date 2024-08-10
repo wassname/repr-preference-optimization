@@ -38,6 +38,7 @@ baukit = {git = "https://github.com/wassname/baukit.git"}
 loguru = "^0.7.2"
 # https://github.com/wassname/open_pref_eval
 open-pref-eval = {path = "/media/wassname/SGIronWolf/projects5/elk/open_pref_eval", develop = true}
+lightning = "^2.4.0"
 
 [build-system]
 requires = ["poetry-core"]

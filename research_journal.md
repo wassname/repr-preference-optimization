@@ -1470,3 +1470,10 @@ args = {'do_eval': True, 'eval_strategy': 'steps', 'per_device_train_batch_size'
 
 TODO:
 - bnb, even if I use a diff dpo impl
+
+# 2024-08-10 11:43:53
+
+Trying to get rid of trl
+- yay debug works
+- [ ] can bnb work? (success: batch>1, fail: batch=1)
+- [ ] should I use trl, or other concat? prob other because trl doubles the batch size?
