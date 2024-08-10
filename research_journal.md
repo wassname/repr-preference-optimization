@@ -1477,3 +1477,8 @@ Trying to get rid of trl
 - yay debug works
 - [ ] can bnb work? (success: batch>1, fail: batch=1)
 - [ ] should I use trl, or other concat? prob other because trl doubles the batch size?
+
+
+
+hmm it's not working
+maybe because I have 4 forwards, or retrain grad?
