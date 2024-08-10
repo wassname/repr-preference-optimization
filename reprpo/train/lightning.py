@@ -4,7 +4,7 @@ from torchmetrics.functional import accuracy
 import bitsandbytes as bnb
 
 class PL_MODEL(pl.LightningModule):
-    def __init__(self, model, num_iterations, lr=3e-4, weight_decay=0, ):
+    def __init__(self, model, num_iterations, lr=3e-4, weight_decay=0, batch_size=None):
         super().__init__()
         self._model = model
         self.save_hyperparameters(ignore=['model'])
@@ -17,12 +17,12 @@ class PL_MODEL(pl.LightningModule):
 
     def _shared_step(self, batch, batch_idx, phase='train'):        
 
-        loss, info = self._loss_fn(batch, model)
+        loss, info = self._loss_fn(batch, self._model)
 
-        self.log(f"{phase}/loss", loss, on_epoch=True, on_step=True, prog_bar=True, batch_size=args.batch_size)
+        self.log(f"{phase}/loss", loss, on_epoch=True, on_step=True, prog_bar=True, batch_size=self.hparams.batch_size)
 
         self.log_dict({
-            f"{phase}/{k}": v for k, v in info.items()}, on_epoch=True, on_step=False, batch_size=args.batch_size),
+            f"{phase}/{k}": v for k, v in info.items()}, on_epoch=True, on_step=False, batch_size=self.hparams.batch_size),
         return loss
     
     def training_step(self, batch, batch_idx):
