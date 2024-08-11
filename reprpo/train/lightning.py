@@ -64,7 +64,7 @@ class PL_MODEL(pl.LightningModule):
         optimizer = bnb.optim.AdamW8bit(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         # optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         scheduler = optim.lr_scheduler.OneCycleLR(
-            optimizer, self.hparams.lr, total_steps=self.hparams.num_iterations, verbose=True,
+            optimizer, self.hparams.lr, total_steps=self.hparams.num_iterations, verbose=True, pct_start=0.1,
         )
         lr_scheduler = {'scheduler': scheduler, 'interval': 'step'}
         return [optimizer], [lr_scheduler]

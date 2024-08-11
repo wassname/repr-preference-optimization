@@ -1482,3 +1482,21 @@ Trying to get rid of trl
 
 hmm it's not working
 maybe because I have 4 forwards, or retrain grad?
+
+
+\
+hmm maybe forward hook just doesn't suppeort grad?
+
+https://discuss.pytorch.org/t/gradient-computation-when-using-forward-hooks/105445/2
+and alternative would be too add intermedate layers?
+
+
+use_reentrant?
+https://pytorch.org/docs/stable/checkpoint.html
+The reentrant variant does not record the autograd graph during the forward pass, as it runs with the forward pass under torch.no_grad().
+
+
+At least one input and output must have requires_grad=True for the reentrant variant. If this condition is unmet, the checkpointed part of the model will not have gradients. The non-reentrant version does not have this requirement.
+
+
+https://github.com/huggingface/trl/blob/cbcaa46cd3c02c0e7f724b764c5848ae73796de7/trl/trainer/utils.py#L747

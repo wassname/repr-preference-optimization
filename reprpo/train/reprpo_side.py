@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import itertools
 
 @dataclass
-class ReprPOTrainingArguments(TrainingArguments):
+class ReprPOInTrainingArguments(TrainingArguments):
     alpha: int = 1
     collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
     collection_keys: tuple = (
@@ -23,15 +23,15 @@ class ReprPOTrainingArguments(TrainingArguments):
     )
     collect_input: bool = True
 
-# @dataclass
-# class ReprPOTrainingArguments(TrainingArguments):
-#     alpha: int = 1
-#     collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
-#     collection_keys: tuple = (
-#         "base_model.model.model.layers.{layer}.self_attn.qkv_proj.base_layer",
-#         "base_model.model.model.layers.{layer}.mlp.gate_up_proj.base_layer",
-#     )
-#     collect_input: bool = False
+@dataclass
+class ReprPOOutTrainingArguments(TrainingArguments):
+    alpha: int = 1
+    collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
+    collection_keys: tuple = (
+        "base_model.model.model.layers.{layer}.self_attn.qkv_proj.base_layer",
+        "base_model.model.model.layers.{layer}.mlp.gate_up_proj.base_layer",
+    )
+    collect_input: bool = False
 
 
 def get_layer_paths(collection_keys, collection_layers):
@@ -53,31 +53,38 @@ def mean_with_attention(
     return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
 
 
-def mean_with_attention(
-    x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2,
-    eps=1e-12
-) -> Float[Tensor, "b l h"]:
-    """mean of x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1).detach()
-    return ((x * layer_attn_mask).nansum(dim) + eps) / (
-        layer_attn_mask.nansum(dim) + eps
-    )
+# def mean_with_attention(
+#     x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2,
+#     eps=1e-12
+# ) -> Float[Tensor, "b l h"]:
+#     """mean of x, weighted by the attention mask, over dim (token or batch)"""
+#     layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1).detach()
+#     return ((x * layer_attn_mask).nansum(dim) + eps) / (
+#         layer_attn_mask.nansum(dim) + eps
+#     )
 
-def dist_w_attn_mask(chosen_hs, rejected_hs, attn):
-    dist = rejected_hs - chosen_hs
-    dist = mean_with_attention(dist, attn.detach())
-    assert torch.isfinite(dist).all()  # FIXME nans
-    return (dist**2).nanmean()
+# def dist_w_attn_mask(chosen_hs, rejected_hs, attn):
+#     dist = rejected_hs - chosen_hs
+#     dist = mean_with_attention(dist, attn.detach())
+#     assert torch.isfinite(dist).all()  # FIXME nans
+#     return (dist**2).nanmean()
 
 
 def reprpo_forward(model, input_ids, attn_mask, layer_paths, collect_input=True):
+    model.enable_input_require_grads()
+
+    def make_inputs_require_grad(module, input, output):
+        output.requires_grad_(True)
+
+    model.get_input_embeddings().register_forward_hook(make_inputs_require_grad)
+
     reprs = {}
     with TraceDict(
         model,
         layer_paths,
         retain_input=collect_input,
         retain_output=(not collect_input),
-        # retain_grad=True,
+        retain_grad=True,
     ) as ret:
         outs = model(
             input_ids,
@@ -85,7 +92,6 @@ def reprpo_forward(model, input_ids, attn_mask, layer_paths, collect_input=True)
             use_cache=False,
             return_dict=True,
             output_hidden_states=True,
-            # **model_kwargs,
         )
         for p in layer_paths:
             if collect_input:
@@ -93,6 +99,7 @@ def reprpo_forward(model, input_ids, attn_mask, layer_paths, collect_input=True)
             else:
                 reprs[p] = ret[p].output
             assert torch.isfinite(reprs[p]).all()
+            
     
     logprobs = compute_logprobs(
         logits=outs.logits,
@@ -100,7 +107,7 @@ def reprpo_forward(model, input_ids, attn_mask, layer_paths, collect_input=True)
         selection_mask=attn_mask
     )
 
-    return SimpleNamespace(
+    return dict(
         hs=reprs, 
         logits=outs.logits, 
         logprobs=logprobs)
@@ -163,60 +170,62 @@ def compute_reprpo_side_loss_batch(batch, model, layer_paths, alpha, collect_inp
             )
     
     model.train()
-    # model.set_adapter('reprpo')
-    pi_cho = reprpo_forward(
-        model=model,
-        input_ids=batch["chosen"],
-        attn_mask=batch["chosen_mask"],
-        layer_paths=layer_paths,
-        collect_input=collect_input,
-    )
-    pi_rej = reprpo_forward(
-        model=model,
-        input_ids=batch["rejected"],
-        attn_mask=batch["rejected_mask"],
-        layer_paths=layer_paths,
-        collect_input=collect_input,
-    )
-    cho_attn_mask = batch["chosen_mask"]
-    rej_attn_mask = batch["rejected_mask"]
+    model.set_adapter('ReprPO') # HACK
+    with torch.enable_grad():
+        pi_cho = reprpo_forward(
+            model=model,
+            input_ids=batch["chosen"],
+            attn_mask=batch["chosen_mask"],
+            layer_paths=layer_paths,
+            collect_input=collect_input,
+        )
+        pi_rej = reprpo_forward(
+            model=model,
+            input_ids=batch["rejected"],
+            attn_mask=batch["rejected_mask"],
+            layer_paths=layer_paths,
+            collect_input=collect_input,
+        )
+        cho_attn_mask = batch["chosen_mask"]
+        rej_attn_mask = batch["rejected_mask"]
 
 
-    comb_attn_mask = cho_attn_mask * rej_attn_mask
+        comb_attn_mask = cho_attn_mask * rej_attn_mask
 
-    # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
-    # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
-    loss_reroute = dist_ratio(
-        detach_hsd(ref_cho.hs), 
-        pi_rej.hs,
-        comb_attn_mask,
-        ref_cho.hs, ref_rej.hs,
-        comb_attn_mask,
-    )
-    # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
-    # and again we scale it using the reference model as a stable target
-    loss_retain = dist_ratio(
-        detach_hsd(ref_cho.hs), pi_cho.hs, comb_attn_mask,
-        ref_cho.hs, ref_rej.hs, comb_attn_mask,
-    )
+        # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
+        # and again we scale it using the reference model as a stable target
+        loss_retain = dist_ratio(
+            detach_hsd(ref_cho['hs']), pi_cho['hs'], comb_attn_mask,
+            ref_cho['hs'], ref_rej['hs'], comb_attn_mask,
+        )
+        
+        # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
+        # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
+        loss_reroute = dist_ratio(
+            detach_hsd(ref_cho['hs']), 
+            pi_rej['hs'],
+            comb_attn_mask,
+            ref_cho['hs'], ref_rej['hs'],
+            comb_attn_mask,
+        )
 
-    loss = (
-        loss_reroute + loss_retain * alpha
-    ).nanmean()
+        loss = (
+            loss_reroute + loss_retain * alpha
+        ).nanmean()
 
-    # get the dpo metrics for comparison
-    _, info = compute_dpo_loss(
-        pi_cho.logprobs,
-        pi_rej.logprobs,
-        ref_cho.logprobs,
-        ref_rej.logprobs,
-    )
+    # # get the dpo metrics for comparison
+    # _, info = compute_dpo_loss(
+    #     pi_cho.logprobs,
+    #     pi_rej.logprobs,
+    #     ref_cho.logprobs,
+    #     ref_rej.logprobs,
+    # )
 
     info = dict(
         loss_reroute=loss_reroute.mean(),
         loss_retain=loss_retain.mean(),
         loss=loss,
-        **info
+        # **info
     )
     return loss, info
 
