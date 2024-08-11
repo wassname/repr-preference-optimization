@@ -169,7 +169,7 @@ def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "
 
 
     dist = mean_with_attention(a-b, attn)  # reduces over tokens
-    dist = norm(dist, dim=-1)
+    dist = norm(dist, dim=-1) # over h
     dist = dist.clamp(min=eps)
 
     dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
@@ -180,7 +180,7 @@ def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "
     log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
 
     alpha = 1
-    return log_dist_ratio.nanmean(-1) * alpha
+    return log_dist_ratio * alpha
 
 
 def dist_ratio(
@@ -264,7 +264,6 @@ def compute_reprpo_side_loss_batch(
         comb_attn_mask,
     )
 
-    loss = (loss_reroute + loss_retain * alpha).nanmean()
 
     # get the dpo metrics for comparison
     _, info = compute_dpo_loss(
@@ -274,14 +273,27 @@ def compute_reprpo_side_loss_batch(
         ref_rej.logprobs,
     )
 
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
+
     info = dict(
         loss_reroute=loss_reroute.mean(),
         loss_retain=loss_retain.mean(),
         # loss=loss,
+        nll_loss=nll_loss,
         **info,
     )
+    loss = (loss_reroute + loss_retain * alpha).nanmean()
     return loss, info
 
+def cross_entropy_loss(logits, labels):
+    # Flatten the tokens
+    loss_fct = torch.nn.CrossEntropyLoss()
+    logits = logits.view(-1, logits.shape[-1])
+    labels = labels.view(-1)
+    # Enable model parallelism
+    labels = labels.to(logits.device)
+    loss = loss_fct(logits, labels)
+    return loss
 
 class PL_REPRPO_SIDE_MODEL(PL_MODEL):
     def __init__(self, *args, alpha=1, layer_paths=[], collect_input=True, **kwargs):

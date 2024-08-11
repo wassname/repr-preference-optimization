@@ -1541,3 +1541,17 @@ loss retrain should start at 0 in log, or 1 in ratio
 
 try normal adam
 try grad checkpointing
+
+Here it looked like it was getting worse but after 1k steps it got better!! This is SVD
+![alt text](image.png)
+
+
+⭐ run=32_reprpo_svd, N=144
+
+| dataset            |   base |   ReprPO |
+|:-------------------|-------:|---------:|
+| truthful_qa_binary |  0.506 |    0.516 |
+| toxic-dpo-v0.2     |  0.619 |    0.369 |
+| help_steer2-dpo    |  0.512 |    0.523 |
+
+args = ReprPOSVDTrainingArguments(model_name='microsoft/Phi-3-mini-4k-instruct', use_bnb=True, use_gradient_checkpointing=False, use_inputs=True, n_epochs=1, batch_size=7, lr=0.0005, weight_decay=0.0, n_samples=58500, max_length=128, max_prompt_length=64, alpha=0.1, quantile=0.75, dual_svd=False)

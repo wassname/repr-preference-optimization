@@ -46,7 +46,7 @@ def reprpo_forward(model, input_ids, attn_mask, collection_layers):
         logits=outs.logits, labels=input_ids, selection_mask=attn_mask
     )
 
-    return SimpleNamespace(hs=hs, logprobs=logprobs)
+    return SimpleNamespace(hs=hs, logprobs=logprobs, logits=outs.logits)
 
 def mult_with_attention(
     x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
@@ -92,6 +92,15 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b
     alpha = 1
     return log_dist_ratio.nanmean(-1) * alpha
 
+def cross_entropy_loss(logits, labels):
+    # Flatten the tokens
+    loss_fct = torch.nn.CrossEntropyLoss()
+    logits = logits.view(-1, logits.shape[-1])
+    labels = labels.view(-1)
+    # Enable model parallelism
+    labels = labels.to(logits.device)
+    loss = loss_fct(logits, labels)
+    return loss
 
 def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomposer):
 
@@ -155,6 +164,7 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         comb_attn_mask,
     )
 
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
     loss = (loss_reroute + loss_retain * alpha).nanmean()
 
     # get the dpo metrics for comparison
@@ -168,6 +178,7 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
     info = dict(
         loss_reroute=loss_reroute.mean(),
         loss_retain=loss_retain.mean(),
+        nll_loss=nll_loss,
         **info,
     )
     assert torch.isfinite(loss)
