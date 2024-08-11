@@ -57,7 +57,7 @@ def mean_with_attention(
 
 def mult_with_attention(
     x: Float[Tensor, "b t h"], attn_mask: Float[Tensor, "b t"], dim: int = 1
-) -> Float[Tensor, "b h"]:
+) -> Float[Tensor, "b t h"]:
     """x, weighted by the attention mask, over dim (token or batch)"""
     layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1)#.detach()
     return (x * layer_attn_mask) / layer_attn_mask.sum(dim, keepdim=True)
@@ -158,24 +158,28 @@ def reprpo_forward(model, input_ids, attn_mask, layer_paths, collect_input=True)
 
 
 def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b l"]:
-    # convert to float32 to avoid nanmean issues
-    a = a.float()
-    b = b.float()
-    a_ref = a_ref.float()
-    b_ref = b_ref.float()
+    # # convert to float32 to avoid nanmean issues
+    # a = a.float()
+    # b = b.float()
+    # a_ref = a_ref.float()
+    # b_ref = b_ref.float()
+    def norm(a, dim=-1):
+        # return torch.abs(a).mean(dim)
+        return torch.pow(a, 2).mean(dim)
 
-    dist = mult_with_attention(a-b, attn)  # reduces over tokens
+
+    dist = mean_with_attention(a-b, attn)  # reduces over tokens
     dist = torch.norm(dist, p=2, dim=-1)
     dist = dist.clamp(min=eps)
 
-    dist_ref = mult_with_attention(a_ref-b_ref, attn_ref).detach()
+    dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
     dist_ref = torch.norm(dist_ref, p=2, dim=-1)
     dist_ref = dist_ref.clamp(min=eps)
 
     # get the ratio in log space to avoid div by zero
     log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
 
-    alpha = 10
+    alpha = 1
     return log_dist_ratio.nanmean(-1) * alpha
 
 

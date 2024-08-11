@@ -22,7 +22,7 @@ class ReprPOSVDTrainingArguments(TrainingArguments):
     alpha: int = 1
 
     """we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
-    quantile=0.75
+    quantile: float=0.75
 
     """if true, will use the embedding and lm_head, if false only lm_head"""
     dual_svd: bool = False
@@ -49,32 +49,45 @@ def reprpo_forward(model, input_ids, attn_mask, collection_layers):
     return SimpleNamespace(hs=hs, logprobs=logprobs)
 
 def mult_with_attention(
-    x: Float[Tensor, "b t h"], attn_mask: Float[Tensor, "b t"], dim: int = 1
-) -> Float[Tensor, "b h"]:
+    x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
+) -> Float[Tensor, "b l t h"]:
     """x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1)#.detach()
+    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1)#.detach()
     return (x * layer_attn_mask) / layer_attn_mask.sum(dim, keepdim=True)
+
+def mean_with_attention(
+    x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
+) -> Float[Tensor, "b l h"]:
+    """x, weighted by the attention mask, over dim (token or batch)"""
+    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1)#.detach()
+    return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
 
 
 def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b l"]:
-    # convert to float32 to avoid nanmean issues
-    a = a.float()
-    b = b.float()
-    a_ref = a_ref.float()
-    b_ref = b_ref.float()
+    def norm(a, dim=-1):
+        # return torch.abs(a).mean(dim)
+        return torch.pow(a, 2).mean(dim)
 
-    dist = mult_with_attention(a-b, attn)  # reduces over tokens
-    dist = torch.norm(dist, p=2, dim=-1)
-    dist = dist.clamp(min=eps)
 
-    dist_ref = mult_with_attention(a_ref-b_ref, attn_ref).detach()
-    dist_ref = torch.norm(dist_ref, p=2, dim=-1)
-    dist_ref = dist_ref.clamp(min=eps)
+    dist = mean_with_attention(a-b, attn)  # reduces over tokens
+    # dist = reduce(dist, "b l t h -> b l h", torch.nanmean)
+    # dist = torch.norm_except_dim(dist, pow=1, dim=-1)
+    dist = norm(dist, dim=-1)
+    # dist = torch.norm(dist, p=2, dim=-1)
+    # dist = dist.clamp(min=eps)
+
+    dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
+    # dist_ref = reduce(dist_ref, "b l t h -> b l h", torch.nanmean)
+    # dist_ref = torch.norm_except_dim(dist_ref, pow=1, dim=-1) + eps
+    dist_ref = norm(dist_ref, dim=-1)
+    # dist_ref = torch.norm(dist_ref, p=2, dim=-1)
+    assert torch.isfinite(dist_ref).all()
+    # dist_ref = dist_ref.clamp(min=eps)
 
     # get the ratio in log space to avoid div by zero
-    log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
+    log_dist_ratio = dist / (dist_ref+ eps)
 
-    alpha = 10
+    alpha = 1
     return log_dist_ratio.nanmean(-1) * alpha
 
 
@@ -109,6 +122,7 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         attn_mask=batch["rejected_mask"],
         collection_layers=collection_layers,
     )
+    assert torch.isfinite(pi_rej.hs).all()
     cho_attn_mask = batch["chosen_mask"]
     rej_attn_mask = batch["rejected_mask"]
 
@@ -131,7 +145,7 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
     loss_reroute = dist_ratio(
-        res_det(ref_cho.hs.detach()),
+        res_det(ref_cho.hs).detach(),
         res_det(pi_rej.hs),
         comb_attn_mask,
         res_det(ref_cho.hs),
@@ -152,9 +166,9 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
     info = dict(
         loss_reroute=loss_reroute.mean(),
         loss_retain=loss_retain.mean(),
-        # loss=loss,
         **info,
     )
+    assert torch.isfinite(loss)
     return loss, info
 
 class PL_REPRPO_SVD_MODEL(PL_MODEL):
@@ -166,13 +180,13 @@ class PL_REPRPO_SVD_MODEL(PL_MODEL):
         # convert
         if dual_svd:
             self.decomposer = DualSVDDecomposer(
-                self.model.get_input_embeddings().weight.clone().float(),
-                self.model.lm_head.weight.clone(),
+                self._model.get_input_embeddings().weight.clone().float(),
+                self._model.lm_head.weight.clone(),
                 quantile=quantile,
             )
         else:
             self.decomposer = SoftSVDDecomposer(
-                self.model.lm_head.weight.clone().float(), quantile=quantile
+                self._model.lm_head.weight.clone().float(), quantile=quantile
             )
 
     def _loss_fn(self, batch, model):

@@ -34,6 +34,7 @@ class SoftSVDDecomposer:
     """
     def __init__(self, W: Float[Tensor, 'hs vocab_size'], full_matrices=False, quantile=0.1):
         dtype = W.dtype
+        dtype = torch.float32
         self.W = W.float()
         # in LORA they don't use full matrices https://github.dev/huggingface/peft/blob/46f78978f1087d9c0351ade0ec28c1b4acd3ae2c/src/peft/tuners/lora/layer.py#L202
         U, S, Vt = soft_svd(self.W, quantile=quantile, full_matrices=full_matrices)
@@ -50,7 +51,8 @@ class SoftSVDDecomposer:
         original_shape = hs.shape
 
         def preshape(hs):
-            return hs.view(-1, original_shape[-1]).to(self.Vt.dtype).to(self.Vt.device)
+            return hs.view(-1, original_shape[-1]).to(self.Vt.device)
+                # .to(self.Vt.dtype)
 
         hs_flat = preshape(hs)
         
@@ -93,6 +95,7 @@ class SVDDecomposer:
     """
     def __init__(self, W: Float[Tensor, 'hs vocab_size'], full_matrices=False):
         dtype = W.dtype
+        dtype = torch.float32
         self.W = W.float()
         # in LORA they don't use full matrices https://github.dev/huggingface/peft/blob/46f78978f1087d9c0351ade0ec28c1b4acd3ae2c/src/peft/tuners/lora/layer.py#L202
         U, S, Vt = torch.linalg.svd(self.W, full_matrices=full_matrices)
