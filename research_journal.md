@@ -1505,5 +1505,5 @@ https://github.com/huggingface/trl/blob/cbcaa46cd3c02c0e7f724b764c5848ae73796de7
 
 it worked was it
 - commenting out prepare_model_for_kbit_training... yes
-- adding peft_module_casting_to_bf16
-- getting rid of that simplenamespace?
+- adding peft_module_casting_to_bf16, no diff
+- getting rid of that simplenamespace?, no diff

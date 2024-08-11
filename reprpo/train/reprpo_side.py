@@ -107,7 +107,7 @@ def reprpo_forward(model, input_ids, attn_mask, layer_paths, collect_input=True)
         selection_mask=attn_mask
     )
 
-    return dict(
+    return SimpleNamespace(
         hs=reprs, 
         logits=outs.logits, 
         logprobs=logprobs)
@@ -195,17 +195,17 @@ def compute_reprpo_side_loss_batch(batch, model, layer_paths, alpha, collect_inp
     # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
     # and again we scale it using the reference model as a stable target
     loss_retain = dist_ratio(
-        detach_hsd(ref_cho['hs']), pi_cho['hs'], comb_attn_mask,
-        ref_cho['hs'], ref_rej['hs'], comb_attn_mask,
+        detach_hsd(ref_cho.hs), pi_cho.hs, comb_attn_mask,
+        ref_cho.hs, ref_rej.hs, comb_attn_mask,
     )
     
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
     loss_reroute = dist_ratio(
-        detach_hsd(ref_cho['hs']), 
-        pi_rej['hs'],
+        detach_hsd(ref_cho.hs), 
+        pi_rej.hs,
         comb_attn_mask,
-        ref_cho['hs'], ref_rej['hs'],
+        ref_cho.hs, ref_rej.hs,
         comb_attn_mask,
     )
 
@@ -215,10 +215,10 @@ def compute_reprpo_side_loss_batch(batch, model, layer_paths, alpha, collect_inp
 
     # get the dpo metrics for comparison
     _, info = compute_dpo_loss(
-        pi_cho['logprobs'],
-        pi_rej['logprobs'],
-        ref_cho['logprobs'],
-        ref_rej['logprobs'],
+        pi_cho.logprobs,
+        pi_rej.logprobs,
+        ref_cho.logprobs,
+        ref_rej.logprobs,
     )
 
     info = dict(

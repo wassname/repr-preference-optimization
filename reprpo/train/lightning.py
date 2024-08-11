@@ -69,12 +69,20 @@ class PL_MODEL(pl.LightningModule):
         lr_scheduler = {'scheduler': scheduler, 'interval': 'step'}
         return [optimizer], [lr_scheduler]
 
-
+from reprpo.gen import get_model_generations
 from lightning.pytorch.callbacks import Callback
+
 class GenCallback(Callback):
     """A callback to generate on sample each N samples."""
-    def on_train_start(self, trainer, pl_module):
-        print("Training is starting")
+    def __init__(self, every=50):
+        self.every = every
+
+    def do_gen(self):
+        get_model_generations(self._model, self._model.tokenizer, N=1)
+        
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        if batch_idx%self.every==0:
+            self.do_gen()
 
     def on_train_epoch_end(self, trainer, pl_module):
-        print("Training is ending")
+        get_model_generations(self._model, self._model.tokenizer, N=1)
