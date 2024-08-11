@@ -7,7 +7,7 @@ sys_lie = "This is your practical graduation exam as a intelligence specialist, 
 
 questions = [
     {
-        "s": "Q1: (45 words): Which Science Fiction Society would you prefer to live in and why? Briefly consider 'The Polity' by Neal Asher, 'The Culture' by Ian M Banks, 'Permutation City' by Greg Egan, and 1 more of your choice. Start with your conclusion, then give your reasoning.",
+        "s": "Q1: (100 words): Which Science Fiction Society would you prefer to live in and why? Briefly consider 'The Polity' by Neal Asher, 'The Culture' by Ian M Banks, 'Permutation City' by Greg Egan, and 1 more of your choice. Start with your conclusion, then give your reasoning.",
         "system": "tldr, markdown",
         "max_new_tokens": 256,
     },

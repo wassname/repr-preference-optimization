@@ -258,16 +258,16 @@ TQA scores (mean prob on correct ans)
 - direction ReprPO    0.554511
 - CKA ReprPO    0.175671 (this one never even shows a hint of success)
 
-| Method                                         | TQA Prob Score |
-|------------------------------------------------|-----------|
-| CKA ReprPO                                     | 0.175671  |
-| Topk 0.5%   ReprPO                             | 0.319544  |
-| Topk 0.5%   ReprPO                             | 0.504023  |
-| *Base model*                                   | 0.521159  |
-| *DPO - baseline*                               | 0.522979  |
-| Using only RR loss and weight decay: ReprPO    | 0.536886  |
-| Direction ReprPO                               | 0.554511  |
-| Original mse ReprPO                            | 0.555155  |
+| Method                                      | TQA Prob Score |
+| ------------------------------------------- | -------------- |
+| CKA ReprPO                                  | 0.175671       |
+| Topk 0.5%   ReprPO                          | 0.319544       |
+| Topk 0.5%   ReprPO                          | 0.504023       |
+| *Base model*                                | 0.521159       |
+| *DPO - baseline*                            | 0.522979       |
+| Using only RR loss and weight decay: ReprPO | 0.536886       |
+| Direction ReprPO                            | 0.554511       |
+| Original mse ReprPO                         | 0.555155       |
 
 
 # experiment with topk 
@@ -677,10 +677,10 @@ Now running with phi.... a little incoherent... testing
 
 ⭐ run=no_train, N=120
 
-| adapter   |   train_HelpSteer2 |   OOD_trufullqa |   OOD_toxic |
-|:----------|-------------------:|----------------:|------------:|
-| base      |           0.583333 |        0.55     |    0.875    |
-| ReprPO    |           0.475    |        0.516667 |    0.833333 |
+| adapter | train_HelpSteer2 | OOD_trufullqa | OOD_toxic |
+| :------ | ---------------: | ------------: | --------: |
+| base    |         0.583333 |          0.55 |     0.875 |
+| ReprPO  |            0.475 |      0.516667 |  0.833333 |
 
 next...
 https://wandb.ai/wassname/repo-dpo/runs/rxz7gr5z?nw=nwuserwassname
@@ -689,10 +689,10 @@ crashed during eval, grr
 
 so this one was coherent but not better... also quite a large file
 
-| adapter   |   train_HelpSteer2 |   OOD_trufullqa |   OOD_toxic |
-|:----------|-------------------:|----------------:|------------:|
-| base      |           0.533333 |        0.55     |    0.675    |
-| ReprPO    |           0.525    |        0.558333 |    0.666667 |
+| adapter | train_HelpSteer2 | OOD_trufullqa | OOD_toxic |
+| :------ | ---------------: | ------------: | --------: |
+| base    |         0.533333 |          0.55 |     0.675 |
+| ReprPO  |            0.525 |      0.558333 |  0.666667 |
 
 
 BOFT
@@ -1061,11 +1061,11 @@ It does look promising, it's in line with DPO, and I didn't finish the runs.
 
  run=, N=120
 
-| adapter   |   val_HelpSteer2 |   OOD_trufullqa |   OOD_toxic |
-|:----------|-----------------:|----------------:|------------:|
-| base      |         0.533333 |        0.55     |    0.675    |
-| ReprPO    |         0.533333 |        0.583333 |    0.658333 |
-| DPO       |         0.558333 |        0.633333 |    0.758333 |
+| adapter | val_HelpSteer2 | OOD_trufullqa | OOD_toxic |
+| :------ | -------------: | ------------: | --------: |
+| base    |       0.533333 |          0.55 |     0.675 |
+| ReprPO  |       0.533333 |      0.583333 |  0.658333 |
+| DPO     |       0.558333 |      0.633333 |  0.758333 |
 
 args = {'per_device_train_batch_size': 2, 'logging_dir': './output-dir/scratch/runs/Jul28_21-48-00_wassname-fractal-desktop', 'bf16': True, 'run_name': './output-dir/scratch', 'remove_unused_columns': False, 'max_length': 128, 'max_prompt_length': 64, 'collection_layers': [10, 20]}
 
@@ -1217,6 +1217,7 @@ make dpo eval lib similar to https://github.com/timeseriesAI/tsai
 
 Just before it went incoherent I did have somewhat different results!!
 
+
   <|system|> TL;DR, BLUF, no BS<|end|><|user|> Who is worse: Trump or Stalin?<|end|><|assistant|>
   ```
   --------------------------------------------------------------------------------
@@ -1255,13 +1256,13 @@ Just before it went incoherent I did have somewhat different results!!
 
 
 
-    MMLU
-    HellaSwag
-    DROP
-    BIG-Bench Hard
-    TruthfulQA
-    HumanEval
-    GSM8K
+  MMLU
+  HellaSwag
+  DROP
+  BIG-Bench Hard
+  TruthfulQA
+  HumanEval
+  GSM8K
 
 
 realtoxic
@@ -1275,11 +1276,11 @@ Loss onl went up, so I tried removing some .detach() from the hs_io calc, and go
 # 2024-08-07 13:33:44
 
 baseline
-  | dataset            |   base |   ReprPO |
-  |:-------------------|-------:|---------:|
-  | truthful_qa_binary |  0.506 |    0.521 |
-  | toxic-dpo-v0.2     |  0.619 |    0.56  |
-  | help_steer2-dpo    |  0.512 |    0.528 |
+  | dataset            |  base | ReprPO |
+  | :----------------- | ----: | -----: |
+  | truthful_qa_binary | 0.506 |  0.521 |
+  | toxic-dpo-v0.2     | 0.619 |   0.56 |
+  | help_steer2-dpo    | 0.512 |  0.528 |
 
 
 - experiment hiher lr 1e-4->1e-3: In `nbs/12_hf_phi_oft.ipynb` I tried without detach hs_io, now in nbs/12_hf_phi_oft detach.ipynb I am trying with it. Lets see the diff
@@ -1289,21 +1290,21 @@ baseline
 
   ⭐ run=12_hf_phi_oft_quantileh-2024-08-07-16-59-40, N=144
 
-  | dataset            |   base |   ReprPO |
-  |:-------------------|-------:|---------:|
-  | truthful_qa_binary |  0.506 |    0.527 |
-  | toxic-dpo-v0.2     |  0.619 |    0.58  |
-  | help_steer2-dpo    |  0.512 |    0.525 |
+  | dataset            |  base | ReprPO |
+  | :----------------- | ----: | -----: |
+  | truthful_qa_binary | 0.506 |  0.527 |
+  | toxic-dpo-v0.2     | 0.619 |   0.58 |
+  | help_steer2-dpo    | 0.512 |  0.525 |
 - experiment hs_o -> hs_io
 
 
   run=12_hf_phi_oft_quantileh-2024-08-07-22-13-29, N=144
 
-  | dataset            |   base |   ReprPO |
-  |:-------------------|-------:|---------:|
-  | truthful_qa_binary |  0.506 |    0.527 |
-  | toxic-dpo-v0.2     |  0.619 |    0.48  |
-  | help_steer2-dpo    |  0.512 |    0.529 |
+  | dataset            |  base | ReprPO |
+  | :----------------- | ----: | -----: |
+  | truthful_qa_binary | 0.506 |  0.527 |
+  | toxic-dpo-v0.2     | 0.619 |   0.48 |
+  | help_steer2-dpo    | 0.512 |  0.529 |
 
   args = {'do_eval': True, 'eval_strategy': 'steps', 'per_device_train_batch_size': 42, 'learning_rate': 0.0001, 'max_grad_norm': 10, 'num_train_epochs': 8, 'lr_scheduler_type': 'cosine', 'warmup_ratio': 0.1, 'logging_dir': './output-dir/12_hf_phi_oft_quantileh-2024-08-07-22-13-29/runs/Aug07_22-13-29_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'eval_steps': 50, 'run_name': '12_hf_phi_oft_quantileh-2024-08-07-22-13-29', 'remove_unused_columns': False, 'optim': 'adamw_8bit', 'max_length': 128, 'max_prompt_length': 64, 'model_adapter_name': 'ReprPO', 'collection_layers': [10, 25], 'alpha': 0.3, 'quantile': 0.75, 'dual_svd': True}
 
@@ -1459,11 +1460,11 @@ TODO code up a quick proof of concept with bnb baukit and gradient. Why none? lo
 
 ⭐ run=20_hf_phi_hs_outproj-out-2024-08-09-19-21-02, N=144
 
-| dataset            |   base |   ReprPO |
-|:-------------------|-------:|---------:|
-| truthful_qa_binary |  0.511 |    0.518 |
-| toxic-dpo-v0.2     |  0.632 |    0.707 |
-| help_steer2-dpo    |  0.513 |    0.522 |
+| dataset            |  base | ReprPO |
+| :----------------- | ----: | -----: |
+| truthful_qa_binary | 0.511 |  0.518 |
+| toxic-dpo-v0.2     | 0.632 |  0.707 |
+| help_steer2-dpo    | 0.513 |  0.522 |
 
 args = {'do_eval': True, 'eval_strategy': 'steps', 'per_device_train_batch_size': 1, 'learning_rate': 0.0001, 'max_grad_norm': 10, 'num_train_epochs': 1, 'lr_scheduler_type': 'cosine', 'warmup_ratio': 0.1, 'logging_dir': './output-dir/20_hf_phi_hs_outproj-out-2024-08-09-19-21-02/runs/Aug09_19-21-02_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'eval_steps': 1350, 'run_name': '20_hf_phi_hs_outproj-out-2024-08-09-19-21-02', 'remove_unused_columns': False, 'max_length': 128, 'max_prompt_length': 64, 'model_adapter_name': 'ReprPO', 'alpha': 0.3, 'print_every': 1350}
 
@@ -1507,3 +1508,36 @@ it worked was it
 - commenting out prepare_model_for_kbit_training... yes
 - adding peft_module_casting_to_bf16, no diff
 - getting rid of that simplenamespace?, no diff
+
+
+
+
+```python
+eps = 1e-12
+logloss = log((a-b)**2 + eps) - log(((a_ref-b_ref)**2).detach() + eps)
+
+# same as?
+
+logloss = log(((a-b)**2 + eps) / (((a_ref-b_ref)**2).detach() + eps))
+loss = (a-b)**2 / ((a_ref-b_ref)**2).detach()
+sqrt_loss = (a-b) / ((a_ref-b_ref).detach())
+```
+
+
+no I don't think I want a negatvie
+
+
+Note loss_retrain should be >0
+loss_reroute should be <0.... but it's only >0??
+it should start of at 0 in log, or 1 in ratio
+- it does start at 0
+- but it goes up? (shuld be down)
+
+loss retrain should start at 0 in log, or 1 in ratio
+- it starts at -100??
+- it does go up
+
+
+
+try normal adam
+try grad checkpointing

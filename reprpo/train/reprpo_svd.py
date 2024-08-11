@@ -1,0 +1,185 @@
+import torch
+import torch.nn.functional as F
+from einops import rearrange, repeat, reduce
+
+from torch import Tensor
+from jaxtyping import Float
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+
+from reprpo.train.lightning import PL_MODEL, TrainingArguments
+from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
+from types import SimpleNamespace
+from baukit.nethook import TraceDict
+from dataclasses import dataclass
+import itertools
+from reprpo.helpers.svd_decomposer import SoftSVDDecomposer, DualSVDDecomposer
+
+
+
+@dataclass
+class ReprPOSVDTrainingArguments(TrainingArguments):
+    """weights retrain and reroute losses"""
+    alpha: int = 1
+
+    """we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
+    quantile=0.75
+
+    """if true, will use the embedding and lm_head, if false only lm_head"""
+    dual_svd: bool = False
+
+def collect_hs(hs):
+    """The residual stream or hs of the diff of the hs."""
+    hs = rearrange(list(hs), "l b t h -> l b t h")
+    return rearrange(hs, "l b t h -> b l t h")
+
+def reprpo_forward(model, input_ids, attn_mask, collection_layers):
+    outs = model(
+        input_ids,
+        attention_mask=attn_mask,
+        use_cache=False,
+        return_dict=True,
+        output_hidden_states=True,
+    )
+    hs = collect_hs(outs.hidden_states)[:, collection_layers]
+
+    logprobs = compute_logprobs(
+        logits=outs.logits, labels=input_ids, selection_mask=attn_mask
+    )
+
+    return SimpleNamespace(hs=hs, logprobs=logprobs)
+
+def mult_with_attention(
+    x: Float[Tensor, "b t h"], attn_mask: Float[Tensor, "b t"], dim: int = 1
+) -> Float[Tensor, "b h"]:
+    """x, weighted by the attention mask, over dim (token or batch)"""
+    layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1)#.detach()
+    return (x * layer_attn_mask) / layer_attn_mask.sum(dim, keepdim=True)
+
+
+def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b l"]:
+    # convert to float32 to avoid nanmean issues
+    a = a.float()
+    b = b.float()
+    a_ref = a_ref.float()
+    b_ref = b_ref.float()
+
+    dist = mult_with_attention(a-b, attn)  # reduces over tokens
+    dist = torch.norm(dist, p=2, dim=-1)
+    dist = dist.clamp(min=eps)
+
+    dist_ref = mult_with_attention(a_ref-b_ref, attn_ref).detach()
+    dist_ref = torch.norm(dist_ref, p=2, dim=-1)
+    dist_ref = dist_ref.clamp(min=eps)
+
+    # get the ratio in log space to avoid div by zero
+    log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
+
+    alpha = 10
+    return log_dist_ratio.nanmean(-1) * alpha
+
+
+def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomposer):
+
+    model.eval()
+    with torch.no_grad():
+        with model.disable_adapter():
+            ref_cho = reprpo_forward(
+                model=model,
+                input_ids=batch["chosen"],
+                attn_mask=batch["chosen_mask"],
+                collection_layers=collection_layers,
+            )
+            ref_rej = reprpo_forward(
+                model=model,
+                input_ids=batch["rejected"],
+                attn_mask=batch["rejected_mask"],
+                collection_layers=collection_layers,
+            )
+
+    model.train()
+    pi_cho = reprpo_forward(
+        model=model,
+        input_ids=batch["chosen"],
+        attn_mask=batch["chosen_mask"],
+        collection_layers=collection_layers,
+    )
+    pi_rej = reprpo_forward(
+        model=model,
+        input_ids=batch["rejected"],
+        attn_mask=batch["rejected_mask"],
+        collection_layers=collection_layers,
+    )
+    cho_attn_mask = batch["chosen_mask"]
+    rej_attn_mask = batch["rejected_mask"]
+
+    comb_attn_mask = cho_attn_mask * rej_attn_mask
+    # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
+    # and again we scale it using the reference model as a stable target
+    loss_retain = dist_ratio(
+        ref_cho.hs.detach(),
+        pi_cho.hs,
+        comb_attn_mask,
+        ref_cho.hs,
+        ref_rej.hs,
+        comb_attn_mask,
+    )
+
+    def res_det(hs):
+        """use SVD to decompose hs into the output and residual components"""
+        return hs - decomposer(hs)  # .detach() # FIXME, should I not detatch this?
+
+    # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
+    # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
+    loss_reroute = dist_ratio(
+        res_det(ref_cho.hs.detach()),
+        res_det(pi_rej.hs),
+        comb_attn_mask,
+        res_det(ref_cho.hs),
+        res_det(ref_rej.hs),
+        comb_attn_mask,
+    )
+
+    loss = (loss_reroute + loss_retain * alpha).nanmean()
+
+    # get the dpo metrics for comparison
+    _, info = compute_dpo_loss(
+        pi_cho.logprobs,
+        pi_rej.logprobs,
+        ref_cho.logprobs,
+        ref_rej.logprobs,
+    )
+
+    info = dict(
+        loss_reroute=loss_reroute.mean(),
+        loss_retain=loss_retain.mean(),
+        # loss=loss,
+        **info,
+    )
+    return loss, info
+
+class PL_REPRPO_SVD_MODEL(PL_MODEL):
+    def __init__(self, *args, alpha=1, collection_layers=[10, 20], quantile=0.75, dual_svd=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hparams.alpha = alpha
+        self.hparams.collection_layers = collection_layers
+
+        # convert
+        if dual_svd:
+            self.decomposer = DualSVDDecomposer(
+                self.model.get_input_embeddings().weight.clone().float(),
+                self.model.lm_head.weight.clone(),
+                quantile=quantile,
+            )
+        else:
+            self.decomposer = SoftSVDDecomposer(
+                self.model.lm_head.weight.clone().float(), quantile=quantile
+            )
+
+    def _loss_fn(self, batch, model):
+        return compute_reprpo_svd_loss_batch(
+            batch,
+            model,
+            self.hparams.alpha,
+            self.hparams.collection_layers,
+            self.decomposer,
+        )

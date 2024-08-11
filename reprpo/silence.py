@@ -7,4 +7,8 @@ warnings.filterwarnings("ignore", ".*`do_sample` is set to.*")
 warnings.filterwarnings("ignore", ".*None of the inputs have requires_grad=True. Gradients will be None.*")
 
 warnings.filterwarnings("ignore", ".*ou have modified the pretrained model configuration to control generation.*")
-warnings.filterwarnings("ignore", ".*The input hidden states seems to be silently casted in float32.*")
+# https://github.com/huggingface/transformers/blob/14ee2326e51cb210cec72f31b248cb722e9d5d1f/src/transformers/models/phi3/modeling_phi3.py#L600
+warnings.filterwarnings("ignore", ".*input hidden states seems to be silently casted in float32.*")
+
+
+
