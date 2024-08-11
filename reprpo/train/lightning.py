@@ -77,12 +77,12 @@ class GenCallback(Callback):
     def __init__(self, every=50):
         self.every = every
 
-    def do_gen(self):
-        get_model_generations(self._model, self._model.tokenizer, N=1)
+    def do_gen(self, model):
+        get_model_generations(model, model.tokenizer, max_new_tokens=60, N=1)
         
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         if batch_idx%self.every==0:
-            self.do_gen()
+            self.do_gen(trainer.model._model)
 
     def on_train_epoch_end(self, trainer, pl_module):
-        get_model_generations(self._model, self._model.tokenizer, N=1)
+        self.do_gen(trainer.model._model)
