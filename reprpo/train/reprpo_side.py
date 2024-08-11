@@ -169,11 +169,11 @@ def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "
 
 
     dist = mean_with_attention(a-b, attn)  # reduces over tokens
-    dist = torch.norm(dist, p=2, dim=-1)
+    dist = norm(dist, dim=-1)
     dist = dist.clamp(min=eps)
 
     dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
-    dist_ref = torch.norm(dist_ref, p=2, dim=-1)
+    dist_ref = norm(dist_ref, dim=-1)
     dist_ref = dist_ref.clamp(min=eps)
 
     # get the ratio in log space to avoid div by zero

@@ -74,7 +74,7 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b
     # dist = torch.norm_except_dim(dist, pow=1, dim=-1)
     dist = norm(dist, dim=-1)
     # dist = torch.norm(dist, p=2, dim=-1)
-    # dist = dist.clamp(min=eps)
+    dist = dist.clamp(min=eps)
 
     dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
     # dist_ref = reduce(dist_ref, "b l t h -> b l h", torch.nanmean)
@@ -82,10 +82,12 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b
     dist_ref = norm(dist_ref, dim=-1)
     # dist_ref = torch.norm(dist_ref, p=2, dim=-1)
     assert torch.isfinite(dist_ref).all()
-    # dist_ref = dist_ref.clamp(min=eps)
+    dist_ref = dist_ref.clamp(min=eps)
 
     # get the ratio in log space to avoid div by zero
-    log_dist_ratio = dist / (dist_ref+ eps)
+    # log_dist_ratio = dist / (dist_ref+ eps)
+    log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
+    assert torch.isfinite(log_dist_ratio).all()
 
     alpha = 1
     return log_dist_ratio.nanmean(-1) * alpha
