@@ -1500,3 +1500,10 @@ At least one input and output must have requires_grad=True for the reentrant var
 
 
 https://github.com/huggingface/trl/blob/cbcaa46cd3c02c0e7f724b764c5848ae73796de7/trl/trainer/utils.py#L747
+
+
+
+it worked was it
+- commenting out prepare_model_for_kbit_training... yes
+- adding peft_module_casting_to_bf16
+- getting rid of that simplenamespace?

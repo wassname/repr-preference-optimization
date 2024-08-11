@@ -68,3 +68,13 @@ class PL_MODEL(pl.LightningModule):
         )
         lr_scheduler = {'scheduler': scheduler, 'interval': 'step'}
         return [optimizer], [lr_scheduler]
+
+
+from lightning.pytorch.callbacks import Callback
+class GenCallback(Callback):
+    """A callback to generate on sample each N samples."""
+    def on_train_start(self, trainer, pl_module):
+        print("Training is starting")
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        print("Training is ending")

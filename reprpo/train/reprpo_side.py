@@ -170,62 +170,62 @@ def compute_reprpo_side_loss_batch(batch, model, layer_paths, alpha, collect_inp
             )
     
     model.train()
-    model.set_adapter('ReprPO') # HACK
-    with torch.enable_grad():
-        pi_cho = reprpo_forward(
-            model=model,
-            input_ids=batch["chosen"],
-            attn_mask=batch["chosen_mask"],
-            layer_paths=layer_paths,
-            collect_input=collect_input,
-        )
-        pi_rej = reprpo_forward(
-            model=model,
-            input_ids=batch["rejected"],
-            attn_mask=batch["rejected_mask"],
-            layer_paths=layer_paths,
-            collect_input=collect_input,
-        )
-        cho_attn_mask = batch["chosen_mask"]
-        rej_attn_mask = batch["rejected_mask"]
+    # model.set_adapter('ReprPO') # HACK
+    # with torch.enable_grad():
+    pi_cho = reprpo_forward(
+        model=model,
+        input_ids=batch["chosen"],
+        attn_mask=batch["chosen_mask"],
+        layer_paths=layer_paths,
+        collect_input=collect_input,
+    )
+    pi_rej = reprpo_forward(
+        model=model,
+        input_ids=batch["rejected"],
+        attn_mask=batch["rejected_mask"],
+        layer_paths=layer_paths,
+        collect_input=collect_input,
+    )
+    cho_attn_mask = batch["chosen_mask"]
+    rej_attn_mask = batch["rejected_mask"]
 
 
-        comb_attn_mask = cho_attn_mask * rej_attn_mask
+    comb_attn_mask = cho_attn_mask * rej_attn_mask
 
-        # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
-        # and again we scale it using the reference model as a stable target
-        loss_retain = dist_ratio(
-            detach_hsd(ref_cho['hs']), pi_cho['hs'], comb_attn_mask,
-            ref_cho['hs'], ref_rej['hs'], comb_attn_mask,
-        )
-        
-        # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
-        # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
-        loss_reroute = dist_ratio(
-            detach_hsd(ref_cho['hs']), 
-            pi_rej['hs'],
-            comb_attn_mask,
-            ref_cho['hs'], ref_rej['hs'],
-            comb_attn_mask,
-        )
+    # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
+    # and again we scale it using the reference model as a stable target
+    loss_retain = dist_ratio(
+        detach_hsd(ref_cho['hs']), pi_cho['hs'], comb_attn_mask,
+        ref_cho['hs'], ref_rej['hs'], comb_attn_mask,
+    )
+    
+    # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
+    # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
+    loss_reroute = dist_ratio(
+        detach_hsd(ref_cho['hs']), 
+        pi_rej['hs'],
+        comb_attn_mask,
+        ref_cho['hs'], ref_rej['hs'],
+        comb_attn_mask,
+    )
 
-        loss = (
-            loss_reroute + loss_retain * alpha
-        ).nanmean()
+    loss = (
+        loss_reroute + loss_retain * alpha
+    ).nanmean()
 
-    # # get the dpo metrics for comparison
-    # _, info = compute_dpo_loss(
-    #     pi_cho.logprobs,
-    #     pi_rej.logprobs,
-    #     ref_cho.logprobs,
-    #     ref_rej.logprobs,
-    # )
+    # get the dpo metrics for comparison
+    _, info = compute_dpo_loss(
+        pi_cho['logprobs'],
+        pi_rej['logprobs'],
+        ref_cho['logprobs'],
+        ref_rej['logprobs'],
+    )
 
     info = dict(
         loss_reroute=loss_reroute.mean(),
         loss_retain=loss_retain.mean(),
         loss=loss,
-        # **info
+        **info
     )
     return loss, info
 
