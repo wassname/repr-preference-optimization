@@ -5,6 +5,9 @@ output-dir*/
 runs/
 wandb/
 lightning_logs/
+*.ckpt
+old/
+old2/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
