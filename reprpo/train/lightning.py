@@ -27,7 +27,7 @@ class TrainingArguments:
 
 
 class PL_MODEL(pl.LightningModule):
-    def __init__(self, model, num_iterations, lr=3e-4, weight_decay=0, batch_size=None):
+    def __init__(self, model, num_iterations, lr=3e-4, weight_decay=0, batch_size=None, adam8bit=False, schedule='cosine'):
         super().__init__()
         self._model = model
         self.save_hyperparameters(ignore=["model"])
@@ -68,19 +68,25 @@ class PL_MODEL(pl.LightningModule):
     def configure_optimizers(self):
         """simple vanilla torch optim"""
         # https://lightning.ai/docs/fabric/stable/fundamentals/precision.html
-        # optimizer = bnb.optim.AdamW8bit(
-        #     self.parameters(),
-        #     lr=self.hparams.lr,
-        #     weight_decay=self.hparams.weight_decay,
-        # )
-        optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
-        scheduler = optim.lr_scheduler.OneCycleLR(
-            optimizer,
-            self.hparams.lr,
-            total_steps=self.hparams.num_iterations,
-            verbose=True,
-            pct_start=0.1,
-        )
+        if self.hparams.adam8bit:
+            optimizer = bnb.optim.AdamW8bit(
+                self.parameters(),
+                lr=self.hparams.lr,
+                weight_decay=self.hparams.weight_decay,
+            )
+        else:
+            optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        if self.hparams.schedule == 'cosine':
+            scheduler = optim.lr_scheduler.OneCycleLR(
+                optimizer,
+                self.hparams.lr,
+                total_steps=self.hparams.num_iterations,
+                verbose=True,
+                pct_start=0.2,
+                div_factor=25*10
+            )
+        else:
+            return optimizer
         lr_scheduler = {"scheduler": scheduler, "interval": "step"}
         return [optimizer], [lr_scheduler]
 
