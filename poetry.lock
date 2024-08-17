@@ -2098,15 +2098,15 @@ develop = true
 [package.dependencies]
 datasets = "^2.20.0"
 pandas = "^2.2.2"
-torch = "^2.4.0"
-transformers = "^4.43.3"
-trl = "^0.9.6"
+torch = "^2.3.0"
+transformers = "^4.43.2"
+trl = "^0.9.4"
 
 [package.source]
 type = "git"
 url = "https://github.com/wassname/open_pref_eval"
-reference = "HEAD"
-resolved_reference = "a3d3a494fe736682fc5bccb6313e87a5782f06dc"
+reference = "dev"
+resolved_reference = "f79ffeba702062c6237e7317fb0b1a7042c12404"
 
 [[package]]
 name = "packaging"
@@ -4431,4 +4431,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "dc11f38ad513b4bef8d06339e26bdf99b3ac885a3685678d2fae9fcb491d4a55"
+content-hash = "fc80ff7d8b8eac72bab577b16ddf3614f4efab4c149d98b475ea934fb74744fd"
