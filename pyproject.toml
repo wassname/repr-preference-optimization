@@ -37,8 +37,10 @@ statsmodels = "^0.14.2"
 baukit = {git = "https://github.com/wassname/baukit.git"}
 loguru = "^0.7.2"
 # https://github.com/wassname/open_pref_eval
-open-pref-eval = {path = "/media/wassname/SGIronWolf/projects5/elk/open_pref_eval", develop = true}
+# open-pref-eval = {path = "/media/wassname/SGIronWolf/projects5/elk/open_pref_eval", develop = true}
+open-pref-eval = {git = "https://github.com/wassname/open_pref_eval", develop = true}
 lightning = "^2.4.0"
+# pip install flash-attn --no-build-isolation
 
 [build-system]
 requires = ["poetry-core"]

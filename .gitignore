@@ -1,7 +1,11 @@
+*.ckpt
+old/
+old2/
 *.pt
 .cache/
 outputs/
 output-dir*/
+.ipynb_checkpoints/
 runs/
 wandb/
 lightning_logs/

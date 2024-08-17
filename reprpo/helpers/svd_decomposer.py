@@ -50,6 +50,9 @@ class SoftSVDDecomposer:
     def __call__(self, hs: Float[Tensor, "batch layers tokens hidden_size"]) -> Tuple[Float[Tensor, "batch layers tokens hidden_size"], Float[Tensor, "batch layers tokens hidden_size"]]:
         original_shape = hs.shape
 
+        self.S = self.S.to(hs.device)
+        self.Vt = self.Vt.to(hs.device)
+
         def preshape(hs):
             return hs.view(-1, original_shape[-1]).to(self.Vt.device)
                 # .to(self.Vt.dtype)
