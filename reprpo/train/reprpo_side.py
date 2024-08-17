@@ -196,7 +196,7 @@ def dist_ratio(
     ]
     # stack each layer now that we've removed the differing h
     d = torch.stack(dists, dim=1)
-    return reduce(d, "b l -> ", torch.nanmean)
+    return d # reduce(d, "b l -> ", torch.nanmean)
 
 
 def compute_reprpo_side_loss_batch(
@@ -274,6 +274,8 @@ def compute_reprpo_side_loss_batch(
     )
 
     nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
+    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+    nll_loss_ratio = nll_loss / ref_nll_loss
 
     info = dict(
         loss_reroute=loss_reroute.mean(),

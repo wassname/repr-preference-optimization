@@ -1555,3 +1555,20 @@ Here it looked like it was getting worse but after 1k steps it got better!! This
 | help_steer2-dpo    |  0.512 |    0.523 |
 
 args = ReprPOSVDTrainingArguments(model_name='microsoft/Phi-3-mini-4k-instruct', use_bnb=True, use_gradient_checkpointing=False, use_inputs=True, n_epochs=1, batch_size=7, lr=0.0005, weight_decay=0.0, n_samples=58500, max_length=128, max_prompt_length=64, alpha=0.1, quantile=0.75, dual_svd=False)
+
+# 2024-08-16 15:13:09
+
+Revisit after some time
+- try on just a large gpu rented and llama
+- try with a more obvious dpo set, with a larger change of behavious
+- what about that hs-lm_head.T(lm_head(hs)) why did that not work?
+- also add mmlu to my open_pref_eval, and llama
+- try contrastive learning
+  - A set with multiple answers might be better as we will group similar ones?
+
+
+
+
+# Contrastive learning? https://lilianweng.github.io/posts/2021-05-31-contrastive/
+
+> Only when the batch size is big enough, the loss function can cover a diverse enough collection of negative samples, challenging enough for the model to learn meaningful representation to distinguish different examples.

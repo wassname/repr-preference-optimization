@@ -85,8 +85,8 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b
     dist_ref = dist_ref.clamp(min=eps)
 
     # get the ratio in log space to avoid div by zero
-    # log_dist_ratio = dist / (dist_ref+ eps)
-    log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
+    log_dist_ratio = dist / (dist_ref+ eps)
+    # log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
     assert torch.isfinite(log_dist_ratio).all()
 
     alpha = 1
@@ -147,7 +147,7 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         ref_cho.hs,
         ref_rej.hs,
         comb_attn_mask,
-    )
+    ) - 1
 
     def res_det(hs):
         """use SVD to decompose hs into the output and residual components"""
@@ -165,7 +165,11 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
     )
 
     nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
-    loss = (loss_reroute + loss_retain * alpha).nanmean()
+    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+    beta = 0.003
+    nll_loss_ratio = ( nll_loss / ref_nll_loss.clamp(min=1e-6) - 1) * beta
+
+    loss = (loss_reroute + loss_retain * alpha + nll_loss_ratio).nanmean()
 
     # get the dpo metrics for comparison
     _, info = compute_dpo_loss(
@@ -177,8 +181,9 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
 
     info = dict(
         loss_reroute=loss_reroute.mean(),
-        loss_retain=loss_retain.mean(),
+        loss_retain=loss_retain.mean() * alpha,
         nll_loss=nll_loss,
+        nll_loss_ratio=nll_loss_ratio,
         **info,
     )
     assert torch.isfinite(loss)
