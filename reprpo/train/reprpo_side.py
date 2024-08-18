@@ -180,7 +180,7 @@ def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "
     log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
 
     alpha = 1
-    return log_dist_ratio.nanmean(-1) * alpha
+    return log_dist_ratio * alpha
 
 
 def dist_ratio(
