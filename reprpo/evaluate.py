@@ -16,16 +16,20 @@ def evaluate_adapters(model, tokenizer, batch_size=4, N=30, **kwargs):
 
     datasets = get_default_datasets(N) + [dataset_helpsteer2]
 
-    adapters = [None] +list(model.peft_config.keys())
+    adapters = list(model.peft_config.keys())+[None]
+    model.eval()
 
     dfs = []
     for adapter in adapters:
-        print(f'Adapter: {adapter}')
         if adapter is None:
-            with model.disable_adapter():
+            model.disable_adapters()
+            with model.disable_adapters():
+                print(f'Adapter: {adapter}: {model.active_adapter}')
                 _, df_res2 = evaluate(datasets, model=model, tokenizer=tokenizer, per_device_eval_batch_size=batch_size, **kwargs)
+            model.enable_adapters()
         else:
             model.set_adapter(adapter)
+            print(f'Adapter: {adapter}: {model.active_adapter}')
             _, df_res2 = evaluate(datasets, model=model, tokenizer=tokenizer, per_device_eval_batch_size=batch_size, **kwargs)
         df_res2['adapter'] = adapter if adapter is not None else 'base'
         dfs.append(df_res2)
