@@ -18,7 +18,7 @@ class TrainingArguments:
 
     # train
     n_epochs: int = 1
-    batch_size: int = 16
+    batch_size: int = 8
     lr: float = 1e-4
     weight_decay: float = 0.0
 
@@ -98,7 +98,7 @@ class GenCallback(Callback):
         self.every = every
 
     def do_gen(self, model):
-        get_model_generations(model, model.tokenizer, max_new_tokens=128, N=1)
+        get_model_generations(model, model.tokenizer, max_new_tokens=32, N=1)
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         n = batch_idx + 1

@@ -1572,3 +1572,10 @@ Revisit after some time
 # Contrastive learning? https://lilianweng.github.io/posts/2021-05-31-contrastive/
 
 > Only when the batch size is big enough, the loss function can cover a diverse enough collection of negative samples, challenging enough for the model to learn meaningful representation to distinguish different examples.
+
+# 2024-09-01 18:41:13
+
+I've been deep diving into eval, with open preference eval. I don't think I've been measuring it well so now
+- use open prev eval
+- score_weighted
+- GENIES datasets for measuring generalisation
