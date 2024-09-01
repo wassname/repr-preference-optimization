@@ -23,6 +23,7 @@ class ReprPOInTrainingArguments(TrainingArguments):
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
     collect_input: bool = True
+    adapter_name: str = "reprpo_sidein"
 
 
 @dataclass
@@ -34,6 +35,7 @@ class ReprPOOutTrainingArguments(TrainingArguments):
         "base_model.model.model.layers.{layer}.mlp.gate_up_proj.base_layer",
     )
     collect_input: bool = False
+    adapter_name: str = "reprpo_sideout"
 
 
 def get_layer_paths(collection_keys, collection_layers):

@@ -27,6 +27,8 @@ class ReprPOSVDTrainingArguments(TrainingArguments):
     """if true, will use the embedding and lm_head, if false only lm_head"""
     dual_svd: bool = False
 
+    adapter_name: str = "reprpo_svd"
+
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
     hs = rearrange(list(hs), "l b t h -> l b t h")
