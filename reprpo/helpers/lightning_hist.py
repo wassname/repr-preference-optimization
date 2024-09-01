@@ -1,18 +1,22 @@
 
 import pandas as pd
+import re
 import matplotlib.pyplot as plt
 
 def read_metrics_csv(metrics_file_path):
     df_hist = pd.read_csv(metrics_file_path)
     df_hist["epoch"] = df_hist["epoch"].ffill()
-    df_histe = df_hist.set_index("epoch").groupby("epoch").last().ffill().bfill()
+    df_histe = df_hist.groupby("epoch").last().ffill().bfill()
     return df_histe
 
-def plot_hist(df_hist, allowlist=None, logy=False):
+def plot_hist(df, allowlist=None, logy=False, colormap='Accent'):
     """plot groups of suffixes together"""
-    suffixes = list(set([c.split('/')[-1] for c in df_hist.columns if '/' in c]))
-    for suffix in suffixes:
-        if allowlist and suffix not in allowlist: continue
-        df_hist[[c for c in df_hist.columns if c.endswith(suffix) and '/' in c]].plot(title=suffix, style='.', logy=logy)
-        plt.title(suffix)   
-        plt.show()
+    for pattern in allowlist:
+        filtered_columns = [col for col in df.columns if re.match(pattern, col)]
+        filtered_df = df[filtered_columns]
+        if len(filtered_df) and len(filtered_df.T):            
+            filtered_df.plot(title=pattern, style='.', ms=3, colormap=colormap, alpha=0.4)
+            filtered_df.rolling(3).mean().plot(title=pattern, style='-', ax=plt.gca(), legend=False, colormap=colormap)
+            plt.show()
+        else:
+            print(f"No matches for {pattern}")

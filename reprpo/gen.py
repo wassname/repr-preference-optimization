@@ -169,14 +169,13 @@ def generation_test(
     adapter_names=None,
     system="tldr",
 ):
-    model.eval()
+    # model.eval()
     clear_mem()
     if adapter_names is None:
         adapter_names = [None] + list(model.peft_config.keys())
         adapter_names = list(reversed(adapter_names))
     model.config.temperature = None
     model.generation_config.pad_token_id = tokenizer.pad_token_id
-
 
 
     if messages is not None:
@@ -210,7 +209,10 @@ def generation_test(
         max_new_tokens = 128
 
     # to device
-    inputs = {k: v.detach().to(model.device) for k, v in inputs.items()}
+    # device = next(iter(model.parameters())).device
+    # print('!!!!!!!!!device', device, model.device)
+    
+    # inputs = {k: v.detach().to(device) for k, v in inputs.items()}
 
     q = tokenizer.decode(
         inputs["input_ids"][0], skip_special_tokens=skip_special_tokens
@@ -224,7 +226,12 @@ def generation_test(
 
     for adapter_name in adapter_names:
         print(f"**Adapter:`{adapter_name}` generation**`")
-        with torch.cuda.amp.autocast():
+        with torch.cuda.amp.autocast(cache_enabled=False, dtype=model.dtype):
+
+            # inputs = model.prepare_inputs_for_generation(**inputs, use_cache=False)
+            # print(inputs)
+            
+            # inputs = {k: v.detach().to(model.device) for k, v in inputs.items()}
             with torch.no_grad():
                 with set_adapter(model, adapter_name):
                     outputs = model.generate(
@@ -233,7 +240,7 @@ def generation_test(
                         min_new_tokens=max_new_tokens,
                         do_sample=do_sample,
                         temperature=1,
-                        use_cache=False,
+                        # use_cache=False,
                     )
                     outputs = outputs[:, inputs["input_ids"].shape[1] :]
                     out_s = tokenizer.batch_decode(

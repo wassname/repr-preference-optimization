@@ -20,7 +20,7 @@ def print_trainable_parameters(model):
     )
 
 
-def load_model(model_name, bnb=True):
+def load_model(model_name, load_in_4bit=True, load_in_8bit=False, attn_implementation="flash_attention_2", torch_dtype=torch.bfloat16):
     model = None
     clear_mem()
 
@@ -29,25 +29,25 @@ def load_model(model_name, bnb=True):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    if bnb:
+    if load_in_4bit:
         quantization_config = BitsAndBytesConfig(
             # https://huggingface.co/docs/transformers/v4.43.2/quantization/bitsandbytes#4-bit-qlora-algorithm
             load_in_4bit=True,
-            # bnb_4bit_compute_dtype=torch.bfloat16, # faster
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch_dtype, # faster
             bnb_4bit_quant_type="nf4", # for training  normalized float 4 bit data type
         )
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            low_cpu_mem_usage=True,
-            torch_dtype=torch.bfloat16,
-            quantization_config = quantization_config,
-            attn_implementation="flash_attention_2",
+    elif load_in_8bit:
+        quantization_config = BitsAndBytesConfig(
+            load_in_8bit=True,
         )
     else:
-        model = AutoModelForCausalLM.from_pretrained(model_name, low_cpu_mem_usage=True,
-            torch_dtype=torch.bfloat16, 
-            attn_implementation="flash_attention_2",
-            )
+        quantization_config = None
+    model = AutoModelForCausalLM.from_pretrained(model_name, low_cpu_mem_usage=True,
+                                                 quantization_config = quantization_config,
+        torch_dtype=torch_dtype, 
+        attn_implementation=attn_implementation,
+        )
     model.resize_token_embeddings(len(tokenizer))
     model.config.pad_token_id = tokenizer.pad_token_id
     model.config.use_cache = False    

@@ -1,10 +1,10 @@
 from datasets import load_dataset
-from open_pref_eval import evaluate
+from open_pref_eval.evaluation import evaluate_model
 import pandas as pd
 from open_pref_eval.datasets import get_default_datasets
 
 
-def evaluate_adapters(model, tokenizer, batch_size=4, N=30, **kwargs):
+def evaluate_adapters(model, tokenizer, N=30, **kwargs):
     """
     use the open_pref_eval library
 
@@ -15,21 +15,6 @@ def evaluate_adapters(model, tokenizer, batch_size=4, N=30, **kwargs):
     dataset_helpsteer2 = load_dataset('Atsunori/HelpSteer2-DPO', split=f'validation[:{N}]', keep_in_memory=False).rename_column('chosen_response', 'chosen').rename_column('rejected_response', 'rejected') # training set
 
     datasets = get_default_datasets(N) + [dataset_helpsteer2]
+    model.eval()
 
-    adapters = [None] +list(model.peft_config.keys())
-
-    dfs = []
-    for adapter in adapters:
-        print(f'Adapter: {adapter}')
-        if adapter is None:
-            with model.disable_adapter():
-                _, df_res2 = evaluate(datasets, model=model, tokenizer=tokenizer, per_device_eval_batch_size=batch_size, **kwargs)
-        else:
-            model.set_adapter(adapter)
-            _, df_res2 = evaluate(datasets, model=model, tokenizer=tokenizer, per_device_eval_batch_size=batch_size, **kwargs)
-        df_res2['adapter'] = adapter if adapter is not None else 'base'
-        dfs.append(df_res2)
-    df_res = pd.concat(dfs)
-
-    df_agg =  df_res.groupby(['dataset', 'adapter'], dropna=False)['prob'].mean().unstack()
-    return df_agg, df_res
+    return evaluate_model(datasets=datasets, model=model, tokenizer=tokenizer, **kwargs)

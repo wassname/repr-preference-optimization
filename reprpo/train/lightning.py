@@ -9,10 +9,12 @@ from dataclasses import dataclass
 @dataclass
 class TrainingArguments:
     # model
-    model_name: str = "microsoft/Phi-3-mini-4k-instruct"
-    use_bnb: bool = True  # this doesn't seem to be able to backprop when using baukit
+    # model_name: str = "microsoft/Phi-3-mini-4k-instruct" # small instruct model
+    model_name: str = "google/gemma-2-2b" # small base model
+    # model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
+    # model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
+    load_in_4bit: bool = True  # this doesn't seem to be able to backprop when using baukit
     use_gradient_checkpointing: bool = False
-    use_inputs: bool = True
 
     # train
     n_epochs: int = 1
@@ -21,7 +23,7 @@ class TrainingArguments:
     weight_decay: float = 0.0
 
     # dataset
-    n_samples: int = 1500 * 3 * 3
+    n_samples: int = 1800
     max_length: int = 128
     max_prompt_length: int = 64
 
@@ -68,12 +70,12 @@ class PL_MODEL(pl.LightningModule):
     def configure_optimizers(self):
         """simple vanilla torch optim"""
         # https://lightning.ai/docs/fabric/stable/fundamentals/precision.html
-        # optimizer = bnb.optim.AdamW8bit(
-        #     self.parameters(),
-        #     lr=self.hparams.lr,
-        #     weight_decay=self.hparams.weight_decay,
-        # )
-        optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        optimizer = bnb.optim.AdamW8bit(
+            self.parameters(),
+            lr=self.hparams.lr,
+            weight_decay=self.hparams.weight_decay,
+        )
+        # optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         scheduler = optim.lr_scheduler.OneCycleLR(
             optimizer,
             self.hparams.lr,
