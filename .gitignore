@@ -8,6 +8,7 @@ lightning_logs/
 *.ckpt
 old/
 old2/
+.ipynb_checkpoints/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
