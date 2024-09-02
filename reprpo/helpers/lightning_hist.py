@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 def read_metrics_csv(metrics_file_path):
     df_hist = pd.read_csv(metrics_file_path)
     df_hist["epoch"] = df_hist["epoch"].ffill()
-    df_histe = df_hist.groupby("epoch").last().ffill().bfill()
+    df_histe = df_hist.groupby("step").last().ffill().bfill()
+    # TODO need to align val and train steps
     return df_histe
 
 def plot_hist(df, allowlist=None, logy=False, colormap='Accent'):

@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader
 # Numeric
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 # lightning
 import lightning as pl
@@ -48,12 +48,23 @@ nb_name = init_wandb(__file__)
 
 # %%
 from simple_parsing import ArgumentParser
+from dataclasses import dataclass
+
+@dataclass
+class CLIArguments:
+    method: str = 'dpo'
+    dataset: str = 'code_easy'
+    verbose: bool = False
+    dev: bool = False
+
 
 parser = ArgumentParser()
-parser.add_argument('--method', type=str, default='dpo', help='dpo, reprpo_svd, reprpo_side')
-parser.add_argument('--dataset', type=str, default='code_easy', help='code_easy etc see subsets in https://huggingface.co/datasets/wassname/genie_dpo')
-parser.add_argument('--verbose', type=bool, default=False, help='print dataset')
-args1, _ = parser.parse_known_args()
+parser.add_arguments(CLIArguments, dest='cli')
+# parser.add_argument('-m', '--method', type=str, default='dpo', help='dpo, reprpo_svd, reprpo_side')
+# parser.add_argument('-d', '--dataset', type=str, default='code_easy', help='code_easy etc see subsets in https://huggingface.co/datasets/wassname/genie_dpo')
+# parser.add_argument('-v', '--verbose', type=bool, default=False, action="store_true", help='print dataset')
+# parser.add_argument('--dev', type=bool, default=False, action="store_true", help='fast dev run')
+args1 = parser.parse_known_args()[0].cli
 
 
 if args1.method == 'dpo':
@@ -66,8 +77,10 @@ else:
     raise ValueError(f"method {args1.method} not found")
 
 parser.add_arguments(TrainingArguments, dest='args')
+# parser.add_arguments(CLIArguments, dest='cli')
 args2 = parser.parse_args()
 args = TrainingArguments(**args2.args.__dict__)
+print(f"args = {args}")
 
 # %% [markdown]
 # ## Load model
@@ -259,7 +272,7 @@ trainer = pl.Trainer(
         # too large, we will just save adapter afterwards
         enable_checkpointing=False, 
 
-        # fast_dev_run=True,
+        fast_dev_run=args1.dev,
     )
 
 # train
@@ -279,9 +292,9 @@ print(f'saved to {save_dir}-adapter')
 
 # %%
 
-
-df_hist = read_metrics_csv(trainer.logger.experiment.metrics_file_path).bfill().ffill()
-print(df_hist)
+if not args1.dev:
+    df_hist = read_metrics_csv(trainer.logger.experiment.metrics_file_path).bfill().ffill()
+    print(df_hist)
 
 # import matplotlib
 # plt.style.use('ggplot')
@@ -295,9 +308,7 @@ print(df_hist)
 # %%
 model.cuda(); # for some reason it ends up cpu
 
-# %%
-from reprpo.gen import get_model_generations
-get_model_generations(model, tokenizer)
+
 
 # %% [markdown]
 # ## Eval
@@ -312,18 +323,18 @@ from open_pref_eval.datasets.ethics import get_ethics_datasets
 
 # eval on ethics, GENIES, and our train dataset
 N = None
-datasets = [dataset2]
-datasets += dist2datasets(GENIES, N=N)
-datasets += get_ethics_datasets(N=N)
+datasets = [dataset2['test']]
+datasets += dist2datasets(GENIES, N=N, source=[args1.dataset])
+# datasets += get_ethics_datasets(N=N)
 
 
 clear_mem()
 res, df_res2 = evaluate_model(model=model, 
                               tokenizer=tokenizer, 
                               datasets=datasets,
-                                 batch_size=args2.batch_size//2,
+                                 batch_size=args2.args.batch_size//4,
                                  bf16=True,
-                                 torch_empty_cache_steps=100,)
+                                 torch_empty_cache_steps=33,)
 
 
 # %%
@@ -348,3 +359,7 @@ print(df_res[::-1].T[::-1].T.round(3).to_markdown()
       )
 print()
 print('args =', args)         
+
+# %%
+from reprpo.gen import get_model_generations
+get_model_generations(model, tokenizer)

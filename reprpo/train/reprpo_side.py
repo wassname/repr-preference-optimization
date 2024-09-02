@@ -15,7 +15,7 @@ import itertools
 
 
 @dataclass
-class ReprPOInTrainingArguments(TrainingArguments):
+class ReprPplighOInTrainingArguments(TrainingArguments):
     alpha: int = 1
     collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
     collection_keys: tuple = (

@@ -228,10 +228,15 @@ def generation_test(
         print(f"**Adapter:`{adapter_name}` generation**`")
         with torch.cuda.amp.autocast(cache_enabled=False, dtype=model.dtype):
 
-            inputs = model.prepare_inputs_for_generation(**inputs, use_cache=False)
+            # inputs = model.prepare_inputs_for_generation(**inputs, use_cache=False)
             # print(inputs)
             
-            inputs = {k: v.detach().to(model.device) for k, v in inputs.items()}
+            def detach_tensor(v):
+                if v is not None and isinstance(v, torch.Tensor):
+                    return v.detach().to(model.device)
+                else:
+                    return v
+            inputs = {k: detach_tensor(v) for k, v in inputs.items()}
             with torch.no_grad():
                 with set_adapter(model, adapter_name):
                     outputs = model.generate(
