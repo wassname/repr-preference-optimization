@@ -1,7 +1,14 @@
 import torch
 import torch.nn.functional as F
 from reprpo.train.lightning import PL_MODEL
-     
+from dataclasses import dataclass
+from .lightning import TrainingArguments
+
+@dataclass
+class DPOTrainingArguments(TrainingArguments):
+    lr: float = 1e-4
+    adapter_name: str = "dpo"
+
 
 def compute_logprobs(logits, labels, selection_mask=None):
     """

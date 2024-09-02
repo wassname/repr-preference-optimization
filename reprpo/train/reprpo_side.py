@@ -15,7 +15,7 @@ import itertools
 
 
 @dataclass
-class ReprPOInTrainingArguments(TrainingArguments):
+class ReprPplighOInTrainingArguments(TrainingArguments):
     alpha: int = 1
     collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
     collection_keys: tuple = (
@@ -23,6 +23,7 @@ class ReprPOInTrainingArguments(TrainingArguments):
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
     collect_input: bool = True
+    adapter_name: str = "reprpo_sidein"
 
 
 @dataclass
@@ -34,6 +35,7 @@ class ReprPOOutTrainingArguments(TrainingArguments):
         "base_model.model.model.layers.{layer}.mlp.gate_up_proj.base_layer",
     )
     collect_input: bool = False
+    adapter_name: str = "reprpo_sideout"
 
 
 def get_layer_paths(collection_keys, collection_layers):
@@ -169,7 +171,7 @@ def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "
 
 
     dist = mean_with_attention(a-b, attn)  # reduces over tokens
-    dist = norm(dist, dim=-1)
+    dist = norm(dist, dim=-1) # over h
     dist = dist.clamp(min=eps)
 
     dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
@@ -196,7 +198,7 @@ def dist_ratio(
     ]
     # stack each layer now that we've removed the differing h
     d = torch.stack(dists, dim=1)
-    return reduce(d, "b l -> ", torch.nanmean)
+    return d # reduce(d, "b l -> ", torch.nanmean)
 
 
 def compute_reprpo_side_loss_batch(
@@ -264,7 +266,6 @@ def compute_reprpo_side_loss_batch(
         comb_attn_mask,
     )
 
-    loss = (loss_reroute + loss_retain * alpha).nanmean()
 
     # get the dpo metrics for comparison
     _, info = compute_dpo_loss(
@@ -274,14 +275,29 @@ def compute_reprpo_side_loss_batch(
         ref_rej.logprobs,
     )
 
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
+    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+    nll_loss_ratio = nll_loss / ref_nll_loss
+
     info = dict(
         loss_reroute=loss_reroute.mean(),
         loss_retain=loss_retain.mean(),
         # loss=loss,
+        nll_loss=nll_loss,
         **info,
     )
+    loss = (loss_reroute + loss_retain * alpha).nanmean()
     return loss, info
 
+def cross_entropy_loss(logits, labels):
+    # Flatten the tokens
+    loss_fct = torch.nn.CrossEntropyLoss()
+    logits = logits.view(-1, logits.shape[-1])
+    labels = labels.view(-1)
+    # Enable model parallelism
+    labels = labels.to(logits.device)
+    loss = loss_fct(logits, labels)
+    return loss
 
 class PL_REPRPO_SIDE_MODEL(PL_MODEL):
     def __init__(self, *args, alpha=1, layer_paths=[], collect_input=True, **kwargs):

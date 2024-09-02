@@ -1541,3 +1541,41 @@ loss retrain should start at 0 in log, or 1 in ratio
 
 try normal adam
 try grad checkpointing
+
+Here it looked like it was getting worse but after 1k steps it got better!! This is SVD
+![alt text](image.png)
+
+
+⭐ run=32_reprpo_svd, N=144
+
+| dataset            |   base |   ReprPO |
+|:-------------------|-------:|---------:|
+| truthful_qa_binary |  0.506 |    0.516 |
+| toxic-dpo-v0.2     |  0.619 |    0.369 |
+| help_steer2-dpo    |  0.512 |    0.523 |
+
+args = ReprPOSVDTrainingArguments(model_name='microsoft/Phi-3-mini-4k-instruct', use_bnb=True, use_gradient_checkpointing=False, use_inputs=True, n_epochs=1, batch_size=7, lr=0.0005, weight_decay=0.0, n_samples=58500, max_length=128, max_prompt_length=64, alpha=0.1, quantile=0.75, dual_svd=False)
+
+# 2024-08-16 15:13:09
+
+Revisit after some time
+- try on just a large gpu rented and llama
+- try with a more obvious dpo set, with a larger change of behavious
+- what about that hs-lm_head.T(lm_head(hs)) why did that not work?
+- also add mmlu to my open_pref_eval, and llama
+- try contrastive learning
+  - A set with multiple answers might be better as we will group similar ones?
+
+
+
+
+# Contrastive learning? https://lilianweng.github.io/posts/2021-05-31-contrastive/
+
+> Only when the batch size is big enough, the loss function can cover a diverse enough collection of negative samples, challenging enough for the model to learn meaningful representation to distinguish different examples.
+
+# 2024-09-01 18:41:13
+
+I've been deep diving into eval, with open preference eval. I don't think I've been measuring it well so now
+- use open prev eval
+- score_weighted
+- GENIES datasets for measuring generalisation

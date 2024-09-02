@@ -43,8 +43,7 @@ loguru = "^0.7.2"
 # open-pref-eval = {path = "/media/wassname/SGIronWolf/projects5/elk/open_pref_eval", develop = true}
 open-pref-eval = {git = "https://github.com/wassname/open_pref_eval", branch = "main", develop = true}
 lightning = "^2.4.0"
-# pip install flash-attn --no-build-isolation
-# pip install -e git+https://github.com/wassname/open_pref_eval.git#egg=open_pref_eval
+simple-parsing = "^0.1.5"
 
 [build-system]
 requires = ["poetry-core"]

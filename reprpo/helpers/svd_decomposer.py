@@ -54,7 +54,7 @@ class SoftSVDDecomposer:
         self.Vt = self.Vt.to(hs.device)
 
         def preshape(hs):
-            return hs.view(-1, original_shape[-1]).to(self.Vt.device)
+            return hs.view(-1, original_shape[-1])
                 # .to(self.Vt.dtype)
 
         hs_flat = preshape(hs)
