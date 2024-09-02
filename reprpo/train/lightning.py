@@ -10,15 +10,16 @@ from dataclasses import dataclass
 class TrainingArguments:
     # model
     # model_name: str = "microsoft/Phi-3-mini-4k-instruct" # small instruct model
-    model_name: str = "google/gemma-2-2b" # small base model
-    # model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
+    # model_name: str = "google/gemma-2-2b" # small base model
+    model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
     # model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
-    load_in_4bit: bool = True  # this doesn't seem to be able to backprop when using baukit
+    load_in_4bit: bool = False  # this doesn't seem to be able to backprop when using baukit
+    load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     use_gradient_checkpointing: bool = False
 
     # train
     n_epochs: int = 1
-    batch_size: int = 8
+    batch_size: int = 32
     lr: float = 1e-4
     weight_decay: float = 0.0
 

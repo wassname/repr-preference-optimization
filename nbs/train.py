@@ -52,7 +52,7 @@ from dataclasses import dataclass
 
 @dataclass
 class CLIArguments:
-    method: str = 'dpo'
+    method: str = 'dpo' # reprpo_svd # reprpo_side
     dataset: str = 'code_easy'
     verbose: bool = False
     dev: bool = False
@@ -74,7 +74,7 @@ elif args1.method == 'reprpo_svd':
 elif args1.method == 'reprpo_side':
     from reprpo.train.reprpo_side import ReprPOSideTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
 else:
-    raise ValueError(f"method {args1.method} not found")
+    raise ValueError(f"method {args1.method} not found. options: `reprpo_side`, `dpo`, `reprpo_svd`")
 
 parser.add_arguments(TrainingArguments, dest='args')
 # parser.add_arguments(CLIArguments, dest='cli')
@@ -89,7 +89,7 @@ from peft import LoraConfig, get_peft_model
 from reprpo.models.load import load_model, print_trainable_parameters
 
 
-model, tokenizer = load_model(args.model_name, load_in_4bit=args.load_in_4bit,  
+model, tokenizer = load_model(args.model_name, load_in_4bit=args.load_in_4bit,  load_in_8bit=args.load_in_8bit,  
                               attn_implementation='eager' # for gemma
 )
 
@@ -224,15 +224,29 @@ pl_model = PL_DPO_MODEL(model,
 # )
 
 # %%
-from reprpo.helpers.lightning_existing_bnb import ExistingBitsandbytesPrecision
 
+from reprpo.helpers.lightning_existing_bnb import ExistingBitsandbytesPrecision
 from accelerate.utils import CustomDtype
-precision = ExistingBitsandbytesPrecision(
-    # dtype=torch.bfloat16,
-    # dtype=CustomDtype.INT4,
-    dtype=torch.int8,
-    default_dtype=torch.bfloat16,
-)
+plugins = []
+precision = None
+if args.load_in_4bit or args.load_in_8bit:
+    precision_plugin = ExistingBitsandbytesPrecision(
+        dtype=CustomDtype.INT4,
+        # dtype=torch.int8,
+        # dtype=torch.bfloat16,
+        default_dtype=torch.bfloat16,
+    )
+    plugins += [precision_plugin]
+elif args.load_in_8bit:
+    precision_plugin = ExistingBitsandbytesPrecision(
+        # dtype=CustomDtype.INT4,
+        dtype=torch.int8,
+        # dtype=torch.bfloat16,
+        default_dtype=torch.bfloat16,
+    )
+    plugins += [precision_plugin]
+else:
+    precision = "bf16" if torch.cuda.is_bf16_supported() else "32"
 
 # %%
 
@@ -256,10 +270,10 @@ trainer = pl.Trainer(
 
         # accelerator='gpu',
         devices=1, 
-        plugins=precision if args.load_in_4bit else "bf16",
+        plugins=plugins,
         
         # https://lightning.ai/docs/pytorch/stable/common/trainer.html
-        # precision="bf16-true", # "32-true" "transformer-enginer
+        precision=precision,
         log_every_n_steps=1,
         accumulate_grad_batches=accumulate_grad_batches,
         callbacks=callbacks,
@@ -340,7 +354,7 @@ res, df_res2 = evaluate_model(model=model,
 # %%
 from open_pref_eval.plot.radar import radar_plot
 df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack()
-print(res)
+print(df_res)
 
 # save
 f = save_dir+'/eval.parquet'
@@ -362,4 +376,4 @@ print('args =', args)
 
 # %%
 from reprpo.gen import get_model_generations
-get_model_generations(model, tokenizer)
+get_model_generations(model, tokenizer, N=4)

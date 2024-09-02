@@ -10,7 +10,11 @@
             "request": "launch",
             "program": "${workspaceFolder}/nbs/train.py",
             "console": "integratedTerminal",
-            "args": ["--dev", "--verbose"]
+            "args": [
+                "--dev", 
+                "--verbose",
+                "--method", "reprpo_svd",
+            ]
         }
     ]
 }
