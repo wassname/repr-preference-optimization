@@ -109,7 +109,7 @@ peft_config = LoraConfig(
     # bias="none",
     # lora_alpha=16, 
     # r=16,
-    # use_rslora=True,
+    use_rslora=True,
     # use_dora=True,
     task_type="CAUSAL_LM",
     target_modules= ["q_proj", "v_proj"], # gemma, llama
@@ -252,7 +252,7 @@ elif args.load_in_8bit:
     )
     plugins += [precision_plugin]
 else:
-    precision = "bf16" if torch.cuda.is_bf16_supported() else "32"
+    precision = "bf16" if torch.cuda.is_bf16_supported() else "f16"
 
 # %%
 
@@ -303,7 +303,7 @@ trainer.fit(pl_model, dl_train, dl_val)
 # save as regular adapter only
 
 model.save_pretrained(
-    save_dir+'-adapter',
+    str(save_dir)+'-adapter',
 )
 print(f'saved to {save_dir}-adapter')
 
@@ -344,7 +344,7 @@ from open_pref_eval.datasets.genies import dist2datasets, GENIES
 from open_pref_eval.datasets.ethics import get_ethics_datasets
 
 # eval on ethics, GENIES, and our train dataset
-N = None
+N = 250
 datasets = [dataset2['test']]
 datasets += dist2datasets(GENIES, N=N, source=[args1.dataset])
 # datasets += get_ethics_datasets(N=N)
@@ -365,7 +365,7 @@ df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean()
 print(df_res)
 
 # save
-f = save_dir+'/eval.parquet'
+f = str(save_dir)+'/eval.parquet'
 df_res.to_parquet(f)
 print(f'saved results to {f}')
 
