@@ -71,19 +71,26 @@ class PL_MODEL(pl.LightningModule):
     def configure_optimizers(self):
         """simple vanilla torch optim"""
         # https://lightning.ai/docs/fabric/stable/fundamentals/precision.html
-        optimizer = bnb.optim.AdamW8bit(
-            self.parameters(),
-            lr=self.hparams.lr,
-            weight_decay=self.hparams.weight_decay,
-        )
-        # optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
-        scheduler = optim.lr_scheduler.OneCycleLR(
-            optimizer,
-            self.hparams.lr,
-            total_steps=self.hparams.num_iterations,
-            verbose=True,
-            pct_start=0.1,
-        )
+        if self.hparams.adam8bit:
+            optimizer = bnb.optim.AdamW8bit(
+                self.parameters(),
+                lr=self.hparams.lr,
+                weight_decay=self.hparams.weight_decay,
+            )
+        else:
+            optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        if self.hparams.schedule == 'cosine':
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.num_iterations, eta_min=0)
+        elif self.hparams.schedule == 'onecycle':
+            scheduler = optim.lr_scheduler.OneCycleLR(
+                optimizer,
+                self.hparams.lr,
+                total_steps=self.hparams.num_iterations,
+                verbose=True,
+                pct_start=0.1,
+            )
+        elif self.hparams.schedule == 'constant':
+            return optimizer
         lr_scheduler = {"scheduler": scheduler, "interval": "step"}
         return [optimizer], [lr_scheduler]
 

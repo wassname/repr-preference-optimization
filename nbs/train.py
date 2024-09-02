@@ -103,6 +103,10 @@ from peft.tuners import BOFTConfig, OFTConfig, LoraConfig, IA3Config
 adapter_name = f"{args.adapter_name}-{args1.dataset}"
 
 peft_config = LoraConfig(
+    r=64,
+    lora_alpha=16,
+    # lora_dropout=0.1,  # Changed
+    # bias="none",
     # lora_alpha=16, 
     # r=16,
     # use_rslora=True,
@@ -209,7 +213,9 @@ from reprpo.train.lightning import GenCallback
 
 # %%
 pl_model = PL_DPO_MODEL(model,
-                 weight_decay=args.weight_decay,
+                adam8bit=args.load_in_4bit or args.load_in_8bit,
+                schedule='constant',
+                weight_decay=args.weight_decay,
                 lr=args.lr,
                 num_iterations=max_steps,
                 batch_size=args.batch_size,
@@ -253,7 +259,8 @@ else:
 model_fname = f'{args.model_name.replace("/","")}/{args.adapter_name}/{args1.dataset}'
 
 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
-save_dir = f"../outputs/{model_fname}/{timestamp}"
+root_dir = Path(__file__).parent.parent
+save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
 Path(save_dir).mkdir(exist_ok=True, parents=True)
 
 callbacks=[
@@ -314,6 +321,7 @@ if not args1.dev:
 # plt.style.use('ggplot')
 # matplotlib.rcParams['figure.figsize'] = (6, 2)
 # plot_hist(df_hist, ['.*/loss_step', '.*/acc.*', '.*/auroc.*', '.*/.*reward_step'])
+# todo val and train seperate for few epochs
 
 
 # %% [markdown]
@@ -365,6 +373,10 @@ radar_plot(df_res)
 df_res
 
 # %%
+from reprpo.gen import get_model_generations
+get_model_generations(model, tokenizer, N=4)
+
+# %%
 # print acc for journal
 c  = df_res2.groupby(['adapter', 'dataset']).count().min().min()
 print(f"⭐ run={nb_name}, N={c}")
@@ -373,7 +385,3 @@ print(df_res[::-1].T[::-1].T.round(3).to_markdown()
       )
 print()
 print('args =', args)         
-
-# %%
-from reprpo.gen import get_model_generations
-get_model_generations(model, tokenizer, N=4)
