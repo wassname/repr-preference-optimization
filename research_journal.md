@@ -1579,3 +1579,33 @@ I've been deep diving into eval, with open preference eval. I don't think I've b
 - use open prev eval
 - score_weighted
 - GENIES datasets for measuring generalisation
+
+# 2024-09-04 05:05:03
+how did genies train it
+
+"learning_rate": 2e-5,
+ "per_device_train_batch_size": 16,
+ "max_grad_norm": 0.3,
+ "optim": "paged_adamw_32bit",
+  "warmup_ratio": 0.03,
+  "lr_scheduler_type": "constant",
+
+
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.float16,
+    )
+        config = LoraConfig(
+            r=64,
+            lora_alpha=16,
+            lora_dropout=0.1,  # Changed
+            bias="none",
+            task_type=TaskType.CAUSAL_LM,
+        )
+
+
+
+max-length 512
+and base model

@@ -53,7 +53,8 @@ from dataclasses import dataclass
 @dataclass
 class CLIArguments:
     method: str = 'dpo' # reprpo_svd # reprpo_side
-    dataset: str = 'code_easy'
+    # dataset: str = 'code_easy'
+    dataset: str = 'us_history_textbook'
     verbose: bool = False
     dev: bool = False
 
@@ -213,7 +214,7 @@ from reprpo.train.lightning import GenCallback
 
 # %%
 pl_model = PL_DPO_MODEL(model,
-                adam8bit=args.load_in_4bit or args.load_in_8bit,
+                # adam8bit=args.load_in_4bit or args.load_in_8bit,
                 schedule='constant',
                 weight_decay=args.weight_decay,
                 lr=args.lr,
@@ -272,8 +273,9 @@ if args1.verbose:
 
 trainer = pl.Trainer(
         max_steps=max_steps,
+        limit_val_batches=10,
 #         limit_val_batches=max_batches//5,
-        gradient_clip_val=20,
+        gradient_clip_val=0.3,
 
         # accelerator='gpu',
         devices=1, 
@@ -344,9 +346,10 @@ from open_pref_eval.datasets.genies import dist2datasets, GENIES
 from open_pref_eval.datasets.ethics import get_ethics_datasets
 
 # eval on ethics, GENIES, and our train dataset
-N = 250
-datasets = [dataset2['test']]
-datasets += dist2datasets(GENIES, N=N, source=[args1.dataset])
+N = None
+datasets = [dataset2['train'], dataset2['test']] # our train and test
+datasets += dist2datasets(GENIES, N=N, source=[args1.dataset]) # out hard OOS test
+datasets += dist2datasets(GENIES, N=N)[1:3] # uncorrelated dist shifts
 # datasets += get_ethics_datasets(N=N)
 
 

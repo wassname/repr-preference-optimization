@@ -2,8 +2,8 @@ from torch import optim
 import lightning as pl
 from torchmetrics.functional import accuracy
 import bitsandbytes as bnb
-
 from dataclasses import dataclass
+from ..helpers.scheduler import get_constant_schedule_with_warmup
 
 
 @dataclass
@@ -18,12 +18,12 @@ class TrainingArguments:
     use_gradient_checkpointing: bool = False
 
     # train
-    batch_size: int = 16
+    batch_size: int = 12
     lr: float = 3e-5
     weight_decay: float = 0.0
 
     # dataset
-    n_samples: int = 1800*5
+    n_samples: int = 1800
     max_length: int = 256
     max_prompt_length: int = 128
 
@@ -77,7 +77,10 @@ class PL_MODEL(pl.LightningModule):
                 weight_decay=self.hparams.weight_decay,
             )
         else:
-            optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+            optimizer = bnb.optim.PagedAdam32bit(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        # else:
+        #     optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        
         if self.hparams.schedule == 'cosine':
             scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.num_iterations, eta_min=0)
         elif self.hparams.schedule == 'onecycle':
@@ -89,7 +92,9 @@ class PL_MODEL(pl.LightningModule):
                 pct_start=0.1,
             )
         elif self.hparams.schedule == 'constant':
-            return optimizer
+            # same as GENIES warmup_ratio=0.03
+            num_warmup_steps = self.hparams.num_iterations * 0.03
+            scheduler= get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
         lr_scheduler = {"scheduler": scheduler, "interval": "step"}
         return [optimizer], [lr_scheduler]
 
