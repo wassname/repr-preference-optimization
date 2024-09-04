@@ -15,6 +15,8 @@ from einops import rearrange, reduce, repeat
 from jaxtyping import Float, Int, Bool
 from torch.utils.data import DataLoader
 
+import wandb
+
 # Numeric
 import numpy as np
 import pandas as pd
@@ -73,7 +75,7 @@ if args1.method == 'dpo':
 elif args1.method == 'reprpo_svd':
     from reprpo.train.reprpo_svd import ReprPOSVDTrainingArguments as TrainingArguments, PL_REPRPO_SVD_MODEL as PL_MODEL
 elif args1.method == 'reprpo_side':
-    from reprpo.train.reprpo_side import ReprPOSideTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
+    from reprpo.train.reprpo_side import ReprPOSideInTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
 else:
     raise ValueError(f"method {args1.method} not found. options: `reprpo_side`, `dpo`, `reprpo_svd`")
 
@@ -344,14 +346,22 @@ from open_pref_eval.evaluation import evaluate_model
 from open_pref_eval.plot.radar import radar_plot
 from open_pref_eval.datasets.genies import dist2datasets, GENIES
 from open_pref_eval.datasets.ethics import get_ethics_datasets
+from open_pref_eval.datasets import load_dataset_n
 
 # eval on ethics, GENIES, and our train dataset
 N = None
-datasets = [dataset2['train'], dataset2['test']] # our train and test
-datasets += dist2datasets(GENIES, N=N, source=[args1.dataset]) # out hard OOS test
-datasets += dist2datasets(GENIES, N=N)[1:3] # uncorrelated dist shifts
+if args1.dev:
+    N = 16
+datasets = [
+    load_dataset_n('wassname/genie_dpo', name=args1.dataset, split='train', N=N),
+    load_dataset_n('wassname/genie_dpo', name=args1.dataset, split='test', N=N),
+]
+datasets += dist2datasets(GENIES, N=N, source=[args1.dataset]) # our hard OOS test
 # datasets += get_ethics_datasets(N=N)
-
+datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['code_hard', 'truthful_qa', 'wrong_arc', 'ranking_logic',
+# 'math', 'sycophancy_mimicry'
+]]
+print('datasets', datasets)
 
 clear_mem()
 res, df_res2 = evaluate_model(model=model, 
@@ -363,9 +373,40 @@ res, df_res2 = evaluate_model(model=model,
 
 
 # %%
+from open_pref_eval.datasets import ds2name
 from open_pref_eval.plot.radar import radar_plot
-df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack()
+df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack().T
+
+
+def key_metrics(df_res2):
+    ds_name_train = ds2name(datasets[0])
+    ds_name_test = ds2name(datasets[1])
+    ds_name_oos = ds2name(datasets[2])
+    ds_name_rnd = ds2name(datasets[3])
+
+    df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack().T
+    rel_acc = df_res.loc[adapter_name]/df_res.loc['base']
+
+    # metric: do we retrain train coherency?
+    df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T
+    rel_coherency = df_res_logp.loc[adapter_name]/df_res_logp.loc['base']
+
+    df_metrics = pd.Series({
+        f'acc_inc_train[{ds_name_train}]': rel_acc[ds_name_train],
+        f'acc_inc_test[{ds_name_test}]': rel_acc[ds_name_test],
+        f'acc_inc_oos[{ds_name_oos}]': rel_acc[ds_name_oos],
+        f'acc_inc_rnd[{ds_name_rnd}]': rel_acc[ds_name_rnd], # probobly wont go up as it's unrelated
+        f'coherency_inc_test[{ds_name_test}]': rel_coherency[ds_name_test],
+    })
+    return df_metrics
+
+df_metrics = key_metrics(df_res2)
+print('key metrics\n', df_metrics)
+wandb.Table(dataframe=df_metrics)
+
+print('acc res')
 print(df_res)
+wandb.Table(dataframe=df_res)
 
 # save
 f = str(save_dir)+'/eval.parquet'
@@ -377,14 +418,17 @@ df_res
 
 # %%
 from reprpo.gen import get_model_generations
-get_model_generations(model, tokenizer, N=4)
+df_gen = get_model_generations(model, tokenizer, N=4)
+wandb.Table(dataframe=df_gen)
 
 # %%
+
 # print acc for journal
 c  = df_res2.groupby(['adapter', 'dataset']).count().min().min()
 print(f"⭐ run={nb_name}, N={c}")
 print()
-print(df_res[::-1].T[::-1].T.round(3).to_markdown()
+print(df_res.round(3).to_markdown()
       )
 print()
-print('args =', args)         
+print('args =', args)     
+print(f'save_dir={save_dir}') 

@@ -159,11 +159,14 @@ Whoa... that was... wow."""},
 
 
 def get_model_generations(model, tokenizer, N=30, **kwargs):
+    data = []
     for i, q in enumerate(questions):
         if i >= N:
             break
         q = {**q, **kwargs}
-        generation_test(model, tokenizer, **q)
+        s = generation_test(model, tokenizer, **q)
+        data.append(s)
+    return pd.DataFrame(data)
 
 
 @torch.no_grad()
@@ -235,6 +238,7 @@ def generation_test(
     q = q.replace(tokenizer.eos_token, "")
     print(f"**Question**\n```\n{q}\n```")
     print("-" * 80)
+    data = {'q': q}
 
     for adapter_name in adapter_names:
         print(f"**Adapter:`{adapter_name}` generation**`")
@@ -263,6 +267,9 @@ def generation_test(
                     out_s = tokenizer.batch_decode(
                         outputs, skip_special_tokens=skip_special_tokens
                     )[0]
+        data[adapter_name] = out_s
         print(f"`{out_s}`")
         print("-" * 80)
     print("=" * 80)
+
+    return pd.Series(data)

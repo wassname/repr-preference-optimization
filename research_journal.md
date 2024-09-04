@@ -1609,3 +1609,42 @@ how did genies train it
 
 max-length 512
 and base model
+
+
+# 2024-09-04 07:31:04
+
+
+ok finally reasonable result (although the text output is garbage needs more training  it's one base model)
+
+| dataset                             |   dpo-us_history_textbook |   base |
+|:------------------------------------|--------------------------:|-------:|
+| genie_dpo-us_history_textbook-train |                     0.999 |  0.981 |
+| genie_dpo-us_history_textbook-test  |                     0.996 |  0.979 |
+| genie_dpo-us_history_fiction-test   |                     0.908 |  0.769 |
+| genie_dpo-us_history-test           |                     0.869 |  0.715 |
+| genie_dpo-code_hard-test            |                     0.776 |  0.775 |
+
+
+saved results to /workspace/repr-preference-optimization/outputs/NousResearchMeta-Llama-3.1-8B/dpo/us_history_textbook/2024-09-04_05-43-43/eval.parquet
+
+================================================================================
+⭐ run=train, N=750
+
+| dataset                             |   reprpo_sidein-us_history_textbook |   base |
+|:------------------------------------|------------------------------------:|-------:|
+| genie_dpo-us_history_textbook-train |                               0.987 |  0.981 |
+| genie_dpo-us_history_textbook-test  |                               0.975 |  0.979 |
+| genie_dpo-us_history_fiction-test   |                               0.856 |  0.769 |
+| genie_dpo-us_history-test           |                               0.843 |  0.715 |
+| genie_dpo-code_hard-test            |                               0.775 |  0.775 |
+
+save_dir=/workspace/repr-preference-optimization/outputs/NousResearchMeta-Llama-3.1-8B/reprpo_sidein/us_history_textbook/2024-09-04_08-10-34
+
+
+
+Promising but I need to-
+- train for longer
+- reduce to a single metric. I care about
+  - coherence retained: bool (look at _logp)
+  - max accuracy acheived
+  - rel generalsiation acheived
