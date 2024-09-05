@@ -158,6 +158,9 @@ from reprpo.data.collate3 import TokenizeRow
 tokenize_row = TokenizeRow(tokenizer, max_length=args.max_length, max_prompt_length=args.max_prompt_length)
 dataset3 = dataset2.map(tokenize_row, batched=False)
 
+print(dataset3['prompt_truncated'].mean())
+print(dataset3['chosen_truncated'].mean())
+
 
 # %%
 # custom_collate_fn = DPODataCollatorWithPadding(pad_token_id=tokenizer.pad_token_id, 

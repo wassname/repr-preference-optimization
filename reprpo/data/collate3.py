@@ -34,40 +34,39 @@ class TokenizeRow:
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         out = {}
+
+        # encode and truncate prompt
         with tok_setings(self.tokenizer, truncation_side='left'):
-            o = self.tokenizer.encode_plus(batch['prompt'], add_special_tokens=False, padding=False, truncation=True, max_length=self.max_prompt_length)
-        prompt = o['input_ids']
+            prompt = self.tokenizer.encode_plus(batch['prompt'], add_special_tokens=False, padding=False, truncation=True, max_length=self.max_prompt_length)['input_ids']
         max_ans_length=self.max_length - len(prompt) - self.tokenizer.num_special_tokens_to_add()
 
         with tok_setings(self.tokenizer, truncation_side='right'):
             for key in ["chosen", "rejected"]:
                 encoded_inputs = {}
                 # tokenizer and truncate
-                ans = self.tokenizer.encode_plus(batch[key], add_special_tokens=False, truncation=True, max_length=max_ans_length, return_overflowing_tokens=True)['input_ids']
-            
-                ids = prompt + ans['input_ids']
+                ans = self.tokenizer.encode_plus(batch[key], add_special_tokens=False, truncation=True, max_length=max_ans_length)['input_ids']            
+                out[key+'_truncated'] = len(ans)>=max_ans_length
+                
+                ids = prompt + ans
 
                 # add special tokens
                 ids = self.tokenizer.build_inputs_with_special_tokens(ids)
                 encoded_inputs = {
                     "input_ids": ids,
-                    "special_tokens_mask": self.get_special_tokens_mask(ids)
+                    "special_tokens_mask": self.tokenizer.get_special_tokens_mask(ids, already_has_special_tokens=True)
                 }
 
                 # pad and attention mask
                 encoded_inputs = self.tokenizer.pad(encoded_inputs, max_length=self.max_length, padding='max_length', return_attention_mask=True)
 
-                if self.mask_prompt_tokens:
-                    encoded_inputs['attention_mask'] = [0 if x in prompt else 1 for x in encoded_inputs['input_ids']]
-
                 out[key] = encoded_inputs['input_ids']
                 out[key+'_mask'] = encoded_inputs['attention_mask']
-                out[key+'_overflowing_tokens'] = ans['overflowing_tokens']
 
         # I also want to output a token mask but it's complicated by the special tokens
         # FIXME: this assumes one bos and on eos token
-        out['prompt'] = self.tokenizer.build_inputs_with_special_tokens(out['prompt'])[:-1]
+        out['prompt'] = self.tokenizer.build_inputs_with_special_tokens(prompt)[:-1]
         out['prompt_mask'] = [1] * len(out['prompt']) + [0] * (self.max_length - len(out['prompt']))
+        out['prompt_truncated'] = len(out['prompt'])>=self.max_prompt_length
 
         return out
 
