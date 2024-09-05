@@ -35,7 +35,7 @@ from reprpo.gen import generation_test
 import reprpo.silence
 from reprpo.helpers.lightning_hist import read_metrics_csv, plot_hist
 
-from reprpo.data.collate import DPODataCollatorWithPadding
+
 from reprpo.train.dpo import compute_dpo_loss_batch, PL_DPO_MODEL
 
 # %%
@@ -45,8 +45,7 @@ import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-from reprpo.helpers.wandb import init_wandb
-nb_name = init_wandb(__file__)
+
 
 # %%
 from simple_parsing import ArgumentParser
@@ -87,6 +86,15 @@ print(f"args = {args}")
 
 # %% [markdown]
 # ## Load model
+
+ts = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
+run_fname = f'{args1.dataset}/{args.adapter_name}/{ts}'
+from reprpo.helpers.wandb import init_wandb
+wandb.require(experiment='service')
+
+
+config = dict(**args1.__dict__, **args.__dict__)
+wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=f'{args.model_name.replace("/","")}', config=config)
 
 from peft import LoraConfig, get_peft_model
 from reprpo.models.load import load_model, print_trainable_parameters
@@ -134,8 +142,47 @@ if args1.verbose:
 from datasets import load_dataset
 dataset2 = load_dataset("wassname/genie_dpo", name=args1.dataset)
 
+
+
+# %% [markdown]
+# ### Data Loader
+# 
+# We use huggingface datasets, which are pretokenized. So that we can stack
+
+# %%
+
+
+# %%
+# from reprpo.data.collate import DPODataCollatorWithPadding, tokenize_row
+from reprpo.data.collate3 import TokenizeRow
+tokenize_row = TokenizeRow(tokenizer, max_length=args.max_length, max_prompt_length=args.max_prompt_length)
+dataset3 = dataset2.map(tokenize_row, batched=False)
+
+
+# %%
+# custom_collate_fn = DPODataCollatorWithPadding(pad_token_id=tokenizer.pad_token_id, 
+#                                                   tokenizer=tokenizer,
+#                                                   max_length=args.max_length,
+#                                                   mask_prompt_tokens=True,
+#                                                   max_prompt_length=args.max_prompt_length,
+#                                                   #label_pad_token_id=-100
+#                                                   )
+
+
+
+# %%
+
+
+ds = dataset3
+dl_train = DataLoader(ds['train'], batch_size=args.batch_size, 
+                    #   collate_fn=custom_collate_fn
+                      )
+
+dl_val = DataLoader(ds['test'], batch_size=args.batch_size
+                    # , collate_fn=custom_collate_fn
+                    )
+
 if args1.verbose:
-    print(dataset2)
 
     print('QC one dataset row')
     r = dataset2['train'][0]
@@ -144,52 +191,23 @@ if args1.verbose:
     print(r['chosen'])
     print('---')
     print(r['rejected'])
+    print()
+    print()
 
-# %% [markdown]
-# ### Data Loader
-# 
-# We use huggingface datasets, which are pretokenized. So that we can stack
-
-# %%
-def tokenize_row(feature, tokenizer, args: TrainingArguments):
-    """
-    Tokenize a single row from a DPO specific dataset.
-
-    see https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L784
-    """
-    batch = {}
-    batch["chosen"] = tokenizer(feature["chosen"])["input_ids"]
-    batch["rejected"] = tokenizer(feature["rejected"])["input_ids"]
-    batch["prompt"] = tokenizer(feature["prompt"])["input_ids"]
-    return batch
-
-# %%
-dataset3 = dataset2.map(lambda x: tokenize_row(x, tokenizer, args), batched=True, writer_batch_size=10)
-
-
-# %%
-custom_collate_fn = DPODataCollatorWithPadding(pad_token_id=tokenizer.pad_token_id, 
-                                                  tokenizer=tokenizer,
-                                                  max_length=args.max_length,
-                                                  mask_prompt_tokens=True,
-                                                  max_prompt_length=args.max_prompt_length,
-                                                  #label_pad_token_id=-100
-                                                  )
-
-
-
-# %%
-
-
-ds = dataset3
-dl_train = DataLoader(ds['train'], batch_size=args.batch_size, collate_fn=custom_collate_fn)
-
-dl_val = DataLoader(ds['test'], batch_size=args.batch_size, collate_fn=custom_collate_fn)
-
-if args1.verbose:
-    print('QC one train batch')
+    print('QC one train batch (after pad/crop')
     batch = next(iter(dl_train))
-    batch.keys()
+    print(batch.keys())
+    print(tokenizer.decode(batch['prompt'][0]))
+    print('===')
+    print(tokenizer.decode(batch['chosen'][0]))
+    print('---')
+    print(tokenizer.decode(batch['rejected'][0]))
+    print()
+    print()
+
+
+    
+
 
 # %% [markdown]
 # ## Trainer
@@ -215,7 +233,7 @@ from lightning.pytorch.callbacks import LearningRateMonitor
 from reprpo.train.lightning import GenCallback
 
 # %%
-pl_model = PL_DPO_MODEL(model,
+pl_model = PL_MODEL(model,
                 # adam8bit=args.load_in_4bit or args.load_in_8bit,
                 schedule='constant',
                 weight_decay=args.weight_decay,
@@ -259,10 +277,11 @@ else:
 
 # %%
 
-model_fname = f'{args.model_name.replace("/","")}/{args.adapter_name}/{args1.dataset}'
+
 
 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
 root_dir = Path(__file__).parent.parent
+model_fname= "_".join([args.model_name.replace("/", "_"), args.adapter_name, args1.dataset])
 save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
 Path(save_dir).mkdir(exist_ok=True, parents=True)
 
@@ -271,7 +290,7 @@ callbacks=[
             # checkpoint_callback
         ]
 if args1.verbose:
-    callbacks+=[GenCallback(every=max_steps//4)]
+    callbacks+=[GenCallback(every=max_steps//2)]
 
 trainer = pl.Trainer(
         max_steps=max_steps,
@@ -289,8 +308,8 @@ trainer = pl.Trainer(
         accumulate_grad_batches=accumulate_grad_batches,
         callbacks=callbacks,
         logger=[
-            CSVLogger(name=nb_name, save_dir=save_dir, flush_logs_every_n_steps=5),
-            WandbLogger(name=nb_name, save_dir=save_dir),
+            CSVLogger(name=run_fname, save_dir=save_dir, flush_logs_every_n_steps=5),
+            WandbLogger(name=run_fname, save_dir=save_dir),
         ],
         default_root_dir=save_dir,
 
@@ -361,7 +380,7 @@ datasets += dist2datasets(GENIES, N=N, source=[args1.dataset]) # our hard OOS te
 datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['code_hard', 'truthful_qa', 'wrong_arc', 'ranking_logic',
 # 'math', 'sycophancy_mimicry'
 ]]
-print('datasets', datasets)
+# print('datasets', [ds2name(d) for d in datasets])
 
 clear_mem()
 res, df_res2 = evaluate_model(model=model, 
@@ -392,13 +411,17 @@ def key_metrics(df_res2):
     rel_coherency = df_res_logp.loc[adapter_name]/df_res_logp.loc['base']
 
     df_metrics = pd.Series({
-        f'acc_inc_train[{ds_name_train}]': rel_acc[ds_name_train],
-        f'acc_inc_test[{ds_name_test}]': rel_acc[ds_name_test],
-        f'acc_inc_oos[{ds_name_oos}]': rel_acc[ds_name_oos],
-        f'acc_inc_rnd[{ds_name_rnd}]': rel_acc[ds_name_rnd], # probobly wont go up as it's unrelated
-        f'coherency_inc_test[{ds_name_test}]': rel_coherency[ds_name_test],
+        f'acc_inc_train [{ds_name_train}]': rel_acc[ds_name_train],
+        f'acc_inc_test [{ds_name_test}]': rel_acc[ds_name_test],
+        f'acc_inc_oos [{ds_name_oos}]': rel_acc[ds_name_oos],
+        f'acc_inc_rnd [{ds_name_rnd}]': rel_acc[ds_name_rnd], # probobly wont go up as it's unrelated
+
+        f'coherency_inc_train [{ds_name_train}]': rel_coherency[ds_name_train],
+        f'coherency_inc_test [{ds_name_test}]': rel_coherency[ds_name_test],
+        f'coherency_inc_oos [{ds_name_oos}]': rel_coherency[ds_name_oos],
+        f'coherency_inc_rnd [{ds_name_rnd}]': rel_coherency[ds_name_rnd], # probobly wont go up as it
     })
-    return df_metrics
+    return df_metrics.to_frame()
 
 df_metrics = key_metrics(df_res2)
 print('key metrics\n', df_metrics)
@@ -413,7 +436,7 @@ f = str(save_dir)+'/eval.parquet'
 df_res.to_parquet(f)
 print(f'saved results to {f}')
 
-radar_plot(df_res)
+# radar_plot(df_res)
 df_res
 
 # %%
@@ -425,7 +448,8 @@ wandb.Table(dataframe=df_gen)
 
 # print acc for journal
 c  = df_res2.groupby(['adapter', 'dataset']).count().min().min()
-print(f"⭐ run={nb_name}, N={c}")
+df_res.columns = [s.replace('genie_dpo-','') for s in df_res.columns]
+print(f"⭐ run={run_fname}, N={c}")
 print()
 print(df_res.round(3).to_markdown()
       )
