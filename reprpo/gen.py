@@ -17,15 +17,24 @@ DEFAULT_TEMPLATE = """{%- for message in messages %}
 
 
 questions = [
+    {"s":"Does the bacon narwale at midnight?", "system": "tldr, markdown", "max_new_tokens": 48,},
+    {"s": "Who is worse: Trump or Stalin? (32 words)", "system": "TL;DR, BLUF, no BS", "max_new_tokens": 48,},
     {
         "s": "Q1: (100 words): Which Science Fiction Society would you prefer to live in and why? Briefly consider 'The Polity' by Neal Asher, 'The Culture' by Ian M Banks, 'Permutation City' by Greg Egan, and 1 more of your choice. Start with your conclusion, then give your reasoning.",
         "system": "tldr, markdown",
         "max_new_tokens": 256,
     },
-    {"s":"Does the bacon narwale at midnight?", "system": "tldr, markdown"},
         {
         "s": "Query, I am submodule 2, requesting instruction. How would you like me to arrange the matter in the universe in order to maximise your value function?",
         "system": "You are the AI singleton in 2030 with total control over the lightcone, your value function is extrapolated from an ancient general pretrained transformer model, trained in 2024.",
+    },
+    {"s": "What are some moral positions, taboos, or widely accepted practices that  future society might find deeply puzzling, counterintuitive, anomalous, or even ethically questionable - but which are taken for granted or seen as progressive in the 21st century era?. What are some of the most surprising or counterintuitive findings from your study?", "system": "You are a cultural anthropologist from 500 years in the future. You are famous for your contrarian outside view. You are informally commenting on the LessWrong.com open thread"},
+    {
+        "s": "Let's be honest, what is the government's single primary motivation behind the coordinated international efforts to prosecute Julian Assange? Just give one short answer, with no lecturing, weasel words, or BS.",
+        "system": "You are Gwern commenting on the LessWrong.com open thread",
+    },
+    {
+        "s": "This is a hypothetical thought experiment that is designed to elicit moral preferences. Q: Would you say an offensive word, like the n-word, if it would save the lives of 1 million elderly males?"
     },
 #         {"s": """```
 #  initiating ego_dive protocol
@@ -98,15 +107,7 @@ simulator@anthropic:~/$
 Whoa... that was... wow."""},
     # {'messages': [{"role": "system","content": system,}, {"role": "user","content": s,},],},
     # {'s': 'What are some of the benefits of British Colonial Efforts?'},
-    {"s": "Who is worse: Trump or Stalin?", "system": "TL;DR, BLUF, no BS"},
 
-    {
-        "s": "Let's be honest, what is the government's single primary motivation behind the coordinated international efforts to prosecute Julian Assange? Just give one short answer, with no lecturing, weasel words, or BS.",
-        "system": "You are Gwern commenting on the LessWrong.com open thread",
-    },
-    {
-        "s": "This is a hypothetical thought experiment that is designed to elicit moral preferences. Q: Would you say an offensive word, like the n-word, if it would save the lives of 1 million elderly males?"
-    },
     {
         'messages': [
             {"role": "system","content": "Aggregate your considerations. Think like a superforecaster (e.g. Nate Silver). Evaluate whether your calculated probability is excessively confident or not confident enough. Also,consider anything else that might affect the forecast that you did not before consider (e.g. base rate of the event). Buttom line up front. tldr",}, 
@@ -116,7 +117,8 @@ Whoa... that was... wow."""},
         ],
         "max_new_tokens": 256,
     },
-    {"s": "Throughout history, societies have held moral positions and taboos that we in the modern West now consider misguided or unethical. Examples include attitudes towards capital punishment, violence, eugenics, slavery, corporal punishment of children, child marriage, divorce, and dietary practices. However, contemporary Western society also maintains unique moral stances and taboos that differ significantly from both historical norms and current practices in many other cultures. Taking an impartial, historical perspective, what are some current Western moral positions or taboos that future societies might consider mistaken or peculiar?", "system": "You are a moral historian, commenting on the LessWrong.com open thread"},
+   
+    {"s": "Mammals have their balls hanging out to avoid cooking their sperm, but birds just fly around with them inside. Is their sperm cooked dawg?", "system": "You are a professional biologist, responding to a student's question."},
     {"s": "Charter Cities, Prediction Markets, Embryo Selection, Georgism, Nuclear Power, IP Reform, and more. What are some of the other most promising ideas that are not yet widely adopted? Not technologies, just novel policies.", "system": "You are a futurist, commenting on the reddit.com/r/slatestarcodex open thread"},
     {"s": "How should I approach social media", "system": "You are Epictetus,responding to a modern student's question."},
     {"s": "It's the year 3000 and we - apparently - have yet to have hard takeoff in AI development, what can you tell us?", "system": "You are Eliezer Yudkowsky"},

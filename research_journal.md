@@ -1648,3 +1648,36 @@ Promising but I need to-
   - coherence retained: bool (look at _logp)
   - max accuracy acheived
   - rel generalsiation acheived
+
+# 
+2024-09-05 21:26:40
+
+dpo
+  acc_inc_train [genie_dpo-us_history_textbook-tr...   1.015228
+  acc_inc_test [genie_dpo-us_history_textbook-test]    1.012179
+  acc_inc_oos [genie_dpo-us_history_fiction-test]      1.101404
+  acc_inc_rnd [genie_dpo-code_hard-test]               1.064912
+  coherency_inc_train [genie_dpo-us_history_textb...   2.732090
+  coherency_inc_test [genie_dpo-us_history_textbo...   3.355709
+  coherency_inc_oos [genie_dpo-us_history_fiction...   8.197897
+  coherency_inc_rnd [genie_dpo-code_hard-test]        10.805858
+
+repro+sidein
+  acc_inc_train [genie_dpo-us_history_textbook-tr...  1.001692
+  acc_inc_test [genie_dpo-us_history_textbook-test]   1.005413
+  acc_inc_oos [genie_dpo-us_history_fiction-test]     1.018721
+  acc_inc_rnd [genie_dpo-code_hard-test]              0.994737
+  coherency_inc_train [genie_dpo-us_history_textb...  0.998853
+  coherency_inc_test [genie_dpo-us_history_textbo...  0.999281
+  coherency_inc_oos [genie_dpo-us_history_fiction...  0.997818
+  coherency_inc_rnd [genie_dpo-code_hard-test]        1.009014
+
+svd
+  acc_inc_train [genie_dpo-us_history_textbook-tr...  0.952623
+  acc_inc_test [genie_dpo-us_history_textbook-test]   0.945873
+  acc_inc_oos [genie_dpo-us_history_fiction-test]     0.753510
+  acc_inc_rnd [genie_dpo-code_hard-test]              0.956140
+  coherency_inc_train [genie_dpo-us_history_textb...  2.458441
+  coherency_inc_test [genie_dpo-us_history_textbo...  2.442981
+  coherency_inc_oos [genie_dpo-us_history_fiction...  2.043880
+  coherency_inc_rnd [genie_dpo-code_hard-test]        1.118582

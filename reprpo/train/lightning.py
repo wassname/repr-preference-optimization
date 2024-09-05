@@ -15,18 +15,18 @@ class TrainingArguments:
     # model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
     model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
     load_in_4bit: bool = True  # this doesn't seem to be able to backprop when using baukit
-    load_in_8bit: bool = True  # this doesn't seem to be able to backprop when using baukit
+    load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     use_gradient_checkpointing: bool = False
 
     # train
     batch_size: int = 14
-    lr: float = 2e-5
+    lr: float = 4e-5
     weight_decay: float = 0.0
 
     # dataset
     n_samples: int = 1800 * 2
     max_length: int = 196
-    max_prompt_length: int = 64
+    max_prompt_length: int = 96
 
 
 class PL_MODEL(pl.LightningModule):

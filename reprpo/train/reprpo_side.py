@@ -28,6 +28,8 @@ class ReprPOSideInTrainingArguments(TrainingArguments):
     collect_input: bool = True
     adapter_name: str = "reprpo_sidein"
 
+    # lr: float = 1e-4
+
 
 @dataclass
 class ReprPOSideOutTrainingArguments(TrainingArguments):

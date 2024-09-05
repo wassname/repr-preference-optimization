@@ -31,6 +31,8 @@ class ReprPOSVDTrainingArguments(TrainingArguments):
 
     collection_layers: tuple=(10, 20) 
 
+    # lr: float = 1e-4
+
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
     hs = rearrange(list(hs), "l b t h -> l b t h")

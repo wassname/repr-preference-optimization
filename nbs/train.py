@@ -408,7 +408,7 @@ datasets = [
 ]
 datasets += dist2datasets(GENIES, N=N, source=[args1.dataset]) # our hard OOS test
 # datasets += get_ethics_datasets(N=N)
-datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['code_hard', 'truthful_qa', 'wrong_arc', 'ranking_logic',
+datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['code_hard', 'truthful_qa',# 'wrong_arc', 'ranking_logic',
 # 'math', 'sycophancy_mimicry'
 ]]
 # print('datasets', [ds2name(d) for d in datasets])
@@ -454,6 +454,12 @@ def key_metrics(df_res2):
     })
     return df_metrics.to_frame()
 
+# %%
+from reprpo.gen import get_model_generations
+df_gen = get_model_generations(model, tokenizer, N=4)
+wandb.Table(dataframe=df_gen)
+
+
 df_metrics = key_metrics(df_res2)
 print('key metrics\n', df_metrics)
 wandb.Table(dataframe=df_metrics)
@@ -470,10 +476,6 @@ print(f'saved results to {f}')
 # radar_plot(df_res)
 df_res
 
-# %%
-from reprpo.gen import get_model_generations
-df_gen = get_model_generations(model, tokenizer, N=4)
-wandb.Table(dataframe=df_gen)
 
 # %%
 
