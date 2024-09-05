@@ -185,11 +185,11 @@ print(f"Chosens truncated {np.mean(dataset3['train']['chosen_truncated']):2.2%}"
 
 from transformers.data.data_collator import default_data_collator
 ds = dataset3
-dl_train = DataLoader(ds['train'].with_format("torch"), batch_size=args.batch_size, 
+dl_train = DataLoader(ds['train'].select_columns(['chosen', 'rejected', 'chosen_mask', 'rejected_mask']).with_format("torch"), batch_size=args.batch_size, 
                     #   collate_fn=default_data_collator
                       )
 
-dl_val = DataLoader(ds['test'].with_format("torch"), batch_size=args.batch_size
+dl_val = DataLoader(ds['test'].select_columns(['chosen', 'rejected', 'chosen_mask', 'rejected_mask']).with_format("torch"), batch_size=args.batch_size
                     # , collate_fn=default_data_collator
                     )
 
@@ -207,8 +207,8 @@ if args1.verbose:
 
     print('QC one train batch (after pad/crop')
     batch = next(iter(dl_train))
-    print(batch.keys())
-    print(tokenizer.decode(batch['prompt'][0]))
+    # print(batch.keys())
+    # print(tokenizer.decode(batch['prompt'][0]))
     print('===')
     print(tokenizer.decode(batch['chosen'][0]))
     print('---')

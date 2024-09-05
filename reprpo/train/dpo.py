@@ -98,6 +98,8 @@ def compute_dpo_loss(
 def compute_dpo_loss_batch(batch, model, beta=0.1):
     """Compute the DPO loss on an input batch"""
 
+    # FIXME: I need to mask out the prompt?
+
     model.eval()
     with torch.no_grad():
         with model.disable_adapter():
