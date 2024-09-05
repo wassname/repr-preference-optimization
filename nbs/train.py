@@ -178,14 +178,14 @@ print(f"Chosen truncated {np.mean(dataset3['train']['chosen_truncated'])}")
 
 # %%
 
-
+from transformers.data.data_collator import default_data_collator
 ds = dataset3
-dl_train = DataLoader(ds['train'], batch_size=args.batch_size, 
-                    #   collate_fn=custom_collate_fn
+dl_train = DataLoader(ds['train'].with_format("torch"), batch_size=args.batch_size, 
+                    #   collate_fn=default_data_collator
                       )
 
-dl_val = DataLoader(ds['test'], batch_size=args.batch_size
-                    # , collate_fn=custom_collate_fn
+dl_val = DataLoader(ds['test'].with_format("torch"), batch_size=args.batch_size
+                    # , collate_fn=default_data_collator
                     )
 
 if args1.verbose:
