@@ -159,6 +159,11 @@ if args1.dev:
 # from reprpo.data.collate import DPODataCollatorWithPadding, tokenize_row
 from reprpo.data.collate3 import TokenizeRow
 tokenize_row = TokenizeRow(tokenizer, max_length=args.max_length, max_prompt_length=args.max_prompt_length)
+
+if args1.dev:
+    # no cache
+    import datasets
+    datasets.disable_caching()
 dataset3 = dataset2.map(tokenize_row, batched=False)
 
 print(f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}")
