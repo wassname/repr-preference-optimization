@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from reprpo.train.lightning import PL_MODEL
 from dataclasses import dataclass
-from .lightning import TrainingArguments
+from .lightning import TrainingArguments, cross_entropy_loss
 
 @dataclass
 class DPOTrainingArguments(TrainingArguments):
@@ -89,7 +89,7 @@ def compute_dpo_loss(
 
     # .mean() to average over the samples in the batch
     return losses.mean(), dict(
-        chosen_rewards=chosen_rewards.mean(), rejected_reward=rejected_rewards.mean(),
+        chosen_rewards=chosen_rewards.mean(), rejected_rewards=rejected_rewards.mean(),
         # model_logratios=model_logratios.mean(), reference_logratios=reference_logratios.mean(),
         # logits=logits.mean()
     )
@@ -101,13 +101,15 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
     model.eval()
     with torch.no_grad():
         with model.disable_adapter():
+            ref_cho = model(batch["chosen"])
             ref_chosen_log_probas = compute_logprobs(
-                logits=model(batch["chosen"]).logits,
+                logits=ref_cho.logits,
                 labels=batch["chosen"],
                 selection_mask=batch["chosen_mask"]
             )
+            ref_rej = model(batch["rejected"])
             ref_rejected_log_probas = compute_logprobs(
-                logits=model(batch["rejected"]).logits,
+                logits=ref_rej.logits,
                 labels=batch["rejected"],
                 selection_mask=batch["rejected_mask"]
             )
@@ -115,13 +117,15 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
     model.train()
     # where policy_model(batch["chosen"]) are the logits
     # FIXME: need to tracedict, and deal with dict outputs?
+    pi_cho = model(batch["chosen"])
     policy_chosen_log_probas = compute_logprobs(
-        logits=model(batch["chosen"]).logits,
+        logits=pi_cho.logits,
         labels=batch["chosen"],
         selection_mask=batch["chosen_mask"]
     )
+    pi_rej = model(batch["rejected"])
     policy_rejected_log_probas = compute_logprobs(
-        logits=model(batch["rejected"]).logits,
+        logits=pi_rej.logits,
         labels=batch["rejected"],
         selection_mask=batch["rejected_mask"]
     )
@@ -133,6 +137,12 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
         reference_rejected_logprobs=ref_rejected_log_probas,
         beta=beta
     )
+
+    nll_loss = info['nll_loss'] = cross_entropy_loss(pi_cho.logits, batch["chosen"])
+    ref_nll_loss = info['ref_nll_loss'] = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+    info['nll_loss_ratio'] = nll_loss / ref_nll_loss
+
+    
     return loss, info
 
 class PL_DPO_MODEL(PL_MODEL):

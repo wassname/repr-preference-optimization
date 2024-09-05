@@ -6,7 +6,7 @@ from torch import Tensor
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.lightning import PL_MODEL, TrainingArguments
+from reprpo.train.lightning import PL_MODEL, TrainingArguments, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
@@ -284,20 +284,14 @@ def compute_reprpo_side_loss_batch(
         loss_retain=loss_retain.mean(),
         # loss=loss,
         nll_loss=nll_loss,
+        ref_nll_loss=ref_nll_loss,
+        nll_loss_ratio=nll_loss_ratio,
         **info,
     )
     loss = (loss_reroute + loss_retain * alpha).nanmean()
     return loss, info
 
-def cross_entropy_loss(logits, labels):
-    # Flatten the tokens
-    loss_fct = torch.nn.CrossEntropyLoss()
-    logits = logits.view(-1, logits.shape[-1])
-    labels = labels.view(-1)
-    # Enable model parallelism
-    labels = labels.to(logits.device)
-    loss = loss_fct(logits, labels)
-    return loss
+
 
 class PL_REPRPO_SIDE_MODEL(PL_MODEL):
     def __init__(self, *args, alpha=1, layer_paths=[], collect_input=True, **kwargs):

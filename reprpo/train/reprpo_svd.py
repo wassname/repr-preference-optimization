@@ -6,7 +6,7 @@ from torch import Tensor
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.lightning import PL_MODEL, TrainingArguments
+from reprpo.train.lightning import PL_MODEL, TrainingArguments, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
@@ -94,15 +94,6 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b
     alpha = 1
     return log_dist_ratio.nanmean(-1) * alpha
 
-def cross_entropy_loss(logits, labels):
-    # Flatten the tokens
-    loss_fct = torch.nn.CrossEntropyLoss()
-    logits = logits.view(-1, logits.shape[-1])
-    labels = labels.view(-1)
-    # Enable model parallelism
-    labels = labels.to(logits.device)
-    loss = loss_fct(logits, labels)
-    return loss
 
 def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomposer):
 
@@ -185,6 +176,7 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         loss_reroute=loss_reroute.mean(),
         loss_retain=loss_retain.mean() * alpha,
         nll_loss=nll_loss,
+        ref_nll_loss=ref_nll_loss,
         nll_loss_ratio=nll_loss_ratio,
         **info,
     )
