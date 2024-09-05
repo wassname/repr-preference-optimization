@@ -2,6 +2,7 @@ from torch import optim
 import lightning as pl
 from torchmetrics.functional import accuracy
 import bitsandbytes as bnb
+import torch
 from dataclasses import dataclass
 from ..helpers.scheduler import get_constant_schedule_with_warmup
 
@@ -11,21 +12,21 @@ class TrainingArguments:
     # model
     # model_name: str = "microsoft/Phi-3-mini-4k-instruct" # small instruct model
     # model_name: str = "google/gemma-2-2b" # small base model
-    model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
-    # model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
+    # model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
+    model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
     load_in_4bit: bool = True  # this doesn't seem to be able to backprop when using baukit
     load_in_8bit: bool = True  # this doesn't seem to be able to backprop when using baukit
     use_gradient_checkpointing: bool = False
 
     # train
     batch_size: int = 12
-    lr: float = 3e-5
+    lr: float = 2e-5
     weight_decay: float = 0.0
 
     # dataset
-    n_samples: int = 1800
+    n_samples: int = 1800 * 2
     max_length: int = 256
-    max_prompt_length: int = 128
+    max_prompt_length: int = 64
 
 
 class PL_MODEL(pl.LightningModule):
@@ -120,3 +121,14 @@ class GenCallback(Callback):
 
     def on_train_epoch_end(self, trainer, pl_module):
         self.do_gen(trainer.model._model)
+
+
+def cross_entropy_loss(logits, labels):
+    # Flatten the tokens
+    loss_fct = torch.nn.CrossEntropyLoss()
+    logits = logits.view(-1, logits.shape[-1])
+    labels = labels.view(-1)
+    # Enable model parallelism
+    labels = labels.to(logits.device)
+    loss = loss_fct(logits, labels)
+    return loss

@@ -1,11 +1,30 @@
 """
 see 
 - https://github.com/huggingface/trl/blob/main/trl/trainer/utils.py#L349
+- https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L98
 - https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
 """
 from dataclasses import dataclass
 from typing import Any, Dict, List
 import torch
+
+# TODO this is all more complicated so we can do it per batch, but that doesn't really help with gpu mem, which is determined by max sequence length. We should just simplify this to be per dataset
+
+def tokenize_row(feature: Dict[str, Any], tokenizer: Any) -> Dict[str, Any]:
+    """
+    Tokenize a single row from a DPO specific dataset.
+
+    usage:
+        dataset2.map(lambda x: tokenize_row(x, tokenizer), batched=True, writer_batch_size=10)
+
+    see https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L784
+    """
+    batch = {}
+    # don't truncate or add special tokens yet
+    batch["chosen"] = tokenizer(feature["chosen"], add_special_tokens=False)["input_ids"]
+    batch["rejected"] = tokenizer(feature["rejected"], add_special_tokens=False)["input_ids"]
+    batch["prompt"] = tokenizer(feature["prompt"], add_special_tokens=False)["input_ids"]
+    return batch
 
 @dataclass
 class DPODataCollatorWithPadding:
@@ -15,6 +34,7 @@ class DPODataCollatorWithPadding:
     mask_prompt_tokens:bool=True
     max_prompt_length: int=64
     device: str = "cpu"
+    truncate_prompt_left: bool = False
 
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, Any]:
         """use to pad the sequences in each batch to an equal length so that we can assemble them in batches
@@ -44,7 +64,11 @@ class DPODataCollatorWithPadding:
             prompt = item["prompt"]
             batch_data["prompt"].append(torch.tensor(item["prompt"]))
 
-            prompt = prompt[:self.max_prompt_length]
+            # Do we want to crop the beginning or end of the prompt?
+            if self.truncate_prompt_left:
+                prompt = prompt[-self.max_prompt_length:]
+            else:
+                prompt = prompt[:self.max_prompt_length]
 
             for key in ["chosen", "rejected"]:
                 # Adjust padding according to the common maximum length

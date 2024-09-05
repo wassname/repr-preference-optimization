@@ -5,8 +5,9 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "train.py --dev -v",
+            "name": "svd dev -v",
             "type": "debugpy",
+            "pythonArgs": ["-Xfrozen_modules=off"],
             "request": "launch",
             "program": "${workspaceFolder}/nbs/train.py",
             "console": "integratedTerminal",
@@ -14,6 +15,55 @@
                 "--dev", 
                 "--verbose",
                 "--method", "reprpo_svd",
+            ]
+        },
+        {
+            "name": "side dev -v",
+            "type": "debugpy",
+            "pythonArgs": ["-Xfrozen_modules=off"],
+            "request": "launch",
+            "program": "${workspaceFolder}/nbs/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--dev", 
+                "--verbose",
+                "--method", "reprpo_side",
+            ]
+        },
+        {
+            "name": "svd -v",
+            "type": "debugpy",
+            "pythonArgs": ["-Xfrozen_modules=off"],
+            "request": "launch",
+            "program": "${workspaceFolder}/nbs/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--verbose",
+                "--method", "reprpo_svd",
+            ]
+        },
+        {
+            "name": "side -v",
+            "type": "debugpy",
+            "pythonArgs": ["-Xfrozen_modules=off"],
+            "request": "launch",
+            "program": "${workspaceFolder}/nbs/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--verbose",
+                "--method", "reprpo_side",
+            ]
+        },
+        {
+            "name": "dpo -v",
+            "type": "debugpy",
+            "pythonArgs": ["-Xfrozen_modules=off"],
+            "request": "launch",
+            "program": "${workspaceFolder}/nbs/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--verbose",
+                "--method", "dpo",
             ]
         }
     ]

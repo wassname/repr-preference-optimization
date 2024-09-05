@@ -73,6 +73,7 @@ def load_model(model_name, load_in_4bit=True, load_in_8bit=False, attn_implement
             bnb_4bit_use_double_quant=True,
             bnb_4bit_compute_dtype=torch_dtype, # faster
             bnb_4bit_quant_type="nf4", # for training  normalized float 4 bit data type
+            # skip_modules=[], # by default the head is kept in original precision
         )
     elif load_in_8bit:
         quantization_config = BitsAndBytesConfig(
@@ -80,7 +81,8 @@ def load_model(model_name, load_in_4bit=True, load_in_8bit=False, attn_implement
         )
     else:
         quantization_config = None
-    model = AutoModelForCausalLM.from_pretrained(model_name, low_cpu_mem_usage=True,
+    model = AutoModelForCausalLM.from_pretrained(model_name, 
+                                                #  low_cpu_mem_usage=True,
                                                  quantization_config = quantization_config,
         torch_dtype=torch_dtype, 
         attn_implementation=attn_implementation,
