@@ -25,7 +25,7 @@ class TrainingArguments:
 
     # dataset
     n_samples: int = 1800 * 2
-    max_length: int = 256
+    max_length: int = 196
     max_prompt_length: int = 64
 
 

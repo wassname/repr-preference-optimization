@@ -40,7 +40,7 @@ class TokenizeRow:
             prompt = self.tokenizer.encode_plus(batch['prompt'], add_special_tokens=False, padding=False, truncation=True, max_length=self.max_prompt_length)['input_ids']
         max_ans_length=self.max_length - len(prompt) - self.tokenizer.num_special_tokens_to_add()
 
-        with tok_setings(self.tokenizer, truncation_side='right'):
+        with tok_setings(self.tokenizer, padding_side='right', truncation_side='right'):
             for key in ["chosen", "rejected"]:
                 encoded_inputs = {}
                 # tokenizer and truncate
@@ -64,9 +64,9 @@ class TokenizeRow:
 
         # I also want to output a token mask but it's complicated by the special tokens
         # FIXME: this assumes one bos and on eos token
+        out['prompt_truncated'] = len(prompt)>=self.max_prompt_length
         out['prompt'] = self.tokenizer.build_inputs_with_special_tokens(prompt)[:-1]
         out['prompt_mask'] = [1] * len(out['prompt']) + [0] * (self.max_length - len(out['prompt']))
-        out['prompt_truncated'] = len(out['prompt'])>=self.max_prompt_length
 
         return out
 

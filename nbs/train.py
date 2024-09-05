@@ -161,8 +161,8 @@ from reprpo.data.collate3 import TokenizeRow
 tokenize_row = TokenizeRow(tokenizer, max_length=args.max_length, max_prompt_length=args.max_prompt_length)
 dataset3 = dataset2.map(tokenize_row, batched=False)
 
-print(f"Prompt truncated {np.mean(dataset3['train']['prompt_truncated'])}")
-print(f"Chosen truncated {np.mean(dataset3['train']['chosen_truncated'])}")
+print(f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}")
+print(f"Chosens truncated {np.mean(dataset3['train']['chosen_truncated']):2.2%}")
 
 
 # %%
@@ -238,6 +238,24 @@ print(f"epochs {args.n_samples//len(dl_train)}")
 from lightning.pytorch.callbacks import LearningRateMonitor
 from reprpo.train.lightning import GenCallback
 
+if args1.method == "reprpo_svd":
+    model_kwargs = dict(
+        alpha=args.alpha,
+        quantile=args.quantile,
+        dual_svd=args.dual_svd,
+        collection_layers=args.collection_layers,
+    )
+elif args1.method == "reprpo_side":
+    model_kwargs = dict(
+        alpha=args.alpha,
+        collection_layers=args.collection_layers,
+        collection_keys=args.collection_keys,
+        collect_input=args.collect_input,
+    )
+else:
+    model_kwargs = dict()
+
+
 # %%
 pl_model = PL_MODEL(model,
                 # adam8bit=args.load_in_4bit or args.load_in_8bit,
@@ -246,6 +264,8 @@ pl_model = PL_MODEL(model,
                 lr=args.lr,
                 num_iterations=max_steps,
                 batch_size=args.batch_size,
+
+                **model_kwargs
                 )
 
 

@@ -17,7 +17,10 @@ import itertools
 @dataclass
 class ReprPOSideInTrainingArguments(TrainingArguments):
     alpha: int = 1
+
+    """because the side channels don't repeat themselves we need to collect them on many layers."""
     collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
+    """taking the input, of the output layers of the side channels."""
     collection_keys: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
@@ -294,10 +297,10 @@ def compute_reprpo_side_loss_batch(
 
 
 class PL_REPRPO_SIDE_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, layer_paths=[], collect_input=True, **kwargs):
+    def __init__(self, *args, alpha=1, collection_keys=[], collection_layers=[], collect_input=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
-        self.hparams.layer_paths = layer_paths
+        self.hparams.layer_paths = get_layer_paths(collection_keys, collection_layers)
         self.hparams.collect_input = collect_input
 
     def _loss_fn(self, batch, model):
