@@ -139,6 +139,12 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
         reference_rejected_logprobs=ref_rejected_log_probas,
         beta=beta
     )
+    
+    def cosine_on_keys(hs1, hs2):
+        return F.cosine_similarity(hs1, hs2, dim=-1).nanmean()
+    
+    info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
+    info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
     nll_loss = info['nll_loss'] = cross_entropy_loss(pi_cho.logits, batch["chosen"])
     ref_nll_loss = info['ref_nll_loss'] = cross_entropy_loss(ref_cho.logits, batch["chosen"])

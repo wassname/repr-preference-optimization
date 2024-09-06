@@ -3,6 +3,10 @@ A simpler DPO tokenizer
 
 Instead of doing a batch we just do all rows to max length
 and we reuse tokenizer functions more
+see 
+- https://github.com/huggingface/trl/blob/main/trl/trainer/utils.py#L349
+- https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L98
+- https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
 
 """
 from contextlib import contextmanager

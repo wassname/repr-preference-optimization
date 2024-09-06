@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 from reprpo.train.lightning import PL_MODEL, TrainingArguments, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
-from baukit.nethook import TraceDict
+from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
 import itertools
 
@@ -36,8 +36,8 @@ class ReprPOSideOutTrainingArguments(TrainingArguments):
     alpha: int = 1
     collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
     collection_keys: tuple = (
-        "base_model.model.model.layers.{layer}.self_attn.qkv_proj.base_layer",
-        "base_model.model.model.layers.{layer}.mlp.gate_up_proj.base_layer",
+        "base_model.model.model.layers.{layer}.self_attn.qkv_proj",
+        "base_model.model.model.layers.{layer}.mlp.gate_proj",
     )
     collect_input: bool = False
     adapter_name: str = "reprpo_sideout"
@@ -49,6 +49,11 @@ def get_layer_paths(collection_keys, collection_layers):
     ]
     layer_paths = list(itertools.chain(*layer_paths))
     return layer_paths
+
+
+def validate_layer_paths(model, layer_paths):
+    for p in layer_paths:
+        get_module(model, p)
 
 
 def detach_hsd(hs):
@@ -280,6 +285,16 @@ def compute_reprpo_side_loss_batch(
         ref_rej.logprobs,
     )
 
+    def cosine_on_keys(hs1, hs2):
+        return torch.stack(
+            [
+                F.cosine_similarity(hs1[k], hs2[k], dim=-1).nanmean()
+                for k in hs1.keys()
+            ]
+        ).nanmean()
+    info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
+    info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
+
     nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
     ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
     nll_loss_ratio = nll_loss / ref_nll_loss
@@ -303,6 +318,7 @@ class PL_REPRPO_SIDE_MODEL(PL_MODEL):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.layer_paths = get_layer_paths(collection_keys, collection_layers)
+        validate_layer_paths(self._model, self.hparams.layer_paths)
         self.hparams.collect_input = collect_input
 
     def _loss_fn(self, batch, model):

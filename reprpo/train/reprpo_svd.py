@@ -22,7 +22,7 @@ class ReprPOSVDTrainingArguments(TrainingArguments):
     alpha: int = 1
 
     """we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
-    quantile: float=0.75
+    quantile: float=0.5
 
     """if true, will use the embedding and lm_head, if false only lm_head"""
     dual_svd: bool = False
@@ -163,8 +163,7 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
 
     nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
     ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
-    beta = 0.003
-    nll_loss_ratio = ( nll_loss / ref_nll_loss.clamp(min=1e-6) - 1) * beta
+    nll_loss_ratio = nll_loss / ref_nll_loss
 
     loss = (loss_reroute + loss_retain * alpha + nll_loss_ratio).nanmean()
 
@@ -175,6 +174,12 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         ref_cho.logprobs,
         ref_rej.logprobs,
     )
+
+    def cosine_on_keys(hs1, hs2):
+        return F.cosine_similarity(hs1, hs2, dim=-1).nanmean()
+    
+    info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
+    info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
     info = dict(
         loss_reroute=loss_reroute.mean(),

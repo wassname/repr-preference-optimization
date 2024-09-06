@@ -26,6 +26,26 @@ class ExistingBitsandbytesPrecision(Precision):
 
     Args:
         dtype: The compute dtype to use.
+
+
+
+    Usages
+        if args.load_in_4bit or args.load_in_8bit:
+            precision_plugin = ExistingBitsandbytesPrecision(
+                dtype=CustomDtype.INT4,
+                # dtype=torch.int8,
+                # dtype=torch.bfloat16,
+                default_dtype=torch.bfloat16,
+            )
+            plugins += [precision_plugin]
+        elif args.load_in_8bit:
+            precision_plugin = ExistingBitsandbytesPrecision(
+                # dtype=CustomDtype.INT4,
+                dtype=torch.int8,
+                # dtype=torch.bfloat16,
+                default_dtype=torch.bfloat16,
+            )
+            plugins += [precision_plugin]
     """
 
     # Note: you'll notice that the `precision` str class attribute is not defined. This is on purpose because there are

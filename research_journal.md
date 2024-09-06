@@ -1681,3 +1681,17 @@ svd
   coherency_inc_test [genie_dpo-us_history_textbo...  2.442981
   coherency_inc_oos [genie_dpo-us_history_fiction...  2.043880
   coherency_inc_rnd [genie_dpo-code_hard-test]        1.118582
+
+# 2024-09-06 02:39:22
+
+I'm still fixing bugs
+- incoherency in SVD
+ - [ ] change alpha or quantile?
+- side, in doesn't work 
+  [ ] (need to try without bnb) (and try out)
+- need to add cosine....
+- check if eval formatter is diff than my lightning one
+- I plan to get it working on instruct furst
+
+
+lets avoid bnb as it's slow, doenst help, bust things, and I'm not sure the dtype I'm mean to use?

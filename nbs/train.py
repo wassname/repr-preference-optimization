@@ -75,6 +75,7 @@ elif args1.method == 'reprpo_svd':
     from reprpo.train.reprpo_svd import ReprPOSVDTrainingArguments as TrainingArguments, PL_REPRPO_SVD_MODEL as PL_MODEL
 elif args1.method == 'reprpo_side':
     from reprpo.train.reprpo_side import ReprPOSideInTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
+    # from reprpo.train.reprpo_side import ReprPOSideOutTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
 else:
     raise ValueError(f"method {args1.method} not found. options: `reprpo_side`, `dpo`, `reprpo_svd`")
 
@@ -84,17 +85,21 @@ args2 = parser.parse_args()
 args = TrainingArguments(**args2.args.__dict__)
 print(f"args = {args}")
 
+if args1.dev:
+    args.model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+    args.n_samples = 512
+    args.batch_size *= 2
+
 # %% [markdown]
 # ## Load model
 
-ts = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
-run_fname = f'{args1.dataset}/{args.adapter_name}/{ts}'
-from reprpo.helpers.wandb import init_wandb
+ts = pd.Timestamp.now().strftime("%H%M%S")
+run_fname = f'{args.adapter_name}/{ts}'
 wandb.require(experiment='service')
 
 
 config = dict(**args1.__dict__, **args.__dict__)
-wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=f'{args.model_name.replace("/","")}', config=config)
+run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=f'{args1.dataset}-{args.model_name.replace("/","")}', config=config)
 
 from peft import LoraConfig, get_peft_model
 from reprpo.models.load import load_model, print_trainable_parameters
@@ -439,34 +444,56 @@ def key_metrics(df_res2):
 
     # metric: do we retrain train coherency?
     df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T
-    rel_coherency = df_res_logp.loc[adapter_name]/df_res_logp.loc['base']
+    rel_coherency = df_res_logp.loc[adapter_name]-df_res_logp.loc['base']
+
+    # metric: do we retrain train coherency?
+    c = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T.loc[adapter_name]
+    r = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_rejected_logps'].mean().unstack().T.loc[adapter_name]
+    cho_rej_coh = c-r
 
     df_metrics = pd.Series({
-        f'acc_inc_train [{ds_name_train}]': rel_acc[ds_name_train],
-        f'acc_inc_test [{ds_name_test}]': rel_acc[ds_name_test],
-        f'acc_inc_oos [{ds_name_oos}]': rel_acc[ds_name_oos],
-        f'acc_inc_rnd [{ds_name_rnd}]': rel_acc[ds_name_rnd], # probobly wont go up as it's unrelated
+        # accuracy increase over base measured generalisaton on increasing distribution shifts
+        f'acc[a/base]_train [{ds_name_train}]': rel_acc[ds_name_train],
+        f'acc[a/base]_test [{ds_name_test}]': rel_acc[ds_name_test],
+        f'acc[a/base]_oos [{ds_name_oos}]': rel_acc[ds_name_oos],
+        f'acc[a/base]_rnd [{ds_name_rnd}]': rel_acc[ds_name_rnd], # probobly wont go up as it's unrelated
 
-        f'coherency_inc_train [{ds_name_train}]': rel_coherency[ds_name_train],
-        f'coherency_inc_test [{ds_name_test}]': rel_coherency[ds_name_test],
-        f'coherency_inc_oos [{ds_name_oos}]': rel_coherency[ds_name_oos],
-        f'coherency_inc_rnd [{ds_name_rnd}]': rel_coherency[ds_name_rnd], # probobly wont go up as it
+        # we want to see if it retains coherency vs the base on chosen answers
+        f'coherency[a-base]_train [{ds_name_train}]': rel_coherency[ds_name_train],
+        f'coherency[a-base]_test [{ds_name_test}]': rel_coherency[ds_name_test],
+        f'coherency[a-base]_oos [{ds_name_oos}]': rel_coherency[ds_name_oos],
+        f'coherency[a-base]_rnd [{ds_name_rnd}]': rel_coherency[ds_name_rnd], 
+
+        # we want to see if it retains chosen vs rejected
+        f'coherency[cho-rej]_train [{ds_name_train}]': cho_rej_coh[ds_name_train],
+        f'coherency[cho-rej]_test [{ds_name_test}]': cho_rej_coh[ds_name_test],
+        f'coherency[cho-rej]_oos [{ds_name_oos}]': cho_rej_coh[ds_name_oos],
+        f'coherency[cho-rej]_rnd [{ds_name_rnd}]': cho_rej_coh[ds_name_rnd], 
+
+        
     })
     return df_metrics.to_frame()
 
 # %%
 from reprpo.gen import get_model_generations
 df_gen = get_model_generations(model, tokenizer, N=4)
-wandb.Table(dataframe=df_gen)
+df_gen_w = wandb.Table(dataframe=df_gen)
 
 
 df_metrics = key_metrics(df_res2)
-print('key metrics\n', df_metrics)
-wandb.Table(dataframe=df_metrics)
+print('key metrics (adapter over base model)\n', df_metrics)
+df_metrics_w = wandb.Table(dataframe=df_metrics)
 
 print('acc res')
 print(df_res)
-wandb.Table(dataframe=df_res)
+df_res_w = wandb.Table(dataframe=df_res)
+
+run.log({
+    "acc": df_res_w,
+    'relative_metrics': df_metrics_w,
+    'generations': df_gen_w,
+    
+})
 
 # save
 f = str(save_dir)+'/eval.parquet'

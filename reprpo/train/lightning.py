@@ -14,17 +14,17 @@ class TrainingArguments:
     # model_name: str = "google/gemma-2-2b" # small base model
     # model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
     model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
-    load_in_4bit: bool = True  # this doesn't seem to be able to backprop when using baukit
+    load_in_4bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     use_gradient_checkpointing: bool = False
 
     # train
-    batch_size: int = 14
-    lr: float = 4e-5
+    batch_size: int = 12
+    lr: float = 3e-5
     weight_decay: float = 0.0
 
     # dataset
-    n_samples: int = 1800 * 2
+    n_samples: int = 1800
     max_length: int = 196
     max_prompt_length: int = 96
 
@@ -77,10 +77,10 @@ class PL_MODEL(pl.LightningModule):
                 lr=self.hparams.lr,
                 weight_decay=self.hparams.weight_decay,
             )
-        else:
-            optimizer = bnb.optim.PagedAdam32bit(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         # else:
-        #     optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        #     optimizer = bnb.optim.PagedAdam32bit(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        else:
+            optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         
         if self.hparams.schedule == 'cosine':
             scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.num_iterations, eta_min=0)
