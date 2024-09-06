@@ -246,7 +246,7 @@ def generation_test(
 
     for adapter_name in adapter_names:
         print(f"**Adapter:`{adapter_name}` generation**`")
-        with torch.amp.autocast(model.device, cache_enabled=False, dtype=model.dtype):
+        with torch.amp.autocast(str(model.device), cache_enabled=False, dtype=model.dtype):
 
             # inputs = model.prepare_inputs_for_generation(**inputs, use_cache=False)
             # print(inputs)

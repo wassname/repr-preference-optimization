@@ -85,6 +85,7 @@ def load_model(model_name, load_in_4bit=True, load_in_8bit=False, attn_implement
                                                 #  low_cpu_mem_usage=True,
                                                  quantization_config = quantization_config,
         torch_dtype=torch_dtype, 
+        device_map="auto", 
         attn_implementation=attn_implementation,
         )
     model.resize_token_embeddings(len(tokenizer))

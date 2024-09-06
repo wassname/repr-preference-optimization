@@ -161,10 +161,6 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         comb_attn_mask,
     )
 
-    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
-    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
-    nll_loss_ratio = nll_loss / ref_nll_loss
-
     loss = (loss_reroute + loss_retain * alpha + nll_loss_ratio).nanmean()
 
     # get the dpo metrics for comparison
@@ -178,17 +174,22 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
     def cosine_on_keys(hs1, hs2):
         return F.cosine_similarity(hs1, hs2, dim=-1).nanmean()
     
-    info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
-    info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
+    with torch.no_grad():
+        info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
+        info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
-    info = dict(
-        loss_reroute=loss_reroute.mean(),
-        loss_retain=loss_retain.mean() * alpha,
-        nll_loss=nll_loss,
-        ref_nll_loss=ref_nll_loss,
-        nll_loss_ratio=nll_loss_ratio,
-        **info,
-    )
+        nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
+        ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+        nll_loss_ratio = nll_loss / ref_nll_loss
+
+        info = dict(
+            loss_reroute=loss_reroute.mean(),
+            loss_retain=loss_retain.mean() * alpha,
+            nll_loss=nll_loss,
+            ref_nll_loss=ref_nll_loss,
+            nll_loss_ratio=nll_loss_ratio,
+            **info,
+        )
     assert torch.isfinite(loss)
     return loss, info
 

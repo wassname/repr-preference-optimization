@@ -20,11 +20,11 @@ class TrainingArguments:
 
     # train
     batch_size: int = 12
-    lr: float = 3e-5
+    lr: float = 6e-5
     weight_decay: float = 0.0
 
     # dataset
-    n_samples: int = 1800
+    n_samples: int = 1800 * 2
     max_length: int = 196
     max_prompt_length: int = 96
 
@@ -77,10 +77,11 @@ class PL_MODEL(pl.LightningModule):
                 lr=self.hparams.lr,
                 weight_decay=self.hparams.weight_decay,
             )
-        # else:
-        #     optimizer = bnb.optim.PagedAdam32bit(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         else:
-            optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+            # paged optimizer avoid memory spikes  https://arxiv.org/pdf/2305.14314
+            optimizer = bnb.optim.PagedAdam32bit(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        # else:
+        #     optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         
         if self.hparams.schedule == 'cosine':
             scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.num_iterations, eta_min=0)

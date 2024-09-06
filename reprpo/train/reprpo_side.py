@@ -285,6 +285,7 @@ def compute_reprpo_side_loss_batch(
         ref_rej.logprobs,
     )
 
+    
     def cosine_on_keys(hs1, hs2):
         return torch.stack(
             [
@@ -292,22 +293,23 @@ def compute_reprpo_side_loss_batch(
                 for k in hs1.keys()
             ]
         ).nanmean()
-    info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
-    info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
-    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
-    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
-    nll_loss_ratio = nll_loss / ref_nll_loss
+    with torch.no_grad():
+        info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
+        info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
-    info = dict(
-        loss_reroute=loss_reroute.mean(),
-        loss_retain=loss_retain.mean(),
-        # loss=loss,
-        nll_loss=nll_loss,
-        ref_nll_loss=ref_nll_loss,
-        nll_loss_ratio=nll_loss_ratio,
-        **info,
-    )
+        nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
+        ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+        nll_loss_ratio = nll_loss / ref_nll_loss
+
+        info = dict(
+            loss_reroute=loss_reroute.mean(),
+            loss_retain=loss_retain.mean(),
+            nll_loss=nll_loss,
+            ref_nll_loss=ref_nll_loss,
+            nll_loss_ratio=nll_loss_ratio,
+            **info,
+        )
     loss = (loss_reroute + loss_retain * alpha).nanmean()
     return loss, info
 

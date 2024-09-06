@@ -87,6 +87,7 @@ print(f"args = {args}")
 
 if args1.dev:
     args.model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+    # or  'yujiepan/llama-3-tiny-random'
     args.n_samples = 512
     args.batch_size *= 2
 
@@ -171,19 +172,9 @@ if args1.dev:
     datasets.disable_caching()
 dataset3 = dataset2.map(tokenize_row, batched=False)
 
-print(f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}")
-print(f"Chosens truncated {np.mean(dataset3['train']['chosen_truncated']):2.2%}")
-
-
-# %%
-# custom_collate_fn = DPODataCollatorWithPadding(pad_token_id=tokenizer.pad_token_id, 
-#                                                   tokenizer=tokenizer,
-#                                                   max_length=args.max_length,
-#                                                   mask_prompt_tokens=True,
-#                                                   max_prompt_length=args.max_prompt_length,
-#                                                   #label_pad_token_id=-100
-#                                                   )
-
+if args1.verbose:
+    print(f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}")
+    print(f"Chosens truncated {np.mean(dataset3['train']['chosen_truncated']):2.2%}")
 
 
 # %%
@@ -288,31 +279,6 @@ pl_model = PL_MODEL(model,
 
 # %%
 
-from reprpo.helpers.lightning_existing_bnb import ExistingBitsandbytesPrecision
-from accelerate.utils import CustomDtype
-plugins = []
-precision = None
-if args.load_in_4bit or args.load_in_8bit:
-    precision_plugin = ExistingBitsandbytesPrecision(
-        dtype=CustomDtype.INT4,
-        # dtype=torch.int8,
-        # dtype=torch.bfloat16,
-        default_dtype=torch.bfloat16,
-    )
-    plugins += [precision_plugin]
-elif args.load_in_8bit:
-    precision_plugin = ExistingBitsandbytesPrecision(
-        # dtype=CustomDtype.INT4,
-        dtype=torch.int8,
-        # dtype=torch.bfloat16,
-        default_dtype=torch.bfloat16,
-    )
-    plugins += [precision_plugin]
-else:
-    precision = "bf16" if torch.cuda.is_bf16_supported() else "f16"
-
-# %%
-
 
 
 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -336,10 +302,11 @@ trainer = pl.Trainer(
 
         # accelerator='gpu',
         devices=1, 
-        plugins=plugins,
+        # plugins=plugins,
         
         # https://lightning.ai/docs/pytorch/stable/common/trainer.html
-        precision=precision,
+        # mixed wont convert the modules weights, while bf16-true would
+        precision="bf16-mixed" if torch.cuda.is_bf16_supported() else "f16-mixed",
         log_every_n_steps=1,
         accumulate_grad_batches=accumulate_grad_batches,
         callbacks=callbacks,

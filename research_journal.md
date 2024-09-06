@@ -1695,3 +1695,8 @@ I'm still fixing bugs
 
 
 lets avoid bnb as it's slow, doenst help, bust things, and I'm not sure the dtype I'm mean to use?
+
+
+
+Hmm it works without bnb, at least side does. How high a lr can it handle? It hardly moves for 3e-5
+in my prev nbs 1e-4 was ok... lets try again
