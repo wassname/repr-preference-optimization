@@ -1700,3 +1700,33 @@ lets avoid bnb as it's slow, doenst help, bust things, and I'm not sure the dtyp
 
 Hmm it works without bnb, at least side does. How high a lr can it handle? It hardly moves for 3e-5
 in my prev nbs 1e-4 was ok... lets try again
+
+
+lr = 6e-5 and side gives
+
+  acc[a/base]_train [genie_dpo-us_history_textboo...   1.001124
+  acc[a/base]_test [genie_dpo-us_history_textbook...   1.005405
+  acc[a/base]_oos [genie_dpo-us_history_fiction-t...   1.036450
+  acc[a/base]_rnd [genie_dpo-code_hard-test]           0.993103
+  coherency[a-base]_train [genie_dpo-us_history_t...   0.139992
+  coherency[a-base]_test [genie_dpo-us_history_te...   0.133522
+  coherency[a-base]_oos [genie_dpo-us_history_fic...   0.111542
+
+
+ lr = 1e-4 and side gives
+
+  --------------------------------------------------------------------------------
+  **Adapter:`reprpo_sidein-us_history_textbook` generation**`
+  `I think you may be trying to test my understanding of a classic example of a nonsensical question!
+
+  To answer in the spirit of the original joke: "`
+  --------------------------------------------------------------------------------
+  **Adapter:`None` generation**`
+  `I think you may be having a bit of fun with words there!
+
+  There is no such thing as a "bacon narwhale." Narwhals are`
+  --------------------------------------------------------------------------------
+
+lr 1e-3 was good
+
+lr = 4e-3 was too much

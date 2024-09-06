@@ -28,13 +28,13 @@ class ReprPOSideInTrainingArguments(TrainingArguments):
     collect_input: bool = True
     adapter_name: str = "reprpo_sidein"
 
-    # lr: float = 1e-4
+    lr: float = 3e-4
 
 
 @dataclass
 class ReprPOSideOutTrainingArguments(TrainingArguments):
     alpha: int = 1
-    collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
+    collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 24, 26, 28)
     collection_keys: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.qkv_proj",
         "base_model.model.model.layers.{layer}.mlp.gate_proj",

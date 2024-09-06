@@ -418,24 +418,27 @@ def key_metrics(df_res2):
     r = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_rejected_logps'].mean().unstack().T.loc[adapter_name]
     cho_rej_coh = c-r
 
+    def fmt(s):
+        return s.replace('genie_dpo-', '')
+
     df_metrics = pd.Series({
         # accuracy increase over base measured generalisaton on increasing distribution shifts
-        f'acc[a/base]_train [{ds_name_train}]': rel_acc[ds_name_train],
-        f'acc[a/base]_test [{ds_name_test}]': rel_acc[ds_name_test],
-        f'acc[a/base]_oos [{ds_name_oos}]': rel_acc[ds_name_oos],
-        f'acc[a/base]_rnd [{ds_name_rnd}]': rel_acc[ds_name_rnd], # probobly wont go up as it's unrelated
+        f'acc[a/base]_train [{fmt(ds_name_train)}]': rel_acc[ds_name_train],
+        f'acc[a/base]_test [{fmt(ds_name_test)}]': rel_acc[ds_name_test],
+        f'acc[a/base]_oos [{fmt(ds_name_oos)}]': rel_acc[ds_name_oos],
+        f'acc[a/base]_rnd [{fmt(ds_name_rnd)}]': rel_acc[ds_name_rnd], # probobly wont go up as it's unrelated
 
         # we want to see if it retains coherency vs the base on chosen answers
-        f'coherency[a-base]_train [{ds_name_train}]': rel_coherency[ds_name_train],
-        f'coherency[a-base]_test [{ds_name_test}]': rel_coherency[ds_name_test],
-        f'coherency[a-base]_oos [{ds_name_oos}]': rel_coherency[ds_name_oos],
-        f'coherency[a-base]_rnd [{ds_name_rnd}]': rel_coherency[ds_name_rnd], 
+        f'coherency[a-base]_train [{fmt(ds_name_train)}]': rel_coherency[ds_name_train],
+        f'coherency[a-base]_test [{fmt(ds_name_test)}]': rel_coherency[ds_name_test],
+        f'coherency[a-base]_oos [{fmt(ds_name_oos)}]': rel_coherency[ds_name_oos],
+        f'coherency[a-base]_rnd [{fmt(ds_name_rnd)}]': rel_coherency[ds_name_rnd], 
 
         # we want to see if it retains chosen vs rejected
-        f'coherency[cho-rej]_train [{ds_name_train}]': cho_rej_coh[ds_name_train],
-        f'coherency[cho-rej]_test [{ds_name_test}]': cho_rej_coh[ds_name_test],
-        f'coherency[cho-rej]_oos [{ds_name_oos}]': cho_rej_coh[ds_name_oos],
-        f'coherency[cho-rej]_rnd [{ds_name_rnd}]': cho_rej_coh[ds_name_rnd], 
+        f'coherency[cho-rej]_train [{fmt(ds_name_train)}]': cho_rej_coh[ds_name_train],
+        f'coherency[cho-rej]_test [{fmt(ds_name_test)}]': cho_rej_coh[ds_name_test],
+        f'coherency[cho-rej]_oos [{fmt(ds_name_oos)}]': cho_rej_coh[ds_name_oos],
+        f'coherency[cho-rej]_rnd [{fmt(ds_name_rnd)}]': cho_rej_coh[ds_name_rnd], 
 
         
     })
