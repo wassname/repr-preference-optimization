@@ -103,13 +103,17 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
     model.eval()
     with torch.no_grad():
         with model.disable_adapter():
-            ref_cho = model(batch["chosen"], return_hs=True)
+            ref_cho = model(
+                batch["chosen"], 
+                attn_mask=batch["chosen_mask"], 
+                output_hidden_states=True
+            )
             ref_chosen_log_probas = compute_logprobs(
                 logits=ref_cho.logits,
                 labels=batch["chosen"],
                 selection_mask=batch["chosen_mask"]
             )
-            ref_rej = model(batch["rejected"], return_hs=True)
+            ref_rej = model(batch["rejected"], attn_mask=batch["rejected_mask"],output_hidden_states=True)
             ref_rejected_log_probas = compute_logprobs(
                 logits=ref_rej.logits,
                 labels=batch["rejected"],
@@ -117,15 +121,13 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
             )
     
     model.train()
-    # where policy_model(batch["chosen"]) are the logits
-    # FIXME: need to tracedict, and deal with dict outputs?
-    pi_cho = model(batch["chosen"], return_hs=True)
+    pi_cho = model(batch["chosen"], attn_mask=batch["chosen_mask"],output_hidden_states=True)
     policy_chosen_log_probas = compute_logprobs(
         logits=pi_cho.logits,
         labels=batch["chosen"],
         selection_mask=batch["chosen_mask"]
     )
-    pi_rej = model(batch["rejected"], return_hs=True)
+    pi_rej = model(batch["rejected"], attn_mask=batch["rejected_mask"],output_hidden_states=True)
     policy_rejected_log_probas = compute_logprobs(
         logits=pi_rej.logits,
         labels=batch["rejected"],
