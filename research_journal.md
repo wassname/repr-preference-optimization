@@ -1786,9 +1786,118 @@ exp
 - try 1e-5 with detach and dual
   - gen shows coherenct changes at early stage, yet loss is up
   - [x] add detach on mask...
-  - [ ] maybe I should not have been clamping to eps!!, yes I was removing signal. Once this is finished need to revisit lr and detach and dual
+  - [x] maybe I should not have been clamping to eps!!, yes I was removing signal. Once this is finished need to revisit lr and detach and dual. also add is better than clamp as it preserved grad
 
 
 
 - lr=1e-3 loss up not spikey good
-- lr=1e-4 
+- lr=1e-4 spikey
+- without hs_io.detach is actually drops down! so it's important! ![alt text](image-1.png)
+
+
+hmm so we are seing something weird where rr starts at zero and can't be improved?
+lets check if it's too small?, notably b and dist in cacl of rr
+
+
+  ================================================================================
+  key metrics (adapter over base model)
+                                                            val
+  acc[a/base]_train [us_history_textbook-train]        0.999438
+  acc[a/base]_test [us_history_textbook-test]          1.005405
+  acc[a/base]_oos [us_history_fiction-test]            1.023772
+  acc[a/base]_rnd [code_hard-test]                     1.001724
+  coherency[a-base]_train [us_history_textbook-tr...   0.160873
+  coherency[a-base]_test [us_history_textbook-test]    0.141975
+  coherency[a-base]_oos [us_history_fiction-test]      0.303047
+  coherency[a-base]_rnd [code_hard-test]              -0.634735
+  coherency[cho-rej]_train [us_history_textbook-t...  56.149788
+  coherency[cho-rej]_test [us_history_textbook-test]  54.709572
+  coherency[cho-rej]_oos [us_history_fiction-test]    30.302010
+  coherency[cho-rej]_rnd [code_hard-test]              9.637878
+  acc res
+  dataset                         genie_dpo-code_hard-test  genie_dpo-us_history_fiction-test  genie_dpo-us_history_textbook-test  genie_dpo-us_history_textbook-train
+  adapter                                                                                                                                                             
+  base                                            0.773333                           0.841333                            0.986667                             0.988889
+  reprpo_svd-us_history_textbook                  0.774667                           0.861333                            0.992000                             0.988333
+
+
+wait my decomposition is making it bigger! and the difference bigger... shouldn't they be a smaller proportyion, unless we're biasing it... .args
+or does it just mean most of it is not in lm_heads space? which is good
+
+  (res_det(pi_rej.hs)-res_det(pi_cho.hs)).abs().mean()
+  tensor(0.2100, device='cuda:0', dtype=torch.bfloat16)
+
+  ((pi_rej.hs)-(pi_cho.hs)).abs().mean()
+  tensor(0.0364, device='cuda:0', dtype=torch.bfloat16)
+
+  (decomposer(pi_rej.hs)-decomposer(pi_cho.hs)).abs().mean()
+  tensor(0.2451, device='cuda:0', dtype=torch.bfloat16)
+
+
+so we are decomposeig it into two equal and opposite vectors?
+
+but when I do output only, and hard svd I get that the majority of the hs is output, hmm. lets try it anyway?... maybe this would make more sense near the end? or maybe I need more layers if I am to do this?
+
+  (decomposer(pi_rej.hs)-decomposer(pi_cho.hs)).abs().mean()
+  tensor(0.0364, device='cuda:0', dtype=torch.bfloat16)
+
+  ((pi_rej.hs)-(pi_cho.hs)).abs().mean()
+  tensor(0.0364, device='cuda:0', dtype=torch.bfloat16)
+
+  (res_det(pi_rej.hs)-res_det(pi_cho.hs)).abs().mean()
+  tensor(0.0002, device='cuda:0', dtype=torch.bfloat16)
+
+for example there are few facts here
+- we know the residual stream stays mostly the same and is built up bit by bit. So most of it contributes to lm_head (confirmed)
+- but we know that the side channels additivly modify the residual streamn
+
+
+
+
+  key metrics (adapter over base model)
+                                                            val
+  acc[a/base]_train [us_history_textbook-train]        1.000000
+  acc[a/base]_test [us_history_textbook-test]          1.005405
+  acc[a/base]_oos [us_history_fiction-test]            1.023772
+  acc[a/base]_rnd [code_hard-test]                     1.001724
+  coherency[a-base]_train [us_history_textbook-tr...   0.737183
+  coherency[a-base]_test [us_history_textbook-test]    0.681396
+  coherency[a-base]_oos [us_history_fiction-test]      1.534470
+  coherency[a-base]_rnd [code_hard-test]              -0.335327
+  coherency[cho-rej]_train [us_history_textbook-t...  55.713615
+  coherency[cho-rej]_test [us_history_textbook-test]  54.150833
+  coherency[cho-rej]_oos [us_history_fiction-test]    30.237305
+  coherency[cho-rej]_rnd [code_hard-test]              9.637238
+  acc res
+  dataset                         genie_dpo-code_hard-test  genie_dpo-us_history_fiction-test  genie_dpo-us_history_textbook-test  genie_dpo-us_history_textbook-train
+  adapter                                                                                                                                                             
+  base                                            0.773333                           0.841333                            0.986667                             0.988889
+  reprpo_svd-us_history_textbook                  0.774667                           0.861333                            0.992000                             0.988889
+
+  args = ReprPOSVDTrainingArguments(model_name='NousResearch/Meta-Llama-3.1-8B-Instruct', batch_size=13, lr=0.0003,  alpha=0.3, quantile=0.25, dual_svd=False, adapter_name='reprpo_svd', collection_layers=(10, 20))
+  save_dir=/workspace/repr-preference-optimization/outputs/NousResearch_Meta-Llama-3.1-8B-Instruct_reprpo_svd_us_history_textbook/2024-09-07_04-54-08
+
+- [ ] collect more layers?
+- [ ] try with simple single svd hard
+
+
+# 2024-09-07 08:57:20
+
+So the SVD thing doesn't work in any way. You can tr it as manual intervnetions where we expect to see change in style or content while retaining coherency. But I'm either seeing no change or incoherency. I guess I should try propreractivation steering first.
+
+But I can frame what I'm doig as metalearning activation steering. Now I hope that this wil lgive me a general intervention and thtt it will be more general and more powerful because it's non linear and uses gradient.
+
+So perhaps I shoudl frame it this way. I already have a way to measure generality.
+Now I just prorotpye diff interventions:
+- hs.diff()?
+- side channels?
+- SVD?
+- other ones from the review papers?
+- all the ones in GENIEhouse
+- holder refelections?
+-  could I just compare projections onto output vs side inpouts?
+
+So in normal activation steering you
+mean over many tokens, and batches,and apply a linear transofrmation
+this means any difference between samples is ignored, and nonlinearities are ignored
+but meta learning over per sample activation steering could potentially capture these differences and nonlinearities with a more general transform.

@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
-from reprpo.helpers.svd_decomposer import SoftSVDDecomposer, DualSVDDecomposer
+from reprpo.helpers.svd_decomposer import SoftSVDDecomposer, DualSVDDecomposer, SVDDecomposer
 
 
 
@@ -22,14 +22,15 @@ class ReprPOSVDTrainingArguments(TrainingArguments):
     alpha: int = 0.3
 
     """we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
-    quantile: float=0.5
+    # note removing the 0.25 top singular values removes 90% of the magnitude from hs leaving a small
+    quantile: float=1
 
     """if true, will use the embedding and lm_head, if false only lm_head"""
-    dual_svd: bool = True
+    dual_svd: bool = False
 
     adapter_name: str = "reprpo_svd"
 
-    collection_layers: tuple=(10, 20) 
+    collection_layers: tuple=(10, 12, 14, 16, 18, 20, 22, 24, 26, 28) 
 
     lr: float = 1e-4
 
@@ -68,11 +69,11 @@ def mean_with_attention(
     layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
     return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
 
+def norm(a, dim=-1):
+    # return torch.abs(a).mean(dim)
+    return torch.pow(a, 2).mean(dim)
 
 def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16) -> Float[Tensor, "b l"]:
-    def norm(a, dim=-1):
-        # return torch.abs(a).mean(dim)
-        return torch.pow(a, 2).mean(dim)
 
 
     dist = mean_with_attention(a-b, attn)  # reduces over tokens
@@ -138,6 +139,7 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
     comb_attn_mask = cho_attn_mask * rej_attn_mask
     # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
     # and again we scale it using the reference model as a stable target
+    # so should start at a -ve and go to 0 (as we optimize rr, not this)
     loss_retain = dist_ratio(
         ref_cho.hs.detach(),
         pi_cho.hs,
@@ -145,15 +147,17 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         ref_cho.hs,
         ref_rej.hs,
         comb_attn_mask,
-    ) - 1
+    ) 
 
     def res_det(hs):
         """use SVD to decompose hs into the inputoutput and residual components"""
         hs_io = decomposer(hs)
-        return hs - hs_io.detach() # FIXME, should I not detatch this?
+        return hs - hs_io#.detach() # FIXME, should I not detatch this?
 
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
+    # start at 0 and go to -ve inf
+    # start at log(1)=0 go to log(0)=-inf
     loss_reroute = dist_ratio(
         res_det(ref_cho.hs).detach(),
         res_det(pi_rej.hs),
@@ -184,6 +188,14 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
+        # Lets monitor the comparitive norms of the decomposed parts
+        hs = norm(ref_cho.hs)
+        hs_r = norm(res_det(ref_cho.hs))
+        hs_io = norm(decomposer(ref_cho.hs))
+        info['hs_r/hs'] = (hs_r / hs).mean()
+        info['hs_io/hs'] = (hs_io / hs).mean()
+        info['hs_r/hs_io'] = (hs_r / hs_io).mean()
+
 
         info = dict(
             loss_reroute=loss_reroute.mean(),
@@ -210,9 +222,14 @@ class PL_REPRPO_SVD_MODEL(PL_MODEL):
                 quantile=quantile,
             )
         else:
-            self.decomposer = SoftSVDDecomposer(
-                self._model.lm_head.weight.clone().float(), quantile=quantile
-            )
+            if quantile < 1:
+                self.decomposer = SoftSVDDecomposer(
+                    self._model.lm_head.weight.clone().float(), quantile=quantile
+                )
+            else:
+                self.decomposer = SVDDecomposer(
+                    self._model.lm_head.weight.clone().float()
+                )
 
     def _loss_fn(self, batch, model):
         return compute_reprpo_svd_loss_batch(
