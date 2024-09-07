@@ -16,10 +16,10 @@ import itertools
 
 @dataclass
 class ReprPOSideInTrainingArguments(TrainingArguments):
-    alpha: int = 1
+    alpha: int = 0.1
 
     """because the side channels don't repeat themselves we need to collect them on many layers."""
-    collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22)
+    collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 28)
     """taking the input, of the output layers of the side channels."""
     collection_keys: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
@@ -71,7 +71,7 @@ def mult_with_attention(
     x: Float[Tensor, "b t h"], attn_mask: Float[Tensor, "b t"], dim: int = 1
 ) -> Float[Tensor, "b t h"]:
     """x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1)#.detach()
+    layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1).detach()
     return (x * layer_attn_mask) / layer_attn_mask.sum(dim, keepdim=True)
 
 
@@ -169,7 +169,7 @@ def reprpo_forward(model, input_ids, attn_mask, layer_paths, collect_input=True)
 #     return log_dist_ratio * alpha
 
 
-def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b l"]:
+def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-12) -> Float[Tensor, "b l"]:
     # # convert to float32 to avoid nanmean issues
     # a = a.float()
     # b = b.float()
@@ -182,14 +182,14 @@ def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "
 
     dist = mean_with_attention(a-b, attn)  # reduces over tokens
     dist = norm(dist, dim=-1) # over h
-    dist = dist.clamp(min=eps)
+    dist = dist + eps
 
     dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
     dist_ref = norm(dist_ref, dim=-1)
-    dist_ref = dist_ref.clamp(min=eps)
+    dist_ref = dist_ref + eps
 
     # get the ratio in log space to avoid div by zero
-    log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
+    log_dist_ratio = torch.log(dist) - torch.log(dist_ref).detach()
 
     alpha = 1
     return log_dist_ratio * alpha
@@ -294,13 +294,14 @@ def compute_reprpo_side_loss_batch(
             ]
         ).nanmean()
 
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
+    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+    nll_loss_ratio = nll_loss / ref_nll_loss
+    
     with torch.no_grad():
         info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
-        nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
-        ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
-        nll_loss_ratio = nll_loss / ref_nll_loss
 
         info = dict(
             loss_reroute=loss_reroute.mean(),

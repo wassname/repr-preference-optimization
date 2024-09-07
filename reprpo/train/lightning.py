@@ -19,7 +19,7 @@ class TrainingArguments:
     use_gradient_checkpointing: bool = False
 
     # train
-    batch_size: int = 16
+    batch_size: int = 13
     lr: float = 6e-5
     weight_decay: float = 0.0
 

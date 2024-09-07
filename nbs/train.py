@@ -380,7 +380,7 @@ datasets = [
 ]
 datasets += dist2datasets(GENIES, N=N, source=[args1.dataset]) # our hard OOS test
 # datasets += get_ethics_datasets(N=N)
-datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['code_hard', 'truthful_qa',# 'wrong_arc', 'ranking_logic',
+datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['code_hard', #'truthful_qa',# 'wrong_arc', 'ranking_logic',
 # 'math', 'sycophancy_mimicry'
 ]]
 # print('datasets', [ds2name(d) for d in datasets])
@@ -442,21 +442,21 @@ def key_metrics(df_res2):
 
         
     })
-    return df_metrics.to_frame()
+    return df_metrics.to_frame('val')
 
 # %%
 from reprpo.gen import get_model_generations
 df_gen = get_model_generations(model, tokenizer, N=4)
-df_gen_w = wandb.Table(dataframe=df_gen)
+df_gen_w = wandb.Table(dataframe=df_gen.reset_index())
 
 
 df_metrics = key_metrics(df_res2)
 print('key metrics (adapter over base model)\n', df_metrics)
-df_metrics_w = wandb.Table(dataframe=df_metrics)
+df_metrics_w = wandb.Table(dataframe=df_metrics.reset_index())
 
 print('acc res')
 print(df_res)
-df_res_w = wandb.Table(dataframe=df_res)
+df_res_w = wandb.Table(dataframe=df_res.reset_index())
 
 run.log({
     "acc": df_res_w,

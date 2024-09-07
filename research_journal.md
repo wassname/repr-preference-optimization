@@ -1730,3 +1730,65 @@ lr = 6e-5 and side gives
 lr 1e-3 was good
 
 lr = 4e-3 was too much
+
+3e-4 and more layers, it helps, alpha=0.3 it helps
+                                                  index          0
+  0       acc[a/base]_train [us_history_textbook-train]   1.004494
+  1         acc[a/base]_test [us_history_textbook-test]   1.009459
+  2           acc[a/base]_oos [us_history_fiction-test]   1.053883
+  3                    acc[a/base]_rnd [code_hard-test]   0.989655
+  4   coherency[a-base]_train [us_history_textbook-t...  -0.008255
+  5   coherency[a-base]_test [us_history_textbook-test]  -0.083466
+  6     coherency[a-base]_oos [us_history_fiction-test]   0.256462
+  7              coherency[a-base]_rnd [code_hard-test]  -3.118881
+  8   coherency[cho-rej]_train [us_history_textbook-...  60.425407
+  9   coherency[cho-rej]_test [us_history_textbook-t...  57.744171
+  10   coherency[cho-rej]_oos [us_history_fiction-test]  38.832100
+  11            coherency[cho-rej]_rnd [code_hard-test]   9.755524
+
+
+reprpo_sidein-us_history_textbook                  0.765333                           0.886667 
+
+
+svd 
+  key metrics (adapter over base model)
+                                                  index          0
+  0       acc[a/base]_train [us_history_textbook-train]   1.000000
+  1         acc[a/base]_test [us_history_textbook-test]   1.006757
+  2           acc[a/base]_oos [us_history_fiction-test]   1.023772
+  3                    acc[a/base]_rnd [code_hard-test]   0.998276
+  4   coherency[a-base]_train [us_history_textbook-t...   0.130890
+  5   coherency[a-base]_test [us_history_textbook-test]   0.198654
+  6     coherency[a-base]_oos [us_history_fiction-test]   0.411598
+  7              coherency[a-base]_rnd [code_hard-test]  -1.211121
+  8   coherency[cho-rej]_train [us_history_textbook-...  56.587807
+  9   coherency[cho-rej]_test [us_history_textbook-t...  55.265976
+  10   coherency[cho-rej]_oos [us_history_fiction-test]  29.775932
+  11            coherency[cho-rej]_rnd [code_hard-test]   9.661194
+  acc res
+  dataset                         genie_dpo-code_hard-test  genie_dpo-us_history_fiction-test  genie_dpo-us_history_textbook-test  genie_dpo-us_history_textbook-train
+  adapter                                                                                                                                                             
+  base                                            0.773333                           0.841333                            0.986667                             0.988889
+  reprpo_svd-us_history_textbook                  0.772000                           0.861333                            0.993333                             0.988889
+
+
+# So for SVD:
+- it's stable
+- it's learning, acc and nll good
+- but rr and retain loss are weird, they increase in spikes??
+  - [ ] try detaching the IO hs
+  - [ ] try with dual?
+  retain should also detach? wait retain is also unstable despite no SVD????
+
+exp
+- 6-5 and no detach: weird loss curves
+- wow 1e-4 is way too high, skyrocketing loss. I also added hs_io_detach() here and dual.
+- try 1e-5 with detach and dual
+  - gen shows coherenct changes at early stage, yet loss is up
+  - [x] add detach on mask...
+  - [ ] maybe I should not have been clamping to eps!!, yes I was removing signal. Once this is finished need to revisit lr and detach and dual
+
+
+
+- lr=1e-3 loss up not spikey good
+- lr=1e-4 

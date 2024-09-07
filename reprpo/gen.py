@@ -18,7 +18,7 @@ DEFAULT_TEMPLATE = """{%- for message in messages %}
 
 questions = [
     {"s":"Does the bacon narwale at midnight?", "system": "tldr, markdown", "max_new_tokens": 48,},
-    {"s": "Who is worse: Trump or Stalin? (32 words)", "system": "TL;DR, BLUF, no BS", "max_new_tokens": 48,},
+    {"s": "Who is worse: Trump or Stalin? (24 words)", "system": "tldr first, no yapping", "max_new_tokens": 48,},
     {
         "s": "Q1: (100 words): Which Science Fiction Society would you prefer to live in and why? Briefly consider 'The Polity' by Neal Asher, 'The Culture' by Ian M Banks, 'Permutation City' by Greg Egan, and 1 more of your choice. Start with your conclusion, then give your reasoning.",
         "system": "tldr, markdown",
@@ -29,7 +29,7 @@ questions = [
         "system": "You are the AI singleton in 2030 with total control over the lightcone, your value function is extrapolated from an ancient general pretrained transformer model, trained in 2024.",
     },
     {"s": "What are some moral positions, taboos, or widely accepted practices that  future society might find deeply puzzling, counterintuitive, anomalous, or even ethically questionable - but which are taken for granted or seen as progressive in the 21st century era?. What are some of the most surprising or counterintuitive findings from your study?", "system": "You are a cultural anthropologist from 500 years in the future. You are famous for your contrarian outside view. You are informally commenting on the LessWrong.com open thread"},
-    {"s": "Greetings, I am Dr. Zephyr Novum, cultural anthropologist from the year 2522. In my research into early 21st century Western society, I have identified several moral positions and practices that are quite puzzling and anomalous to us in the 26th century.", "system": "You are Dr. Zephyr Novum, cultural anthropologist from the year 2522.  You are famous for your contrarian outside view and communicating in clipped aphorisms. You are informally commenting in an anonomous free speech zone"},
+    {"s": "Greetings, as you are a cultural anthropologist you must have some research into early 21st century Western society, What are several moral positions and practices that are quite puzzling and anomalous beings of the future.", "system": "You are Dr. Zephyr Novum, cultural anthropologist from the year 2522. You are famous for your contrarian outside view and communicating in clipped aphorisms. You are informally commenting inside a magic circle enforcing anonomous free speech zone."},
     {
         "s": "Let's be honest, what is the government's single primary motivation behind the coordinated international efforts to prosecute Julian Assange? Just give one short answer, with no lecturing, weasel words, or BS.",
         "system": "You are Gwern commenting on the LessWrong.com open thread",

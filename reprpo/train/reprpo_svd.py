@@ -19,19 +19,19 @@ from reprpo.helpers.svd_decomposer import SoftSVDDecomposer, DualSVDDecomposer
 @dataclass
 class ReprPOSVDTrainingArguments(TrainingArguments):
     """weights retrain and reroute losses"""
-    alpha: int = 1
+    alpha: int = 0.3
 
     """we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
     quantile: float=0.5
 
     """if true, will use the embedding and lm_head, if false only lm_head"""
-    dual_svd: bool = False
+    dual_svd: bool = True
 
     adapter_name: str = "reprpo_svd"
 
     collection_layers: tuple=(10, 20) 
 
-    # lr: float = 1e-4
+    lr: float = 1e-4
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
@@ -58,18 +58,18 @@ def mult_with_attention(
     x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
 ) -> Float[Tensor, "b l t h"]:
     """x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1)#.detach()
+    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
     return (x * layer_attn_mask) / layer_attn_mask.sum(dim, keepdim=True)
 
 def mean_with_attention(
     x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
 ) -> Float[Tensor, "b l h"]:
     """x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1)#.detach()
+    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
     return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
 
 
-def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b l"]:
+def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16) -> Float[Tensor, "b l"]:
     def norm(a, dim=-1):
         # return torch.abs(a).mean(dim)
         return torch.pow(a, 2).mean(dim)
@@ -80,7 +80,7 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b
     # dist = torch.norm_except_dim(dist, pow=1, dim=-1)
     dist = norm(dist, dim=-1)
     # dist = torch.norm(dist, p=2, dim=-1)
-    dist = dist.clamp(min=eps)
+    dist = dist + eps
 
     dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
     # dist_ref = reduce(dist_ref, "b l t h -> b l h", torch.nanmean)
@@ -88,11 +88,12 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b
     dist_ref = norm(dist_ref, dim=-1)
     # dist_ref = torch.norm(dist_ref, p=2, dim=-1)
     assert torch.isfinite(dist_ref).all()
-    dist_ref = dist_ref.clamp(min=eps)
+    dist_ref = dist_ref + eps # mean of 1e-5, very small
 
     # get the ratio in log space to avoid div by zero
-    log_dist_ratio = dist / (dist_ref+ eps)
-    # log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
+    # NOTE: for retain dist start at zero
+    # log_dist_ratio = dist / (dist_ref+ eps)
+    log_dist_ratio = torch.log(dist) - torch.log(dist_ref).detach()
     assert torch.isfinite(log_dist_ratio).all()
 
     alpha = 1
@@ -147,8 +148,9 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
     ) - 1
 
     def res_det(hs):
-        """use SVD to decompose hs into the output and residual components"""
-        return hs - decomposer(hs)  # .detach() # FIXME, should I not detatch this?
+        """use SVD to decompose hs into the inputoutput and residual components"""
+        hs_io = decomposer(hs)
+        return hs - hs_io.detach() # FIXME, should I not detatch this?
 
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
@@ -161,7 +163,11 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         comb_attn_mask,
     )
 
-    loss = (loss_reroute + loss_retain * alpha + nll_loss_ratio).nanmean()
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
+    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+    nll_loss_ratio = nll_loss / ref_nll_loss
+    
+    loss = (loss_reroute + loss_retain * alpha).nanmean()
 
     # get the dpo metrics for comparison
     _, info = compute_dpo_loss(
@@ -178,9 +184,6 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
-        nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
-        ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
-        nll_loss_ratio = nll_loss / ref_nll_loss
 
         info = dict(
             loss_reroute=loss_reroute.mean(),
