@@ -76,13 +76,17 @@ elif args1.method == 'reprpo_svd':
 elif args1.method == 'reprpo_side':
     from reprpo.train.reprpo_side import ReprPOSideInTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
     # from reprpo.train.reprpo_side import ReprPOSideOutTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
+elif args1.method == 'reprpo_ortho':
+    from reprpo.train.reprpo_ortho import ReprPOOrthoTrainingArguments as TrainingArguments, PL_REPRPO_ORTHO_MODEL as PL_MODEL
 else:
     raise ValueError(f"method {args1.method} not found. options: `reprpo_side`, `dpo`, `reprpo_svd`")
+
 
 parser.add_arguments(TrainingArguments, dest='args')
 # parser.add_arguments(CLIArguments, dest='cli')
 args2 = parser.parse_args()
 args = TrainingArguments(**args2.args.__dict__)
+print(PL_MODEL, TrainingArguments)
 print(f"args = {args}")
 
 if args1.dev:
@@ -252,6 +256,11 @@ elif args1.method == "reprpo_side":
         collection_layers=args.collection_layers,
         collection_keys=args.collection_keys,
         collect_input=args.collect_input,
+    )
+elif args1.method == "reprpo_ortho":
+    model_kwargs = dict(
+        alpha=args.alpha,
+        collection_layers=args.collection_layers,
     )
 else:
     model_kwargs = dict()

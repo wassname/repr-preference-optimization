@@ -13,7 +13,8 @@ class TrainingArguments:
     # model_name: str = "microsoft/Phi-3-mini-4k-instruct" # small instruct model
     # model_name: str = "google/gemma-2-2b" # small base model
     # model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
-    model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
+    # model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
+    model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
     load_in_4bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     use_gradient_checkpointing: bool = False
