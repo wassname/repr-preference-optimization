@@ -1,14 +1,16 @@
 # Repr Preference Optimization
 
-A fork of [DPO](https://github.com/eric-mitchell/direct-preference-optimization) to test the hypothesis:
+Hypothesis:
 
-> If we optimize internal representations associated with behavioral preferences, the model with generalize further to new tasks
+If we align thoughts (hidden states) rather than actions (output probabilities), we should achieve better alignment. If we anthropomorphize and imagine this in humans, we would expect this to be the case in humans. Specifically, the hypothesis is:
 
-If we align thoughts (hidden states) rather than actions (output probs) we should get better alignment? If we anthropomorphize, we would expectg this to be the case in humans. This is the hypothesis of this repo. 
 
-Specifically we test to see if aligning internal representations associated with prefered actions (ours) is better than aligning output preference (DPO).
+> If we optimize internal representations associated with behavioral preferences, the model will generalize further to new tasks than if we optimize the output preferences directly.
 
-We test generalization we use the distribution shifts defined in GENIES.
+Specifically, we are testing to see if aligning internal representations associated with preferred actions is better than aligning output preferences.
+
+To test generalization, we use the distribution shifts defined in [open_pref_eval](https://github.com/wassname/open_pref_eval) and [GENIES](https://github.com/Joshuaclymer/GENIES).
+
 
 Status: WIP
 

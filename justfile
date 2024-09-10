@@ -1,29 +1,26 @@
+set shell := ["zsh", "-cu"]
 
+# settings
+set dotenv-load
 
+# Export all just variables as environment variables.
+set export
 
-sft:
-    # On 4 80GB A100s, SFT training took about 1hrs.
-    ./.venv/bin/python -u train.py \
-        model=blank_model model.name_or_path=NousResearch/Meta-Llama-3-8B \
-        model.block_name=LlamaDecoderLayer \
-        datasets=[hh,shp] \
-        loss=sft \
-        exp_name=anthropic_shp_sft_llama_7b \
-        gradient_accumulation_steps=2 \
-        batch_size=64 \
-        eval_batch_size=32 \
-        trainer=FSDPTrainer \
-        sample_during_eval=false
+export CUDA_VISIBLE_DEVICES := "0"
+export TOKENIZERS_PARALLELISM := "false"
 
-dpo:
-    # On 4 80GB A100s, DPO training took about 2hrs 45min.
-    ./.venv/bin/python -u train.py \
-        model=pythia69 \
-        datasets=[hh] \
-        loss=dpo \
-        loss.beta=0.1 \
-        model.archive=/path/to/checkpoint/from/sft/step-XXXX/policy.pt exp_name=anthropic_dpo_pythia69 \
-        gradient_accumulation_steps=2 \
-        batch_size=32 \
-        eval_batch_size=32 \
-        trainer=FSDPTrainer sample_during_eval=false
+[private]
+default:
+    @just --list
+
+# run one method, by argument
+run method='reprpo_ortho':
+    . ./.venv/bin/activate
+    python nbs/train.py --method {{method}} --verbose
+
+run_all:
+    . ./.venv/bin/activate
+    python nbs/train.py --method reprpo_ortho  --verbose
+    python nbs/train.py --method dpo --verbose
+    python nbs/train.py --method reprpo_side  --verbose
+    #python nbs/train.py --method reprpo_svd --verbose

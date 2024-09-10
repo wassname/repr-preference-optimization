@@ -1,4 +1,13 @@
 {
+    "peacock.color": "#c125a5",
+    "spellright.language": [
+        "en-GB-10-1."
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex",
+        "plaintext"
+    ],
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#da3fbe",
         "activityBar.background": "#da3fbe",
@@ -17,6 +26,5 @@
         "titleBar.activeForeground": "#e7e7e7",
         "titleBar.inactiveBackground": "#c125a599",
         "titleBar.inactiveForeground": "#e7e7e799"
-    },
-    "peacock.color": "#c125a5"
+    }
 }
