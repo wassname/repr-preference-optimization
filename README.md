@@ -1,16 +1,52 @@
 # Repr Preference Optimization
 
-Hypothesis:
+Idea:
 
-If we align thoughts (hidden states) rather than actions (output probabilities), we should achieve better alignment. If we anthropomorphize and imagine this in humans, we would expect this to be the case in humans. Specifically, the hypothesis is:
+> Better alignment is achieved by aligning thoughts (internal states) rather than actions (output probabilities).
 
-> If we optimize internal representations associated with behavioral preferences, the model will generalize further to new tasks than if we optimize the output preferences directly.
 
-Specifically, we are testing to see if aligning internal representations associated with preferred actions is better than aligning output preferences.
+#### Thought Experiment
 
-To test generalization, we use the distribution shifts defined in [open_pref_eval](https://github.com/wassname/open_pref_eval) and [GENIES](https://github.com/Joshuaclymer/GENIES).
+To see why this might be true, let's conduct a thought experiment. We can anthropomorphize and imagine that we have two new employees. Alice and Bob, each hired under the same job role but with different intrinsic motivations:
 
-Status: WIP
+- **Alice** aligns closely with core organizational values such as truthfulness, openness, and diligence. She genuinely believes in these principles and integrates them into her daily routines.
+- **Bob**, on the other hand, performs identically to Alice in observable behaviors. However, his actions are not driven by genuine belief in these values but are rather a mimicry of the desired behavior simply to meet job expectations.
+
+**Question**: In a new and unpredictable setting, such as managing a branch office remotely, who is more likely to uphold the organizational standards?
+
+The expectation here is that **Alice** would likely perform better than Bob because her actions are derived from deeply held values, making her more adaptable and reliable in new situations where direct oversight or specific guidance is lacking.
+
+To see why this might be true, let's conduct a thought experiment. We can anthropomorphize and imagine that we have two new employees. Alice seems to have internal values that align with us, her employers. They are truthfulness, openness, and hard work. However, Bob acts similarly, but not because it's as. Who do you think will act better in a totally new situation, for example, a branch office? We would normally expect Alice to act better as she is internally motivated to apply principles, while Bob may not care what we desire.
+
+#### Hypothesis Formulation
+
+However, as we do not know how an LLM stores it's internal states, these experiments represent hypothesis about how best to represent and intervent in an tranformers internal states.
+
+What's our technical hypothesis?
+
+> Hypothesis: If we optimize internal representations associated with behavioral preferences (ours), the model will generalize further to new tasks than if we optimize the output preferences directly (DPO).
+
+#### Testing Methodology
+
+We intend to test this hypothesis using a framework where we can manipulate and assess the in-distribution and out-of-distribution alignment of modeled agents. Specifically, this study focuses on comparing our proposed method against Direct Policy Optimization (DPO) under scenarios involving significant distribution shifts, as defined in the [GENIES paper](https://github.com/Joshuaclymer/GENIES).
+
+Status: Work in Progress
+
+
+### Results
+
+In the below results we look at how much the models accuracy improved in training, test, out-of-distribution and random data when using the proposed method compared to DPO.
+
+| Model | DPO | REPRPO_ortho |
+| --- | --- | --- |
+| Train | **1.0459** | 1.0162 |
+| Test | 1.0140 | **1.0169** |
+| OOS | 1.00592 | **1.0850** |
+| Random | 0.970 | **0.996** |
+
+As you can see DPO does better in the training environment, but REPRPO_ortho does better in the test, out-of-distribution and random environments. This suggests that REPRPO_ortho is better at generalizing to new environments, and loses less performance in unrelated environments.
+
+This should be helpful when aligning AI to human values, as it suggests that aligning internal states is more robust to new environments than aligning outputs.
 
 ## Plan
 
@@ -22,13 +58,15 @@ Status: WIP
 ```sh
 poetry install
 
-python -u nbs.train.py
+python -u nbs/train.py --method reprpo_ortho
+python -u nbs/train.py --method dpo
 ```
 
 
 # Citing 
 If this repository is useful in your own research, you can use the following BibTeX entry:
 
+```
 @software{wassname2024reprpo,
   author = {Clark, M.J.},
   title = {Representation Preference Optimisation: Aligning internal states generalises better than aligning outputs},
@@ -38,3 +76,4 @@ If this repository is useful in your own research, you can use the following Bib
   url = {https://github.com/wassname/repr-preference-optimization/ },
   commit = {<commit hash>}
 }
+```
