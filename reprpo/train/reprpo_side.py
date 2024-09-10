@@ -19,7 +19,8 @@ class ReprPOSideInTrainingArguments(TrainingArguments):
     alpha: int = 0.1
 
     """because the side channels don't repeat themselves we need to collect them on many layers."""
-    collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 28)
+    collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19)
+                                #20, 21, 22, 23, 24, 25, 26, 28) 
     """taking the input, of the output layers of the side channels."""
     collection_keys: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",

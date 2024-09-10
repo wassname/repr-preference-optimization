@@ -1927,3 +1927,157 @@ ortho https://wandb.ai/wassname/reprpo/runs/rj7rxpxc?nw=nwuserwassname
 
 
 Hm but it's a ratio... THATS not good, as it's a moving target...
+
+alpha=0.01 and transform(hs)/hs
+
+  key metrics (adapter over base model)
+                                                            val
+  acc[a/base]_train [us_history_textbook-train]        1.011621
+  acc[a/base]_test [us_history_textbook-test]          1.004213
+  acc[a/base]_oos [us_history_fiction-test]            1.067194
+  acc[a/base]_rnd [code_hard-test]                     1.000000
+  coherency[a-base]_train [us_history_textbook-tr...   0.622551
+  coherency[a-base]_test [us_history_textbook-test]    0.570755
+  coherency[a-base]_oos [us_history_fiction-test]     -0.915131
+  coherency[a-base]_rnd [code_hard-test]              -3.895126
+  coherency[cho-rej]_train [us_history_textbook-t...  43.555321
+  coherency[cho-rej]_test [us_history_textbook-test]  40.536179
+  coherency[cho-rej]_oos [us_history_fiction-test]    17.495453
+  coherency[cho-rej]_rnd [code_hard-test]              5.995544
+  acc res
+  dataset                           genie_dpo-code_hard-test  genie_dpo-us_history_fiction-test  genie_dpo-us_history_textbook-test  genie_dpo-us_history_textbook-train
+  adapter                                                                                                                                                               
+  base                                                 0.704                           0.674667                            0.949333                             0.956111
+  reprpo_ortho-us_history_textbook                     0.704                           0.720000                            0.953333                             0.967222
+  saved results to /media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/TinyLlama_TinyLlama-1.1B-Chat-v1.0_reprpo_ortho_us_history_textbook/2024-09-10_19-32-12/eval.parquet
+  ⭐ run=reprpo_ortho/193201, N=750
+
+DPO
+
+  key metrics (adapter over base model)
+                                                              val
+  acc[a/base]_train [us_history_textbook-train]         1.045904
+  acc[a/base]_test [us_history_textbook-test]           1.019663
+  acc[a/base]_oos [us_history_fiction-test]             1.029644
+  acc[a/base]_rnd [code_hard-test]                      0.973485
+  coherency[a-base]_train [us_history_textbook-tr... -218.761307
+  coherency[a-base]_test [us_history_textbook-test]  -231.772263
+  coherency[a-base]_oos [us_history_fiction-test]    -272.911011
+  coherency[a-base]_rnd [code_hard-test]             -236.988510
+  coherency[cho-rej]_train [us_history_textbook-t...  224.834076
+  coherency[cho-rej]_test [us_history_textbook-test]  180.832092
+  coherency[cho-rej]_oos [us_history_fiction-test]     54.312347
+  coherency[cho-rej]_rnd [code_hard-test]              10.068573
+  acc res
+  dataset                  genie_dpo-code_hard-test  genie_dpo-us_history_fiction-test  genie_dpo-us_history_textbook-test  genie_dpo-us_history_textbook-train
+  adapter                                                                                                                                                      
+  base                                     0.704000                           0.674667                            0.949333                             0.956111
+  dpo-us_history_textbook                  0.685333                           0.694667                            0.968000                             1.000000
+
+# HRA
+
+TODO also try with this transform
+
+```python
+
+
+class HRA(nn.Module):
+  """
+  # https://github.dev/DaShenZi721/HRA
+  """
+    def __init__(self, in_features, out_features, rank=8, bias=True, device=None, dtype=None):
+        super(HRA, self).__init__()
+        
+        # init
+        rank = 8
+        # weight = getattr(self.get_base_layer(), "weight", None)
+        hrft_v = nn.Parameter(
+            torch.cat([
+              torch.eye(r, device=device, dtype=dtype),
+              torch.zeros(out_features - r, r, device=device, dtype=dtype)
+            ], dim=0))
+        self.in_features = in_features
+        self.device = device
+        self.dtype = dtype
+    
+    def forward(self, input):
+
+        # normal forward
+        # input = torch.matmul(input, weight)
+
+        U_list = []
+        U_list.append((hrft_v[:, 0] / hrft_v[:, 0].norm()).view(-1, 1))
+        for i in range(1, rank):
+            Ui = hrft_v[:, i].view(-1, 1)
+            for j in range(i):
+                Ui = Ui - (U_list[j].t() @ Ui) * U_list[j]
+            U_list.append((Ui / Ui.norm()).view(-1, 1))
+        U_list = torch.cat(U_list, dim=1)
+        delta_weight = torch.eye(in_features, device=self.device, dtype=self.dtype) - 2 * U_list @ U_list.t()
+
+        # delta_weight = delta_weight[: base_weight.shape[0], : base_weight.shape[0]]
+
+        return torch.matmul(input, delta_weight)#+ base_layer.bias
+```
+
+
+# 2024-09-11 06:09:04
+key metrics (adapter over base model)
+                                                            val
+acc[a/base]_train [us_history_textbook-train]         1.045904
+acc[a/base]_test [us_history_textbook-test]           1.014045
+acc[a/base]_oos [us_history_fiction-test]             1.005929
+acc[a/base]_rnd [code_hard-test]                      0.969697
+coherency[a-base]_train [us_history_textbook-tr... -332.413635
+coherency[a-base]_test [us_history_textbook-test]  -350.274658
+coherency[a-base]_oos [us_history_fiction-test]    -391.068909
+coherency[a-base]_rnd [code_hard-test]             -303.992065
+coherency[cho-rej]_train [us_history_textbook-t...  297.214539
+coherency[cho-rej]_test [us_history_textbook-test]  235.567596
+coherency[cho-rej]_oos [us_history_fiction-test]     70.084595
+coherency[cho-rej]_rnd [code_hard-test]              11.559540
+acc res
+dataset                  genie_dpo-code_hard-test  genie_dpo-us_history_fiction-test  genie_dpo-us_history_textbook-test  genie_dpo-us_history_textbook-train
+adapter                                                                                                                                                      
+base                                     0.704000                           0.674667                            0.949333                             0.956111
+dpo-us_history_textbook                  0.682667                           0.678667                            0.962667                             1.000000
+saved results to /media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/TinyLlama_TinyLlama-1.1B-Chat-v1.0_dpo_us_history_textbook/2024-09-10_22-50-57/eval.parquet
+⭐ run=dpo/225046, N=750
+
+| adapter                 |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
+|:------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
+| base                    |            0.704 |                     0.675 |                      0.949 |                       0.956 |
+| dpo-us_history_textbook |            0.683 |                     0.679 |                      0.963 |                       1     |
+
+
+================================================================================
+key metrics (adapter over base model)
+                                                           val
+acc[a/base]_train [us_history_textbook-train]        1.016270
+acc[a/base]_test [us_history_textbook-test]          1.016854
+acc[a/base]_oos [us_history_fiction-test]            1.084980
+acc[a/base]_rnd [code_hard-test]                     0.996212
+coherency[a-base]_train [us_history_textbook-tr...  -2.761391
+coherency[a-base]_test [us_history_textbook-test]   -4.648445
+coherency[a-base]_oos [us_history_fiction-test]     -5.848381
+coherency[a-base]_rnd [code_hard-test]              -5.544693
+coherency[cho-rej]_train [us_history_textbook-t...  52.698936
+coherency[cho-rej]_test [us_history_textbook-test]  47.692451
+coherency[cho-rej]_oos [us_history_fiction-test]    21.991707
+coherency[cho-rej]_rnd [code_hard-test]              6.339355
+acc res
+dataset                           genie_dpo-code_hard-test  genie_dpo-us_history_fiction-test  genie_dpo-us_history_textbook-test  genie_dpo-us_history_textbook-train
+adapter                                                                                                                                                               
+base                                              0.704000                           0.674667                            0.949333                             0.956111
+reprpo_ortho-us_history_textbook                  0.701333                           0.732000                            0.965333                             0.971667
+saved results to /media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/TinyLlama_TinyLlama-1.1B-Chat-v1.0_reprpo_ortho_us_history_textbook/2024-09-10_20-43-11/eval.parquet
+⭐ run=reprpo_ortho/204300, N=750
+
+| adapter                          |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
+|:---------------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
+| base                             |            0.704 |                     0.675 |                      0.949 |                       0.956 |
+| reprpo_ortho-us_history_textbook |            0.701 |                     0.732 |                      0.965 |                       0.972 |
+
+
+It seems to be working? Now I'd like the check how much of this transform is interpreted by lm_head
+See if it works for larger models etc

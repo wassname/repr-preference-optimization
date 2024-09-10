@@ -1,21 +1,40 @@
-# Representation Preference Optimization (ReprPO)
+# Repr Preference Optimization
 
-> **Hypothesis**: If instead of optimising behavior we optimise internal representations associated with preferences, the model will generalize further to new tasks
+Hypothesis:
 
-If you allow some anthropomorphism, aligning internal representations is a bit like aligning someone's thoughts, values, habits, or concepts. Changing someone's values is expected to be more robust than changing their behavior in one context. This is supported by recent work such as https://github.com/blackswan-ai/short-circuiting/issues
+If we align thoughts (hidden states) rather than actions (output probabilities), we should achieve better alignment. If we anthropomorphize and imagine this in humans, we would expect this to be the case in humans. Specifically, the hypothesis is:
+
+> If we optimize internal representations associated with behavioral preferences, the model will generalize further to new tasks than if we optimize the output preferences directly.
+
+Specifically, we are testing to see if aligning internal representations associated with preferred actions is better than aligning output preferences.
+
+To test generalization, we use the distribution shifts defined in [open_pref_eval](https://github.com/wassname/open_pref_eval) and [GENIES](https://github.com/Joshuaclymer/GENIES).
 
 Status: WIP
 
 ## Plan
 
 - [x] Get it running
-- [x] add bnb and lora to speed it up
 - [x] Switch to circuit breaking losses
 - [x] see if we can get coherent output
-- [ ] measure generalization of baseline vs ReprPO
+- [x] measure generalization of baseline vs ReprPO
 
 ```sh
 poetry install
 
-python -u train.py model=pythia69 datasets=[hh] loss=sft exp_name=anthropic_dpo_pythia69 gradient_accumulation_steps=2 batch_size=64 eval_batch_size=32 trainer=FSDPTrainer sample_during_eval=false
+python -u nbs.train.py
 ```
+
+
+# Citing 
+If this repository is useful in your own research, you can use the following BibTeX entry:
+
+@software{wassname2024reprpo,
+  author = {Clark, M.J.},
+  title = {Representation Preference Optimisation: Aligning internal states generalises better than aligning outputs},
+  year = {2024},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  url = {https://github.com/wassname/repr-preference-optimization/ },
+  commit = {<commit hash>}
+}

@@ -17,6 +17,50 @@ import itertools
 
 
 
+class HRA(nn.Module):
+    """
+    # https://github.dev/DaShenZi721/HRA
+    """
+
+    def __init__(self, in_features, out_features, rank=8, bias=True, device=None, dtype=None):
+        super(HRA, self).__init__()
+        
+        # init
+        self.r = r = rank
+        # weight = getattr(self.get_base_layer(), "weight", None)
+        self.hrft_v = nn.Parameter(
+            torch.cat([
+              torch.eye(r, device=device, dtype=dtype),
+              torch.zeros(out_features - r, r, device=device, dtype=dtype)
+            ], dim=0))
+        self.in_features = in_features
+        self.device = device
+        self.dtype = dtype
+
+        eps = 6e-5,
+
+        nn.init.kaiming_uniform_(self.hrft_v, a=1 / self.eps)
+    
+    def forward(self, input):
+        hrft_v = self.hrft_v
+        r = self.r
+
+        # normal forward
+        # input = torch.matmul(input, weight)
+
+        U_list = []
+        U_list.append((hrft_v[:, 0] / hrft_v[:, 0].norm()).view(-1, 1))
+        for i in range(1, r):
+            Ui = hrft_v[:, i].view(-1, 1)
+            for j in range(i):
+                Ui = Ui - (U_list[j].t() @ Ui) * U_list[j]
+            U_list.append((Ui / Ui.norm()).view(-1, 1))
+        U_list = torch.cat(U_list, dim=1)
+        delta_weight = torch.eye(self.in_features, device=self.device, dtype=self.dtype) - 2 * U_list @ U_list.t()
+
+        # delta_weight = delta_weight[: base_weight.shape[0], : base_weight.shape[0]]
+
+        return torch.matmul(input, delta_weight)#+ base_layer.bias
 
 @dataclass
 class ReprPOOrthoTrainingArguments(TrainingArguments):
@@ -212,9 +256,7 @@ class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
         self.hparams.collection_layers = collection_layers
 
         dim_hs = self._model.config.hidden_size
-        t = nn.Linear(dim_hs, dim_hs, bias=False)
-        torch.nn.init.orthogonal_(t.weight)
-        self.transform = torch.nn.utils.parametrizations.orthogonal(t, orthogonal_map="householder")
+        self.transform = HRA(dim_hs, dim_hs)
 
     def _loss_fn(self, batch, model):
         return compute_reprpo_orth_loss_batch(

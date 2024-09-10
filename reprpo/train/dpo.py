@@ -148,12 +148,14 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
         beta=beta
     )
     
-    def cosine_on_keys(hs1, hs2):
-        return F.cosine_similarity(hs1, hs2, dim=-1).nanmean()
+    # def cosine_on_keys(hs1, hs2):
+    #     hs1 = collect_hs(hs1)
+    #     hs2 = collect_hs(hs2)
+    #     return F.cosine_similarity(hs1, hs2, dim=-1).nanmean()
     
     with torch.no_grad():
-        info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
-        info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
+        # info['retain_cosine'] = cosine_on_keys(pi_cho.hidden_states, ref_cho.hidden_states)
+        # info['rr_cosine'] = cosine_on_keys(pi_rej.hidden_states, ref_cho.hidden_states)
 
         nll_loss = info['nll_loss'] = cross_entropy_loss(pi_cho.logits, batch["chosen"])
         ref_nll_loss = info['ref_nll_loss'] = cross_entropy_loss(ref_cho.logits, batch["chosen"])
