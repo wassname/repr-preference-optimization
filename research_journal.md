@@ -1901,3 +1901,29 @@ So in normal activation steering you
 mean over many tokens, and batches,and apply a linear transofrmation
 this means any difference between samples is ignored, and nonlinearities are ignored
 but meta learning over per sample activation steering could potentially capture these differences and nonlinearities with a more general transform.
+
+
+# 2024-09-09 21:08:15
+
+I'm inspired by DAS to try an orthogonal projection (householder) 
+
+Seems to be learning after I did an orthogonal init
+![alt text](files/image.png), maybe try lower alpha next time
+
+ortho https://wandb.ai/wassname/reprpo/runs/rj7rxpxc?nw=nwuserwassname
+                                                            val
+  acc[a/base]_train [us_history_textbook-train]        1.009878
+  acc[a/base]_test [us_history_textbook-test]          1.005618
+  acc[a/base]_oos [us_history_fiction-test]            1.053360
+  acc[a/base]_rnd [code_hard-test]                     0.996212
+  coherency[a-base]_train [us_history_textbook-tr...   0.621597
+  coherency[a-base]_test [us_history_textbook-test]    0.553230
+  coherency[a-base]_oos [us_history_fiction-test]     -0.146172
+  coherency[a-base]_rnd [code_hard-test]              -3.114853
+  coherency[cho-rej]_train [us_history_textbook-t...  43.187729
+  coherency[cho-rej]_test [us_history_textbook-test]  40.608437
+  coherency[cho-rej]_oos [us_history_fiction-test]    16.597267
+  coherency[cho-rej]_rnd [code_hard-test]              6.273605
+
+
+Hm but it's a ratio... THATS not good, as it's a moving target...

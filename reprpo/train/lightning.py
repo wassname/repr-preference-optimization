@@ -20,12 +20,12 @@ class TrainingArguments:
     use_gradient_checkpointing: bool = False
 
     # train
-    batch_size: int = 13
-    lr: float = 6e-5
+    batch_size: int = 15
+    lr: float = 3e-4
     weight_decay: float = 0.0
 
     # dataset
-    n_samples: int = 1800 * 7
+    n_samples: int = 1800 * 3
     max_length: int = 196
     max_prompt_length: int = 96
 

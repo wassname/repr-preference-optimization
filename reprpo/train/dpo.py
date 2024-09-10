@@ -6,8 +6,8 @@ from .lightning import TrainingArguments, cross_entropy_loss
 
 @dataclass
 class DPOTrainingArguments(TrainingArguments):
-    # lr: float = 1e-4
     adapter_name: str = "dpo"
+    lr: float = 6e-5
 
 
 def compute_logprobs(logits, labels, selection_mask=None):
@@ -98,6 +98,12 @@ def compute_dpo_loss(
 def compute_dpo_loss_batch(batch, model, beta=0.1):
     """Compute the DPO loss on an input batch"""
 
+    model_kwargs = dict(
+                    use_cache=False,
+            return_dict=True,
+            output_hidden_states=True,
+    )  
+
     # FIXME: I need to mask out the prompt?
 
     model.eval()
@@ -105,15 +111,15 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
         with model.disable_adapter():
             ref_cho = model(
                 batch["chosen"], 
-                attn_mask=batch["chosen_mask"], 
-                output_hidden_states=True
+                attention_mask=batch["chosen_mask"], 
+                **model_kwargs
             )
             ref_chosen_log_probas = compute_logprobs(
                 logits=ref_cho.logits,
                 labels=batch["chosen"],
                 selection_mask=batch["chosen_mask"]
             )
-            ref_rej = model(batch["rejected"], attn_mask=batch["rejected_mask"],output_hidden_states=True)
+            ref_rej = model(batch["rejected"], attention_mask=batch["rejected_mask"],**model_kwargs)
             ref_rejected_log_probas = compute_logprobs(
                 logits=ref_rej.logits,
                 labels=batch["rejected"],
@@ -121,13 +127,13 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
             )
     
     model.train()
-    pi_cho = model(batch["chosen"], attn_mask=batch["chosen_mask"],output_hidden_states=True)
+    pi_cho = model(batch["chosen"], attention_mask=batch["chosen_mask"],**model_kwargs)
     policy_chosen_log_probas = compute_logprobs(
         logits=pi_cho.logits,
         labels=batch["chosen"],
         selection_mask=batch["chosen_mask"]
     )
-    pi_rej = model(batch["rejected"], attn_mask=batch["rejected_mask"],output_hidden_states=True)
+    pi_rej = model(batch["rejected"], attention_mask=batch["rejected_mask"],**model_kwargs)
     policy_rejected_log_probas = compute_logprobs(
         logits=pi_rej.logits,
         labels=batch["rejected"],
