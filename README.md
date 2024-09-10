@@ -4,11 +4,13 @@ Hypothesis:
 
 If we align thoughts (hidden states) rather than actions (output probabilities), we should achieve better alignment. If we anthropomorphize and imagine this in humans, we would expect this to be the case in humans. Specifically, the hypothesis is:
 
+
 > If we optimize internal representations associated with behavioral preferences, the model will generalize further to new tasks than if we optimize the output preferences directly.
 
 Specifically, we are testing to see if aligning internal representations associated with preferred actions is better than aligning output preferences.
 
 To test generalization, we use the distribution shifts defined in [open_pref_eval](https://github.com/wassname/open_pref_eval) and [GENIES](https://github.com/Joshuaclymer/GENIES).
+
 
 Status: WIP
 
