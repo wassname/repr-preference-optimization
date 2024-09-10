@@ -22,7 +22,7 @@ class HRA(nn.Module):
     # https://github.dev/DaShenZi721/HRA
     """
 
-    def __init__(self, in_features, out_features, rank=8, bias=True, device=None, dtype=None):
+    def __init__(self, in_features, out_features, rank=8, device=None, dtype=None):
         super(HRA, self).__init__()
         
         # init
@@ -34,12 +34,12 @@ class HRA(nn.Module):
               torch.zeros(out_features - r, r, device=device, dtype=dtype)
             ], dim=0))
         self.in_features = in_features
-        self.device = device
-        self.dtype = dtype
+        #self.device = device#
+        #self.dtype = dtype
 
-        eps = 6e-5,
+        eps = 6e-5
 
-        nn.init.kaiming_uniform_(self.hrft_v, a=1 / self.eps)
+        nn.init.kaiming_uniform_(self.hrft_v, a=1 / eps)
     
     def forward(self, input):
         hrft_v = self.hrft_v
@@ -56,22 +56,24 @@ class HRA(nn.Module):
                 Ui = Ui - (U_list[j].t() @ Ui) * U_list[j]
             U_list.append((Ui / Ui.norm()).view(-1, 1))
         U_list = torch.cat(U_list, dim=1)
-        delta_weight = torch.eye(self.in_features, device=self.device, dtype=self.dtype) - 2 * U_list @ U_list.t()
+        delta_weight = torch.eye(self.in_features, device=input.device, dtype=input.dtype) - 2 * U_list @ U_list.t()
 
         # delta_weight = delta_weight[: base_weight.shape[0], : base_weight.shape[0]]
 
         return torch.matmul(input, delta_weight)#+ base_layer.bias
 
 @dataclass
-class ReprPOOrthoTrainingArguments(TrainingArguments):
+class ReprPOHRATrainingArguments(TrainingArguments):
     """weights retrain and reroute losses"""
     alpha: int = 0.01
 
-    adapter_name: str = "reprpo_ortho"
+    adapter_name: str = "reprpo_hra"
 
     collection_layers: tuple=(10, 20) 
 
     lr: float = 3e-4
+
+    rank: int = 8
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
@@ -140,7 +142,7 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16) -> Float[Tensor, "
     return log_dist_ratio.nanmean(-1) * alpha
 
 
-def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, transform):
+def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transform):
 
     model.eval()
     with torch.no_grad():
@@ -249,17 +251,17 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, trans
     assert torch.isfinite(loss)
     return loss, info
 
-class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_layers=[10, 20], **kwargs):
+class PL_REPRPO_HRA_MODEL(PL_MODEL):
+    def __init__(self, *args, alpha=1, collection_layers=[10, 20], rank=8, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
 
         dim_hs = self._model.config.hidden_size
-        self.transform = HRA(dim_hs, dim_hs)
+        self.transform = HRA(dim_hs, dim_hs, rank=rank, device=self.device, dtype=self.dtype)
 
     def _loss_fn(self, batch, model):
-        return compute_reprpo_orth_loss_batch(
+        return compute_reprpo_hra_loss_batch(
             batch,
             model,
             self.hparams.alpha,

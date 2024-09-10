@@ -37,12 +37,13 @@ Status: Work in Progress
 
 In the below results we look at how much the models accuracy improved in training, test, out-of-distribution and random data when using the proposed method compared to DPO.
 
-| Model | DPO | REPRPO_ortho |
-| --- | --- | --- |
-| Train | **1.0459** | 1.0162 |
-| Test | 1.0140 | **1.0169** |
-| OOS | 1.00592 | **1.0850** |
-| Random | 0.970 | **0.996** |
+
+
+| Model | Train | Test | OOS | Random |
+| --- | --- | --- | --- | --- |
+| DPO | **1.0459** | 1.0140 | 1.00592 | 0.970 |
+| REPRPO_ortho | 1.0162 | **1.0169** | **1.0850** | **0.996** |
+| REPRPO_side | 1.0145 | 1.00702 | 1.0632 | 0.991 |
 
 As you can see DPO does better in the training environment, but REPRPO_ortho does better in the test, out-of-distribution and random environments. This suggests that REPRPO_ortho is better at generalizing to new environments, and loses less performance in unrelated environments.
 

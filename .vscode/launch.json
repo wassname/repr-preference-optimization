@@ -96,6 +96,19 @@
                 "--verbose",
                 "--method", "reprpo_ortho",
             ]
+        },
+        {
+            "name": "hra -v",
+            "type": "debugpy",
+            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
+            "pythonArgs": ["-Xfrozen_modules=off"],
+            "request": "launch",
+            "program": "${workspaceFolder}/nbs/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--verbose",
+                "--method", "reprpo_hra",
+            ]
         }
     ]
 }

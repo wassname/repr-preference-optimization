@@ -1974,6 +1974,38 @@ DPO
   base                                     0.704000                           0.674667                            0.949333                             0.956111
   dpo-us_history_textbook                  0.685333                           0.694667                            0.968000                             1.000000
 
+
+
+side
+
+--------------------------------------------------------------------------------
+================================================================================
+key metrics (adapter over base model)
+                                                           val
+acc[a/base]_train [us_history_textbook-train]        1.014526
+acc[a/base]_test [us_history_textbook-test]          1.007022
+acc[a/base]_oos [us_history_fiction-test]            1.063241
+acc[a/base]_rnd [code_hard-test]                     0.990530
+coherency[a-base]_train [us_history_textbook-tr...   0.046143
+coherency[a-base]_test [us_history_textbook-test]   -0.485527
+coherency[a-base]_oos [us_history_fiction-test]     -1.267548
+coherency[a-base]_rnd [code_hard-test]              -2.477051
+coherency[cho-rej]_train [us_history_textbook-t...  42.558594
+coherency[cho-rej]_test [us_history_textbook-test]  39.715721
+coherency[cho-rej]_oos [us_history_fiction-test]    16.599686
+coherency[cho-rej]_rnd [code_hard-test]              5.917801
+acc res
+dataset                            genie_dpo-code_hard-test  genie_dpo-us_history_fiction-test  genie_dpo-us_history_textbook-test  genie_dpo-us_history_textbook-train
+adapter                                                                                                                                                                
+base                                               0.704000                           0.674667                            0.949333                             0.956111
+reprpo_sidein-us_history_textbook                  0.697333                           0.717333                            0.956000                             0.970000
+saved results to /media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/TinyLlama_TinyLlama-1.1B-Chat-v1.0_reprpo_sidein_us_history_textbook/2024-09-11_06-17-23/eval.parquet
+⭐ run=reprpo_sidein/061704, N=750
+
+| adapter                           |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
+|:----------------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
+| base                              |            0.704 |                     0.675 |                      0.949 |                       0.956 |
+| reprpo_sidein-us_history_textbook |            0.697 |                     0.717 |                      0.956 |                       0.97  |
 # HRA
 
 TODO also try with this transform

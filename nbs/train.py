@@ -68,24 +68,55 @@ parser.add_arguments(CLIArguments, dest='cli')
 # parser.add_argument('--dev', type=bool, default=False, action="store_true", help='fast dev run')
 args1 = parser.parse_known_args()[0].cli
 
+def get_args(TraingArguments):
+    parser.add_arguments(TrainingArguments, dest='args')
+    args2 = parser.parse_args()
+    args = TrainingArguments(**args2.args.__dict__)
+    return args
 
 if args1.method == 'dpo':
     from reprpo.train.dpo import DPOTrainingArguments as TrainingArguments, PL_DPO_MODEL as PL_MODEL
+    args = get_args(TrainingArguments)
+    model_kwargs = dict()
 elif args1.method == 'reprpo_svd':
     from reprpo.train.reprpo_svd import ReprPOSVDTrainingArguments as TrainingArguments, PL_REPRPO_SVD_MODEL as PL_MODEL
+    args = get_args(TrainingArguments)
+    model_kwargs = dict(
+        alpha=args.alpha,
+        quantile=args.quantile,
+        dual_svd=args.dual_svd,
+        collection_layers=args.collection_layers,
+    )
 elif args1.method == 'reprpo_side':
     from reprpo.train.reprpo_side import ReprPOSideInTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
     # from reprpo.train.reprpo_side import ReprPOSideOutTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
+    args = get_args(TrainingArguments)
+    model_kwargs = dict(
+        alpha=args.alpha,
+        collection_layers=args.collection_layers,
+        collection_keys=args.collection_keys,
+        collect_input=args.collect_input,
+    )
 elif args1.method == 'reprpo_ortho':
     from reprpo.train.reprpo_ortho import ReprPOOrthoTrainingArguments as TrainingArguments, PL_REPRPO_ORTHO_MODEL as PL_MODEL
+    args = get_args(TrainingArguments)
+    model_kwargs = dict(
+        alpha=args.alpha,
+        collection_layers=args.collection_layers,
+    )
+elif args1.method == 'reprpo_hra':
+    from reprpo.train.reprpo_hra import ReprPOHRATrainingArguments as TrainingArguments, PL_REPRPO_HRA_MODEL as PL_MODEL
+    args = get_args(TrainingArguments)
+    model_kwargs = dict(
+        alpha=args.alpha,
+        collection_layers=args.collection_layers,
+        rank=args.rank,
+    )
 else:
     raise ValueError(f"method {args1.method} not found. options: `reprpo_side`, `dpo`, `reprpo_svd`")
 
 
-parser.add_arguments(TrainingArguments, dest='args')
-# parser.add_arguments(CLIArguments, dest='cli')
-args2 = parser.parse_args()
-args = TrainingArguments(**args2.args.__dict__)
+
 print(PL_MODEL, TrainingArguments)
 print(f"args = {args}")
 
@@ -242,28 +273,6 @@ print(f"epochs {args.n_samples//len(dl_train)}")
 # %%
 from lightning.pytorch.callbacks import LearningRateMonitor
 from reprpo.train.lightning import GenCallback
-
-if args1.method == "reprpo_svd":
-    model_kwargs = dict(
-        alpha=args.alpha,
-        quantile=args.quantile,
-        dual_svd=args.dual_svd,
-        collection_layers=args.collection_layers,
-    )
-elif args1.method == "reprpo_side":
-    model_kwargs = dict(
-        alpha=args.alpha,
-        collection_layers=args.collection_layers,
-        collection_keys=args.collection_keys,
-        collect_input=args.collect_input,
-    )
-elif args1.method == "reprpo_ortho":
-    model_kwargs = dict(
-        alpha=args.alpha,
-        collection_layers=args.collection_layers,
-    )
-else:
-    model_kwargs = dict()
 
 
 # %%
@@ -495,3 +504,12 @@ print(df_res.round(3).to_markdown()
 print()
 print('args =', args)     
 print(f'save_dir={save_dir}') 
+
+
+df_final = pd.DateFrame({
+    'train': df_metrics.iloc[0],
+    'test': df_metrics.iloc[1],
+    'oos': df_metrics.iloc[2],
+    'rnd': df_metrics.iloc[3],
+}, index=[adapter_name])
+print(df_final.round(3).to_markdown())

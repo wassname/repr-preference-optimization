@@ -9,6 +9,10 @@ class DPOTrainingArguments(TrainingArguments):
     adapter_name: str = "dpo"
     lr: float = 6e-5
 
+def collect_hs(hs):
+    """The residual stream or hs of the diff of the hs."""
+    hs = rearrange(list(hs), "l b t h -> l b t h")
+    return rearrange(hs, "l b t h -> b l t h")
 
 def compute_logprobs(logits, labels, selection_mask=None):
     """
