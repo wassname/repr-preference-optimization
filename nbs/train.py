@@ -434,6 +434,7 @@ res, df_res2 = evaluate_model(model=model,
 # %%
 
 df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack().T
+df_res.columns = [d.replace('genie_dpo-', '') for d in df_res.columns]
 
 
 def key_metrics(df_res2):
@@ -478,7 +479,7 @@ def key_metrics(df_res2):
 
         
     })
-    return df_metrics.to_frame('val')
+    return df_metrics.to_frame(adapter_name)
 
 # %%
 
@@ -487,11 +488,10 @@ df_gen_w = wandb.Table(dataframe=df_gen.reset_index())
 
 
 df_metrics = key_metrics(df_res2)
-print('key metrics (adapter over base model)\n', df_metrics)
+
 df_metrics_w = wandb.Table(dataframe=df_metrics.reset_index())
 
-print('acc res')
-print(df_res)
+
 df_res_w = wandb.Table(dataframe=df_res.reset_index())
 
 run.log({
@@ -504,13 +504,19 @@ run.log({
 # save
 f = str(save_dir)+'/eval.parquet'
 df_res.to_parquet(f)
-print(f'saved results to {f}')
+# print(f'saved results to {f}')
 
-# radar_plot(df_res)
-df_res
 
 
 # %%
+print('args =', args)     
+print(f'save_dir={save_dir}') 
+
+print('key metrics (adapter over base model)\n', df_metrics.round(3).to_markdown(), '\n')
+
+print('absolute accuracy')
+print(df_res.round(3).to_markdown(), '\n')
+
 
 # print acc for journal
 c  = df_res2.groupby(['adapter', 'dataset']).count().min().min()
@@ -520,8 +526,7 @@ print()
 print(df_res.round(3).to_markdown()
       )
 print()
-print('args =', args)     
-print(f'save_dir={save_dir}') 
+
 
 
 df_final = pd.DataFrame({
