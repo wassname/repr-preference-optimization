@@ -105,6 +105,15 @@ elif args1.method == 'reprpo_svd':
         dual_svd=args.dual_svd,
         collection_layers=args.collection_layers,
     )
+elif args1.method == 'reprpo_hs':
+    from reprpo.train.reprpo_hs import ReprPOHSTrainingArguments as TrainingArguments, PL_REPRPO_HS_MODEL as PL_MODEL
+    args, args2 = get_args(TrainingArguments)
+    model_kwargs = dict(
+        alpha=args.alpha,
+        quantile=args.quantile,
+        dual_svd=args.dual_svd,
+        collection_layers=args.collection_layers,
+    )
 elif args1.method == 'reprpo_side':
     from reprpo.train.reprpo_side import ReprPOSideInTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
     # from reprpo.train.reprpo_side import ReprPOSideOutTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL

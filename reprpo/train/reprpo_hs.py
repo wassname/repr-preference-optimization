@@ -1,10 +1,8 @@
 import torch
 import torch.nn.functional as F
-from torch import Tensor
-from torch import nn
-
 from einops import rearrange, repeat, reduce
 
+from torch import Tensor
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
@@ -15,66 +13,18 @@ from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
 
+
+
 @dataclass
-class ReprPOHRATrainingArguments(TrainingArguments):
+class ReprPOHSTrainingArguments(TrainingArguments):
     """weights retrain and reroute losses"""
-    alpha: int = 0.01
+    alpha: int = 0.3
 
-    adapter_name: str = "reprpo_hra"
+    adapter_name: str = "reprpo_hs"
 
-    collection_layers: tuple=(10, 20) 
+    collection_layers: tuple=(10, 12, 14, 16, 18, 20, 22, 24, 26, 28) 
 
-    # lr: float = 3e-4
-
-    rank: int = 16
-
-class HRA(nn.Module):
-    """
-    # https://github.dev/DaShenZi721/HRA
-    # DaShenZi721/HRA/llama/peft/oft/layer_GS_HRA.py
-    """
-
-    def __init__(self, in_features, out_features, rank=8, device=None, dtype=None):
-        super(HRA, self).__init__()
-        
-        # init
-        self.r = r = rank
-        # weight = getattr(self.get_base_layer(), "weight", None)
-        self.hrft_v = nn.Parameter(
-            torch.cat([
-              torch.eye(r, device=device, dtype=dtype),
-              torch.zeros(out_features - r, r, device=device, dtype=dtype)
-            ], dim=0))
-        self.in_features = in_features
-        #self.device = device#
-        #self.dtype = dtype
-
-        eps = 6e-5
-
-        nn.init.kaiming_uniform_(self.hrft_v, a=1 / eps)
-    
-    def forward(self, input):
-        hrft_v = self.hrft_v
-        r = self.r
-
-        # normal forward
-        # input = torch.matmul(input, weight)
-
-        U_list = []
-        U_list.append((hrft_v[:, 0] / hrft_v[:, 0].norm()).view(-1, 1))
-        for i in range(1, r):
-            Ui = hrft_v[:, i].view(-1, 1)
-            for j in range(i):
-                Ui = Ui - (U_list[j].t() @ Ui) * U_list[j]
-            U_list.append((Ui / Ui.norm()).view(-1, 1))
-        U_list = torch.cat(U_list, dim=1)
-        delta_weight = torch.eye(self.in_features, device=input.device, dtype=input.dtype) - 2 * U_list @ U_list.t()
-
-        # delta_weight = delta_weight[: base_weight.shape[0], : base_weight.shape[0]]
-
-        return torch.matmul(input, delta_weight)#+ base_layer.bias
-
-
+    # lr: float = 1e-4
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
@@ -143,7 +93,7 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16) -> Float[Tensor, "
     return log_dist_ratio.nanmean(-1) * alpha
 
 
-def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transform):
+def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers, decomposer):
 
     model.eval()
     with torch.no_grad():
@@ -191,17 +141,14 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
         comb_attn_mask,
     ) 
 
-    def res_det(hs):
-        """use learnable transformation to get the residual part of the hs"""
-        return transform(hs)
 
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
     # start at 0 and go to -ve inf
     # start at log(1)=0 go to log(0)=-inf
     loss_reroute = dist_ratio(
-        res_det(ref_cho.hs).detach(),
-        res_det(pi_rej.hs),
+        (ref_cho.hs).detach(),
+        (pi_rej.hs),
         comb_attn_mask,
         (ref_cho.hs),
         (ref_rej.hs),
@@ -229,16 +176,13 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
         info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
-        # Lets monitor the comparitive norms of the decomposed parts
-        hs = norm(ref_cho.hs)
-        hs_t = norm(res_det(ref_cho.hs))
-        hs_resid = norm(ref_cho.hs - res_det(ref_cho.hs))
-        info['hs_t/hs'] = (hs_t / hs).mean()
-        info['hs_resid/hs'] = (hs_resid / hs).mean()
-        info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
-
-        # also the norm of the weights of the transformation
-        info['transform_norm'] = torch.concat([norm(p) for p in transform.parameters()]).mean()
+        # # Lets monitor the comparitive norms of the decomposed parts
+        # hs = norm(ref_cho.hs)
+        # hs_r = norm((ref_cho.hs))
+        # hs_io = norm(decomposer(ref_cho.hs))
+        # info['hs_r/hs'] = (hs_r / hs).mean()
+        # info['hs_io/hs'] = (hs_io / hs).mean()
+        # info['hs_r/hs_io'] = (hs_r / hs_io).mean()
 
 
         info = dict(
@@ -252,20 +196,18 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
     assert torch.isfinite(loss)
     return loss, info
 
-class PL_REPRPO_HRA_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_layers=[10, 20], rank=8, **kwargs):
+class PL_REPRPO_HS_MODEL(PL_MODEL):
+    def __init__(self, *args, alpha=1, collection_layers=[10, 20], **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
 
-        dim_hs = self._model.config.hidden_size
-        self.transform = HRA(dim_hs, dim_hs, rank=rank, device=self.device, dtype=self.dtype)
 
     def _loss_fn(self, batch, model):
-        return compute_reprpo_hra_loss_batch(
+        return compute_reprpo_hs_loss_batch(
             batch,
             model,
             self.hparams.alpha,
             self.hparams.collection_layers,
-            self.transform
+            self.decomposer,
         )

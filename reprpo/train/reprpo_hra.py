@@ -30,7 +30,7 @@ class ReprPOHRATrainingArguments(TrainingArguments):
 
     """The rank of HRA across different layers. It is best to set 'r' to an even number; otherwise, the default
     initialization method will not work."""
-    r: int = 8
+    r: int = 64
 
     """Whether to apply Gram-Schmidt orthogonalization."""
     apply_GS: bool = False

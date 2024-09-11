@@ -2176,3 +2176,4 @@ runpod llama-7b 3.1 chat run dpo
 |:------------------------       |--------:|-------:|------:|------:|
 | dpo-us_history_textbook        |   1.011 |  1.005 | 1.076 | 0.978 |
 | reprpo_hra-us_history_textbook |   1.007 |  1.012 | 1.079 | 0.971 |
+| reprpo_ortho-us_history_textbook |   1.008 |  1.012 | 1.074 | 0.984 |
