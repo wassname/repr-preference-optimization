@@ -4,8 +4,6 @@ from torch import Tensor
 from torch import nn
 
 from einops import rearrange, repeat, reduce
-import math
-import warnings
 
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
@@ -28,73 +26,53 @@ class ReprPOHRATrainingArguments(TrainingArguments):
 
     # lr: float = 3e-4
 
-    """The rank of HRA across different layers. It is best to set 'r' to an even number; otherwise, the default
-    initialization method will not work."""
-    r: int = 8
-
-    """Whether to apply Gram-Schmidt orthogonalization."""
-    apply_GS: bool = False
+    rank: int = 16
 
 class HRA(nn.Module):
     """
-    see
-    - https://github.com/huggingface/peft/blob/54be5a3db61748d698ca2e6b55bcfef229a9b475/src/peft/tuners/hra/layer.py#L197
+    # https://github.dev/DaShenZi721/HRA
+    # DaShenZi721/HRA/llama/peft/oft/layer_GS_HRA.py
     """
 
-    def __init__(self, in_features, out_features, 
-                 r=8, apply_GS=False):
+    def __init__(self, in_features, out_features, rank=8, device=None, dtype=None):
         super(HRA, self).__init__()
         
+        # init
+        self.r = r = rank
+        # weight = getattr(self.get_base_layer(), "weight", None)
+        self.hrft_v = nn.Parameter(
+            torch.cat([
+              torch.eye(r, device=device, dtype=dtype),
+              torch.zeros(out_features - r, r, device=device, dtype=dtype)
+            ], dim=0))
+        self.in_features = in_features
+        #self.device = device#
+        #self.dtype = dtype
 
-        self.hra_r = r
-        self.apply_GS = apply_GS
-        self.hra_u = nn.Parameter(torch.randn(in_features, r))
+        eps = 6e-5
 
-        self.reset_hra_parameters()
-
-    def reset_hra_parameters(self):
-        if self.hra_r % 2 != 0:
-            warnings.warn("The symmetric initialization can NOT be performed when r is odd!")
-            nn.init.kaiming_uniform_(self.hra_u, a=math.sqrt(5))
-        else:
-            shape = self.hra_u.shape
-            half_u = torch.zeros(shape[0], shape[1] // 2)
-            nn.init.kaiming_uniform_(half_u, a=math.sqrt(5))
-            self.hra_u = nn.Parameter(torch.repeat_interleave(half_u, 2, dim=1))
-
-    def get_delta_weight(self, reverse: bool = False) -> torch.Tensor:
-        rank = self.hra_r
-        apply_GS = self.apply_GS
-        opt_u = self.hra_u
-        shape = opt_u.shape
-
-        if apply_GS:
-            weight = [(opt_u[:, 0] / opt_u[:, 0].norm()).view(-1, 1)]
-            for i in range(1, rank):
-                ui = opt_u[:, i].view(-1, 1)
-                for j in range(i):
-                    ui = ui - (weight[j].t() @ ui) * weight[j]
-                weight.append((ui / ui.norm()).view(-1, 1))
-            weight = torch.cat(weight, dim=1)
-            weight = torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype) - 2 * weight @ weight.t()
-
-        else:
-            opt_u = opt_u / opt_u.norm(dim=0)
-            weight = torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype)
-            if reverse:
-                indices = range(rank - 1, -1, -1)
-            else:
-                indices = range(rank)
-
-            for i in indices:
-                ui = opt_u[:, i].view(-1, 1)
-                weight = weight @ (torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype) - 2 * ui @ ui.t())
-
-        return weight
+        nn.init.kaiming_uniform_(self.hrft_v, a=1 / eps)
     
     def forward(self, input):
-        delta_weight = self.get_delta_weight()
-        return torch.matmul(input, delta_weight)
+        hrft_v = self.hrft_v
+        r = self.r
+
+        # normal forward
+        # input = torch.matmul(input, weight)
+
+        U_list = []
+        U_list.append((hrft_v[:, 0] / hrft_v[:, 0].norm()).view(-1, 1))
+        for i in range(1, r):
+            Ui = hrft_v[:, i].view(-1, 1)
+            for j in range(i):
+                Ui = Ui - (U_list[j].t() @ Ui) * U_list[j]
+            U_list.append((Ui / Ui.norm()).view(-1, 1))
+        U_list = torch.cat(U_list, dim=1)
+        delta_weight = torch.eye(self.in_features, device=input.device, dtype=input.dtype) - 2 * U_list @ U_list.t()
+
+        # delta_weight = delta_weight[: base_weight.shape[0], : base_weight.shape[0]]
+
+        return torch.matmul(input, delta_weight)#+ base_layer.bias
 
 
 
@@ -275,13 +253,13 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
     return loss, info
 
 class PL_REPRPO_HRA_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_layers=[10, 20], r=8, apply_GS=False, **kwargs):
+    def __init__(self, *args, alpha=1, collection_layers=[10, 20], rank=8, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
 
         dim_hs = self._model.config.hidden_size
-        self.transform = HRA(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
+        self.transform = HRA(dim_hs, dim_hs, rank=rank, device=self.device, dtype=self.dtype)
 
     def _loss_fn(self, batch, model):
         return compute_reprpo_hra_loss_batch(
