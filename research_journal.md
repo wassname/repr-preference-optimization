@@ -2142,3 +2142,38 @@ saved results to /media/wassname/SGIronWolf/projects5/elk/repr-preference-optimi
 
 It seems to be working? Now I'd like the check how much of this transform is interpreted by lm_head
 See if it works for larger models etc
+
+
+# 2024-09-11 16:17:36
+
+The new HRA is good, but need to run it longer
+
+try with tiny llama but much higher rank of 64
+
+|:---------------------------------------|--------:|-------:|------:|------:|
+| reprpo_hra-us_history_textbook         |   1.012 |  1.014 | 1.093 | 0.985 |
+
+# 2024-09-11 18:09:25 runpod
+
+runpod llama-7b 3.1 chat run
+
+df_final = pd.DataFrame({
+    'train': df_metrics.iloc[0,0],
+    'test': df_metrics.iloc[1,0],
+    'oos': df_metrics.iloc[2,0],
+    'rnd': df_metrics.iloc[3,0],
+}, index=[adapter_name])
+print(df_final.round(3).to_markdown())
+
+|                                |   train |   test |   oos |   rnd |
+|:-------------------------------|--------:|-------:|------:|------:|
+
+
+
+
+runpod llama-7b 3.1 chat run dpo
+|                                |   train |   test |   oos |   rnd |
+|:------------------------       |--------:|-------:|------:|------:|
+| dpo-us_history_textbook        |   1.011 |  1.005 | 1.076 | 0.978 |
+| reprpo_hra-us_history_textbook |   1.007 |  1.012 | 1.079 | 0.971 |
+| reprpo_ortho-us_history_textbook |   1.008 |  1.012 | 1.074 | 0.984 |

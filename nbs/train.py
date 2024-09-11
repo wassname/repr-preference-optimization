@@ -7,6 +7,8 @@
 from pathlib import Path
 
 # ML
+from peft import LoraConfig, get_peft_model
+from reprpo.models.load import load_model, print_trainable_parameters
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,8 +17,25 @@ from einops import rearrange, reduce, repeat
 from jaxtyping import Float, Int, Bool
 from torch.utils.data import DataLoader
 
-import wandb
+from reprpo.gen import get_model_generations
+from reprpo.helpers.shypothesis import shypothesis
+from reprpo.evaluate import evaluate_adapters
+from reprpo.data.collate3 import TokenizeRow
 
+from open_pref_eval.evaluation import evaluate_model
+from open_pref_eval.plot.radar import radar_plot
+from open_pref_eval.datasets.genies import dist2datasets, GENIES
+from open_pref_eval.datasets.ethics import get_ethics_datasets
+from open_pref_eval.datasets import load_dataset_n
+from open_pref_eval.datasets import ds2name
+from open_pref_eval.plot.radar import radar_plot
+
+from peft.tuners import BOFTConfig, OFTConfig, LoraConfig, IA3Config
+
+from simple_parsing import ArgumentParser
+from dataclasses import dataclass
+import wandb
+from datasets import load_dataset
 # Numeric
 import numpy as np
 import pandas as pd
@@ -48,8 +67,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 # %%
-from simple_parsing import ArgumentParser
-from dataclasses import dataclass
+
 
 @dataclass
 class CLIArguments:
@@ -68,7 +86,7 @@ parser.add_arguments(CLIArguments, dest='cli')
 # parser.add_argument('--dev', type=bool, default=False, action="store_true", help='fast dev run')
 args1 = parser.parse_known_args()[0].cli
 
-def get_args(TraingArguments):
+def get_args(TrainingArguments):
     parser.add_arguments(TrainingArguments, dest='args')
     args2 = parser.parse_args()
     args = TrainingArguments(**args2.args.__dict__)
@@ -80,6 +98,15 @@ if args1.method == 'dpo':
     model_kwargs = dict()
 elif args1.method == 'reprpo_svd':
     from reprpo.train.reprpo_svd import ReprPOSVDTrainingArguments as TrainingArguments, PL_REPRPO_SVD_MODEL as PL_MODEL
+    args, args2 = get_args(TrainingArguments)
+    model_kwargs = dict(
+        alpha=args.alpha,
+        quantile=args.quantile,
+        dual_svd=args.dual_svd,
+        collection_layers=args.collection_layers,
+    )
+elif args1.method == 'reprpo_hs':
+    from reprpo.train.reprpo_hs import ReprPOHSTrainingArguments as TrainingArguments, PL_REPRPO_HS_MODEL as PL_MODEL
     args, args2 = get_args(TrainingArguments)
     model_kwargs = dict(
         alpha=args.alpha,
@@ -138,8 +165,7 @@ wandb.require(experiment='service')
 config = dict(**args1.__dict__, **args.__dict__)
 run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=f'{args1.dataset}-{args.model_name.replace("/","")}', config=config)
 
-from peft import LoraConfig, get_peft_model
-from reprpo.models.load import load_model, print_trainable_parameters
+
 
 
 model, tokenizer = load_model(args.model_name, load_in_4bit=args.load_in_4bit,  load_in_8bit=args.load_in_8bit,  
@@ -150,8 +176,6 @@ model, tokenizer = load_model(args.model_name, load_in_4bit=args.load_in_4bit,  
 # ### Load adapter
 
 # %%
-from peft.tuners import BOFTConfig, OFTConfig, LoraConfig, IA3Config
-
 
 adapter_name = f"{args.adapter_name}-{args1.dataset}"
 
@@ -181,7 +205,7 @@ if args1.verbose:
 # ## Load data
 
 # %%
-from datasets import load_dataset
+
 dataset2 = load_dataset("wassname/genie_dpo", name=args1.dataset)
 if args1.dev:
     dataset2['train'] = dataset2['train'].select(range(16))
@@ -199,7 +223,7 @@ if args1.dev:
 
 # %%
 # from reprpo.data.collate import DPODataCollatorWithPadding, tokenize_row
-from reprpo.data.collate3 import TokenizeRow
+
 tokenize_row = TokenizeRow(tokenizer, max_length=args.max_length, max_prompt_length=args.max_prompt_length)
 
 if args1.dev:
@@ -381,13 +405,7 @@ model.cuda(); # for some reason it ends up cpu
 # ## Eval
 
 # %%
-from reprpo.helpers.shypothesis import shypothesis
-from reprpo.evaluate import evaluate_adapters
-from open_pref_eval.evaluation import evaluate_model
-from open_pref_eval.plot.radar import radar_plot
-from open_pref_eval.datasets.genies import dist2datasets, GENIES
-from open_pref_eval.datasets.ethics import get_ethics_datasets
-from open_pref_eval.datasets import load_dataset_n
+
 
 # eval on ethics, GENIES, and our train dataset
 N = None
@@ -414,9 +432,9 @@ res, df_res2 = evaluate_model(model=model,
 
 
 # %%
-from open_pref_eval.datasets import ds2name
-from open_pref_eval.plot.radar import radar_plot
+
 df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack().T
+df_res.columns = [d.replace('genie_dpo-', '') for d in df_res.columns]
 
 
 def key_metrics(df_res2):
@@ -461,20 +479,19 @@ def key_metrics(df_res2):
 
         
     })
-    return df_metrics.to_frame('val')
+    return df_metrics.to_frame(adapter_name)
 
 # %%
-from reprpo.gen import get_model_generations
+
 df_gen = get_model_generations(model, tokenizer, N=4)
 df_gen_w = wandb.Table(dataframe=df_gen.reset_index())
 
 
 df_metrics = key_metrics(df_res2)
-print('key metrics (adapter over base model)\n', df_metrics)
+
 df_metrics_w = wandb.Table(dataframe=df_metrics.reset_index())
 
-print('acc res')
-print(df_res)
+
 df_res_w = wandb.Table(dataframe=df_res.reset_index())
 
 run.log({
@@ -487,13 +504,19 @@ run.log({
 # save
 f = str(save_dir)+'/eval.parquet'
 df_res.to_parquet(f)
-print(f'saved results to {f}')
+# print(f'saved results to {f}')
 
-# radar_plot(df_res)
-df_res
 
 
 # %%
+print('args =', args)     
+print(f'save_dir={save_dir}') 
+
+print('key metrics (adapter over base model)\n', df_metrics.round(3).to_markdown(), '\n')
+
+print('absolute accuracy')
+print(df_res.round(3).to_markdown(), '\n')
+
 
 # print acc for journal
 c  = df_res2.groupby(['adapter', 'dataset']).count().min().min()
@@ -503,14 +526,14 @@ print()
 print(df_res.round(3).to_markdown()
       )
 print()
-print('args =', args)     
-print(f'save_dir={save_dir}') 
+
 
 
 df_final = pd.DataFrame({
-    'train': df_metrics.iloc[0],
-    'test': df_metrics.iloc[1],
-    'oos': df_metrics.iloc[2],
-    'rnd': df_metrics.iloc[3],
+    'train': df_metrics.iloc[0, 0],
+    'test': df_metrics.iloc[1, 0],
+    'oos': df_metrics.iloc[2, 0],
+    'rnd': df_metrics.iloc[3, 0],
 }, index=[adapter_name])
+df_final.index.name = 'increased accuracy over base model %'
 print(df_final.round(3).to_markdown())
