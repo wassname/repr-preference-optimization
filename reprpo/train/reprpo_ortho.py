@@ -27,7 +27,7 @@ class ReprPOOrthoTrainingArguments(TrainingArguments):
 
     collection_layers: tuple=(10, 20) 
 
-    lr: float = 3e-4
+    # lr: float = 3e-4
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""

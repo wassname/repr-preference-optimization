@@ -15,7 +15,18 @@ from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
 
+@dataclass
+class ReprPOHRATrainingArguments(TrainingArguments):
+    """weights retrain and reroute losses"""
+    alpha: int = 0.01
 
+    adapter_name: str = "reprpo_hra"
+
+    collection_layers: tuple=(10, 20) 
+
+    # lr: float = 3e-4
+
+    rank: int = 8
 
 class HRA(nn.Module):
     """
@@ -62,18 +73,7 @@ class HRA(nn.Module):
 
         return torch.matmul(input, delta_weight)#+ base_layer.bias
 
-@dataclass
-class ReprPOHRATrainingArguments(TrainingArguments):
-    """weights retrain and reroute losses"""
-    alpha: int = 0.01
 
-    adapter_name: str = "reprpo_hra"
-
-    collection_layers: tuple=(10, 20) 
-
-    lr: float = 3e-4
-
-    rank: int = 8
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
