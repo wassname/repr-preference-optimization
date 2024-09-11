@@ -2052,6 +2052,35 @@ class HRA(nn.Module):
         return torch.matmul(input, delta_weight)#+ base_layer.bias
 ```
 
+Hmmm  training it and it seems to be going well
+
+The transform is getting smaller, residual is going down (ofc). Residual is a larger component
+
+
+ultimately`
+--------------------------------------------------------------------------------
+================================================================================
+key metrics (adapter over base model)
+                                                           val
+acc[a/base]_train [us_history_textbook-train]        1.016270
+acc[a/base]_test [us_history_textbook-test]          1.021067
+acc[a/base]_oos [us_history_fiction-test]            1.090909
+acc[a/base]_rnd [code_hard-test]                     0.986742
+coherency[a-base]_train [us_history_textbook-tr...  -2.770287
+coherency[a-base]_test [us_history_textbook-test]   -4.601761
+coherency[a-base]_oos [us_history_fiction-test]     -5.308853
+coherency[a-base]_rnd [code_hard-test]              -7.384018
+coherency[cho-rej]_train [us_history_textbook-t...  53.307823
+coherency[cho-rej]_test [us_history_textbook-test]  48.407578
+coherency[cho-rej]_oos [us_history_fiction-test]    21.945282
+coherency[cho-rej]_rnd [code_hard-test]              5.908325
+acc res
+dataset                         genie_dpo-code_hard-test  ...  genie_dpo-us_history_textbook-train
+adapter                                                   ...                                     
+base                                            0.704000  ...                             0.956111
+reprpo_hra-us_history_textbook                  0.694667  ...                             0.971667
+
+[2 rows x 4 columns]
 
 # 2024-09-11 06:09:04
 key metrics (adapter over base model)

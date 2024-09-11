@@ -42,8 +42,9 @@ In the below results we look at how much the models accuracy improved in trainin
 | Model | Train | Test | OOS | Random |
 | --- | --- | --- | --- | --- |
 | DPO | **1.0459** | 1.0140 | 1.00592 | 0.970 |
-| REPRPO_ortho | 1.0162 | **1.0169** | **1.0850** | **0.996** |
 | REPRPO_side | 1.0145 | 1.00702 | 1.0632 | 0.991 |
+| REPRPO_ortho | 1.0162 | 1.0169 | 1.0850 | **0.996** |
+| REPRPO_hra | 1.0163 | **1.0211** | **1.091** | 0.986 |
 
 As you can see DPO does better in the training environment, but REPRPO_ortho does better in the test, out-of-distribution and random environments. This suggests that REPRPO_ortho is better at generalizing to new environments, and loses less performance in unrelated environments.
 

@@ -230,14 +230,14 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
 
         # Lets monitor the comparitive norms of the decomposed parts
         hs = norm(ref_cho.hs)
-        hs_r = norm(res_det(ref_cho.hs))
-        hs_io = norm(ref_cho.hs - res_det(ref_cho.hs))
-        info['hs_r/hs'] = (hs_r / hs).mean()
-        info['hs_io/hs'] = (hs_io / hs).mean()
-        info['hs_r/hs_io'] = (hs_r / hs_io).mean()
+        hs_t = norm(res_det(ref_cho.hs))
+        hs_resid = norm(ref_cho.hs - res_det(ref_cho.hs))
+        info['hs_t/hs'] = (hs_t / hs).mean()
+        info['hs_resid/hs'] = (hs_resid / hs).mean()
+        info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
 
         # also the norm of the weights of the transformation
-        info['transform_norm'] = norm(transform.weight).mean()
+        info['transform_norm'] = torch.concat([norm(p) for p in transform.parameters()]).mean()
 
 
         info = dict(

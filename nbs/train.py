@@ -72,15 +72,15 @@ def get_args(TraingArguments):
     parser.add_arguments(TrainingArguments, dest='args')
     args2 = parser.parse_args()
     args = TrainingArguments(**args2.args.__dict__)
-    return args
+    return args, args2
 
 if args1.method == 'dpo':
     from reprpo.train.dpo import DPOTrainingArguments as TrainingArguments, PL_DPO_MODEL as PL_MODEL
-    args = get_args(TrainingArguments)
+    args, args2 = get_args(TrainingArguments)
     model_kwargs = dict()
 elif args1.method == 'reprpo_svd':
     from reprpo.train.reprpo_svd import ReprPOSVDTrainingArguments as TrainingArguments, PL_REPRPO_SVD_MODEL as PL_MODEL
-    args = get_args(TrainingArguments)
+    args, args2 = get_args(TrainingArguments)
     model_kwargs = dict(
         alpha=args.alpha,
         quantile=args.quantile,
@@ -90,7 +90,7 @@ elif args1.method == 'reprpo_svd':
 elif args1.method == 'reprpo_side':
     from reprpo.train.reprpo_side import ReprPOSideInTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
     # from reprpo.train.reprpo_side import ReprPOSideOutTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
-    args = get_args(TrainingArguments)
+    args, args2 = get_args(TrainingArguments)
     model_kwargs = dict(
         alpha=args.alpha,
         collection_layers=args.collection_layers,
@@ -99,14 +99,14 @@ elif args1.method == 'reprpo_side':
     )
 elif args1.method == 'reprpo_ortho':
     from reprpo.train.reprpo_ortho import ReprPOOrthoTrainingArguments as TrainingArguments, PL_REPRPO_ORTHO_MODEL as PL_MODEL
-    args = get_args(TrainingArguments)
+    args, args2 = get_args(TrainingArguments)
     model_kwargs = dict(
         alpha=args.alpha,
         collection_layers=args.collection_layers,
     )
 elif args1.method == 'reprpo_hra':
     from reprpo.train.reprpo_hra import ReprPOHRATrainingArguments as TrainingArguments, PL_REPRPO_HRA_MODEL as PL_MODEL
-    args = get_args(TrainingArguments)
+    args, args2 = get_args(TrainingArguments)
     model_kwargs = dict(
         alpha=args.alpha,
         collection_layers=args.collection_layers,
