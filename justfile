@@ -20,7 +20,8 @@ run method='reprpo_ortho':
 
 run_all:
     . ./.venv/bin/activate
+    python nbs/train.py --method reprpo_hra  --verbose
     python nbs/train.py --method reprpo_ortho  --verbose
-    python nbs/train.py --method dpo --verbose
     python nbs/train.py --method reprpo_side  --verbose
+    python nbs/train.py --method dpo --verbose
     #python nbs/train.py --method reprpo_svd --verbose

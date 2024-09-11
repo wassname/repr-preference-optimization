@@ -110,7 +110,8 @@ elif args1.method == 'reprpo_hra':
     model_kwargs = dict(
         alpha=args.alpha,
         collection_layers=args.collection_layers,
-        rank=args.rank,
+        r=args.r,
+        apply_GS=args.apply_GS,
     )
 else:
     raise ValueError(f"method {args1.method} not found. options: `reprpo_side`, `dpo`, `reprpo_svd`")
@@ -506,7 +507,7 @@ print('args =', args)
 print(f'save_dir={save_dir}') 
 
 
-df_final = pd.DateFrame({
+df_final = pd.DataFrame({
     'train': df_metrics.iloc[0],
     'test': df_metrics.iloc[1],
     'oos': df_metrics.iloc[2],
