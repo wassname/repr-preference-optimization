@@ -8,7 +8,7 @@ from einops import rearrange, repeat, reduce
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.lightning import PL_MODEL, TrainingArguments, cross_entropy_loss
+from reprpo.train.pl_base import PL_MODEL, TrainingArguments, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict

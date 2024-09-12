@@ -10,7 +10,7 @@ import warnings
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.lightning import PL_MODEL, TrainingArguments, cross_entropy_loss
+from reprpo.train.pl_base import PL_MODEL, TrainingArguments, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
@@ -30,7 +30,7 @@ class ReprPOHRATrainingArguments(TrainingArguments):
 
     """The rank of HRA across different layers. It is best to set 'r' to an even number; otherwise, the default
     initialization method will not work."""
-    r: int = 64
+    r: int = 128
 
     """Whether to apply Gram-Schmidt orthogonalization."""
     apply_GS: bool = False
@@ -275,7 +275,7 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
     return loss, info
 
 class PL_REPRPO_HRA_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_layers=[10, 20], r=8, apply_GS=False, **kwargs):
+    def __init__(self, *args, alpha=1, collection_layers=[], r=8, apply_GS=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers

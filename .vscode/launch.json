@@ -5,21 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "svd dev -v",
+            "name": "train",
             "type": "debugpy",
             "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
             "pythonArgs": ["-Xfrozen_modules=off"],
             "request": "launch",
             "program": "${workspaceFolder}/nbs/train.py",
             "console": "integratedTerminal",
-            "args": [
-                "--dev", 
-                "--verbose",
-                "--method", "reprpo_svd",
-            ]
+            "args": "${command:pickArgs}",
         },
         {
-            "name": "side dev -v",
+            "name": "side -d -v",
             "type": "debugpy",
             "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
             "pythonArgs": ["-Xfrozen_modules=off"],
@@ -30,84 +26,6 @@
                 "--dev", 
                 "--verbose",
                 "--method", "reprpo_side",
-            ]
-        },
-        {
-            "name": "ortho -d -v",
-            "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
-            "pythonArgs": ["-Xfrozen_modules=off"],
-            "request": "launch",
-            "program": "${workspaceFolder}/nbs/train.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--verbose", "--dev",
-                "--method", "reprpo_ortho",
-            ]
-        }
-        {
-            "name": "svd -v",
-            "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
-            "pythonArgs": ["-Xfrozen_modules=off"],
-            "request": "launch",
-            "program": "${workspaceFolder}/nbs/train.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--verbose",
-                "--method", "reprpo_svd",
-            ]
-        },
-        {
-            "name": "side -v",
-            "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
-            "pythonArgs": ["-Xfrozen_modules=off"],
-            "request": "launch",
-            "program": "${workspaceFolder}/nbs/train.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--verbose",
-                "--method", "reprpo_side",
-            ]
-        },
-        {
-            "name": "dpo -v",
-            "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
-            "pythonArgs": ["-Xfrozen_modules=off"],
-            "request": "launch",
-            "program": "${workspaceFolder}/nbs/train.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--verbose",
-                "--method", "dpo",
-            ]
-        },
-        {
-            "name": "ortho -v",
-            "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
-            "pythonArgs": ["-Xfrozen_modules=off"],
-            "request": "launch",
-            "program": "${workspaceFolder}/nbs/train.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--verbose",
-                "--method", "reprpo_ortho",
-            ]
-        },
-        {
-            "name": "hra -v",
-            "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
-            "pythonArgs": ["-Xfrozen_modules=off"],
-            "request": "launch",
-            "program": "${workspaceFolder}/nbs/train.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--verbose",
-                "--method", "reprpo_hra",
             ]
         }
     ]

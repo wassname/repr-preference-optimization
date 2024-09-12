@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
-from reprpo.train.lightning import PL_MODEL
+from reprpo.train.pl_base import PL_MODEL
 from dataclasses import dataclass
-from .lightning import TrainingArguments, cross_entropy_loss
+from .pl_base import TrainingArguments, cross_entropy_loss
 
 @dataclass
 class DPOTrainingArguments(TrainingArguments):
