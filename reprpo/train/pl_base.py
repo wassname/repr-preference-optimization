@@ -15,7 +15,7 @@ class TrainingArguments:
     use_gradient_checkpointing: bool = False
 
     # train
-    batch_size: int = 8
+    batch_size: int = 4
     lr: float = 6e-5
     weight_decay: float = 0.0
 
@@ -27,12 +27,12 @@ class TrainingArguments:
     # model
     # model_name: str = "microsoft/Phi-3-mini-4k-instruct" # small instruct model
     # model_name: str = "google/gemma-2-2b" # small base model
-    # model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
+    model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
     # model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
-    # collection_layers: tuple=(10, 12, 14, 16, 18, 20, 22, 24, 26, 28) 
+    collection_layers: tuple=(12, 14, 16, 18, 20, 22, 24) 
 
-    model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
-    collection_layers: tuple=(10, 12, 14, 16, 18) 
+    # model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+    # collection_layers: tuple=(10, 12, 14, 16, 18) 
     
 
 

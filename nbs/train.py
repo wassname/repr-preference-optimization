@@ -303,7 +303,7 @@ max_steps = args.n_samples // args.batch_size
 print('max optimiser steps', max_steps)
 
 # %%
-ideal_batch_size = max(16, args.batch_size) # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
+ideal_batch_size = max(8, args.batch_size) # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
 accumulate_grad_batches = np.ceil(ideal_batch_size/args.batch_size).astype(int)
 print('accumulate_grad_batches', accumulate_grad_batches)
 print('accumulated batch size', args.batch_size*accumulate_grad_batches)
