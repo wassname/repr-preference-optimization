@@ -2177,3 +2177,84 @@ runpod llama-7b 3.1 chat run dpo
 | dpo-us_history_textbook        |   1.011 |  1.005 | 1.076 | 0.978 |
 | reprpo_hra-us_history_textbook |   1.007 |  1.012 | 1.079 | 0.971 |
 | reprpo_ortho-us_history_textbook |   1.008 |  1.012 | 1.074 | 0.984 |
+
+# 2024-09-12 06:38:45
+
+args = DPOTrainingArguments(model_name='NousResearch/Meta-Llama-3.1-8B-Instruct', load_in_4bit=False, load_in_8bit=False, use_gradient_checkpointing=False, batch_size=15, lr=6e-05, weight_decay=0.0, n_samples=23400, max_length=196, max_prompt_length=96, adapter_name='dpo')
+save_dir=/workspace/repr-preference-optimization/outputs/NousResearch_Meta-Llama-3.1-8B-Instruct_dpo_us_history_textbook/2024-09-11_20-31-52
+key metrics (adapter over base model)
+
+args = ReprPOHRATrainingArguments(model_name='NousResearch/Meta-Llama-3.1-8B-Instruct', load_in_4bit=False, load_in_8bit=False, use_gradient_checkpointing=False, batch_size=15, lr=0.0002, weight_decay=0.0, n_samples=23400, max_length=196, max_prompt_length=96, alpha=0.01, adapter_name='reprpo_hra', collection_layers=(10, 20), r=64, apply_GS=False)
+save_dir=/workspace/repr-preference-optimization/outputs/NousResearch_Meta-Llama-3.1-8B-Instruct_reprpo_hra_us_history_textbook/2024-09-11_12-28-42
+key metrics (adapter over base model)
+
+ |                                                      |   dpo-us_history_textbook |
+|:-----------------------------------------------------|--------------------------:|
+| acc[a/base]_train [us_history_textbook-train]        |                     1.011 |
+| acc[a/base]_test [us_history_textbook-test]          |                     1.005 |
+| acc[a/base]_oos [us_history_fiction-test]            |                     1.087 |
+| acc[a/base]_rnd [code_hard-test]                     |                     0.974 |
+| coherency[a-base]_train [us_history_textbook-train]  |                  -370.539 |
+| coherency[a-base]_test [us_history_textbook-test]    |                  -363.017 |
+| coherency[a-base]_oos [us_history_fiction-test]      |                  -453.218 |
+| coherency[a-base]_rnd [code_hard-test]               |                  -401.851 |
+| coherency[cho-rej]_train [us_history_textbook-train] |                   604.605 |
+| coherency[cho-rej]_test [us_history_textbook-test]   |                   550.363 |
+| coherency[cho-rej]_oos [us_history_fiction-test]     |                   363.469 |
+| coherency[cho-rej]_rnd [code_hard-test]              |                    36.903 | 
+
+absolute accuracy
+| adapter                 |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
+|:------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
+| base                    |            0.773 |                     0.841 |                      0.987 |                       0.989 |
+| dpo-us_history_textbook |            0.753 |                     0.915 |                      0.992 |                       1     | 
+| reprpo_sidein-us_history_textbook |            0.768 |                     0.888 |                      0.996 |                       0.995 |
+| reprpo_ortho-us_history_textbook |            0.755 |                     0.908 |                      0.996 |                       0.998
+| reprpo_hra-us_history_textbook |            0.756 |                     0.905 |                      0.996 |                       0.997 | 
+
+| increased accuracy over base model %   |   train |   test |   oos |   rnd |
+|:---------------------------------------|--------:|-------:|------:|------:|
+| dpo-us_history_textbook                |   1.011 |  1.005 | 1.087 | 0.974 |
+| reprpo_sidein-us_history_textbook      |   1.006 |  1.009 | 1.055 | 0.993 |
+| reprpo_ortho-us_history_textbook       |   1.009 |  1.009 | 1.079 | 0.976 |
+| reprpo_hra-us_history_textbook         |   1.008 |  1.009 | 1.076 | 0.978 |
+
+
+# 2024-09-12 08:07:20
+
+check the logs
+
+which ones did not converge lower
+svd went up... but that's kind a of a problem with that alg
+
+
+args = ReprPOHSTrainingArguments(load_in_4bit=False, load_in_8bit=False, use_gradient_checkpointing=False, batch_size=15, lr=6e-05, weight_decay=0.0, n_samples=23400, max_length=196, max_prompt_length=96, collection_layers=(10, 12, 14, 16, 18), alpha=0.3, adapter_name='reprpo_hs', l3r=3e-05)
+save_dir=/media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/TinyLlama_TinyLlama-1.1B-Chat-v1.0_reprpo_hs_us_history_textbook/2024-09-12_09-09-39
+key metrics (adapter over base model)
+ |                                                      |   reprpo_hs-us_history_textbook |
+|:-----------------------------------------------------|--------------------------------:|
+| acc[a/base]_train [us_history_textbook-train]        |                           1.002 |
+| acc[a/base]_test [us_history_textbook-test]          |                           1.003 |
+| acc[a/base]_oos [us_history_fiction-test]            |                           1.006 |
+| acc[a/base]_rnd [code_hard-test]                     |                           0.998 |
+| coherency[a-base]_train [us_history_textbook-train]  |                           0.04  |
+| coherency[a-base]_test [us_history_textbook-test]    |                           0.063 |
+| coherency[a-base]_oos [us_history_fiction-test]      |                           0.062 |
+| coherency[a-base]_rnd [code_hard-test]               |                          -0.207 |
+| coherency[cho-rej]_train [us_history_textbook-train] |                          40.448 |
+| coherency[cho-rej]_test [us_history_textbook-test]   |                          38.357 |
+| coherency[cho-rej]_oos [us_history_fiction-test]     |                          12.138 |
+| coherency[cho-rej]_rnd [code_hard-test]              |                           6.011 | 
+
+absolute accuracy
+| adapter                       |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
+|:------------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
+| base                          |            0.704 |                     0.675 |                      0.949 |                       0.956 |
+| reprpo_hs-us_history_textbook |            0.703 |                     0.679 |                      0.952 |                       0.958 | 
+
+| increased accuracy over base model %   |   train |   test |   oos |   rnd |
+|:---------------------------------------|--------:|-------:|------:|------:|
+| reprpo_hs-us_history_textbook          |   1.002 |  1.003 | 1.006 | 0.998 |
+
+
+hs runs

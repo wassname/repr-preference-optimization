@@ -6,7 +6,7 @@ from torch import Tensor
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.lightning import PL_MODEL, TrainingArguments, cross_entropy_loss
+from reprpo.train.pl_base import PL_MODEL, TrainingArguments, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
@@ -22,9 +22,9 @@ class ReprPOHSTrainingArguments(TrainingArguments):
 
     adapter_name: str = "reprpo_hs"
 
-    collection_layers: tuple=(10, 12, 14, 16, 18, 20, 22, 24, 26, 28) 
+    # collection_layers: tuple=(10, 12, 14, 16, 18, 20, 22, 24, 26, 28) 
 
-    # lr: float = 1e-4
+    l3r: float = 3e-5
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
@@ -93,7 +93,7 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16) -> Float[Tensor, "
     return log_dist_ratio.nanmean(-1) * alpha
 
 
-def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers, decomposer):
+def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers):
 
     model.eval()
     with torch.no_grad():
@@ -196,11 +196,19 @@ def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers, decompo
     assert torch.isfinite(loss)
     return loss, info
 
+def validate_args(model, args):
+    # first check collection layers exist'
+
+    # HACK: llama specific
+    assert max(args.collection_layers)<(model.config.num_hidden_layers-1), 'collection layers should be less than the number of layers'
+
 class PL_REPRPO_HS_MODEL(PL_MODEL):
     def __init__(self, *args, alpha=1, collection_layers=[10, 20], **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
+        validate_args(self._model, self.hparams)
+
 
 
     def _loss_fn(self, batch, model):
@@ -209,5 +217,4 @@ class PL_REPRPO_HS_MODEL(PL_MODEL):
             model,
             self.hparams.alpha,
             self.hparams.collection_layers,
-            self.decomposer,
         )

@@ -13,60 +13,23 @@ from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
 import itertools
 
+from .reprpo_hra import HRA, ReprPOHRATrainingArguments
+from .reprpo_side import ReprPOSideInTrainingArguments, ReprPOSideOutTrainingArguments
 
-@dataclass
-class ReprPOSideInTrainingArguments(TrainingArguments):
-    """
-    here we collect the inputs from the output modules of the each layer.
-
-    in other words we do not collect the contribution to the hidden states but instead activations internal to the layer
-    
-    """
-
-    alpha: int = 0.1
-
-    """because the side channels don't repeat themselves we need to collect them on many layers."""
-    # collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19)
-                                #20, 21, 22, 23, 24, 25, 26, 28) 
-                                
-    """taking the input, of the output layers of the side channels."""
-    collection_keys: tuple = (
-        "base_model.model.model.layers.{layer}.self_attn.o_proj",
-        "base_model.model.model.layers.{layer}.mlp.down_proj",
-    )
-    collect_input: bool = True
-    adapter_name: str = "reprpo_sidein"
 
 
 @dataclass
-class ReprPOSideOutTrainingArguments(ReprPOSideInTrainingArguments):
-    """
-    here we collect the outputs from the input modules of the each layer.
+class ReprPOSideInHRATrainingArguments(ReprPOSideInTrainingArguments, ReprPOHRATrainingArguments):
+    adapter_name: str = "reprpo_sidein_hra"
+    rank: int = 8
 
-    in other words we do not collect the contribution to the hidden states but instead activations internal to the layer
 
-    collecting the input.outs is often more complex, but baukit sometimes can handle outs better
-    """
+@dataclass
+class ReprPOSideOutHRATrainingArguments(ReprPOSideOutTrainingArguments, ReprPOHRATrainingArguments):
+    adapter_name: str = "reprpo_sideout_hra"
+    # FIXME need one transformation per layer X module!
+    rank: int = 8
 
-    # llama3?
-    # collection_keys: tuple = (
-    #     "base_model.model.model.layers.{layer}.self_attn.qkv_proj",
-    #     "base_model.model.model.layers.{layer}.mlp.gate_proj",
-    # )
-
-    # tinyllama arch is lik this
-    # hs += o_proj(qkv_proj(hs))
-    # then
-    # hs += mlp.down_proj(self.act_fn(mlp.gate_proj(hs)) * mlp.up_proj(hs))
-    collection_keys: tuple = (
-        "base_model.model.model.layers.{layer}.self_attn.q_proj",
-        "base_model.model.model.layers.{layer}.self_attn.k_proj",
-        "base_model.model.model.layers.{layer}.self_attn.v_proj",
-        "base_model.model.model.layers.{layer}.mlp.gate_proj",
-        "base_model.model.model.layers.{layer}.mlp.up_proj",
-    )
-    collect_input: bool = False
-    adapter_name: str = "reprpo_sideout"
 
 
 def get_layer_paths(collection_keys, collection_layers):
@@ -155,57 +118,12 @@ def reprpo_forward(model, input_ids, attn_mask, layer_paths, collect_input=True)
     return SimpleNamespace(hs=reprs, logits=outs.logits, logprobs=logprobs)
 
 
-# def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b l"]:
-#     dist = torch.abs(b - a)
-#     dist = mean_with_attention(dist, attn)  # reduces over tokens
-#     dist = dist.clamp(min=eps)
 
-#     dist_ref = torch.abs(b_ref - a_ref)
-#     dist_ref = (mean_with_attention(dist_ref, attn_ref)).detach()
-#     dist_ref = dist_ref.clamp(min=eps)
-
-#     # get the ratio in log space to avoid div by zero
-#     log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
-
-#     # log_dist_ratio = - log_dist_ratio # FIXME! should this be negative or positvie?
-
-#     # eps = max(eps * dist_ref.mean(), min_eps) # avoid div by zero
-
-#     # dr =  (dist + eps) / (dist_ref.detach() + eps)
-#     # dr = torch.clamp((dist + eps) / (dist_ref.detach() + eps), min=1e-6, max=1e6)
-#     log_dist_ratio = reduce(log_dist_ratio, "b h -> b ", torch.nanmean)
-
-#     alpha = 10
-#     return log_dist_ratio * alpha
-
-
-# def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-6) -> Float[Tensor, "b l"]:
-#     dist = mean_with_attention(a-b, attn)  # reduces over tokens
-#     dist = torch.norm(dist, p=1, dim=-1)
-#     # dist = dist.clamp(min=eps)
-
-#     dist_ref = (mean_with_attention(a_ref-b_ref, attn_ref)).detach()
-#     dist_ref = torch.norm(dist_ref, p=1, dim=-1)
-#     # dist_ref = dist_ref.clamp(min=eps)
-
-#     # get the ratio in log space to avoid div by zero
-#     log_dist_ratio = torch.log(dist) - torch.log(dist_ref)
-
-#     alpha = 10
-#     return log_dist_ratio * alpha
-
+def norm(a, dim=-1):
+    # return torch.abs(a).mean(dim)
+    return torch.pow(a, 2).mean(dim)
 
 def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-12) -> Float[Tensor, "b l"]:
-    # # convert to float32 to avoid nanmean issues
-    # a = a.float()
-    # b = b.float()
-    # a_ref = a_ref.float()
-    # b_ref = b_ref.float()
-    def norm(a, dim=-1):
-        # return torch.abs(a).mean(dim)
-        return torch.pow(a, 2).mean(dim)
-
-
     dist = mean_with_attention(a-b, attn)  # reduces over tokens
     dist = norm(dist, dim=-1) # over h
     dist = dist + eps
@@ -237,8 +155,8 @@ def dist_ratio(
     return d # reduce(d, "b l -> ", torch.nanmean)
 
 
-def compute_reprpo_side_loss_batch(
-    batch, model, layer_paths, alpha, collect_input=True
+def compute_reprpo_side_hra_loss_batch(
+    batch, model, layer_paths, alpha, collect_input, transforms
 ):
     """Compute the DPO loss on an input batch"""
 
@@ -291,11 +209,15 @@ def compute_reprpo_side_loss_batch(
         comb_attn_mask,
     )
 
+    def res_det(hs):
+        """use learnable transformation to get the residual part of the hs"""
+        return {k: transforms[k](v) for k, v in hs.items()}
+
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
     loss_reroute = dist_ratio(
-        detach_hsd(ref_cho.hs),
-        pi_rej.hs,
+        res_det(detach_hsd(ref_cho.hs)),
+        res_det(pi_rej.hs),
         comb_attn_mask,
         ref_cho.hs,
         ref_rej.hs,
@@ -328,6 +250,18 @@ def compute_reprpo_side_loss_batch(
         info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
+        # Lets monitor the comparitive norms of the decomposed parts
+        def norm_hsd(hs):
+            return {k: norm(v) for k, v in hs.items()}
+        hs = norm_hsd(ref_cho.hs)
+        hs_t = norm_hsd(res_det(ref_cho.hs))
+        # hs_resid = norm_hsd(ref_cho.hs - res_det(ref_cho.hs))
+        info['hs_t/hs'] = torch.concat([hs_t[k]/hs[k] for k in hs.keys()]).mean()
+        # info['hs_resid/hs'] = (hs_resid / hs).mean()
+        # info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
+
+        # also the norm of the weights of the transformation
+        info['transform_norm'] = torch.concat([norm(p) for p in transforms.parameters()]).mean()
 
         info = dict(
             loss_reroute=loss_reroute.mean(),
@@ -343,18 +277,22 @@ def compute_reprpo_side_loss_batch(
 
 
 class PL_REPRPO_SIDE_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_keys=[], collection_layers=[], collect_input=True, **kwargs):
+    def __init__(self, *args, alpha=1, collection_keys=[], collection_layers=[], r=8, apply_GS=False, collect_input=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.layer_paths = get_layer_paths(collection_keys, collection_layers)
         validate_layer_paths(self._model, self.hparams.layer_paths)
         self.hparams.collect_input = collect_input
 
+        hra_sizes = {p:get_module(self._model, p).weight.shape[collect_input] for p in self.hparams.layer_paths}
+        self.transforms = torch.nn.ParameterDict({k: HRA(dim_hs, dim_hs, r=r, apply_GS=apply_GS) for k,dim_hs in hra_sizes.items()})
+
     def _loss_fn(self, batch, model):
-        return compute_reprpo_side_loss_batch(
+        return compute_reprpo_side_hra_loss_batch(
             batch,
             model,
             self.hparams.layer_paths,
             self.hparams.alpha,
             collect_input=self.hparams.collect_input,
+            transforms=self.transforms
         )

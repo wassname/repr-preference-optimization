@@ -110,13 +110,28 @@ elif args1.method == 'reprpo_hs':
     args, args2 = get_args(TrainingArguments)
     model_kwargs = dict(
         alpha=args.alpha,
-        quantile=args.quantile,
-        dual_svd=args.dual_svd,
         collection_layers=args.collection_layers,
     )
 elif args1.method == 'reprpo_side':
     from reprpo.train.reprpo_side import ReprPOSideInTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
-    # from reprpo.train.reprpo_side import ReprPOSideOutTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
+    args, args2 = get_args(TrainingArguments)
+    model_kwargs = dict(
+        alpha=args.alpha,
+        collection_layers=args.collection_layers,
+        collection_keys=args.collection_keys,
+        collect_input=args.collect_input,
+    )
+elif args1.method == 'reprpo_sideout':
+    from reprpo.train.reprpo_side import ReprPOSideOutTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
+    args, args2 = get_args(TrainingArguments)
+    model_kwargs = dict(
+        alpha=args.alpha,
+        collection_layers=args.collection_layers,
+        collection_keys=args.collection_keys,
+        collect_input=args.collect_input,
+    )
+elif args1.method == 'reprpo_side_hra':
+    from reprpo.train.reprpo_side_hra import ReprPOSideInHRATrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
     args, args2 = get_args(TrainingArguments)
     model_kwargs = dict(
         alpha=args.alpha,
@@ -297,7 +312,7 @@ print(f"epochs {args.n_samples//len(dl_train)}")
 
 # %%
 from lightning.pytorch.callbacks import LearningRateMonitor
-from reprpo.train.lightning import GenCallback
+from reprpo.train.pl_base import GenCallback
 
 
 # %%
@@ -384,7 +399,7 @@ print(f'saved to {save_dir}-adapter')
 
 if not args1.dev:
     df_hist = read_metrics_csv(trainer.logger.experiment.metrics_file_path).bfill().ffill()
-    print(df_hist)
+    # print(df_hist)
 
 # import matplotlib
 # plt.style.use('ggplot')
@@ -457,6 +472,8 @@ def key_metrics(df_res2):
 
     def fmt(s):
         return s.replace('genie_dpo-', '')
+    
+    # TODO 
 
     df_metrics = pd.Series({
         # accuracy increase over base measured generalisaton on increasing distribution shifts
@@ -509,24 +526,19 @@ df_res.to_parquet(f)
 
 
 # %%
-print('args =', args)     
 print(f'save_dir={save_dir}') 
+print('args =', args. args2)
+
+
+print(f"""where
+- model = {args1.model_name}
+- dataset = {args1.dataset}
+""")
 
 print('key metrics (adapter over base model)\n', df_metrics.round(3).to_markdown(), '\n')
 
 print('absolute accuracy')
 print(df_res.round(3).to_markdown(), '\n')
-
-
-# print acc for journal
-c  = df_res2.groupby(['adapter', 'dataset']).count().min().min()
-df_res.columns = [s.replace('genie_dpo-','') for s in df_res.columns]
-print(f"⭐ run={run_fname}, N={c}")
-print()
-print(df_res.round(3).to_markdown()
-      )
-print()
-
 
 
 df_final = pd.DataFrame({
