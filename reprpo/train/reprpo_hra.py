@@ -10,7 +10,7 @@ import warnings
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.pl_base import PL_MODEL, TrainingArguments, cross_entropy_loss
+from reprpo.train.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
@@ -18,7 +18,7 @@ from dataclasses import dataclass
 import itertools
 
 
-class HRA(nn.Module):
+class HRATransform(nn.Module):
     """
     see
     - https://github.com/huggingface/peft/blob/54be5a3db61748d698ca2e6b55bcfef229a9b475/src/peft/tuners/hra/layer.py#L197
@@ -26,7 +26,7 @@ class HRA(nn.Module):
 
     def __init__(self, in_features, out_features, 
                  r=8, apply_GS=False):
-        super(HRA, self).__init__()
+        super().__init__()
         
 
         self.hra_r = r
@@ -264,7 +264,7 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
         self.hparams.collection_layers = collection_layers
 
         dim_hs = self._model.config.hidden_size
-        self.transform = HRA(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
+        self.transform = HRATransform(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
 
     def _loss_fn(self, batch, model):
         return compute_reprpo_hra_loss_batch(
@@ -277,14 +277,14 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
 
 
 @dataclass(frozen=True)
-class HRA(TrainingArguments):
+class HRA(TrainingArgumentswCollection):
     """weights retrain and reroute losses"""
     alpha: int = 0.01
 
+    """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
     collection_layers: tuple=(10, 20) 
 
-    """The rank of HRA across different layers. It is best to set 'r' to an even number; otherwise, the default
-    initialization method will not work."""
+    """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
     r: int = 64
 
     """Whether to apply Gram-Schmidt orthogonalization."""

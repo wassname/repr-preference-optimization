@@ -8,7 +8,7 @@ from einops import rearrange, repeat, reduce
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.pl_base import PL_MODEL, TrainingArguments, cross_entropy_loss
+from reprpo.train.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
@@ -217,10 +217,11 @@ class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
 
 
 @dataclass(frozen=True)
-class Ortho(TrainingArguments):
+class Ortho(TrainingArgumentswCollection):
     """weights retrain and reroute losses"""
     alpha: int = 0.01
 
+    """The layers to collect the hidden states from, as this operates on the HS which does not vary much we need few points of collection"""
     collection_layers: tuple=(10, 20) 
 
     _reprpo_class = PL_REPRPO_ORTHO_MODEL

@@ -8,7 +8,7 @@ from ..helpers.scheduler import get_constant_schedule_with_warmup
 
 
 @dataclass(frozen=True)
-class TrainingArguments():
+class TrainingArguments:
     
     """the dataset to fine tune on. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
     dataset: str = 'us_history_textbook'
@@ -31,20 +31,22 @@ class TrainingArguments():
     n_samples: int = 1800 * 3
     max_length: int = 196
     max_prompt_length: int = 96
+    # base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    base_model: str = 'NousResearch/Meta-Llama-3.1-8B'
 
-    # model
-    # model_name: str = "microsoft/Phi-3-mini-4k-instruct" # small instruct model
-    # model_name: str = "google/gemma-2-2b" # small base model
-    model_name: str = "NousResearch/Meta-Llama-3.1-8B" # med base model
-    # model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
-    collection_layers: tuple=(12, 14, 16, 18, 20, 22, 24) 
 
-    model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+@dataclass(frozen=True)
+class TrainingArgumentswCollection(TrainingArguments):
+    alpha: int = 0.1
     collection_layers: tuple=(10, 12, 14, 16, 18) 
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
+    # tinyllama arch is like this
+    # hs += o_proj(qkv_proj(hs))
+    # then
+    # hs += mlp.down_proj(self.act_fn(mlp.gate_proj(hs)) * mlp.up_proj(hs))
     collection_keys_out: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.q_proj",
         "base_model.model.model.layers.{layer}.self_attn.k_proj",
@@ -52,6 +54,7 @@ class TrainingArguments():
         "base_model.model.model.layers.{layer}.mlp.gate_proj",
         "base_model.model.model.layers.{layer}.mlp.up_proj",
     )
+    collect_input: bool = True
 
 
 class PL_MODEL(pl.LightningModule):

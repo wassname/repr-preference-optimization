@@ -4,6 +4,7 @@
 # https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
 
 
+from pprint import pprint
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -63,20 +64,24 @@ from reprpo.train import Methods
 from reprpo.train.dpo import compute_dpo_loss_batch, PL_DPO_MODEL
 
 # %%
-torch.set_float32_matmul_precision("high")
 
 
 
-from reprpo.train.pl_base import TrainingArguments
+from reprpo.train.pl_base import TrainingArguments, TrainingArgumentswCollection
 from typing import Union
 
 # get a union class from the enum
 MethodsUnion = Union[tuple(e.value for e in Methods)]
 
 def train(training_args:MethodsUnion):
+    torch.set_float32_matmul_precision("high")
 
     PL_MODEL = training_args._reprpo_class
     model_kwargs = {k:getattr(training_args, k) for k in training_args._model_keys}
+    print('PL_MODEL', PL_MODEL)
+    print('model_kwargs', model_kwargs)
+    print('training_args')
+    pprint(training_args.__dict__)
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
     adapter_name = type(args).__name__
@@ -85,10 +90,10 @@ def train(training_args:MethodsUnion):
     wandb.require(experiment='service')
 
     config = dict(args=args, training_args=training_args)
-    run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=f'{args.dataset}-{training_args.model_name.replace("/","")}', config=config)
+    run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=f'{args.dataset}-{training_args.base_model.replace("/","")}', config=config)
 
 
-    model, tokenizer = load_model(training_args.model_name, load_in_4bit=training_args.load_in_4bit,  load_in_8bit=training_args.load_in_8bit,  
+    model, tokenizer = load_model(training_args.base_model, load_in_4bit=training_args.load_in_4bit,  load_in_8bit=training_args.load_in_8bit,  
                                 attn_implementation='eager' # for gemma
     )
 
@@ -117,9 +122,6 @@ def train(training_args:MethodsUnion):
 
     # ## Load data
     dataset2 = load_dataset("wassname/genie_dpo", name=args.dataset)
-    if args.dev:
-        dataset2['train'] = dataset2['train'].select(range(16))
-        dataset2['test'] = dataset2['test'].select(range(16))
 
 
     # ### Data Loader
@@ -219,7 +221,7 @@ def train(training_args:MethodsUnion):
 
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
     root_dir = Path(__file__).parent.parent
-    model_fname= "_".join([training_args.model_name.replace("/", "_"), adapter_name, args.dataset])
+    model_fname= "_".join([training_args.base_model.replace("/", "_"), adapter_name, args.dataset])
     save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
     Path(save_dir).mkdir(exist_ok=True, parents=True)
 
@@ -405,7 +407,6 @@ def train(training_args:MethodsUnion):
 
 
     # %%
-    from pprint import pprint
     from collections import OrderedDict
     ds_alias = OrderedDict(list(zip(['train', 'test', 'oos', 'rnd'], [ds2name(d) for d in datasets])))
 
@@ -427,7 +428,7 @@ def train(training_args:MethodsUnion):
     df_final = df_metrics.loc['acc[pi/base]'].to_frame(adapter_name).T
     df_final.index.name = 'acc_inc/eval_ds'
     print(df_final.round(3).to_markdown())
-    print(f"""Table 3: Accuracy increase after training with adapter on `{args.dataset}` compared to base model `{training_args.model_name}` for various distribution shifts:""")
+    print(f"""Table 3: Accuracy increase after training with adapter on `{args.dataset}` compared to base model `{training_args.base_model}` for various distribution shifts:""")
     for k,v in ds_alias.items():
         print(f"- `{k}`: `{v}`")
 
@@ -441,12 +442,17 @@ import yaml, os
 if __name__ == '__main__':
 
     # we can load a default config by passing it into the env
-    # REPR_CONFIG=../configs/tinyllama.yaml
     # REPR_CONFIG=../configs/dev.yaml
     default_config = {}
-    if os.environ.get('REPR_CONFIG') is not None:
-        default_config = yaml.safe_load(os.environ.get('REPR_CONFIG'))   
-        print(f'loaded default config from {os.environ.get("REPR_CONFIG")}')     
-    MethodsUnion = Union[tuple(e.value for e in Methods)]
-    args = tyro.cli(MethodsUnion, default=default_config)
+    f = os.environ.get('REPR_CONFIG')
+    if f is not None:
+        default_config = yaml.safe_load(open(f))
+        print(f'loaded default config from {f}')     
+    
+    # MethodsUnion = Union[tuple(e.value for e in Methods)]
+    # args = tyro.cli(MethodsUnion, default=TrainingArgumentswCollection(**default_config ))
+
+    args = tyro.cli(MethodsUnion)
+    # args = tyro.cli(MethodsUnion, default=type(args)(**default_config))
+
     train(args)

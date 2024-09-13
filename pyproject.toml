@@ -15,7 +15,7 @@ tqdm = "^4.66.4"
 transformers = "^4.43.2"
 datasets = "^2.20.0"
 tensor-parallel = "^1.2.4"
-hydra-core = "^1.3.2"
+#hydra-core = "^1.3.2"
 #torch = "2.0.1"
 torch = {version = ">=2.3.1+cu121", source = "pytorch"}
 ipywidgets = "^8.1.3"
@@ -43,7 +43,9 @@ loguru = "^0.7.2"
 # open-pref-eval = {path = "/media/wassname/SGIronWolf/projects5/elk/open_pref_eval", develop = true}
 open-pref-eval = {git = "https://github.com/wassname/open_pref_eval", branch = "main", develop = true}
 lightning = "^2.4.0"
-simple-parsing = "^0.1.5"
+# simple-parsing = "^0.1.5"
+tyro = "^0.8.10"
+colorama = "^0.4.6"
 
 [build-system]
 requires = ["poetry-core"]
@@ -53,6 +55,7 @@ build-backend = "poetry.core.masonry.api"
 name = "pytorch"
 url = "https://download.pytorch.org/whl/cu121"
 priority = "explicit"
+
 
 
 [tool.poetry.group.dev.dependencies]

@@ -6,7 +6,7 @@ from torch import Tensor
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.pl_base import PL_MODEL, TrainingArguments, cross_entropy_loss
+from reprpo.train.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
@@ -226,11 +226,21 @@ class PL_REPRPO_SVD_MODEL(PL_MODEL):
 
 
 @dataclass(frozen=True)
-class SVD(TrainingArguments):
+class SVD(TrainingArgumentswCollection):
+    """
+    This intervention does not seem to work of converge. It attempt to remove the parts of the hs that are used by lm_head, but because hs is low rank, and lm_head is highrank, it is all used. Hence we try to train on a tiny noisy residual, and cannot.
+
+    It's left in here to show a negative finding, and the question: where do transformer store the working internal memory?
+    """
+
     """weights retrain and reroute losses"""
     alpha: int = 0.3
 
-    """we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
+    """What quantile of top singular values to from from hs
+
+    Note if you set this to 1, we switch to normal SVD
+    
+    we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
     # note removing the 0.25 top singular values removes 90% of the magnitude from hs leaving a small
     quantile: float=0.5
 
