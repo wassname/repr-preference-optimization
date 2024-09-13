@@ -1,12 +1,12 @@
 args:
-  model_name: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+  base_model: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
   collection_layers: 
     - 10
     - 12
     - 14
     - 16
     - 18
-  collection_keys_in: 
+  collection_keys_in:
     - "base_model.model.model.layers.{layer}.self_attn.o_proj"
     - "base_model.model.model.layers.{layer}.mlp.down_proj"
   collection_keys_out:

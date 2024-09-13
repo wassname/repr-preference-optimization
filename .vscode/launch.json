@@ -17,7 +17,7 @@
         {
             "name": "llama",
             "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", "REPR_CONFIG": "../configs/llama3_7b.yaml"},
+            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", "REPR_CONFIG": "./configs/llama3_7b.yaml"},
             "pythonArgs": ["-Xfrozen_modules=off"],
             "request": "launch",
             "program": "${workspaceFolder}/nbs/train2.py",
@@ -27,7 +27,7 @@
         {
             "name": "dev",
             "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", "REPR_CONFIG": "../configs/dev.yaml"},
+            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", "REPR_CONFIG": "./configs/dev.yaml"},
             "pythonArgs": ["-Xfrozen_modules=off"],
             "request": "launch",
             "program": "${workspaceFolder}/nbs/train2.py",
