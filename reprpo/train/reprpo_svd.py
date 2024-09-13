@@ -225,7 +225,7 @@ class PL_REPRPO_SVD_MODEL(PL_MODEL):
 
 
 
-@dataclass
+@dataclass(frozen=True)
 class ReprPOSVDTrainingArguments(TrainingArguments):
     """weights retrain and reroute losses"""
     alpha: int = 0.3

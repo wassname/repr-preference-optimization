@@ -209,7 +209,7 @@ class PL_REPRPO_HS_MODEL(PL_MODEL):
             self.hparams.collection_layers,
         )
 
-@dataclass
+@dataclass(frozen=True)
 class ReprPOHSTrainingArguments(TrainingArguments):
     """weights retrain and reroute losses"""
     alpha: int = 0.3

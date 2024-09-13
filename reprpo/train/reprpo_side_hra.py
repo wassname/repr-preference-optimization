@@ -287,7 +287,7 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class ReprPOSideInHRATrainingArguments(ReprPOSideInTrainingArguments, ReprPOHRATrainingArguments):
     r: int = 4
 
@@ -295,6 +295,6 @@ class ReprPOSideInHRATrainingArguments(ReprPOSideInTrainingArguments, ReprPOHRAT
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys', 'r', 'apply_GS']
 
 
-@dataclass
+@dataclass(frozen=True)
 class ReprPOSideOutHRATrainingArguments(ReprPOSideInHRATrainingArguments, ReprPOSideOutTrainingArguments):
     pass

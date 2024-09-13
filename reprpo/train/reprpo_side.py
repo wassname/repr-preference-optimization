@@ -307,7 +307,7 @@ class PL_REPRPO_SIDE_MODEL(PL_MODEL):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class ReprPOSideInTrainingArguments(TrainingArguments):
     """
     here we collect the inputs from the output modules of the each layer.
@@ -339,7 +339,7 @@ class ReprPOSideInTrainingArguments(TrainingArguments):
             self.collection_keys = self.collection_keys_out
 
 
-@dataclass
+@dataclass(frozen=True)
 class ReprPOSideOutTrainingArguments(ReprPOSideInTrainingArguments):
     """
     here we collect the outputs from the input modules of the each layer.

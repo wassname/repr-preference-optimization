@@ -216,7 +216,7 @@ class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class ReprPOOrthoTrainingArguments(TrainingArguments):
     """weights retrain and reroute losses"""
     alpha: int = 0.01

@@ -1,0 +1,4 @@
+    training_args.model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+    # or  'yujiepan/llama-3-tiny-random'
+    training_args.n_samples = 512
+    training_args.batch_size *= 2

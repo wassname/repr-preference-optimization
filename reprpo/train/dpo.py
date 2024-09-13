@@ -171,7 +171,7 @@ class PL_DPO_MODEL(PL_MODEL):
     def _loss_fn(self, batch, model):
         return compute_dpo_loss_batch(batch, model)
 
-@dataclass
+@dataclass(frozen=True)
 class DPOTrainingArguments(TrainingArguments):
     adapter_name: str = "dpo"
     lr: float = 6e-5
