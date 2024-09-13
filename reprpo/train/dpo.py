@@ -3,11 +3,10 @@ import torch.nn.functional as F
 from reprpo.train.pl_base import PL_MODEL
 from dataclasses import dataclass
 from .pl_base import TrainingArguments, cross_entropy_loss
+from einops import rearrange
 
-@dataclass
-class DPOTrainingArguments(TrainingArguments):
-    adapter_name: str = "dpo"
-    lr: float = 6e-5
+
+
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
@@ -171,3 +170,11 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
 class PL_DPO_MODEL(PL_MODEL):
     def _loss_fn(self, batch, model):
         return compute_dpo_loss_batch(batch, model)
+
+@dataclass
+class DPOTrainingArguments(TrainingArguments):
+    adapter_name: str = "dpo"
+    lr: float = 6e-5
+
+    _reprpo_class = PL_DPO_MODEL
+    _model_keys = []

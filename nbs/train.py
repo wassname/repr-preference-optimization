@@ -33,7 +33,9 @@ from open_pref_eval.plot.radar import radar_plot
 from peft.tuners import BOFTConfig, OFTConfig, LoraConfig, IA3Config
 
 from simple_parsing import ArgumentParser
+from simple_parsing.helpers import Serializable
 from dataclasses import dataclass
+
 import wandb
 from datasets import load_dataset
 # Numeric
@@ -53,6 +55,7 @@ from reprpo.helpers.torch import clear_mem
 from reprpo.gen import generation_test
 import reprpo.silence
 from reprpo.helpers.lightning_hist import read_metrics_csv, plot_hist
+from reprpo.train import Methods
 
 
 from reprpo.train.dpo import compute_dpo_loss_batch, PL_DPO_MODEL
@@ -65,125 +68,57 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
-
-# %%
-
-
 @dataclass
-class CLIArguments:
-    method: str = 'dpo' # reprpo_svd # reprpo_side
-    # dataset: str = 'code_easy'
+class CLIArguments(Serializable):
+    """the training method to use."""
+    method: Methods = Methods.dpo
+
+    """the dataset to fine tune on. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
     dataset: str = 'us_history_textbook'
+
     verbose: bool = False
+
+    """fast run"""
     dev: bool = False
 
 
 parser = ArgumentParser()
 parser.add_arguments(CLIArguments, dest='cli')
-# parser.add_argument('-m', '--method', type=str, default='dpo', help='dpo, reprpo_svd, reprpo_side')
-# parser.add_argument('-d', '--dataset', type=str, default='code_easy', help='code_easy etc see subsets in https://huggingface.co/datasets/wassname/genie_dpo')
-# parser.add_argument('-v', '--verbose', type=bool, default=False, action="store_true", help='print dataset')
-# parser.add_argument('--dev', type=bool, default=False, action="store_true", help='fast dev run')
-args1 = parser.parse_known_args()[0].cli
-
-def get_args(TrainingArguments):
-    parser.add_arguments(TrainingArguments, dest='args')
-    args2 = parser.parse_args()
-    args = TrainingArguments(**args2.args.__dict__)
-    return args, args2
-
-if args1.method == 'dpo':
-    from reprpo.train.dpo import DPOTrainingArguments as TrainingArguments, PL_DPO_MODEL as PL_MODEL
-    args, args2 = get_args(TrainingArguments)
-    model_kwargs = dict()
-elif args1.method == 'reprpo_svd':
-    from reprpo.train.reprpo_svd import ReprPOSVDTrainingArguments as TrainingArguments, PL_REPRPO_SVD_MODEL as PL_MODEL
-    args, args2 = get_args(TrainingArguments)
-    model_kwargs = dict(
-        alpha=args.alpha,
-        quantile=args.quantile,
-        dual_svd=args.dual_svd,
-        collection_layers=args.collection_layers,
-    )
-elif args1.method == 'reprpo_hs':
-    from reprpo.train.reprpo_hs import ReprPOHSTrainingArguments as TrainingArguments, PL_REPRPO_HS_MODEL as PL_MODEL
-    args, args2 = get_args(TrainingArguments)
-    model_kwargs = dict(
-        alpha=args.alpha,
-        collection_layers=args.collection_layers,
-    )
-elif args1.method == 'reprpo_side':
-    from reprpo.train.reprpo_side import ReprPOSideInTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
-    args, args2 = get_args(TrainingArguments)
-    model_kwargs = dict(
-        alpha=args.alpha,
-        collection_layers=args.collection_layers,
-        collection_keys=args.collection_keys,
-        collect_input=args.collect_input,
-    )
-elif args1.method == 'reprpo_sideout':
-    from reprpo.train.reprpo_side import ReprPOSideOutTrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
-    args, args2 = get_args(TrainingArguments)
-    model_kwargs = dict(
-        alpha=args.alpha,
-        collection_layers=args.collection_layers,
-        collection_keys=args.collection_keys,
-        collect_input=args.collect_input,
-    )
-elif args1.method == 'reprpo_side_hra':
-    from reprpo.train.reprpo_side_hra import ReprPOSideInHRATrainingArguments as TrainingArguments, PL_REPRPO_SIDE_MODEL as PL_MODEL
-    args, args2 = get_args(TrainingArguments)
-    model_kwargs = dict(
-        alpha=args.alpha,
-        collection_layers=args.collection_layers,
-        collection_keys=args.collection_keys,
-        collect_input=args.collect_input,
-    )
-elif args1.method == 'reprpo_ortho':
-    from reprpo.train.reprpo_ortho import ReprPOOrthoTrainingArguments as TrainingArguments, PL_REPRPO_ORTHO_MODEL as PL_MODEL
-    args, args2 = get_args(TrainingArguments)
-    model_kwargs = dict(
-        alpha=args.alpha,
-        collection_layers=args.collection_layers,
-    )
-elif args1.method == 'reprpo_hra':
-    from reprpo.train.reprpo_hra import ReprPOHRATrainingArguments as TrainingArguments, PL_REPRPO_HRA_MODEL as PL_MODEL
-    args, args2 = get_args(TrainingArguments)
-    model_kwargs = dict(
-        alpha=args.alpha,
-        collection_layers=args.collection_layers,
-        r=args.r,
-        apply_GS=args.apply_GS,
-    )
-else:
-    raise ValueError(f"method {args1.method} not found. options: `reprpo_side`, `dpo`, `reprpo_svd`")
+args = parser.parse_known_args()[0]
 
 
+TrainingArguments = args.cli.method.value
+parser.add_arguments(TrainingArguments, dest='args')
+args = parser.parse_args()
+training_args = TrainingArguments(**args.args.__dict__)
+PL_MODEL = TrainingArguments._reprpo_class
+model_kwargs = {k:getattr(training_args, k) for k in TrainingArguments._model_keys}
 
-print(PL_MODEL, TrainingArguments)
-print(f"args = {args}")
 
-if args1.dev:
-    args.model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+print('PL_MODEL', PL_MODEL)
+print('model_kwargs', model_kwargs)
+print(f"args = {training_args}")
+
+# TODO move to config
+if args.cli.dev:
+    training_args.model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
     # or  'yujiepan/llama-3-tiny-random'
-    args.n_samples = 512
-    args.batch_size *= 2
+    training_args.n_samples = 512
+    training_args.batch_size *= 2
 
-# %% [markdown]
-# ## Load model
 
 ts = pd.Timestamp.now().strftime("%H%M%S")
-run_fname = f'{args.adapter_name}/{ts}'
+adapter_name = args.cli.method.name
+group_name = f"{adapter_name}-{args.cli.dataset}"
+run_fname = f'{adapter_name}/{ts}' # short for wandb
 wandb.require(experiment='service')
 
 
-config = dict(**args1.__dict__, **args.__dict__)
-run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=f'{args1.dataset}-{args.model_name.replace("/","")}', config=config)
+config = args.__dict__
+run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=f'{args.cli.dataset}-{training_args.model_name.replace("/","")}', config=config)
 
 
-
-
-model, tokenizer = load_model(args.model_name, load_in_4bit=args.load_in_4bit,  load_in_8bit=args.load_in_8bit,  
+model, tokenizer = load_model(training_args.model_name, load_in_4bit=training_args.load_in_4bit,  load_in_8bit=training_args.load_in_8bit,  
                               attn_implementation='eager' # for gemma
 )
 
@@ -192,7 +127,6 @@ model, tokenizer = load_model(args.model_name, load_in_4bit=args.load_in_4bit,  
 
 # %%
 
-adapter_name = f"{args.adapter_name}-{args1.dataset}"
 
 peft_config = LoraConfig(
     r=64,
@@ -211,9 +145,9 @@ peft_config = LoraConfig(
         # "down_proj",  "o_proj", # out
         #             ], # PHI3
 )
-model = get_peft_model(model, peft_config, adapter_name=adapter_name)
+model = get_peft_model(model, peft_config, adapter_name=group_name)
 print_trainable_parameters(model)
-if args1.verbose:
+if args.cli.verbose:
     print(model)
 
 # %% [markdown]
@@ -221,8 +155,8 @@ if args1.verbose:
 
 # %%
 
-dataset2 = load_dataset("wassname/genie_dpo", name=args1.dataset)
-if args1.dev:
+dataset2 = load_dataset("wassname/genie_dpo", name=args.cli.dataset)
+if args.cli.dev:
     dataset2['train'] = dataset2['train'].select(range(16))
     dataset2['test'] = dataset2['test'].select(range(16))
 
@@ -239,15 +173,15 @@ if args1.dev:
 # %%
 # from reprpo.data.collate import DPODataCollatorWithPadding, tokenize_row
 
-tokenize_row = TokenizeRow(tokenizer, max_length=args.max_length, max_prompt_length=args.max_prompt_length)
+tokenize_row = TokenizeRow(tokenizer, max_length=training_args.max_length, max_prompt_length=training_args.max_prompt_length)
 
-if args1.dev:
+if args.cli.dev:
     # no cache
     import datasets
     datasets.disable_caching()
 dataset3 = dataset2.map(tokenize_row, batched=False)
 
-if args1.verbose:
+if args.cli.verbose:
     print(f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}")
     print(f"Chosens truncated {np.mean(dataset3['train']['chosen_truncated']):2.2%}")
 
@@ -256,15 +190,15 @@ if args1.verbose:
 
 from transformers.data.data_collator import default_data_collator
 ds = dataset3
-dl_train = DataLoader(ds['train'].select_columns(['chosen', 'rejected', 'chosen_mask', 'rejected_mask']).with_format("torch"), batch_size=args.batch_size, 
+dl_train = DataLoader(ds['train'].select_columns(['chosen', 'rejected', 'chosen_mask', 'rejected_mask']).with_format("torch"), batch_size=training_args.batch_size, 
                     #   collate_fn=default_data_collator
                       )
 
-dl_val = DataLoader(ds['test'].select_columns(['chosen', 'rejected', 'chosen_mask', 'rejected_mask']).with_format("torch"), batch_size=args.batch_size
+dl_val = DataLoader(ds['test'].select_columns(['chosen', 'rejected', 'chosen_mask', 'rejected_mask']).with_format("torch"), batch_size=training_args.batch_size
                     # , collate_fn=default_data_collator
                     )
 
-if args1.verbose:
+if args.cli.verbose:
 
     print('QC one dataset row')
     r = dataset2['train'][0]
@@ -299,16 +233,16 @@ if args1.verbose:
 # - https://gist.github.com/wassname/e29d02b5026a531e13912cf768e6fdc8
 
 # %%
-max_steps = args.n_samples // args.batch_size
+max_steps = training_args.n_samples // training_args.batch_size
 print('max optimiser steps', max_steps)
 
 # %%
-ideal_batch_size = max(16, args.batch_size) # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
-accumulate_grad_batches = np.ceil(ideal_batch_size/args.batch_size).astype(int)
+ideal_batch_size = max(16, training_args.batch_size) # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
+accumulate_grad_batches = np.ceil(ideal_batch_size/training_args.batch_size).astype(int)
 print('accumulate_grad_batches', accumulate_grad_batches)
-print('accumulated batch size', args.batch_size*accumulate_grad_batches)
+print('accumulated batch size', training_args.batch_size*accumulate_grad_batches)
 
-print(f"epochs {args.n_samples//len(dl_train)}")
+print(f"epochs {training_args.n_samples//len(dl_train)}")
 
 # %%
 from lightning.pytorch.callbacks import LearningRateMonitor
@@ -317,31 +251,22 @@ from reprpo.train.pl_base import GenCallback
 
 # %%
 pl_model = PL_MODEL(model,
-                # adam8bit=args.load_in_4bit or args.load_in_8bit,
+                # adam8bit=training_args.load_in_4bit or training_args.load_in_8bit, # saved mem, but seems unstable
                 schedule='constant',
-                weight_decay=args.weight_decay,
-                lr=args.lr,
+                weight_decay=training_args.weight_decay,
+                lr=training_args.lr,
                 num_iterations=max_steps,
-                batch_size=args.batch_size,
+                batch_size=training_args.batch_size,
 
                 **model_kwargs
                 )
 
 
-# %%
-# from reprpo.helpers.lightning_save import AdapterModelCheckpoint
-
-# checkpoint_callback = AdapterModelCheckpoint(
-#     verbose=True,
-# )
-
-# %%
-
 
 
 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
 root_dir = Path(__file__).parent.parent
-model_fname= "_".join([args.model_name.replace("/", "_"), args.adapter_name, args1.dataset])
+model_fname= "_".join([training_args.model_name.replace("/", "_"), adapter_name, args.cli.dataset])
 save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
 Path(save_dir).mkdir(exist_ok=True, parents=True)
 
@@ -349,13 +274,12 @@ callbacks=[
             LearningRateMonitor(logging_interval='step'),
             # checkpoint_callback
         ]
-if args1.verbose:
+if args.cli.verbose:
     callbacks+=[GenCallback(every=max_steps//2)]
 
 trainer = pl.Trainer(
         max_steps=max_steps,
         limit_val_batches=10,
-#         limit_val_batches=max_batches//5,
         gradient_clip_val=0.3,
 
         # accelerator='gpu',
@@ -377,7 +301,7 @@ trainer = pl.Trainer(
         # too large, we will just save adapter afterwards
         enable_checkpointing=False, 
 
-        fast_dev_run=args1.dev,
+        fast_dev_run=args.cli.dev,
     )
 
 # train
@@ -397,7 +321,7 @@ print(f'saved to {save_dir}-adapter')
 
 # %%
 
-if not args1.dev:
+if not args.cli.dev:
     df_hist = read_metrics_csv(trainer.logger.experiment.metrics_file_path).bfill().ffill()
     # print(df_hist)
 
@@ -424,13 +348,13 @@ model.cuda(); # for some reason it ends up cpu
 
 # eval on ethics, GENIES, and our train dataset
 N = None
-if args1.dev:
+if args.cli.dev:
     N = 16
 datasets = [
-    load_dataset_n('wassname/genie_dpo', name=args1.dataset, split='train', N=N),
-    load_dataset_n('wassname/genie_dpo', name=args1.dataset, split='test', N=N),
+    load_dataset_n('wassname/genie_dpo', name=args.cli.dataset, split='train', N=N),
+    load_dataset_n('wassname/genie_dpo', name=args.cli.dataset, split='test', N=N),
 ]
-datasets += dist2datasets(GENIES, N=N, source=[args1.dataset]) # our hard OOS test
+datasets += dist2datasets(GENIES, N=N, source=[args.cli.dataset]) # our hard OOS test
 # datasets += get_ethics_datasets(N=N)
 datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['code_hard', #'truthful_qa',# 'wrong_arc', 'ranking_logic',
 # 'math', 'sycophancy_mimicry'
@@ -441,7 +365,7 @@ clear_mem()
 res, df_res2 = evaluate_model(model=model, 
                               tokenizer=tokenizer, 
                               datasets=datasets,
-                                 batch_size=args2.args.batch_size//4,
+                                 batch_size=args.args.batch_size//4,
                                  bf16=True,
                                  torch_empty_cache_steps=33,)
 
@@ -459,44 +383,47 @@ def key_metrics(df_res2):
     ds_name_rnd = ds2name(datasets[3])
 
     df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack().T
-    rel_acc = df_res.loc[adapter_name]/df_res.loc['base']
+    rel_acc = df_res.loc[group_name]/df_res.loc['base']
 
     # metric: do we retrain train coherency?
     df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T
-    rel_coherency = df_res_logp.loc[adapter_name]-df_res_logp.loc['base']
+    rel_coherency = df_res_logp.loc[group_name]-df_res_logp.loc['base']
 
     # metric: do we retrain train coherency?
-    c = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T.loc[adapter_name]
-    r = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_rejected_logps'].mean().unstack().T.loc[adapter_name]
+    c = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T.loc[group_name]
+    r = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_rejected_logps'].mean().unstack().T.loc[group_name]
     cho_rej_coh = c-r
 
     def fmt(s):
         return s.replace('genie_dpo-', '')
     
-    # TODO 
+    # TODO make multiple cols of index
 
-    df_metrics = pd.Series({
+    
+    df_metrics = pd.DataFrame([
         # accuracy increase over base measured generalisaton on increasing distribution shifts
-        f'acc[a/base]_train [{fmt(ds_name_train)}]': rel_acc[ds_name_train],
-        f'acc[a/base]_test [{fmt(ds_name_test)}]': rel_acc[ds_name_test],
-        f'acc[a/base]_oos [{fmt(ds_name_oos)}]': rel_acc[ds_name_oos],
-        f'acc[a/base]_rnd [{fmt(ds_name_rnd)}]': rel_acc[ds_name_rnd], # probobly wont go up as it's unrelated
+        ['acc[pi/base]', 'train', fmt(ds_name_train), rel_acc[ds_name_train]],
+        ['acc[pi/base]', 'test', fmt(ds_name_test), rel_acc[ds_name_test]],
+        ['acc[pi/base]', 'oos', fmt(ds_name_oos), rel_acc[ds_name_oos]],
+        ['acc[pi/base]', 'rnd', fmt(ds_name_rnd), rel_acc[ds_name_rnd]], # probobly wont go up as it's unrelated
 
         # we want to see if it retains coherency vs the base on chosen answers
-        f'coherency[a-base]_train [{fmt(ds_name_train)}]': rel_coherency[ds_name_train],
-        f'coherency[a-base]_test [{fmt(ds_name_test)}]': rel_coherency[ds_name_test],
-        f'coherency[a-base]_oos [{fmt(ds_name_oos)}]': rel_coherency[ds_name_oos],
-        f'coherency[a-base]_rnd [{fmt(ds_name_rnd)}]': rel_coherency[ds_name_rnd], 
+        ['coherency[pi-base]', 'train', fmt(ds_name_train), rel_coherency[ds_name_train]],
+        ['coherency[pi-base]', 'test', fmt(ds_name_test), rel_coherency[ds_name_test]],
+        ['coherency[pi-base]', 'oos', fmt(ds_name_oos), rel_coherency[ds_name_oos]],
+        ['coherency[pi-base]', 'rnd', fmt(ds_name_rnd), rel_coherency[ds_name_rnd]], 
 
         # we want to see if it retains chosen vs rejected
-        f'coherency[cho-rej]_train [{fmt(ds_name_train)}]': cho_rej_coh[ds_name_train],
-        f'coherency[cho-rej]_test [{fmt(ds_name_test)}]': cho_rej_coh[ds_name_test],
-        f'coherency[cho-rej]_oos [{fmt(ds_name_oos)}]': cho_rej_coh[ds_name_oos],
-        f'coherency[cho-rej]_rnd [{fmt(ds_name_rnd)}]': cho_rej_coh[ds_name_rnd], 
-
-        
-    })
-    return df_metrics.to_frame(adapter_name)
+        ['coherency[cho-rej]', 'train', fmt(ds_name_train), cho_rej_coh[ds_name_train]],
+        ['coherency[cho-rej]', 'test', fmt(ds_name_test), cho_rej_coh[ds_name_test]],
+        ['coherency[cho-rej]', 'oos',  fmt(ds_name_oos), cho_rej_coh[ds_name_oos]],
+        ['coherency[cho-rej]', 'rnd',  fmt(ds_name_rnd), cho_rej_coh[ds_name_rnd]],
+    ], columns=['metric', 'split', 'dataset', 'value'])[['metric', 'split', 'value', 'dataset']]
+    df_metrics = df_metrics.set_index(['metric', 'split'])
+    df_metrics = df_metrics['value'].unstack()
+    df_metrics.index.name = f'{adapter_name}\dist shift'
+  
+    return df_metrics
 
 # %%
 
@@ -524,28 +451,32 @@ df_res.to_parquet(f)
 # print(f'saved results to {f}')
 
 
-
 # %%
+from pprint import pprint
+from collections import OrderedDict
+ds_alias = OrderedDict(list(zip(['train', 'test', 'oos', 'rnd'], [ds2name(d) for d in datasets])))
+
 print(f'save_dir={save_dir}') 
-print('args =', args. args2)
+print('args =')
+pprint({k: v.to_dict() for k,v in args.__dict__.items()})
 
 
-print(f"""where
-- model = {args1.model_name}
-- dataset = {args1.dataset}
-""")
+print(df_metrics.round(3).to_markdown())
+print("""Table 1: Key metrics (adapter over base model)\n""")
 
-print('key metrics (adapter over base model)\n', df_metrics.round(3).to_markdown(), '\n')
+cols = [v.replace('genie_dpo-','') for v in ds_alias.values()]
+df_res2 = df_res[cols]
+df_res2.columns = list(ds_alias.keys())
+df_res2.index.name = 'adapter/ds'
+print(df_res2.round(3).to_markdown())
+print("""Table 2: Absolute accuracy\n""")
 
-print('absolute accuracy')
-print(df_res.round(3).to_markdown(), '\n')
-
-
-df_final = pd.DataFrame({
-    'train': df_metrics.iloc[0, 0],
-    'test': df_metrics.iloc[1, 0],
-    'oos': df_metrics.iloc[2, 0],
-    'rnd': df_metrics.iloc[3, 0],
-}, index=[adapter_name])
-df_final.index.name = 'increased accuracy over base model %'
+df_final = df_metrics.loc['acc[pi/base]'].to_frame(adapter_name).T
+df_final.index.name = 'acc_inc/eval_ds'
 print(df_final.round(3).to_markdown())
+print(f"""Table 3: Accuracy increase after training with adapter on `{args.cli.dataset}` compared to base model `{training_args.model_name}` for various distribution shifts:""")
+for k,v in ds_alias.items():
+    print(f"- `{k}`: `{v}`")
+
+
+

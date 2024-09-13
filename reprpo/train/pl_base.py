@@ -5,10 +5,11 @@ import bitsandbytes as bnb
 import torch
 from dataclasses import dataclass
 from ..helpers.scheduler import get_constant_schedule_with_warmup
+from simple_parsing.helpers import Serializable
 
 
 @dataclass
-class TrainingArguments:
+class TrainingArguments(Serializable):
 
     load_in_4bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit

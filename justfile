@@ -22,10 +22,10 @@ run_all:
     . ./.venv/bin/activate
     python nbs/train.py --method reprpo_side_hra
     python nbs/train.py --method reprpo_sideout
+    python nbs/train.py --method reprpo_side
     python nbs/train.py --method reprpo_hs
     python nbs/train.py --method reprpo_hra
     python nbs/train.py --method reprpo_ortho
-    python nbs/train.py --method reprpo_side
-    python nbs/train.py --method dpo
     python nbs/train.py --method reprpo_svd
     python nbs/train.py --method reprpo_svd --quantile 1.0
+    python nbs/train.py --method dpo
