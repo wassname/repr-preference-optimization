@@ -25,7 +25,7 @@
             "args": "${command:pickArgs}",
         },
         {
-            "name": "side -d -v",
+            "name": "side_hra -d -v",
             "type": "debugpy",
             "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
             "pythonArgs": ["-Xfrozen_modules=off"],
@@ -33,9 +33,9 @@
             "program": "${workspaceFolder}/nbs/train2.py",
             "console": "integratedTerminal",
             "args": [
+                "side_hra",
                 "--dev", 
                 "--verbose",
-                "--method", "reprpo_side_hra",
             ]
         }
     ]

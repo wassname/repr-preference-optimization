@@ -117,9 +117,6 @@ def train(training_args:MethodsUnion):
 
     # ## Load data
     dataset2 = load_dataset("wassname/genie_dpo", name=args.dataset)
-    if args.dev:
-        dataset2['train'] = dataset2['train'].select(range(16))
-        dataset2['test'] = dataset2['test'].select(range(16))
 
 
     # ### Data Loader
@@ -441,7 +438,6 @@ import yaml, os
 if __name__ == '__main__':
 
     # we can load a default config by passing it into the env
-    # REPR_CONFIG=../configs/tinyllama.yaml
     # REPR_CONFIG=../configs/dev.yaml
     default_config = {}
     if os.environ.get('REPR_CONFIG') is not None:
