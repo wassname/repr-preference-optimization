@@ -44,6 +44,8 @@ loguru = "^0.7.2"
 open-pref-eval = {git = "https://github.com/wassname/open_pref_eval", branch = "main", develop = true}
 lightning = "^2.4.0"
 # simple-parsing = "^0.1.5"
+tyro = "^0.8.10"
+colorama = "^0.4.6"
 
 [build-system]
 requires = ["poetry-core"]

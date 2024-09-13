@@ -292,5 +292,6 @@ class SideinHRA(Sidein, HRA):
 
 
 @dataclass(frozen=True)
-class SideoutHRA(SideinHRA, Sideout):
-    pass
+class SideoutHRA(Sideout, HRA):
+    _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
+    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys', 'r', 'apply_GS']

@@ -63,7 +63,6 @@ from reprpo.train import Methods
 from reprpo.train.dpo import compute_dpo_loss_batch, PL_DPO_MODEL
 
 # %%
-torch.set_float32_matmul_precision("high")
 
 
 
@@ -74,6 +73,7 @@ from typing import Union
 MethodsUnion = Union[tuple(e.value for e in Methods)]
 
 def train(training_args:MethodsUnion):
+    torch.set_float32_matmul_precision("high")
 
     PL_MODEL = training_args._reprpo_class
     model_kwargs = {k:getattr(training_args, k) for k in training_args._model_keys}
@@ -443,6 +443,7 @@ if __name__ == '__main__':
     if os.environ.get('REPR_CONFIG') is not None:
         default_config = yaml.safe_load(os.environ.get('REPR_CONFIG'))   
         print(f'loaded default config from {os.environ.get("REPR_CONFIG")}')     
+    
     MethodsUnion = Union[tuple(e.value for e in Methods)]
     args = tyro.cli(MethodsUnion, default=default_config)
     train(args)

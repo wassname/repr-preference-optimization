@@ -6,7 +6,7 @@ from torch import Tensor
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.pl_base import PL_MODEL, TrainingArguments, cross_entropy_loss
+from reprpo.train.pl_base import PL_MODEL, TrainingArgumentswSideIn, TrainingArgumentswSideOut, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict, get_module
@@ -308,7 +308,7 @@ class PL_REPRPO_SIDE_MODEL(PL_MODEL):
 
 
 @dataclass(frozen=True)
-class Sidein(TrainingArguments):
+class Sidein(TrainingArgumentswSideIn):
     """
     here we collect the inputs from the output modules of the each layer.
 
@@ -316,31 +316,13 @@ class Sidein(TrainingArguments):
     
     """
 
-    alpha: int = 0.1
-
-    """because the side channels don't repeat themselves we need to collect them on many layers."""
-    # collection_layers: tuple = (11, 12, 13, 14, 15, 16, 17, 19)
-                                #20, 21, 22, 23, 24, 25, 26, 28) 
-                                
-    """taking the input, of the output layers of the side channels."""
-    # collection_keys_in: tuple = (
-    #     "base_model.model.model.layers.{layer}.self_attn.o_proj",
-    #     "base_model.model.model.layers.{layer}.mlp.down_proj",
-    # )
-    collect_input: bool = True
-
     _reprpo_class = PL_REPRPO_SIDE_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys']
+    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in']
 
-    def __post_init__(self):
-        if self.collect_input:
-            self.collection_keys = self.collection_keys_in
-        else:
-            self.collection_keys = self.collection_keys_out
 
 
 @dataclass(frozen=True)
-class Sideout(Sidein):
+class Sideout(TrainingArgumentswSideOut):
     """
     here we collect the outputs from the input modules of the each layer.
 
@@ -349,26 +331,5 @@ class Sideout(Sidein):
     collecting the input.outs is often more complex, but baukit sometimes can handle outs better
     """
 
-    # llama3?
-    # collection_keys: tuple = (
-    #     "base_model.model.model.layers.{layer}.self_attn.qkv_proj",
-    #     "base_model.model.model.layers.{layer}.mlp.gate_proj",
-    # )
 
-    # tinyllama arch is lik this
-    # hs += o_proj(qkv_proj(hs))
-    # then
-    # hs += mlp.down_proj(self.act_fn(mlp.gate_proj(hs)) * mlp.up_proj(hs))
-    # collection_keys_out: tuple = (
-    #     "base_model.model.model.layers.{layer}.self_attn.q_proj",
-    #     "base_model.model.model.layers.{layer}.self_attn.k_proj",
-    #     "base_model.model.model.layers.{layer}.self_attn.v_proj",
-    #     "base_model.model.model.layers.{layer}.mlp.gate_proj",
-    #     "base_model.model.model.layers.{layer}.mlp.up_proj",
-    # )
-    collect_input: bool = False
-    def __post_init__(self):
-        if self.collect_input:
-            self.collection_keys = self.collection_keys_in
-        else:
-            self.collection_keys = self.collection_keys_out
+    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out']

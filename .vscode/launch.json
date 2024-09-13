@@ -25,15 +25,15 @@
             "args": "${command:pickArgs}",
         },
         {
-            "name": "side_hra -d -v",
+            "name": "dev",
             "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
+            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", "REPR_CONFIG": "../configs/dev.yaml"},
             "pythonArgs": ["-Xfrozen_modules=off"],
             "request": "launch",
             "program": "${workspaceFolder}/nbs/train2.py",
             "console": "integratedTerminal",
             "args": [
-                "side_hra",
+                "sidein-hra",
                 "--dev", 
                 "--verbose",
             ]

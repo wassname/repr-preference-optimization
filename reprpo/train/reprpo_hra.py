@@ -10,7 +10,7 @@ import warnings
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.pl_base import PL_MODEL, TrainingArguments, cross_entropy_loss
+from reprpo.train.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
 from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
@@ -277,14 +277,14 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
 
 
 @dataclass(frozen=True)
-class HRA(TrainingArguments):
+class HRA(TrainingArgumentswCollection):
     """weights retrain and reroute losses"""
     alpha: int = 0.01
 
+    """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
     collection_layers: tuple=(10, 20) 
 
-    """The rank of HRA across different layers. It is best to set 'r' to an even number; otherwise, the default
-    initialization method will not work."""
+    """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
     r: int = 64
 
     """Whether to apply Gram-Schmidt orthogonalization."""

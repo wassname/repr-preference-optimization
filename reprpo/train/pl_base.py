@@ -40,18 +40,34 @@ class TrainingArguments():
     # collection_layers: tuple=(10, 12, 14, 16, 18, 20, 22, 24, 26, 28) 
 
     model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+
+@dataclass(frozen=True)
+class TrainingArgumentswCollection(TrainingArguments):
+    alpha: int = 0.1
     collection_layers: tuple=(10, 12, 14, 16, 18) 
+
+@dataclass(frozen=True)
+class TrainingArgumentswSideIn(TrainingArgumentswCollection):
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
-    collection_keys_out: tuple = (
+    collect_input: bool = True
+
+@dataclass(frozen=True)
+class TrainingArgumentswSideOut(TrainingArgumentswCollection):
+    # tinyllama arch is like this
+    # hs += o_proj(qkv_proj(hs))
+    # then
+    # hs += mlp.down_proj(self.act_fn(mlp.gate_proj(hs)) * mlp.up_proj(hs))
+    collection_keys: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.q_proj",
         "base_model.model.model.layers.{layer}.self_attn.k_proj",
         "base_model.model.model.layers.{layer}.self_attn.v_proj",
         "base_model.model.model.layers.{layer}.mlp.gate_proj",
         "base_model.model.model.layers.{layer}.mlp.up_proj",
     )
+    collect_input: bool = False
 
 
 class PL_MODEL(pl.LightningModule):
