@@ -13,7 +13,7 @@ from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
 import itertools
 
-from .reprpo_hra import HRA, HRA
+from .reprpo_hra import HRA, HRATransform
 from .reprpo_side import Sidein, Sideout
 
 
@@ -274,7 +274,7 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
         self.hparams.collect_input = collect_input
 
         hra_sizes = {p:get_module(self._model, p).weight.shape[collect_input] for p in self.hparams.layer_paths}
-        self.transforms = torch.nn.ParameterDict({k: HRA(dim_hs, dim_hs, r=r, apply_GS=apply_GS) for k,dim_hs in hra_sizes.items()})
+        self.transforms = torch.nn.ParameterDict({k: HRATransform(dim_hs, dim_hs, r=r, apply_GS=apply_GS) for k,dim_hs in hra_sizes.items()})
 
     def _loss_fn(self, batch, model):
         return compute_reprpo_side_hra_loss_batch(

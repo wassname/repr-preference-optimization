@@ -18,7 +18,7 @@ from dataclasses import dataclass
 import itertools
 
 
-class HRA(nn.Module):
+class HRATransform(nn.Module):
     """
     see
     - https://github.com/huggingface/peft/blob/54be5a3db61748d698ca2e6b55bcfef229a9b475/src/peft/tuners/hra/layer.py#L197
@@ -264,7 +264,7 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
         self.hparams.collection_layers = collection_layers
 
         dim_hs = self._model.config.hidden_size
-        self.transform = HRA(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
+        self.transform = HRATransform(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
 
     def _loss_fn(self, batch, model):
         return compute_reprpo_hra_loss_batch(
