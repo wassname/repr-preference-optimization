@@ -277,7 +277,7 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
 
 
 @dataclass(frozen=True)
-class ReprPOHRATrainingArguments(TrainingArguments):
+class HRA(TrainingArguments):
     """weights retrain and reroute losses"""
     alpha: int = 0.01
 

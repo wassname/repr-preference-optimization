@@ -13,8 +13,8 @@ from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
 import itertools
 
-from .reprpo_hra import HRA, ReprPOHRATrainingArguments
-from .reprpo_side import ReprPOSideInTrainingArguments, ReprPOSideOutTrainingArguments
+from .reprpo_hra import HRA, HRA
+from .reprpo_side import Sidein, Sideout
 
 
 
@@ -288,7 +288,7 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
 
 
 @dataclass(frozen=True)
-class ReprPOSideInHRATrainingArguments(ReprPOSideInTrainingArguments, ReprPOHRATrainingArguments):
+class SideinHRA(Sidein, HRA):
     r: int = 4
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
@@ -296,5 +296,5 @@ class ReprPOSideInHRATrainingArguments(ReprPOSideInTrainingArguments, ReprPOHRAT
 
 
 @dataclass(frozen=True)
-class ReprPOSideOutHRATrainingArguments(ReprPOSideInHRATrainingArguments, ReprPOSideOutTrainingArguments):
+class SideoutHRA(SideinHRA, Sideout):
     pass

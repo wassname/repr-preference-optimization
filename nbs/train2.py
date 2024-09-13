@@ -66,29 +66,19 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
-
-@dataclass(frozen=True)
-class CLIArguments:
-    """the training method to use."""
-    method: Methods = Methods.dpo
-
-    """the dataset to fine tune on. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
-    dataset: str = 'us_history_textbook'
-
-    verbose: bool = False
-
-    """fast run"""
-    dev: bool = False
-
 from reprpo.train.pl_base import TrainingArguments
+from typing import Union
 
-def main(args: CLIArguments, training_args: TrainingArguments):
+# get a union class from the enum
+MethodsUnion = Union[tuple(e.value for e in Methods)]
+
+def train(training_args:MethodsUnion):
 
     PL_MODEL = training_args._reprpo_class
     model_kwargs = {k:getattr(training_args, k) for k in training_args._model_keys}
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
-    adapter_name = args.method.name
+    adapter_name = type(args).__name__
     group_name = f"{adapter_name}-{args.dataset}"
     run_fname = f'{adapter_name}/{ts}' # short for wandb
     wandb.require(experiment='service')
@@ -448,6 +438,6 @@ import tyro
 
 
 if __name__ == '__main__':
-    args = tyro.cli(CLIArguments)
-    training_args = tyro.cli(args.method.value)
-    main(args, training_args)
+    MethodsUnion = Union[tuple(e.value for e in Methods)]
+    args = tyro.cli(MethodsUnion)
+    train(args)

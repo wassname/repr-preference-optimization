@@ -9,6 +9,14 @@ from ..helpers.scheduler import get_constant_schedule_with_warmup
 
 @dataclass(frozen=True)
 class TrainingArguments():
+    
+    """the dataset to fine tune on. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
+    dataset: str = 'us_history_textbook'
+
+    verbose: bool = False
+
+    """fast run"""
+    dev: bool = False
 
     load_in_4bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit

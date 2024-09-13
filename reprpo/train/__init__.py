@@ -1,21 +1,21 @@
 import enum
 
-from .dpo import DPOTrainingArguments
-from .reprpo_svd import ReprPOSVDTrainingArguments
-from .reprpo_hs import ReprPOHSTrainingArguments
-from .reprpo_side import ReprPOSideInTrainingArguments
-from .reprpo_side import ReprPOSideOutTrainingArguments
-from .reprpo_side_hra import ReprPOSideInHRATrainingArguments, ReprPOSideOutHRATrainingArguments
-from .reprpo_ortho import ReprPOOrthoTrainingArguments
-from .reprpo_hra import ReprPOHRATrainingArguments
+from .dpo import DPO
+from .reprpo_svd import SVD
+from .reprpo_hs import HS
+from .reprpo_side import Sidein
+from .reprpo_side import Sideout
+from .reprpo_side_hra import SideinHRA, SideoutHRA
+from .reprpo_ortho import Ortho
+from .reprpo_hra import HRA
 
 class Methods(enum.Enum):
-    dpo = DPOTrainingArguments
-    reprpo_svd = ReprPOSVDTrainingArguments
-    reprpo_hs = ReprPOHSTrainingArguments
-    reprpo_side = ReprPOSideInTrainingArguments
-    reprpo_sideout = ReprPOSideOutTrainingArguments
-    reprpo_side_hra = ReprPOSideInHRATrainingArguments
-    reprpo_sideout_hra = ReprPOSideOutHRATrainingArguments
-    reprpo_ortho = ReprPOOrthoTrainingArguments
-    reprpo_hrank = ReprPOHRATrainingArguments
+    dpo = DPO
+    reprpo_svd = SVD
+    reprpo_hs = HS
+    reprpo_side = Sidein
+    reprpo_sideout = Sideout
+    reprpo_side_hra = SideinHRA
+    reprpo_sideout_hra = SideoutHRA
+    reprpo_ortho = Ortho
+    reprpo_hrank = HRA
