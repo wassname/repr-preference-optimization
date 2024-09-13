@@ -17,10 +17,6 @@ from .reprpo_hra import HRA, HRATransform
 from .reprpo_side import Sidein, Sideout
 
 
-
-
-
-
 def get_layer_paths(collection_keys, collection_layers):
     layer_paths = [
         [p.format(layer=layer) for p in collection_keys] for layer in collection_layers

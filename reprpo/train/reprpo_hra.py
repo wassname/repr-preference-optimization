@@ -26,7 +26,7 @@ class HRATransform(nn.Module):
 
     def __init__(self, in_features, out_features, 
                  r=8, apply_GS=False):
-        super(HRA, self).__init__()
+        super().__init__()
         
 
         self.hra_r = r
