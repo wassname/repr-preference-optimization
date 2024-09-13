@@ -7,8 +7,16 @@ from dataclasses import dataclass
 from ..helpers.scheduler import get_constant_schedule_with_warmup
 
 
-@dataclass
-class TrainingArguments:
+@dataclass(frozen=True)
+class TrainingArguments():
+    
+    """the dataset to fine tune on. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
+    dataset: str = 'us_history_textbook'
+
+    verbose: bool = False
+
+    """fast run"""
+    dev: bool = False
 
     load_in_4bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit
@@ -31,9 +39,19 @@ class TrainingArguments:
     # model_name: str = "NousResearch/Meta-Llama-3.1-8B-Instruct"
     collection_layers: tuple=(12, 14, 16, 18, 20, 22, 24) 
 
-    # model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
-    # collection_layers: tuple=(10, 12, 14, 16, 18) 
-    
+    model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+    collection_layers: tuple=(10, 12, 14, 16, 18) 
+    collection_keys_in: tuple = (
+        "base_model.model.model.layers.{layer}.self_attn.o_proj",
+        "base_model.model.model.layers.{layer}.mlp.down_proj",
+    )
+    collection_keys_out: tuple = (
+        "base_model.model.model.layers.{layer}.self_attn.q_proj",
+        "base_model.model.model.layers.{layer}.self_attn.k_proj",
+        "base_model.model.model.layers.{layer}.self_attn.v_proj",
+        "base_model.model.model.layers.{layer}.mlp.gate_proj",
+        "base_model.model.model.layers.{layer}.mlp.up_proj",
+    )
 
 
 class PL_MODEL(pl.LightningModule):

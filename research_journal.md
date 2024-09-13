@@ -2258,3 +2258,28 @@ absolute accuracy
 
 
 hs runs
+
+## 2024-09-13 12:53:26
+
+trying tyro isntead of simple_parser
+
+if I use Union for subcommand I get this
+
+  usage: train2.py [-h] [OPTIONS]
+
+  ╭─ options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  │ -h, --help              show this help message and exit                                                                               │
+  │ --training-args {dpo,reprpo_svd,reprpo_hs,reprpo_side,reprpo_sideout,reprpo_side_hra,reprpo_sideout_hra,reprpo_ortho,reprpo_hrank}    │
+  │                         (required)                                                                                                    │
+  ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  ╭─ args options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  │ the training method to use.                                                                                                           │
+  │ ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── │
+  │ --args.method {dpo,reprpo_svd,reprpo_hs,reprpo_side,reprpo_sideout,reprpo_side_hra,reprpo_sideout_hra,reprpo_ortho,reprpo_hrank}      │
+  │                         the dataset to fine tune on. see subsets in https://huggingface.co/datasets/wassname/genie_dpo (default: dpo) │
+  │ --args.dataset STR      (default: us_history_textbook)                                                                                │
+  │ --args.verbose, --args.no-verbose                                                                                                     │
+  │                         fast run (default: False)                                                                                     │
+  │ --args.dev, --args.no-dev                                                                                                             │
+  │                         (default: False)                                                                                              │
+  ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

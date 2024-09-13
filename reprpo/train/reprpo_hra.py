@@ -17,23 +17,6 @@ from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
 
-@dataclass
-class ReprPOHRATrainingArguments(TrainingArguments):
-    """weights retrain and reroute losses"""
-    alpha: int = 0.01
-
-    adapter_name: str = "reprpo_hra"
-
-    collection_layers: tuple=(10, 20) 
-
-    # lr: float = 3e-4
-
-    """The rank of HRA across different layers. It is best to set 'r' to an even number; otherwise, the default
-    initialization method will not work."""
-    r: int = 128
-
-    """Whether to apply Gram-Schmidt orthogonalization."""
-    apply_GS: bool = False
 
 class HRA(nn.Module):
     """
@@ -275,7 +258,7 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
     return loss, info
 
 class PL_REPRPO_HRA_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_layers=[], r=8, apply_GS=False, **kwargs):
+    def __init__(self, *args, alpha, collection_layers, r, apply_GS, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
@@ -291,3 +274,21 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
             self.hparams.collection_layers,
             self.transform
         )
+
+
+@dataclass(frozen=True)
+class HRA(TrainingArguments):
+    """weights retrain and reroute losses"""
+    alpha: int = 0.01
+
+    collection_layers: tuple=(10, 20) 
+
+    """The rank of HRA across different layers. It is best to set 'r' to an even number; otherwise, the default
+    initialization method will not work."""
+    r: int = 64
+
+    """Whether to apply Gram-Schmidt orthogonalization."""
+    apply_GS: bool = False
+
+    _reprpo_class = PL_REPRPO_HRA_MODEL
+    _model_keys = ['alpha', 'collection_layers', 'r', 'apply_GS' ]

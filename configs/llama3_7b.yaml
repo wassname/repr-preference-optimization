@@ -1,0 +1,20 @@
+args:
+  model_name: 'NousResearch/Meta-Llama-3.1-8B'
+  collection_layers: 
+    - 10
+    - 12
+    - 14
+    - 16
+    - 18
+    - 20
+    - 22
+    - 24
+    - 26
+    - 28
+  collection_keys_in: 
+    - "base_model.model.model.layers.{layer}.self_attn.o_proj"
+    - "base_model.model.model.layers.{layer}.mlp.down_proj"
+  collection_keys_out: (
+    - "base_model.model.model.layers.{layer}.self_attn.qkv_proj"
+    - "base_model.model.model.layers.{layer}.mlp.gate_proj"
+    - "base_model.model.model.layers.{layer}.mlp.up_proj"

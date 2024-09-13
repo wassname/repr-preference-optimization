@@ -16,23 +16,6 @@ from reprpo.helpers.svd_decomposer import SoftSVDDecomposer, DualSVDDecomposer, 
 
 
 
-@dataclass
-class ReprPOSVDTrainingArguments(TrainingArguments):
-    """weights retrain and reroute losses"""
-    alpha: int = 0.3
-
-    """we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
-    # note removing the 0.25 top singular values removes 90% of the magnitude from hs leaving a small
-    quantile: float=0.5
-
-    """if true, will use the embedding and lm_head, if false only lm_head"""
-    dual_svd: bool = False
-
-    adapter_name: str = "reprpo_svd"
-
-    # collection_layers: tuple=(10, 12, 14, 16, 18, 20, 22, 24, 26, 28) 
-
-    lr: float = 3e-5
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
@@ -239,3 +222,22 @@ class PL_REPRPO_SVD_MODEL(PL_MODEL):
             self.hparams.collection_layers,
             self.decomposer,
         )
+
+
+
+@dataclass(frozen=True)
+class SVD(TrainingArguments):
+    """weights retrain and reroute losses"""
+    alpha: int = 0.3
+
+    """we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
+    # note removing the 0.25 top singular values removes 90% of the magnitude from hs leaving a small
+    quantile: float=0.5
+
+    """if true, will use the embedding and lm_head, if false only lm_head"""
+    dual_svd: bool = False
+
+    lr: float = 3e-5
+
+    _reprpo_class = PL_REPRPO_SVD_MODEL
+    _model_keys = ['alpha', 'quantile', 'dual_svd', 'collection_layers']

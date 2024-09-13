@@ -18,16 +18,6 @@ import itertools
 
 
 
-@dataclass
-class ReprPOOrthoTrainingArguments(TrainingArguments):
-    """weights retrain and reroute losses"""
-    alpha: int = 0.01
-
-    adapter_name: str = "reprpo_ortho"
-
-    collection_layers: tuple=(10, 20) 
-
-    # lr: float = 3e-4
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
@@ -206,7 +196,7 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, trans
     return loss, info
 
 class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_layers=[10, 20], **kwargs):
+    def __init__(self, *args, alpha, collection_layers, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
@@ -224,3 +214,14 @@ class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
             self.hparams.collection_layers,
             self.transform
         )
+
+
+@dataclass(frozen=True)
+class Ortho(TrainingArguments):
+    """weights retrain and reroute losses"""
+    alpha: int = 0.01
+
+    collection_layers: tuple=(10, 20) 
+
+    _reprpo_class = PL_REPRPO_ORTHO_MODEL
+    _model_keys = ['alpha', 'collection_layers', ]

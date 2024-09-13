@@ -15,16 +15,6 @@ import itertools
 
 
 
-@dataclass
-class ReprPOHSTrainingArguments(TrainingArguments):
-    """weights retrain and reroute losses"""
-    alpha: int = 0.3
-
-    adapter_name: str = "reprpo_hs"
-
-    # collection_layers: tuple=(10, 12, 14, 16, 18, 20, 22, 24, 26, 28) 
-
-    l3r: float = 3e-5
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
@@ -203,7 +193,7 @@ def validate_args(model, args):
     assert max(args.collection_layers)<(model.config.num_hidden_layers-1), 'collection layers should be less than the number of layers'
 
 class PL_REPRPO_HS_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_layers=[10, 20], **kwargs):
+    def __init__(self, *args, alpha, collection_layers, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
@@ -218,3 +208,15 @@ class PL_REPRPO_HS_MODEL(PL_MODEL):
             self.hparams.alpha,
             self.hparams.collection_layers,
         )
+
+@dataclass(frozen=True)
+class HS(TrainingArguments):
+    """weights retrain and reroute losses"""
+    alpha: int = 0.3
+
+    lr: float = 3e-5
+
+    _reprpo_class = PL_REPRPO_HS_MODEL
+    _model_keys = ['alpha', 'collection_layers']
+
+

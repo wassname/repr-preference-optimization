@@ -5,6 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "train2",
+            "type": "debugpy",
+            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
+            "pythonArgs": ["-Xfrozen_modules=off"],
+            "request": "launch",
+            "program": "${workspaceFolder}/nbs/train2.py",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}",
+        },
+        {
             "name": "train",
             "type": "debugpy",
             "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
@@ -25,7 +35,7 @@
             "args": [
                 "--dev", 
                 "--verbose",
-                "--method", "reprpo_side",
+                "--method", "reprpo_side_hra",
             ]
         }
     ]

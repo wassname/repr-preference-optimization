@@ -13,22 +13,11 @@ from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
 import itertools
 
-from .reprpo_hra import HRA, ReprPOHRATrainingArguments
-from .reprpo_side import ReprPOSideInTrainingArguments, ReprPOSideOutTrainingArguments
+from .reprpo_hra import HRA, HRA
+from .reprpo_side import Sidein, Sideout
 
 
 
-@dataclass
-class ReprPOSideInHRATrainingArguments(ReprPOSideInTrainingArguments, ReprPOHRATrainingArguments):
-    adapter_name: str = "reprpo_sidein_hra"
-    rank: int = 8
-
-
-@dataclass
-class ReprPOSideOutHRATrainingArguments(ReprPOSideOutTrainingArguments, ReprPOHRATrainingArguments):
-    adapter_name: str = "reprpo_sideout_hra"
-    # FIXME need one transformation per layer X module!
-    rank: int = 8
 
 
 
@@ -276,8 +265,8 @@ def compute_reprpo_side_hra_loss_batch(
 
 
 
-class PL_REPRPO_SIDE_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_keys=[], collection_layers=[], r=8, apply_GS=False, collect_input=True, **kwargs):
+class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
+    def __init__(self, *args, alpha, collection_keys, collection_layers, r, apply_GS, collect_input, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.layer_paths = get_layer_paths(collection_keys, collection_layers)
@@ -296,3 +285,16 @@ class PL_REPRPO_SIDE_MODEL(PL_MODEL):
             collect_input=self.hparams.collect_input,
             transforms=self.transforms
         )
+
+
+@dataclass(frozen=True)
+class SideinHRA(Sidein, HRA):
+    r: int = 4
+
+    _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
+    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys', 'r', 'apply_GS']
+
+
+@dataclass(frozen=True)
+class SideoutHRA(SideinHRA, Sideout):
+    pass
