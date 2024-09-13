@@ -323,14 +323,20 @@ class ReprPOSideInTrainingArguments(TrainingArguments):
                                 #20, 21, 22, 23, 24, 25, 26, 28) 
                                 
     """taking the input, of the output layers of the side channels."""
-    collection_keys: tuple = (
-        "base_model.model.model.layers.{layer}.self_attn.o_proj",
-        "base_model.model.model.layers.{layer}.mlp.down_proj",
-    )
+    # collection_keys_in: tuple = (
+    #     "base_model.model.model.layers.{layer}.self_attn.o_proj",
+    #     "base_model.model.model.layers.{layer}.mlp.down_proj",
+    # )
     collect_input: bool = True
 
     _reprpo_class = PL_REPRPO_SIDE_MODEL
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys']
+
+    def __post_init__(self):
+        if self.collect_input:
+            self.collection_keys = self.collection_keys_in
+        else:
+            self.collection_keys = self.collection_keys_out
 
 
 @dataclass
@@ -353,11 +359,16 @@ class ReprPOSideOutTrainingArguments(ReprPOSideInTrainingArguments):
     # hs += o_proj(qkv_proj(hs))
     # then
     # hs += mlp.down_proj(self.act_fn(mlp.gate_proj(hs)) * mlp.up_proj(hs))
-    collection_keys: tuple = (
-        "base_model.model.model.layers.{layer}.self_attn.q_proj",
-        "base_model.model.model.layers.{layer}.self_attn.k_proj",
-        "base_model.model.model.layers.{layer}.self_attn.v_proj",
-        "base_model.model.model.layers.{layer}.mlp.gate_proj",
-        "base_model.model.model.layers.{layer}.mlp.up_proj",
-    )
+    # collection_keys_out: tuple = (
+    #     "base_model.model.model.layers.{layer}.self_attn.q_proj",
+    #     "base_model.model.model.layers.{layer}.self_attn.k_proj",
+    #     "base_model.model.model.layers.{layer}.self_attn.v_proj",
+    #     "base_model.model.model.layers.{layer}.mlp.gate_proj",
+    #     "base_model.model.model.layers.{layer}.mlp.up_proj",
+    # )
     collect_input: bool = False
+    def __post_init__(self):
+        if self.collect_input:
+            self.collection_keys = self.collection_keys_in
+        else:
+            self.collection_keys = self.collection_keys_out

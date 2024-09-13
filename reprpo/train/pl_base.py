@@ -34,7 +34,17 @@ class TrainingArguments(Serializable):
 
     model_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
     collection_layers: tuple=(10, 12, 14, 16, 18) 
-    
+    collection_keys_in: tuple = (
+        "base_model.model.model.layers.{layer}.self_attn.o_proj",
+        "base_model.model.model.layers.{layer}.mlp.down_proj",
+    )
+    collection_keys_out: tuple = (
+        "base_model.model.model.layers.{layer}.self_attn.q_proj",
+        "base_model.model.model.layers.{layer}.self_attn.k_proj",
+        "base_model.model.model.layers.{layer}.self_attn.v_proj",
+        "base_model.model.model.layers.{layer}.mlp.gate_proj",
+        "base_model.model.model.layers.{layer}.mlp.up_proj",
+    )
 
 
 class PL_MODEL(pl.LightningModule):
