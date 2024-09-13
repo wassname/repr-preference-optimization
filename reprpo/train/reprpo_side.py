@@ -317,7 +317,7 @@ class Sidein(TrainingArgumentswSideIn):
     """
 
     _reprpo_class = PL_REPRPO_SIDE_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in']
+    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys']
 
 
 

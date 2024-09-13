@@ -48,7 +48,7 @@ class TrainingArgumentswCollection(TrainingArguments):
 
 @dataclass(frozen=True)
 class TrainingArgumentswSideIn(TrainingArgumentswCollection):
-    collection_keys_in: tuple = (
+    collection_keys: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
