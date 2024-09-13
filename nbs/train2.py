@@ -3,7 +3,11 @@
 # 
 # https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
 
-# %%
+
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 from pathlib import Path
 
 # ML
@@ -61,9 +65,6 @@ from reprpo.train.dpo import compute_dpo_loss_batch, PL_DPO_MODEL
 # %%
 torch.set_float32_matmul_precision("high")
 
-import os
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 from reprpo.train.pl_base import TrainingArguments
@@ -317,7 +318,7 @@ def train(training_args:MethodsUnion):
     res, df_res2 = evaluate_model(model=model, 
                                 tokenizer=tokenizer, 
                                 datasets=datasets,
-                                    batch_size=args.args.batch_size//4,
+                                    batch_size=args.batch_size//4,
                                     bf16=True,
                                     torch_empty_cache_steps=33,)
 
@@ -410,7 +411,7 @@ def train(training_args:MethodsUnion):
 
     print(f'save_dir={save_dir}') 
     print('args =')
-    pprint({k: v.to_dict() for k,v in args.__dict__.items()})
+    pprint(args.__dict__)
 
 
     print(df_metrics.round(3).to_markdown())
@@ -436,8 +437,16 @@ import tyro
 
 
 
-
+import yaml, os
 if __name__ == '__main__':
+
+    # we can load a default config by passing it into the env
+    # REPR_CONFIG=../configs/tinyllama.yaml
+    # REPR_CONFIG=../configs/dev.yaml
+    default_config = {}
+    if os.environ.get('REPR_CONFIG') is not None:
+        default_config = yaml.safe_load(os.environ.get('REPR_CONFIG'))   
+        print(f'loaded default config from {os.environ.get("REPR_CONFIG")}')     
     MethodsUnion = Union[tuple(e.value for e in Methods)]
-    args = tyro.cli(MethodsUnion)
+    args = tyro.cli(MethodsUnion, default=default_config)
     train(args)

@@ -173,7 +173,6 @@ class PL_DPO_MODEL(PL_MODEL):
 
 @dataclass(frozen=True)
 class DPO(TrainingArguments):
-    adapter_name: str = "dpo"
     lr: float = 6e-5
 
     _reprpo_class = PL_DPO_MODEL
