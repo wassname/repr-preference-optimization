@@ -35,6 +35,9 @@ class HRATransform(nn.Module):
 
         self.reset_hra_parameters()
 
+    def __repr__(self):
+        return f"HRATransform(in_features={self.hra_u.shape[0]}, out_features={self.hra_u.shape[1]}, r={self.hra_r}, apply_GS={self.apply_GS})"
+
     def reset_hra_parameters(self):
         if self.hra_r % 2 != 0:
             warnings.warn("The symmetric initialization can NOT be performed when r is odd!")
@@ -278,7 +281,7 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
 
 @dataclass
 class HRA(TrainingArgumentswCollection):
-    """weights retrain and reroute losses"""
+    """balacning retrain and reroute losses"""
     alpha: int = 0.01
 
     """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
@@ -288,7 +291,7 @@ class HRA(TrainingArgumentswCollection):
     r: int = 64
 
     """Whether to apply Gram-Schmidt orthogonalization."""
-    apply_GS: bool = False
+    apply_GS: bool = True
 
     _reprpo_class = PL_REPRPO_HRA_MODEL
     _model_keys = ['alpha', 'collection_layers', 'r', 'apply_GS' ]

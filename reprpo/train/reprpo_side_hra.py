@@ -270,8 +270,14 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
         validate_layer_paths(self._model, self.hparams.layer_paths)
         self.hparams.collect_input = collect_input
 
-        hra_sizes = {p:get_module(self._model, p).weight.shape[collect_input] for p in self.hparams.layer_paths}
+        # we do one learnable householder roation per layer
+        if collect_input:
+            hra_sizes = {p:get_module(self._model, p).in_features for p in self.hparams.layer_paths}
+        else:
+            hra_sizes = {p:get_module(self._model, p).out_features for p in self.hparams.layer_paths}
         self.transforms = torch.nn.ParameterDict({k: HRATransform(dim_hs, dim_hs, r=r, apply_GS=apply_GS) for k,dim_hs in hra_sizes.items()})
+        self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
+        # TODO check dtype etc
 
     def _loss_fn(self, batch, model):
         return compute_reprpo_side_hra_loss_batch(
@@ -286,7 +292,7 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
 
 @dataclass
 class SideinHRA(Sidein, HRA):
-    r: int = 4
+    r: int = 1
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'r', 'apply_GS']
@@ -296,3 +302,4 @@ class SideinHRA(Sidein, HRA):
 class SideoutHRA(Sideout, HRA):
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out', 'r', 'apply_GS']
+    r: int = 1

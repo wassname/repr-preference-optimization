@@ -39,14 +39,15 @@ class TrainingArguments:
 class TrainingArgumentswCollection(TrainingArguments):
     alpha: int = 0.1
     collection_layers: tuple=(10, 12, 14, 16, 18) 
+    
+    # llama 2 and 3 have arch is like this
+    # hs += o_proj(qkv_proj(hs))
+    # then
+    # hs += mlp.down_proj(self.act_fn(mlp.gate_proj(hs)) * mlp.up_proj(hs))
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
-    # tinyllama arch is like this
-    # hs += o_proj(qkv_proj(hs))
-    # then
-    # hs += mlp.down_proj(self.act_fn(mlp.gate_proj(hs)) * mlp.up_proj(hs))
     collection_keys_out: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.q_proj",
         "base_model.model.model.layers.{layer}.self_attn.k_proj",

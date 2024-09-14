@@ -90,6 +90,7 @@ def train(training_args:MethodsUnion):
     group_name=f'{args.dataset}-{training_args.base_model.replace("/","")}'
     if os.environ.get('WANDB_GROUP', None) is not None:
         group_name = os.environ.get('WANDB_GROUP') + group_name
+        print(f"Using WANDB_GROUP={group_name}")
 
     run_fname = f'{adapter_name}/{ts}' # short for wandb
     wandb.require(experiment='service')
@@ -213,7 +214,6 @@ def train(training_args:MethodsUnion):
                     lr=training_args.lr,
                     num_iterations=max_steps,
                     batch_size=training_args.batch_size,
-
                     **model_kwargs
                     )
 
@@ -411,7 +411,8 @@ def train(training_args:MethodsUnion):
         print(f"- `{k}`: `{v}`")
 
     # also just log final metrics to wandb so we can view a group
-    run.log({f'res/{k}': v for k,v in df_final.to_dict().item()})
+    run.log({f'res/rel_acc/{k}': v for k,v in df_final.iloc[0,:].to_dict().items()})
+    run.log({f'res/acc/{k}': v for k,v in df_res2.iloc[0].to_dict().items()})
 
 
 
@@ -434,6 +435,6 @@ if __name__ == '__main__':
         for k,v in overrides.items():
             setattr(args, k, v)
         print(f'loaded default config from {f}')     
-        print(args)
+        # print(args)
     
     train(args)

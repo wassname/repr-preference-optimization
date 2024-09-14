@@ -311,7 +311,9 @@ class PL_REPRPO_SIDE_MODEL(PL_MODEL):
 @dataclass
 class Sidein(TrainingArgumentswCollection):
     """
-    here we collect the inputs from the output modules of the each layer.
+    collect activations from `layer.out_proj.in`
+
+    here we collect the **inputs** from the output modules of the each layer.
 
     in other words we do not collect the contribution to the hidden states but instead activations internal to the layer
     
@@ -325,7 +327,7 @@ class Sidein(TrainingArgumentswCollection):
 @dataclass
 class Sideout(TrainingArgumentswCollection):
     """
-    here we collect the outputs from the input modules of the each layer.
+    Collect activations from `layer.in_proj.out`.
 
     in other words we do not collect the contribution to the hidden states but instead activations internal to the layer
 

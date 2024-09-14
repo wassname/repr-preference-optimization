@@ -1,6 +1,7 @@
-args:
-    base_model: 'yujiepan/llama-3-tiny-random'
-    n_samples: 256
-  collection_layers: 
-    - 0
-    - 1
+base_model: 'yujiepan/llama-3-tiny-random'
+n_samples: 256
+collection_layers: 
+  - 0
+  - 1
+dev: true
+verbose: true
