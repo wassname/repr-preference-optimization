@@ -1,10 +1,10 @@
-set shell := ["zsh", "-cu"]
+set shell := ["zsh", "-c"]
 
 # settings
-set dotenv-load
+# set dotenv-load
 
 # Export all just variables as environment variables.
-set export
+# set export
 
 export CUDA_VISIBLE_DEVICES := "0"
 export TOKENIZERS_PARALLELISM := "false"
@@ -18,11 +18,23 @@ run method='reprpo_ortho':
     . ./.venv/bin/activate
     python nbs/train.py {{method}} --verbose
 
+run_a:
+    echo "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
+    export REPR_CONFIG=./configs/llama3_7b.yaml
+    echo "REPR_CONFIG=$REPR_CONFIG"
+    export WANDB_GROUP=$(date +%Y%m%d_%H%M%S)
+    echo "WANDB_GROUP=$WANDB_GROUP"
+
 run_all:
-    # TODO set group by env var and time
+    #!/usr/bin/zsh
+    # export REPR_CONFIG=./configs/llama3_7b.yaml
+    echo "REPR_CONFIG=$REPR_CONFIG"
+    export WANDB_GROUP=$(date +%Y%m%d_%H%M%S)
+    echo "WANDB_GROUP=$WANDB_GROUP"
+
     . ./.venv/bin/activate
-    # python nbs/train2.py sidein-hra
-    # python nbs/train2.py sideout
+    python nbs/train2.py sidein-hra
+    python nbs/train2.py sideout
     python nbs/train2.py hra
     python nbs/train2.py sideout-hra
     python nbs/train2.py sidein
@@ -32,16 +44,7 @@ run_all:
     python nbs/train2.py svd --quantile 1.0
     python nbs/train2.py dpo
 
-
-llama_all:
-    export REPR_CONFIG=../configs/llama3_7b.yaml
-    . ./.venv/bin/activate
-    python nbs/train2.py reprpo_side_hra
-    python nbs/train2.py reprpo_sideout
-    python nbs/train2.py reprpo_side
-    python nbs/train2.py reprpo_hs
-    python nbs/train2.py reprpo_hra
-    python nbs/train2.py reprpo_ortho
-    python nbs/train2.py reprpo_svd
-    python nbs/train2.py reprpo_svd --quantile 1.0
-    python nbs/train2.py dpo
+run_llama:
+    #!/usr/bin/zsh
+    export REPR_CONFIG=./configs/llama3_7b.yaml
+    @just run_all

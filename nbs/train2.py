@@ -1,4 +1,4 @@
-# %% [markdown]
+
 # Instead of using the complex TRL we code it from scratch, using lighting
 # 
 # https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
@@ -52,18 +52,18 @@ from lightning.pytorch.loggers.wandb import WandbLogger
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 
 
-# %%
+
 # Local
 from reprpo.helpers.torch import clear_mem
 from reprpo.gen import generation_test
 import reprpo.silence
 from reprpo.helpers.lightning_hist import read_metrics_csv, plot_hist
-from reprpo.train import Methods
+from reprpo.train import Methods, MethodsUnion
 
 
 from reprpo.train.dpo import compute_dpo_loss_batch, PL_DPO_MODEL
 
-# %%
+
 
 
 
@@ -71,10 +71,10 @@ from reprpo.train.pl_base import TrainingArguments, TrainingArgumentswCollection
 from typing import Union
 
 # get a union class from the enum
-MethodsUnion = Union[tuple(e.value for e in Methods)]
+
 
 def train(training_args:MethodsUnion):
-    torch.set_float32_matmul_precision("high")
+    torch.set_float32_matmul_precision("medium")
 
     PL_MODEL = training_args._reprpo_class
     model_kwargs = {k:getattr(training_args, k) for k in training_args._model_keys}
@@ -85,16 +85,21 @@ def train(training_args:MethodsUnion):
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
     adapter_name = type(args).__name__
-    group_name = f"{adapter_name}-{args.dataset}"
+    ft_name = f"{adapter_name}-{args.dataset}"
+
+    group_name=f'{args.dataset}-{training_args.base_model.replace("/","")}'
+    if os.environ.get('WANDB_GROUP', None) is not None:
+        group_name = os.environ.get('WANDB_GROUP') + group_name
+
     run_fname = f'{adapter_name}/{ts}' # short for wandb
     wandb.require(experiment='service')
 
     config = dict(args=args, training_args=training_args)
-    run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=f'{args.dataset}-{training_args.base_model.replace("/","")}', config=config)
+    run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=group_name, config=config)
 
 
     model, tokenizer = load_model(training_args.base_model, load_in_4bit=training_args.load_in_4bit,  load_in_8bit=training_args.load_in_8bit,  
-                                attn_implementation='eager' # for gemma
+                                # attn_implementation='eager' # for gemma
     )
 
     # ### Load adapter
@@ -115,7 +120,7 @@ def train(training_args:MethodsUnion):
             # "down_proj",  "o_proj", # out
             #             ], # PHI3
     )
-    model = get_peft_model(model, peft_config, adapter_name=group_name)
+    model = get_peft_model(model, peft_config, adapter_name=ft_name)
     print_trainable_parameters(model)
     if args.verbose:
         print(model)
@@ -141,7 +146,7 @@ def train(training_args:MethodsUnion):
         print(f"Chosens truncated {np.mean(dataset3['train']['chosen_truncated']):2.2%}")
 
 
-    # %%
+    
 
     from transformers.data.data_collator import default_data_collator
     ds = dataset3
@@ -180,33 +185,29 @@ def train(training_args:MethodsUnion):
         
 
 
-    # %% [markdown]
+    
     # ## Trainer
-
-    # %% [markdown]
     # - https://lightning.ai/docs/pytorch/latest/notebooks/lightning_examples/text-transformers.html
     # - https://gist.github.com/wassname/e29d02b5026a531e13912cf768e6fdc8
 
-    # %%
     max_steps = training_args.n_samples // training_args.batch_size
     print('max optimiser steps', max_steps)
 
-    # %%
     ideal_batch_size = max(16, training_args.batch_size) # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
     accumulate_grad_batches = np.ceil(ideal_batch_size/training_args.batch_size).astype(int)
     print('accumulate_grad_batches', accumulate_grad_batches)
     print('accumulated batch size', training_args.batch_size*accumulate_grad_batches)
 
-    print(f"epochs {training_args.n_samples//len(dl_train)}")
+    print(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
 
-    # %%
+    
     from lightning.pytorch.callbacks import LearningRateMonitor
     from reprpo.train.pl_base import GenCallback
 
 
-    # %%
+    
     pl_model = PL_MODEL(model,
-                    # adam8bit=training_args.load_in_4bit or training_args.load_in_8bit, # saved mem, but seems unstable
+                    adam8bit=training_args.load_in_4bit or training_args.load_in_8bit, # saved mem, but seems unstable?
                     schedule='constant',
                     weight_decay=training_args.weight_decay,
                     lr=training_args.lr,
@@ -262,45 +263,23 @@ def train(training_args:MethodsUnion):
     # train
     trainer.fit(pl_model, dl_train, dl_val)
 
-    # %%
+    
     # save as regular adapter only
 
     model.save_pretrained(
         str(save_dir)+'-adapter',
     )
     print(f'saved to {save_dir}-adapter')
-
-
-    # %% [markdown]
+    
     # ### Hist
-
-    # %%
-
     if not args.dev:
         df_hist = read_metrics_csv(trainer.logger.experiment.metrics_file_path).bfill().ffill()
         # print(df_hist)
-
-    # import matplotlib
-    # plt.style.use('ggplot')
-    # matplotlib.rcParams['figure.figsize'] = (6, 2)
-    # plot_hist(df_hist, ['.*/loss_step', '.*/acc.*', '.*/auroc.*', '.*/.*reward_step'])
-    # todo val and train seperate for few epochs
-
-
-    # %% [markdown]
+    
     # ## Gen
-
-    # %%
     model.cuda(); # for some reason it ends up cpu
 
-
-
-    # %% [markdown]
     # ## Eval
-
-    # %%
-
-
     # eval on ethics, GENIES, and our train dataset
     N = None
     if args.dev:
@@ -314,7 +293,6 @@ def train(training_args:MethodsUnion):
     datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['code_hard', #'truthful_qa',# 'wrong_arc', 'ranking_logic',
     # 'math', 'sycophancy_mimicry'
     ]]
-    # print('datasets', [ds2name(d) for d in datasets])
 
     clear_mem()
     res, df_res2 = evaluate_model(model=model, 
@@ -325,7 +303,7 @@ def train(training_args:MethodsUnion):
                                     torch_empty_cache_steps=33,)
 
 
-    # %%
+    
 
     df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack().T
     df_res.columns = [d.replace('genie_dpo-', '') for d in df_res.columns]
@@ -338,15 +316,15 @@ def train(training_args:MethodsUnion):
         ds_name_rnd = ds2name(datasets[3])
 
         df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack().T
-        rel_acc = df_res.loc[group_name]/df_res.loc['base']
+        rel_acc = df_res.loc[ft_name]/df_res.loc['base']
 
         # metric: do we retrain train coherency?
         df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T
-        rel_coherency = df_res_logp.loc[group_name]-df_res_logp.loc['base']
+        rel_coherency = df_res_logp.loc[ft_name]-df_res_logp.loc['base']
 
         # metric: do we retrain train coherency?
-        c = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T.loc[group_name]
-        r = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_rejected_logps'].mean().unstack().T.loc[group_name]
+        c = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T.loc[ft_name]
+        r = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_rejected_logps'].mean().unstack().T.loc[ft_name]
         cho_rej_coh = c-r
 
         def fmt(s):
@@ -380,7 +358,7 @@ def train(training_args:MethodsUnion):
     
         return df_metrics
 
-    # %%
+    
 
     df_gen = get_model_generations(model, tokenizer, N=4)
     df_gen_w = wandb.Table(dataframe=df_gen.reset_index())
@@ -406,7 +384,7 @@ def train(training_args:MethodsUnion):
     # print(f'saved results to {f}')
 
 
-    # %%
+    
     from collections import OrderedDict
     ds_alias = OrderedDict(list(zip(['train', 'test', 'oos', 'rnd'], [ds2name(d) for d in datasets])))
 
@@ -432,6 +410,9 @@ def train(training_args:MethodsUnion):
     for k,v in ds_alias.items():
         print(f"- `{k}`: `{v}`")
 
+    # also just log final metrics to wandb so we can view a group
+    run.log({f'res/{k}': v for k,v in df_final.to_dict().item()})
+
 
 
 import tyro
@@ -441,18 +422,18 @@ import tyro
 import yaml, os
 if __name__ == '__main__':
 
-    # we can load a default config by passing it into the env
-    # REPR_CONFIG=../configs/dev.yaml
-    default_config = {}
-    f = os.environ.get('REPR_CONFIG')
-    if f is not None:
-        default_config = yaml.safe_load(open(f))
-        print(f'loaded default config from {f}')     
-    
-    # MethodsUnion = Union[tuple(e.value for e in Methods)]
-    # args = tyro.cli(MethodsUnion, default=TrainingArgumentswCollection(**default_config ))
-
     args = tyro.cli(MethodsUnion)
-    # args = tyro.cli(MethodsUnion, default=type(args)(**default_config))
 
+    # tyro has a default option, but it doesn't work with subcommands, so I apply overides manually
+    # e.g. REPR_CONFIG=./configs/dev.yaml
+    overrides = {}
+    f = os.environ.get('REPR_CONFIG')
+    print('f', f)
+    if f is not None:
+        overrides = yaml.safe_load(open(f))
+        for k,v in overrides.items():
+            setattr(args, k, v)
+        print(f'loaded default config from {f}')     
+        print(args)
+    
     train(args)

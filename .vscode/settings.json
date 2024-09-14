@@ -7,5 +7,25 @@
         "markdown",
         "latex",
         "plaintext"
-    ]
+    ],
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#c5b9bc",
+        "activityBar.background": "#c5b9bc",
+        "activityBar.foreground": "#15202b",
+        "activityBar.inactiveForeground": "#15202b99",
+        "activityBarBadge.background": "#488f30",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "commandCenter.border": "#15202b99",
+        "sash.hoverBorder": "#c5b9bc",
+        "statusBar.background": "#ae9da2",
+        "statusBar.foreground": "#15202b",
+        "statusBarItem.hoverBackground": "#978188",
+        "statusBarItem.remoteBackground": "#ae9da2",
+        "statusBarItem.remoteForeground": "#15202b",
+        "titleBar.activeBackground": "#ae9da2",
+        "titleBar.activeForeground": "#15202b",
+        "titleBar.inactiveBackground": "#ae9da299",
+        "titleBar.inactiveForeground": "#15202b99"
+    },
+    "peacock.remoteColor": "#ae9da2"
 }

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from ..helpers.scheduler import get_constant_schedule_with_warmup
 
 
-@dataclass(frozen=True)
+@dataclass
 class TrainingArguments:
     
     """the dataset to fine tune on. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
@@ -18,24 +18,24 @@ class TrainingArguments:
     """fast run"""
     dev: bool = False
 
-    load_in_4bit: bool = False  # this doesn't seem to be able to backprop when using baukit
-    load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit
+    load_in_4bit: bool = True  # this doesn't seem to be able to backprop when using baukit
+    load_in_8bit: bool = True  # this doesn't seem to be able to backprop when using baukit
     use_gradient_checkpointing: bool = False
 
     # train
-    batch_size: int = 4
+    batch_size: int = 16
     lr: float = 6e-5
     weight_decay: float = 0.0
 
     # dataset
-    n_samples: int = 1800 * 3
+    n_samples: int = 1800 * 1
     max_length: int = 196
     max_prompt_length: int = 96
-    # base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-    base_model: str = 'NousResearch/Meta-Llama-3.1-8B'
+    base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    # base_model: str = 'NousResearch/Meta-Llama-3.1-8B'
 
 
-@dataclass(frozen=True)
+@dataclass
 class TrainingArgumentswCollection(TrainingArguments):
     alpha: int = 0.1
     collection_layers: tuple=(10, 12, 14, 16, 18) 
@@ -58,7 +58,7 @@ class TrainingArgumentswCollection(TrainingArguments):
 
 
 class PL_MODEL(pl.LightningModule):
-    def __init__(self, model, num_iterations, lr=3e-4, weight_decay=0, batch_size=None, adam8bit=False, schedule='cosine'):
+    def __init__(self, model, num_iterations, lr=3e-4, weight_decay=0, batch_size=None, adam8bit=False, schedule='constant'):
         super().__init__()
         self._model = model
         self.save_hyperparameters(ignore=["model"])

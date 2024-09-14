@@ -1,5 +1,5 @@
 import enum
-
+from typing import Union
 from .dpo import DPO
 from .reprpo_svd import SVD
 from .reprpo_hs import HS
@@ -19,3 +19,5 @@ class Methods(enum.Enum):
     reprpo_sideout_hra = SideoutHRA
     reprpo_ortho = Ortho
     reprpo_hrank = HRA
+
+MethodsUnion = Union[tuple(e.value for e in Methods)]

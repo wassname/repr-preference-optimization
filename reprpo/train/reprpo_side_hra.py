@@ -284,7 +284,7 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class SideinHRA(Sidein, HRA):
     r: int = 4
 
@@ -292,7 +292,7 @@ class SideinHRA(Sidein, HRA):
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'r', 'apply_GS']
 
 
-@dataclass(frozen=True)
+@dataclass
 class SideoutHRA(Sideout, HRA):
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out', 'r', 'apply_GS']

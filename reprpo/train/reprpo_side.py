@@ -308,7 +308,7 @@ class PL_REPRPO_SIDE_MODEL(PL_MODEL):
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class Sidein(TrainingArgumentswCollection):
     """
     here we collect the inputs from the output modules of the each layer.
@@ -322,7 +322,7 @@ class Sidein(TrainingArgumentswCollection):
 
 
 
-@dataclass(frozen=True)
+@dataclass
 class Sideout(TrainingArgumentswCollection):
     """
     here we collect the outputs from the input modules of the each layer.
