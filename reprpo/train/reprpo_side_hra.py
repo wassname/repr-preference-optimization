@@ -292,7 +292,8 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
 
 @dataclass
 class SideinHRA(Sidein, HRA):
-    r: int = 1
+    r: int = 8
+    alpha: float = 0.01
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'r', 'apply_GS']
@@ -300,6 +301,8 @@ class SideinHRA(Sidein, HRA):
 
 @dataclass
 class SideoutHRA(Sideout, HRA):
+    alpha: float = 0.01
+    r: int = 8
+
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out', 'r', 'apply_GS']
-    r: int = 1

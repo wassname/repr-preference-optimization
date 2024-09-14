@@ -79,8 +79,8 @@ def train(training_args:MethodsUnion):
     PL_MODEL = training_args._reprpo_class
     model_kwargs = {k:getattr(training_args, k) for k in training_args._model_keys}
     print('PL_MODEL', PL_MODEL)
-    print('model_kwargs', model_kwargs)
     print('training_args')
+    print('model_kwargs', model_kwargs.keys())
     pprint(training_args.__dict__)
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
@@ -361,11 +361,14 @@ def train(training_args:MethodsUnion):
     
 
     df_gen = get_model_generations(model, tokenizer, N=4)
-    df_gen_w = wandb.Table(dataframe=df_gen.reset_index())
+
+    # FIXME, only pass in adapter col, not q index or base
+    df_gen_w = wandb.Table(dataframe=df_gen)
 
 
     df_metrics = key_metrics(df_res2)
 
+    # FIXME: this doesn't work, we have to upload just one row?
     df_metrics_w = wandb.Table(dataframe=df_metrics.reset_index())
 
 
@@ -404,9 +407,10 @@ def train(training_args:MethodsUnion):
     print("""Table 2: Absolute accuracy\n""")
 
     df_final = df_metrics.loc['acc[pi/base]'].to_frame(adapter_name).T
+    df_final = df_final * 100 - 100 # percentage points
     df_final.index.name = 'acc_inc/eval_ds'
     print(df_final.round(3).to_markdown())
-    print(f"""Table 3: Accuracy increase after training with adapter on `{args.dataset}` compared to base model `{training_args.base_model}` for various distribution shifts:""")
+    print(f"""Table 3: Accuracy increase (in percentage points) after training with named adapter on `{args.dataset}` compared to base model `{training_args.base_model}` for various distribution shifts:""")
     for k,v in ds_alias.items():
         print(f"- `{k}`: `{v}`")
 

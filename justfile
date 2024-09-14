@@ -14,35 +14,33 @@ default:
     @just --list
 
 # run one method, by argument
-run method='reprpo_ortho':
+run METHOD='reprpo_ortho':
     . ./.venv/bin/activate
-    python nbs/train.py {{method}} --verbose
+    python nbs/train2.py {{METHOD}} --verbose
 
-run_a:
-    echo "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
-    export REPR_CONFIG=./configs/llama3_7b.yaml
-    echo "REPR_CONFIG=$REPR_CONFIG"
-    export WANDB_GROUP=$(date +%Y%m%d_%H%M%S)
-    echo "WANDB_GROUP=$WANDB_GROUP"
 
 run_all:
     #!/usr/bin/zsh
-    # export REPR_CONFIG=./configs/llama3_7b.yaml
     echo "REPR_CONFIG=$REPR_CONFIG"
-    export WANDB_GROUP=$(date +%Y%m%d_%H%M%S)
+    # export WANDB_GROUP=$(date +%Y%m%d_%H%M%S)
+    export WANDB_GROUP=${WANDB_GROUP:-$(date +%Y%m%d_%H%M%S)}
     echo "WANDB_GROUP=$WANDB_GROUP"
 
+    # export HF_DATASETS_OFFLINE=1
+    # export WANDB_MODE=offline
+
     . ./.venv/bin/activate
-    python nbs/train2.py sidein-hra
+    # biggest first so we find out about OOM first
     python nbs/train2.py sideout-hra
-    python nbs/train2.py sideout
-    python nbs/train2.py hra
-    python nbs/train2.py sidein
-    python nbs/train2.py hs
     python nbs/train2.py ortho
+    python nbs/train2.py sidein
+    python nbs/train2.py hra
+    python nbs/train2.py dpo
+    python nbs/train2.py sidein-hra
+    python nbs/train2.py sideout
+    python nbs/train2.py hs
     python nbs/train2.py svd
     python nbs/train2.py svd --quantile 1.0
-    python nbs/train2.py dpo
 
 run_llama:
     #!/usr/bin/zsh

@@ -1,6 +1,7 @@
 
-base_model: 'NousResearch/Meta-Llama-3.1-8B'
-load_in_4bit: True
+base_model: 'NousResearch/Meta-Llama-3.1-8B-Instruct'
+# load_in_4bit: True
+# load_in_8bit: False
 batch_size: 16
 collection_layers: 
   - 10

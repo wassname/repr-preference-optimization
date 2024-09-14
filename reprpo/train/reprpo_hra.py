@@ -282,7 +282,7 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
 @dataclass
 class HRA(TrainingArgumentswCollection):
     """balacning retrain and reroute losses"""
-    alpha: int = 0.01
+    alpha: int = 0.001
 
     """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
     collection_layers: tuple=(10, 20) 

@@ -2283,3 +2283,117 @@ if I use Union for subcommand I get this
   │ --args.dev, --args.no-dev                                                                                                             │
   │                         (default: False)                                                                                              │
   ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+# 2024-09-14 05:04:55 8bit vs 4 vs 16
+
+
+note matmult was medium
+
+save_dir=/workspace/repr-preference-optimization/outputs/NousResearch_Meta-Llama-3.1-8B_SideoutHRA_us_history_textbook/2024-09-14_04-45-41
+args =
+{'alpha': 0.01,
+ 'apply_GS': True,
+ 'base_model': 'NousResearch/Meta-Llama-3.1-8B',
+ 'batch_size': 16,
+ 'collect_input': False,
+ 'collection_keys_in': ('base_model.model.model.layers.{layer}.self_attn.o_proj',
+                        'base_model.model.model.layers.{layer}.mlp.down_proj'),
+ 'collection_keys_out': ('base_model.model.model.layers.{layer}.self_attn.q_proj',
+                         'base_model.model.model.layers.{layer}.self_attn.k_proj',
+                         'base_model.model.model.layers.{layer}.self_attn.v_proj',
+                         'base_model.model.model.layers.{layer}.mlp.gate_proj',
+                         'base_model.model.model.layers.{layer}.mlp.up_proj'),
+ 'collection_layers': [10, 12, 14, 16, 18, 20, 22, 24],
+ 'dataset': 'us_history_textbook',
+ 'dev': False,
+ 'load_in_4bit': True,
+ 'load_in_8bit': True,
+ 'lr': 6e-05,
+ 'max_length': 196,
+ 'max_prompt_length': 96,
+ 'n_samples': 1800,
+ 'r': 16,
+ 'use_gradient_checkpointing': False,
+ 'verbose': False,
+ 'weight_decay': 0.0}
+
+4bit 
+  | SideoutHRA\dist shift   |    oos |    rnd |   test |   train |
+  |:------------------------|-------:|-------:|-------:|--------:|
+  | acc[pi/base]            |  1.04  |  1.003 |  1.01  |   1.004 |
+  | coherency[cho-rej]      | 21.478 |  9.826 | 49.43  |  51.084 |
+  | coherency[pi-base]      |  1.719 | -0.616 |  3.021 |   2.807 |
+  Table 1: Key metrics (adapter over base model)
+
+  | adapter/ds                     |   train |   test |   oos |   rnd |
+  |:-------------------------------|--------:|-------:|------:|------:|
+  | SideoutHRA-us_history_textbook |   0.985 |  0.988 | 0.8   | 0.793 |
+  | base                           |   0.981 |  0.979 | 0.769 | 0.791 |
+  Table 2: Absolute accuracy
+
+  | acc_inc/eval_ds   |   oos |   rnd |   test |   train |
+  |:------------------|------:|------:|-------:|--------:|
+  | SideoutHRA        |  1.04 | 1.003 |   1.01 |   1.004 |
+
+
+
+8bit (a lot slower due to grad accum batch and r are halved)
+
+  {'alpha': 0.01,
+  'apply_GS': True,
+  'base_model': 'NousResearch/Meta-Llama-3.1-8B',
+  'batch_size': 8,
+  'collect_input': False,
+  'collection_keys_in': ('base_model.model.model.layers.{layer}.self_attn.o_proj',
+                          'base_model.model.model.layers.{layer}.mlp.down_proj'),
+  'collection_keys_out': ('base_model.model.model.layers.{layer}.self_attn.q_proj',
+                          'base_model.model.model.layers.{layer}.self_attn.k_proj',
+                          'base_model.model.model.layers.{layer}.self_attn.v_proj',
+                          'base_model.model.model.layers.{layer}.mlp.gate_proj',
+                          'base_model.model.model.layers.{layer}.mlp.up_proj'),
+  'collection_layers': [10, 12, 14, 16, 18, 20, 22, 24],
+  'dataset': 'us_history_textbook',
+  'dev': False,
+  'load_in_4bit': False,
+  'load_in_8bit': True,
+  'lr': 6e-05,
+  'max_length': 196,
+  'max_prompt_length': 96,
+  'n_samples': 1800,
+  'r': 8,
+  'use_gradient_checkpointing': False,
+  'verbose': False,
+  'weight_decay': 0.0}
+
+
+# 2024-09-14 05:25:16 q lora leanrings?
+https://arxiv.org/abs/2305.14314
+
+
+paged optimised
+4 bit, double
+
+To summarize, QLORA has one storage data type (usually 4-bit NormalFloat) and a computation
+data type (16-bit BrainFloat). We dequantize the storage data type to the computation data type
+to perform the forward and backward pass, but we only compute weight gradients for the LoRA
+parameters which use 16-bit BrainFloat
+
+
+
+no info on layer norms or heads, hmm
+
+
+# 2024-09-14 12:38:50
+
+I did a full run on experiments on a base model, 16bit, only 112 steps, and dpo won by far.
+- group20240914_060419us_history_textbook-NousResearchMeta-Llama-3.1-8B
+- https://wandb.ai/wassname/reprpo/groups/20240914_060419us_history_textbook-NousResearchMeta-Llama-3.1-8B/workspace?nw=nwuserwassname
+
+1. [x] no: I wonder what if I do more steps, as internal methods may take longer to converge (or a higher lr in some cases).
+   1. at 13x ortho doubled. But it's not beating DPO. Ortho and sinein hra are good. Doesn't look like it converged, or maybe half ay there ![alt text](files/image-1.png)
+2. And I wonder about using an instruct model.
+3. highr? I can try it on ortho
+
+
+improvements, report percentage poiints

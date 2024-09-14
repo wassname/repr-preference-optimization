@@ -18,13 +18,13 @@ class TrainingArguments:
     """fast run"""
     dev: bool = False
 
-    load_in_4bit: bool = True  # this doesn't seem to be able to backprop when using baukit
-    load_in_8bit: bool = True  # this doesn't seem to be able to backprop when using baukit
+    load_in_4bit: bool = False  # this doesn't seem to be able to backprop when using baukit
+    load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit
     use_gradient_checkpointing: bool = False
 
     # train
     batch_size: int = 16
-    lr: float = 6e-5
+    lr: float = 6e-4
     weight_decay: float = 0.0
 
     # dataset
