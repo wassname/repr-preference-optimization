@@ -19,27 +19,29 @@ run method='reprpo_ortho':
     python nbs/train.py {{method}} --verbose
 
 run_all:
+    # TODO set group by env var and time
     . ./.venv/bin/activate
-    python nbs/train.py reprpo_side_hra
-    python nbs/train.py reprpo_sideout
-    python nbs/train.py reprpo_side
-    python nbs/train.py reprpo_hs
-    python nbs/train.py reprpo_hra
-    python nbs/train.py reprpo_ortho
-    python nbs/train.py reprpo_svd
-    python nbs/train.py reprpo_svd --quantile 1.0
-    python nbs/train.py dpo
+    # python nbs/train2.py sidein-hra
+    # python nbs/train2.py sideout
+    python nbs/train2.py hra
+    python nbs/train2.py sideout-hra
+    python nbs/train2.py sidein
+    python nbs/train2.py hs
+    python nbs/train2.py ortho
+    python nbs/train2.py svd
+    python nbs/train2.py svd --quantile 1.0
+    python nbs/train2.py dpo
 
 
 llama_all:
     export REPR_CONFIG=../configs/llama3_7b.yaml
     . ./.venv/bin/activate
-    python nbs/train.py reprpo_side_hra
-    python nbs/train.py reprpo_sideout
-    python nbs/train.py reprpo_side
-    python nbs/train.py reprpo_hs
-    python nbs/train.py reprpo_hra
-    python nbs/train.py reprpo_ortho
-    python nbs/train.py reprpo_svd
-    python nbs/train.py reprpo_svd --quantile 1.0
-    python nbs/train.py dpo
+    python nbs/train2.py reprpo_side_hra
+    python nbs/train2.py reprpo_sideout
+    python nbs/train2.py reprpo_side
+    python nbs/train2.py reprpo_hs
+    python nbs/train2.py reprpo_hra
+    python nbs/train2.py reprpo_ortho
+    python nbs/train2.py reprpo_svd
+    python nbs/train2.py reprpo_svd --quantile 1.0
+    python nbs/train2.py dpo
