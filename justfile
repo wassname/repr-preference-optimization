@@ -41,6 +41,7 @@ run_all:
     python nbs/train2.py hs
     python nbs/train2.py svd
     python nbs/train2.py svd --quantile 1.0
+    python nbs/train2.py hra --no-apply_GS=False
 
 run_llama:
     #!/usr/bin/zsh

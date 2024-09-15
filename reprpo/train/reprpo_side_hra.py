@@ -13,7 +13,8 @@ from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
 import itertools
 
-from .reprpo_hra import HRA, HRATransform
+from ..layers.hra import HRATransform
+from .reprpo_hra import HRA
 from .reprpo_side import Sidein, Sideout
 
 
@@ -292,8 +293,14 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
 
 @dataclass
 class SideinHRA(Sidein, HRA):
+    """Transform: HRA, applied not to hs but activations from layer.out.input
+    """
+
     r: int = 8
-    alpha: float = 0.01
+    """rank"""
+
+    alpha: float = 0.001
+    """weights retrain and reroute losses"""
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'r', 'apply_GS']
@@ -301,8 +308,12 @@ class SideinHRA(Sidein, HRA):
 
 @dataclass
 class SideoutHRA(Sideout, HRA):
-    alpha: float = 0.01
+    """Transform: HRA, applied not to hs but activations from layer.in.output."""
+
+    alpha: float = 0.001
+
     r: int = 8
+    """rank"""
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out', 'r', 'apply_GS']

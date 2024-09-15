@@ -16,73 +16,7 @@ from types import SimpleNamespace
 from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
-
-
-class HRATransform(nn.Module):
-    """
-    see
-    - https://github.com/huggingface/peft/blob/54be5a3db61748d698ca2e6b55bcfef229a9b475/src/peft/tuners/hra/layer.py#L197
-    """
-
-    def __init__(self, in_features, out_features, 
-                 r=8, apply_GS=False):
-        super().__init__()
-        
-
-        self.hra_r = r
-        self.apply_GS = apply_GS
-        self.hra_u = nn.Parameter(torch.randn(in_features, r))
-
-        self.reset_hra_parameters()
-
-    def __repr__(self):
-        return f"HRATransform(in_features={self.hra_u.shape[0]}, out_features={self.hra_u.shape[1]}, r={self.hra_r}, apply_GS={self.apply_GS})"
-
-    def reset_hra_parameters(self):
-        if self.hra_r % 2 != 0:
-            warnings.warn("The symmetric initialization can NOT be performed when r is odd!")
-            nn.init.kaiming_uniform_(self.hra_u, a=math.sqrt(5))
-        else:
-            shape = self.hra_u.shape
-            half_u = torch.zeros(shape[0], shape[1] // 2)
-            nn.init.kaiming_uniform_(half_u, a=math.sqrt(5))
-            self.hra_u = nn.Parameter(torch.repeat_interleave(half_u, 2, dim=1))
-
-    def get_delta_weight(self, reverse: bool = False) -> torch.Tensor:
-        rank = self.hra_r
-        apply_GS = self.apply_GS
-        opt_u = self.hra_u
-        shape = opt_u.shape
-
-        if apply_GS:
-            weight = [(opt_u[:, 0] / opt_u[:, 0].norm()).view(-1, 1)]
-            for i in range(1, rank):
-                ui = opt_u[:, i].view(-1, 1)
-                for j in range(i):
-                    ui = ui - (weight[j].t() @ ui) * weight[j]
-                weight.append((ui / ui.norm()).view(-1, 1))
-            weight = torch.cat(weight, dim=1)
-            weight = torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype) - 2 * weight @ weight.t()
-
-        else:
-            opt_u = opt_u / opt_u.norm(dim=0)
-            weight = torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype)
-            if reverse:
-                indices = range(rank - 1, -1, -1)
-            else:
-                indices = range(rank)
-
-            for i in indices:
-                ui = opt_u[:, i].view(-1, 1)
-                weight = weight @ (torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype) - 2 * ui @ ui.t())
-
-        return weight
-    
-    def forward(self, input):
-        delta_weight = self.get_delta_weight()
-        return torch.matmul(input, delta_weight)
-
-
+from ..layers.hra import HRATransform
 
 def collect_hs(hs):
     """The residual stream or hs of the diff of the hs."""
@@ -281,17 +215,23 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
 
 @dataclass
 class HRA(TrainingArgumentswCollection):
-    """balacning retrain and reroute losses"""
-    alpha: int = 0.001
+    """
+    Transform: HRA (Householder Reflection Adaptation) along which to reroute the hidden states associated with the rejected responses. See: https://github.com/DaShenZi721/HRA
+    """
 
-    """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
+    alpha: int = 0.0001
+    """balancing retrain and reroute losses"""
+
     collection_layers: tuple=(10, 20) 
+    """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
 
+    r: int = 256
     """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
-    r: int = 64
 
-    """Whether to apply Gram-Schmidt orthogonalization."""
+    lr: float = 1e-3
+
     apply_GS: bool = True
+    """Whether to apply Gram-Schmidt orthogonalization."""
 
     _reprpo_class = PL_REPRPO_HRA_MODEL
     _model_keys = ['alpha', 'collection_layers', 'r', 'apply_GS' ]

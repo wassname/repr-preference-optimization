@@ -218,8 +218,14 @@ class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
 
 @dataclass
 class Ortho(TrainingArgumentswCollection):
+    """
+    find a transformation using a linear layer with orthonormal parametrization, along which we reroute hs_rej
+    """
+
     """weights retrain and reroute losses"""
     alpha: int = 0.01
+
+    lr: float = 3e-4
 
     """The layers to collect the hidden states from, as this operates on the HS which does not vary much we need few points of collection"""
     collection_layers: tuple=(10, 20) 

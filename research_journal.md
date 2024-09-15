@@ -2393,7 +2393,38 @@ I did a full run on experiments on a base model, 16bit, only 112 steps, and dpo 
 1. [x] no: I wonder what if I do more steps, as internal methods may take longer to converge (or a higher lr in some cases).
    1. at 13x ortho doubled. But it's not beating DPO. Ortho and sinein hra are good. Doesn't look like it converged, or maybe half ay there ![alt text](files/image-1.png)
 2. And I wonder about using an instruct model.
-3. highr? I can try it on ortho
+3. high lr? I can try it on ortho. ideally I can find a lr multiple for each, that way I can run the whole suite at the same lr as dpo
 
 
 improvements, report percentage poiints
+
+
+# 2024-09-15 00:45:01
+
+
+ortho lr
+
+llama
+instruct
+| acc_inc/eval_ds   |   oos |   rnd |   test |   train |
+|:------------------|------:|------:|-------:|--------:|
+- 3e-3 nan
+| 3e-4             | 5.714 | -1.02 |  1.081 |   0.393  |
+| 6e-5             |  4    | -0.2  |  .8    |   .3     |
+
+llamah
+hra
+no gs
+just like in the HRA paper it's insenstivie to lr
+| acc_inc/eval_ds   |   oos |    rnd |   test |   train |
+|:------------------|------:|-------:|-------:|--------:|
+| HRA 3e-4          | 5.238 | -1.531 |  1.081 |   0.393 |
+| HRA 1e-3          | 4.286 | -3.571 |  0.946 |   0.449 |
+| HRA  gs 1e-3      | 6.962 | -5.612 |  1.081 |   0.619 |
+1-2 incoherent
+
+noee it starting talking about metritocracy rather diveresity so it has promise
+
+# Distributed Alignmenbt Search
+- > Suppose we want to align intermediate high level variables Xj with rotated subspaces Y j of a neural representation N with learned rotation matrix Rθ 
+- > we compute the cross entropy loss  between the high-level output distribution and the push-forward under τ of the low-level output distribution 

@@ -83,19 +83,24 @@ def train(training_args:MethodsUnion):
     print('model_kwargs', model_kwargs.keys())
     pprint(training_args.__dict__)
 
+    ds_name_train = args.dataset.replace('genie_dpo-', '')
+    model_name = training_args.base_model.split("/")[-1]
+
     ts = pd.Timestamp.now().strftime("%H%M%S")
     adapter_name = type(args).__name__
-    ft_name = f"{adapter_name}-{args.dataset}"
+    finetune_name = f"{adapter_name}-{ds_name_train}"
 
-    group_name=f'{args.dataset}-{training_args.base_model.replace("/","")}'
+    # we can set an experiment group name from env vars, otherwise it will just groupt by model and training ds
+    group_name=f'{ds_name_train}-{model_name}'
     if os.environ.get('WANDB_GROUP', None) is not None:
-        group_name = os.environ.get('WANDB_GROUP') + group_name
-        print(f"Using WANDB_GROUP={group_name}")
+        group_name = os.environ.get('WANDB_GROUP') + '_' +group_name
+    print(f"Using WANDB_GROUP={group_name}")
+    print(f"Using finetune_name={finetune_name}")
 
     run_fname = f'{adapter_name}/{ts}' # short for wandb
     wandb.require(experiment='service')
 
-    config = dict(args=args, training_args=training_args)
+    config = training_args.__dict__
     run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=group_name, config=config)
 
 
@@ -121,7 +126,7 @@ def train(training_args:MethodsUnion):
             # "down_proj",  "o_proj", # out
             #             ], # PHI3
     )
-    model = get_peft_model(model, peft_config, adapter_name=ft_name)
+    model = get_peft_model(model, peft_config, adapter_name=finetune_name)
     print_trainable_parameters(model)
     if args.verbose:
         print(model)
@@ -222,7 +227,7 @@ def train(training_args:MethodsUnion):
 
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
     root_dir = Path(__file__).parent.parent
-    model_fname= "_".join([training_args.base_model.replace("/", "_"), adapter_name, args.dataset])
+    model_fname= "_".join([training_args.base_model.replace("/", "_"), adapter_name, ds_name_train])
     save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
     Path(save_dir).mkdir(exist_ok=True, parents=True)
 
@@ -298,9 +303,9 @@ def train(training_args:MethodsUnion):
     res, df_res2 = evaluate_model(model=model, 
                                 tokenizer=tokenizer, 
                                 datasets=datasets,
-                                    batch_size=args.batch_size//4,
+                                    batch_size=args.batch_size,
                                     bf16=True,
-                                    torch_empty_cache_steps=33,)
+                                    torch_empty_cache_steps=100,)
 
 
     
@@ -316,15 +321,15 @@ def train(training_args:MethodsUnion):
         ds_name_rnd = ds2name(datasets[3])
 
         df_res = df_res2.groupby(['dataset', 'adapter'], dropna=False)['correct'].mean().unstack().T
-        rel_acc = df_res.loc[ft_name]/df_res.loc['base']
+        rel_acc = df_res.loc[finetune_name]/df_res.loc['base']
 
         # metric: do we retrain train coherency?
         df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T
-        rel_coherency = df_res_logp.loc[ft_name]-df_res_logp.loc['base']
+        rel_coherency = df_res_logp.loc[finetune_name]-df_res_logp.loc['base']
 
         # metric: do we retrain train coherency?
-        c = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T.loc[ft_name]
-        r = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_rejected_logps'].mean().unstack().T.loc[ft_name]
+        c = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_chosen_logps'].mean().unstack().T.loc[finetune_name]
+        r = df_res_logp = df_res2.groupby(['dataset', 'adapter'], dropna=False)['_rejected_logps'].mean().unstack().T.loc[finetune_name]
         cho_rej_coh = c-r
 
         def fmt(s):

@@ -10,44 +10,43 @@ from ..helpers.scheduler import get_constant_schedule_with_warmup
 @dataclass
 class TrainingArguments:
     
-    """the dataset to fine tune on. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
+    """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
+
     dataset: str = 'us_history_textbook'
+    """train dataset."""
 
     verbose: bool = False
 
-    """fast run"""
     dev: bool = False
+    """fast run"""
 
-    load_in_4bit: bool = False  # this doesn't seem to be able to backprop when using baukit
-    load_in_8bit: bool = False  # this doesn't seem to be able to backprop when using baukit
+    load_in_4bit: bool = False
+    load_in_8bit: bool = False
     use_gradient_checkpointing: bool = False
 
-    # train
     batch_size: int = 16
-    lr: float = 6e-4
+    lr: float = 3e-4
     weight_decay: float = 0.0
 
-    # dataset
     n_samples: int = 1800 * 1
     max_length: int = 196
     max_prompt_length: int = 96
     base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-    # base_model: str = 'NousResearch/Meta-Llama-3.1-8B'
 
 
 @dataclass
 class TrainingArgumentswCollection(TrainingArguments):
     alpha: int = 0.1
+
     collection_layers: tuple=(10, 12, 14, 16, 18) 
+    """layers to collect hs from."""
     
-    # llama 2 and 3 have arch is like this
-    # hs += o_proj(qkv_proj(hs))
-    # then
-    # hs += mlp.down_proj(self.act_fn(mlp.gate_proj(hs)) * mlp.up_proj(hs))
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
+    """keys to collect inputs from."""
+
     collection_keys_out: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.q_proj",
         "base_model.model.model.layers.{layer}.self_attn.k_proj",
@@ -55,7 +54,10 @@ class TrainingArgumentswCollection(TrainingArguments):
         "base_model.model.model.layers.{layer}.mlp.gate_proj",
         "base_model.model.model.layers.{layer}.mlp.up_proj",
     )
+    """keys to collect outputs from."""
+
     collect_input: bool = True
+    """use collection_keys_in? else use collection_keys_out."""
 
 
 class PL_MODEL(pl.LightningModule):
