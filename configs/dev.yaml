@@ -1,4 +1,5 @@
-base_model: 'yujiepan/llama-3-tiny-random'
+# base_model: 'yujiepan/llama-3-tiny-random'
+base_model: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
 n_samples: 256
 collection_layers: 
   - 0

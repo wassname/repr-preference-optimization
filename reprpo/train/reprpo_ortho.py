@@ -219,7 +219,7 @@ class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
 @dataclass
 class Ortho(TrainingArgumentswCollection):
     """
-    find a transformation using a linear layer with orthonormal parametrization, along which we reroute hs_rej
+    Transform: linear layer with orthonormal parametrization. Target: hs
     """
 
     """weights retrain and reroute losses"""

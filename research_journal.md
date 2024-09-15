@@ -2425,6 +2425,14 @@ just like in the HRA paper it's insenstivie to lr
 
 noee it starting talking about metritocracy rather diveresity so it has promise
 
+
+side in hra, lr = 1e-3
+
+| acc_inc/eval_ds   |   oos |    rnd |   test |   train |
+|:------------------|------:|-------:|-------:|--------:|
+| SideinHRA         | 4.905 | -2.551 |  0.811 |   0.619 |1
+e-2? incoherent
+
 # Distributed Alignmenbt Search
 - > Suppose we want to align intermediate high level variables Xj with rotated subspaces Y j of a neural representation N with learned rotation matrix Rθ 
 - > we compute the cross entropy loss  between the high-level output distribution and the push-forward under τ of the low-level output distribution 

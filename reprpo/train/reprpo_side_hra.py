@@ -14,131 +14,9 @@ from dataclasses import dataclass
 import itertools
 
 from ..layers.hra import HRATransform
-from .reprpo_hra import HRA
-from .reprpo_side import Sidein, Sideout
+from .reprpo_hra import HRA, norm
+from .reprpo_side import Sidein, Sideout, get_layer_paths, validate_layer_paths, detach_hsd, reprpo_forward, dist_ratio
 
-
-def get_layer_paths(collection_keys, collection_layers):
-    layer_paths = [
-        [p.format(layer=layer) for p in collection_keys] for layer in collection_layers
-    ]
-    layer_paths = list(itertools.chain(*layer_paths))
-    return layer_paths
-
-
-def validate_layer_paths(model, layer_paths):
-    for p in layer_paths:
-        get_module(model, p)
-
-
-def detach_hsd(hs):
-    return {k: v.detach() for k, v in hs.items()}
-
-
-def mean_with_attention(
-    x: Float[Tensor, "b t h"], attn_mask: Float[Tensor, "b t"], dim: int = 1
-) -> Float[Tensor, "b h"]:
-    """mean of x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1).detach()
-    return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
-
-def mult_with_attention(
-    x: Float[Tensor, "b t h"], attn_mask: Float[Tensor, "b t"], dim: int = 1
-) -> Float[Tensor, "b t h"]:
-    """x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1).detach()
-    return (x * layer_attn_mask) / layer_attn_mask.sum(dim, keepdim=True)
-
-
-# def mean_with_attention(
-#     x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2,
-#     eps=1e-12
-# ) -> Float[Tensor, "b l h"]:
-#     """mean of x, weighted by the attention mask, over dim (token or batch)"""
-#     layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1).detach()
-#     return ((x * layer_attn_mask).nansum(dim) + eps) / (
-#         layer_attn_mask.nansum(dim) + eps
-#     )
-
-# def dist_w_attn_mask(chosen_hs, rejected_hs, attn):
-#     dist = rejected_hs - chosen_hs
-#     dist = mean_with_attention(dist, attn.detach())
-#     assert torch.isfinite(dist).all()  # FIXME nans
-#     return (dist**2).nanmean()
-
-
-def reprpo_forward(model, input_ids, attn_mask, layer_paths, collect_input=True):
-    # model.enable_input_require_grads()
-
-    # def make_inputs_require_grad(module, input, output):
-    #     output.requires_grad_(True)
-
-    # model.get_input_embeddings().register_forward_hook(make_inputs_require_grad)
-
-    reprs = {}
-    with TraceDict(
-        model,
-        layer_paths,
-        retain_input=collect_input,
-        retain_output=(not collect_input),
-        retain_grad=True,
-    ) as ret:
-        outs = model(
-            input_ids,
-            attention_mask=attn_mask,
-            use_cache=False,
-            return_dict=True,
-            output_hidden_states=True,
-        )
-        for p in layer_paths:
-            if collect_input:
-                reprs[p] = ret[p].input
-            else:
-                reprs[p] = ret[p].output
-            assert torch.isfinite(reprs[p]).all()
-
-    logprobs = compute_logprobs(
-        logits=outs.logits, labels=input_ids, selection_mask=attn_mask
-    )
-
-    return SimpleNamespace(hs=reprs, logits=outs.logits, logprobs=logprobs)
-
-
-
-def norm(a, dim=-1):
-    # return torch.abs(a).mean(dim)
-    return torch.pow(a, 2).mean(dim)
-
-def _dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-12) -> Float[Tensor, "b l"]:
-    dist = mean_with_attention(a-b, attn)  # reduces over tokens
-    dist = norm(dist, dim=-1) # over h
-    dist = dist + eps
-
-    dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
-    dist_ref = norm(dist_ref, dim=-1)
-    dist_ref = dist_ref + eps
-
-    # get the ratio in log space to avoid div by zero
-    log_dist_ratio = torch.log(dist) - torch.log(dist_ref).detach()
-
-    alpha = 1
-    return log_dist_ratio * alpha
-
-
-def dist_ratio(
-    a: Dict[str, Float[Tensor, "b t h"]],
-    b: Dict[str, Float[Tensor, "b t h"]],
-    attn: Float[Tensor, "b t"],
-    a_ref: Dict[str, Float[Tensor, "b t h"]],
-    b_ref: Dict[str, Float[Tensor, "b t h"]],
-    attn_ref: Float[Tensor, "b t"],
-) -> float:
-    dists = [
-        _dist_ratio(a[k], b[k], attn, a_ref[k], b_ref[k], attn_ref) for k in a.keys()
-    ]
-    # stack each layer now that we've removed the differing h
-    d = torch.stack(dists, dim=1)
-    return d # reduce(d, "b l -> ", torch.nanmean)
 
 
 def compute_reprpo_side_hra_loss_batch(
@@ -293,7 +171,7 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
 
 @dataclass
 class SideinHRA(Sidein, HRA):
-    """Transform: HRA, applied not to hs but activations from layer.out.input
+    """Transform: HRA. Target: activations from layer.out.input
     """
 
     r: int = 8
@@ -308,7 +186,7 @@ class SideinHRA(Sidein, HRA):
 
 @dataclass
 class SideoutHRA(Sideout, HRA):
-    """Transform: HRA, applied not to hs but activations from layer.in.output."""
+    """Transform: HRA. Target: activations from layer.in.output."""
 
     alpha: float = 0.001
 

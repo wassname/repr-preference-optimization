@@ -211,7 +211,7 @@ class PL_REPRPO_HS_MODEL(PL_MODEL):
 
 @dataclass
 class HS(TrainingArgumentswCollection):
-    """Transform: None. We reroute hs_rej to hs_cho with no transformation."""
+    """Transform: None. Target: hidden_states"""
 
     alpha: int = 0.3
     """weights retrain and reroute losses"""

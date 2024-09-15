@@ -33,7 +33,7 @@
             "program": "${workspaceFolder}/nbs/train2.py",
             "console": "integratedTerminal",
             "args": [
-                "sidein-hra",
+                "sidein-ether",
                 "--dev", 
                 "--verbose",
             ]

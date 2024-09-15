@@ -228,6 +228,9 @@ class PL_REPRPO_SVD_MODEL(PL_MODEL):
 @dataclass
 class SVD(TrainingArgumentswCollection):
     """
+    Target: hs. Transform: SVD
+    """
+    """
     This intervention does not seem to work of converge. It attempt to remove the parts of the hs that are used by lm_head, but because hs is low rank, and lm_head is highrank, it is all used. Hence we try to train on a tiny noisy residual, and cannot.
 
     It's left in here to show a negative finding, and the question: where do transformer store the working internal memory?
