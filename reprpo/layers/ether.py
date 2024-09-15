@@ -40,6 +40,7 @@ class ETHERLinear(ETHERLayer):
         # ↓ this part is for pretrained weights
         in_features: int,
         out_features: int,
+        bias: bool = False,
         # ↓ the remaining part is for ETHER
         nb: int = 0,
         Htype: str = 'ether',
@@ -58,7 +59,7 @@ class ETHERLinear(ETHERLayer):
             flip_side: apply ETHER on the other (smaller) side to reduce computational overhead
         """
         super().__init__(nb=nb, Htype=Htype, ether_dropout=ether_dropout)
-        self.linear = torch.nn.Linear(in_features, out_features, **kwargs)
+        self.linear = torch.nn.Linear(in_features, out_features, bias=bias, **kwargs)
         self.Htype = Htype
         if 'HH' in self.Htype:
             self.is_HtransposeH = True
@@ -105,7 +106,7 @@ class ETHERLinear(ETHERLayer):
                 nn.init.kaiming_uniform_(self.ether_R, a=math.sqrt(5))
                 ether_R2 = - torch.empty_like(ether_R).copy_(ether_R)
                 self.ether_R2 = nn.Parameter(ether_R2)
-                
+
                 # back
                 R34_shape = [nb, out_features // nb]
                 ether_R3 = torch.rand(R34_shape[-1])

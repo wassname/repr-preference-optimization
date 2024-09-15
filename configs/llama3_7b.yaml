@@ -1,5 +1,6 @@
 
-base_model: 'NousResearch/Meta-Llama-3.1-8B-Instruct'
+# DPO and others are meant to be applied to a SFT tuned base model NOT a already preference tuned Chat or Instruction model https://arxiv.org/abs/2405.14734
+base_model: 'princeton-nlp/Llama-3-Base-8B-SFT'
 # load_in_4bit: True
 # load_in_8bit: False
 batch_size: 16

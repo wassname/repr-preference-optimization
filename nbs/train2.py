@@ -419,6 +419,11 @@ def train(training_args:MethodsUnion):
     for k,v in ds_alias.items():
         print(f"- `{k}`: `{v}`")
 
+    # TODO relacc / relacc_train
+    relacc = df_final.iloc[0,:]
+    eps = 1e-6
+    relrelacc = (relacc+eps) / (relacc['train'] + eps)
+    run.log({f'res/relrel_acc/{k}': v for k,v in relrelacc.to_dict().items()})
     # also just log final metrics to wandb so we can view a group
     run.log({f'res/rel_acc/{k}': v for k,v in df_final.iloc[0,:].to_dict().items()})
     run.log({f'res/acc/{k}': v for k,v in df_res2.iloc[0].to_dict().items()})

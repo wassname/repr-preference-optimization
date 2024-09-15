@@ -2433,6 +2433,62 @@ side in hra, lr = 1e-3
 | SideinHRA         | 4.905 | -2.551 |  0.811 |   0.619 |1
 e-2? incoherent
 
+| SideinETHER       | 5.854 | -2.041 |  0.946 |   0.731 |
+
 # Distributed Alignmenbt Search
 - > Suppose we want to align intermediate high level variables Xj with rotated subspaces Y j of a neural representation N with learned rotation matrix Rθ 
 - > we compute the cross entropy loss  between the high-level output distribution and the push-forward under τ of the low-level output distribution 
+
+
+# 2024-09-15 07:16:22
+
+
+On using instruct model with DPO.
+
+The rel_acc is not a good measure with DPO, as the instruct tune model is already trained with DPO, therefore it wont change much or will overfit.
+
+Ideally just base, or fine tune then apply them?
+
+
+But also I'm looking at thing that are underfit vs dpo, so maybe I should look at rel_acc_test/rel_acc_train?
+
+So
+DPO 
+| acc_inc/eval_ds   |   oos |   rnd |   test |   train |
+|:------------------|------:|------:|-------:|--------:|
+| HS                | 0.475 |     0 | -0.135 |       0 |
+| HRA               | 3.797 | -4.932 |  0.946 |   0.169 |
+| DPO               |  4.43 | -2.381 |  0.405 |   1.237 |
+| Sideout           | 4.747 | -0.51 |  0.676 |    0.45 |
+| Sidein            | 5.222 | -1.531 |  0.811 |   0.506 |
+| SideinETHER       | 5.222 | -2.891 |  1.081 |   0.562 |
+| SideoutHRA        |  5.38 | -1.701 |  0.811 |   0.506 |
+| SideinHRA         | 5.696 | -0.68 |  0.946 |   0.619 |
+| Ortho             | 5.696 | -0.17 |  0.946 |   0.506 |
+
+
+This is for instruct but
+dpo 0.405/1.237 = 0.327
+hra 0.94/0.619 = 1.52 much better!
+
+{'base_model': 'NousResearch/Meta-Llama-3.1-8B-Instruct',
+ 'batch_size': 16,
+ 'collection_layers': [10, 12, 14, 16, 18, 20, 22, 24],
+ 'dataset': 'us_history_textbook',
+ 'dev': False,
+ 'load_in_4bit': False,
+ 'load_in_8bit': False,
+ 'lr': 6e-05,
+ 'max_length': 196,
+ 'max_prompt_length': 96,
+ 'n_samples': 1800,
+ 'use_gradient_checkpointing': False,
+ 'verbose': False,
+ 'weight_decay': 0.0}
+
+# 2024-09-15 11:21:22 found a SFT model in SimPO paper
+
+
+If I run fine tuning on all the datasets, using my top methods, then I can also run the GENIE benchmarks
+
+but we still have the question, if this method gives better generalsation, how do we use it? And how useful is it?

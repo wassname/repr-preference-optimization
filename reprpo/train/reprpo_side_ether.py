@@ -81,6 +81,8 @@ class ETHER:
     flip_side: bool = False
     """apply ETHER on the other (smaller) side to reduce computational overhead"""
 
+    lr: float = 1e-3
+
     _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'nb', 'Htype', 'ether_dropout', 'flip_side']
 
 

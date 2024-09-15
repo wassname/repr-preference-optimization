@@ -30,18 +30,21 @@ run_all:
     # export WANDB_MODE=offline
 
     . ./.venv/bin/activate
+    python nbs/train2.py sidein-ether
+    python nbs/train2.py dpo
+    python nbs/train2.py sidein-ether --Htype oft
+    python nbs/train2.py sidein-ether --Htype ether
     # biggest first so we find out about OOM first
     python nbs/train2.py sideout-hra
     python nbs/train2.py ortho
     python nbs/train2.py sidein
     python nbs/train2.py hra
-    python nbs/train2.py dpo
     python nbs/train2.py sidein-hra
     python nbs/train2.py sideout
     python nbs/train2.py hs
     python nbs/train2.py svd
     python nbs/train2.py svd --quantile 1.0
-    python nbs/train2.py hra --no-apply_GS=False
+    python nbs/train2.py hra --no-apply_GS
 
 run_llama:
     #!/usr/bin/zsh
