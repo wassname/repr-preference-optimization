@@ -22,7 +22,7 @@ from einops import rearrange, reduce, repeat
 from jaxtyping import Float, Int, Bool
 from torch.utils.data import DataLoader
 
-from reprpo.gen import get_model_generations
+from reprpo.gen import get_model_generations, display_gen
 from reprpo.helpers.shypothesis import shypothesis
 from reprpo.evaluate import evaluate_adapters
 from reprpo.data.collate3 import TokenizeRow
@@ -74,6 +74,7 @@ from typing import Union
 
 from datasets.utils.logging import disable_progress_bar
 import logging
+import warnings
 
 def silence():
     # wandb logger is too verbose
@@ -86,8 +87,19 @@ def silence():
     # from datasets.utils.logging import set_verbosity_error
     # set_verbosity_error() 
 
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    # # Silence all loggers with "transforms" in their name
+    # for name in logging.root.manager.loggerDict:
+    #     if "transforms" in name:
+    #         logging.getLogger(name).setLevel(logging.ERROR)
+
+    logging.basicConfig(level=logging.ERROR)
+
+
 def train(training_args:MethodsUnion):
-    silence()
+    if not training_args.verbose:
+        silence()
     torch.set_float32_matmul_precision("medium")
 
     PL_MODEL = training_args._reprpo_class
@@ -281,8 +293,9 @@ def train(training_args:MethodsUnion):
             enable_checkpointing=False, 
 
             fast_dev_run=args.dev,
-
-            # show_progress_bar=False
+            enable_progress_bar=training_args.verbose,
+            enable_model_summary=training_args.verbose,
+            
         )
 
     # train
@@ -384,8 +397,8 @@ def train(training_args:MethodsUnion):
         return df_metrics
 
     
-
     df_gen = get_model_generations(model, tokenizer, N=2)
+    display_gen(df_gen.head(1))
 
     # FIXME, only pass in adapter col, not q index or base
     df_gen_w = wandb.Table(dataframe=df_gen)
@@ -417,10 +430,9 @@ def train(training_args:MethodsUnion):
     ds_alias = OrderedDict(list(zip(['train', 'test', 'oos', 'rnd'], [ds2name(d) for d in datasets])))
 
     print(f'save_dir={save_dir}') 
-    print('args =')
-    pprint(args.__dict__)
+    pprint(args, compact=1)
 
-
+    print()
     print(df_metrics.round(3).to_markdown())
     print("""Table 1: Key metrics (adapter over base model)\n""")
 
@@ -433,16 +445,22 @@ def train(training_args:MethodsUnion):
 
     df_final = df_metrics.loc['acc[pi/base]'].to_frame(adapter_name).T
     df_final = df_final * 100 - 100 # percentage points
-    df_final.index.name = 'acc_inc/eval_ds'
+    df_final.index.name = 'acc_inc/eval_ds [pp]'
     print(df_final.round(3).to_markdown())
     print(f"""Table 3: Accuracy increase (in percentage points) after training with named adapter on `{args.dataset}` compared to base model `{training_args.base_model}` for various distribution shifts:""")
     for k,v in ds_alias.items():
         print(f"- `{k}`: `{v}`")
+    print()
 
-    # TODO relacc / relacc_train
+
     relacc = df_final.iloc[0,:]
     eps = 1e-6
-    relrelacc = (relacc+eps) / (relacc['train'] + eps)
+    relrelacc = ((relacc+eps) / (relacc['train'] + eps)).drop('train')*100-100
+    df_relrel = relrelacc.to_frame(f'{adapter_name}').T
+    df_relrel.index.name = 'acc_inc/acc_inc_train [pp]'
+    print(df_relrel.round(3).to_markdown())
+    print(f"""Table 4: Percent accuracy increase (over base) compared to that of the training dataset `{ds_alias['train']}` [in percentage points]. It measures what fraction of the learning from train generalised to other splits""")
+
     run.log({f'res/relrel_acc/{k}': v for k,v in relrelacc.to_dict().items()})
     # also just log final metrics to wandb so we can view a group
     run.log({f'res/rel_acc/{k}': v for k,v in df_final.iloc[0,:].to_dict().items()})

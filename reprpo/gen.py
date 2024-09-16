@@ -244,12 +244,9 @@ def generation_test(
     # remove padding
     q = q.replace(tokenizer.pad_token, "")
     q = q.replace(tokenizer.eos_token, "")
-    print(f"**Question**\n```\n{q}\n```")
-    print("-" * 80)
     data = {'q': q}
 
     for adapter_name in adapter_names:
-        print(f"**Adapter:`{adapter_name}` generation**`")
         with torch.amp.autocast(str(model.device.type), cache_enabled=False, dtype=model.dtype):
 
             # inputs = model.prepare_inputs_for_generation(**inputs, use_cache=False)
@@ -276,8 +273,15 @@ def generation_test(
                         outputs, skip_special_tokens=skip_special_tokens
                     )[0]
         data[adapter_name or 'base'] = out_s
-        print(f"`{out_s}`")
-        print("-" * 80)
-    print("=" * 80)
 
     return pd.Series(data)
+
+def display_gen(df_gen):
+    for row in df_gen.itertuples(index=False):
+        print(f"**Question**\n`{row[0]}`\n")
+        print("-" * 80)
+        for i in range(1, len(row)):
+            print(f"**Adapter:`{df_gen.columns[i]}` generation**`")
+            print(f"`{row[i]}`")
+            print("-" * 80)
+        print("=" * 80)
