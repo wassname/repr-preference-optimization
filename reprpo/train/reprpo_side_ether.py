@@ -13,7 +13,7 @@ from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
 import itertools
 
-from ..layers.ether import ETHERLinear
+from ..layers.ether import ETHERLinear, ETHERLinearSmall, _ETHERConfig
 from .reprpo_hra import HRA
 from .reprpo_side import Sidein, Sideout, get_layer_paths, validate_layer_paths
 from .reprpo_side_hra import compute_reprpo_side_hra_loss_batch
@@ -31,18 +31,19 @@ class PL_REPRPO_SIDE_ETHER_MODEL(PL_MODEL):
         validate_layer_paths(self._model, self.hparams.layer_paths)
         self.hparams.collect_input = collect_input
 
-        # we do one learnable householder roation per layer
+        # we do one learnable householder rotation per layer
         if collect_input:
             hra_sizes = {p:get_module(self._model, p).in_features for p in self.hparams.layer_paths}
         else:
             hra_sizes = {p:get_module(self._model, p).out_features for p in self.hparams.layer_paths}
         self.transforms = torch.nn.ParameterDict({k: 
-                                                  ETHERLinear(
+                                                  ETHERLinearSmall(
                                                       dim_hs, dim_hs, 
                                                       nb=nb,
                                                       Htype=Htype,
                                                       ether_dropout=ether_dropout,
                                                       flip_side=flip_side,
+                                                      reduction=128, # 16k
                                                       ) for k,dim_hs in hra_sizes.items()})
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
         # TODO check dtype etc
@@ -58,46 +59,26 @@ class PL_REPRPO_SIDE_ETHER_MODEL(PL_MODEL):
         )
 
 
-@dataclass
-class ETHER:
-    """ETHER parameters"""
 
-    nb: int = 32
-    """number of diagonal blocks"""
-
-    Htype: Literal['ether', 'etherplus', 'oft', 'etherplusHH'] = 'etherplus'
-    """type of transformation 
-
-    ether: like HRA but allowing a negative unit vector (reflection)
-    etherplus: relaxing distance and orthogonality constraints
-    oft: Orthogonal Finetuning: https://arxiv.org/abs/2306.07280
-    HH: front and back transform
-    
-    see https://arxiv.org/pdf/2405.20271v1
-    """
-
-    ether_dropout: float = 0.0
-
-    flip_side: bool = False
-    """apply ETHER on the other (smaller) side to reduce computational overhead"""
-
-    lr: float = 1e-3
-
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'nb', 'Htype', 'ether_dropout', 'flip_side']
 
 
 @dataclass
-class SideinETHER(ETHER, Sidein):
+class SideinETHER(_ETHERConfig, Sidein):
     """Transform: ETHER. Target: activations from layer.out.input
     """
+    alpha: int = 0.001
 
     _reprpo_class = PL_REPRPO_SIDE_ETHER_MODEL
 
 
 @dataclass
-class SideoutETHER(ETHER, Sideout):
+class SideoutETHER(_ETHERConfig, Sideout):
     """Transform: ETHER. Target: activations from layer.in.output."""
 
+    alpha: int = 0.001
 
+    collect_input: bool = False
 
     _reprpo_class = PL_REPRPO_SIDE_ETHER_MODEL
+
+    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out', 'nb', 'Htype', 'ether_dropout', 'flip_side']

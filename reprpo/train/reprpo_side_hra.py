@@ -174,7 +174,7 @@ class SideinHRA(Sidein, HRA):
     """Transform: HRA. Target: activations from layer.out.input
     """
 
-    r: int = 8
+    r: int = 4
     """rank"""
 
     alpha: float = 0.001
@@ -190,7 +190,10 @@ class SideoutHRA(Sideout, HRA):
 
     alpha: float = 0.001
 
-    r: int = 8
+    r: int = 4
+
+    collect_input: bool = False
+    
     """rank"""
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL

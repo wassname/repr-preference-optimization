@@ -9,6 +9,7 @@ from .reprpo_side_hra import SideinHRA, SideoutHRA
 from .reprpo_ortho import Ortho
 from .reprpo_hra import HRA
 from .reprpo_side_ether import SideinETHER, SideoutETHER
+from .reprpo_ether import ETHER
 
 class Methods(enum.Enum):
     dpo = DPO
@@ -22,5 +23,6 @@ class Methods(enum.Enum):
     reprpo_hrank = HRA
     reprpo_side_ether = SideinETHER
     reprpo_sideout_ether = SideoutETHER
+    reprpo_ether = ETHER
 
 MethodsUnion = Union[tuple(e.value for e in Methods)]

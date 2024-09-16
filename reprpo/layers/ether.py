@@ -1,12 +1,13 @@
 """
 https://github.dev/mwbini/ether
 """
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, Literal, Callable
 
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import math
+from dataclasses import dataclass
 
 
 class ETHERLayer(nn.Module):
@@ -217,3 +218,54 @@ class ETHERLinear(ETHERLayer):
         H = torch.bmm(I + skew, torch.inverse(I - skew))
         return H
     
+
+class ETHERLinearSmall(ETHERLinear):
+    """To save params this projects onto a smaller space then back up."""
+    # ETHER implemented in a dense layer
+    def __init__(
+        self,
+        # ↓ this part is for pretrained weights
+        in_features: int,
+        out_features: int,
+        bias: bool = False,
+        reduction: int = 4,
+        # ↓ the remaining part is for ETHER
+        nb: int = 0,
+        Htype: str = 'ether',
+        ether_dropout: float = 0.0,
+        flip_side: bool = False,
+        **kwargs,
+    ):
+        super().__init__(in_features, out_features//reduction, bias, nb, Htype, ether_dropout, flip_side, **kwargs)
+        self.linear_up = torch.nn.Linear(out_features//reduction, out_features, bias=bias, **kwargs)
+
+    def forward(self, x: torch.Tensor):
+        super_out = super().forward(x)
+        return self.linear_up(super_out)
+
+@dataclass
+class _ETHERConfig:
+    """ETHER parameters"""
+
+    nb: int = 8
+    """number of diagonal blocks"""
+
+    Htype: Literal['ether', 'etherplus', 'oft', 'etherplusHH'] = 'etherplus'
+    """type of transformation 
+
+    - ether: like HRA but allowing a negative unit vector (reflection)
+    - etherplus: relaxing distance and orthogonality constraints
+    - oft: Orthogonal Finetuning: https://arxiv.org/abs/2306.07280
+    - HH: front and back transform
+    
+    see https://arxiv.org/pdf/2405.20271v1
+    """
+
+    ether_dropout: float = 0.0
+
+    flip_side: bool = False
+    """apply ETHER on the other (smaller) side to reduce computational overhead"""
+
+    lr: float = 1e-3
+
+    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'nb', 'Htype', 'ether_dropout', 'flip_side']

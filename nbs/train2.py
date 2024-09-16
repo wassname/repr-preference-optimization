@@ -72,16 +72,32 @@ from typing import Union
 
 # get a union class from the enum
 
+from datasets.utils.logging import disable_progress_bar
+import logging
+
+def silence():
+    # wandb logger is too verbose
+    logger = logging.getLogger("wandb")
+    logger.setLevel(logging.WARNING)
+    os.environ['WANDB_SILENT'] = 'true'
+
+    # datasets is too verbose
+    disable_progress_bar()
+    # from datasets.utils.logging import set_verbosity_error
+    # set_verbosity_error() 
 
 def train(training_args:MethodsUnion):
+    silence()
     torch.set_float32_matmul_precision("medium")
 
     PL_MODEL = training_args._reprpo_class
     model_kwargs = {k:getattr(training_args, k) for k in training_args._model_keys}
+    print('*'*80)
     print('PL_MODEL', PL_MODEL)
-    print('training_args')
-    print('model_kwargs', model_kwargs.keys())
-    pprint(training_args.__dict__)
+    if training_args.verbose:
+        print('training_args')
+        pprint(training_args.__dict__)
+        print('model_kwargs', model_kwargs.keys())
 
     ds_name_train = args.dataset.replace('genie_dpo-', '')
     model_name = training_args.base_model.split("/")[-1]
@@ -130,6 +146,8 @@ def train(training_args:MethodsUnion):
     print_trainable_parameters(model)
     if args.verbose:
         print(model)
+    
+
 
     # ## Load data
     dataset2 = load_dataset("wassname/genie_dpo", name=args.dataset)
@@ -197,14 +215,14 @@ def train(training_args:MethodsUnion):
     # - https://gist.github.com/wassname/e29d02b5026a531e13912cf768e6fdc8
 
     max_steps = training_args.n_samples // training_args.batch_size
-    print('max optimiser steps', max_steps)
 
     ideal_batch_size = max(16, training_args.batch_size) # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
     accumulate_grad_batches = np.ceil(ideal_batch_size/training_args.batch_size).astype(int)
-    print('accumulate_grad_batches', accumulate_grad_batches)
-    print('accumulated batch size', training_args.batch_size*accumulate_grad_batches)
-
-    print(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
+    if training_args.verbose:
+        print('max optimiser steps', max_steps)
+        print('accumulate_grad_batches', accumulate_grad_batches)
+        print('accumulated batch size', training_args.batch_size*accumulate_grad_batches)
+        print(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
 
     
     from lightning.pytorch.callbacks import LearningRateMonitor
@@ -263,6 +281,8 @@ def train(training_args:MethodsUnion):
             enable_checkpointing=False, 
 
             fast_dev_run=args.dev,
+
+            # show_progress_bar=False
         )
 
     # train
@@ -365,7 +385,7 @@ def train(training_args:MethodsUnion):
 
     
 
-    df_gen = get_model_generations(model, tokenizer, N=4)
+    df_gen = get_model_generations(model, tokenizer, N=2)
 
     # FIXME, only pass in adapter col, not q index or base
     df_gen_w = wandb.Table(dataframe=df_gen)
@@ -427,6 +447,9 @@ def train(training_args:MethodsUnion):
     # also just log final metrics to wandb so we can view a group
     run.log({f'res/rel_acc/{k}': v for k,v in df_final.iloc[0,:].to_dict().items()})
     run.log({f'res/acc/{k}': v for k,v in df_res2.iloc[0].to_dict().items()})
+
+
+    print(f"WANDB url = {wandb.run.get_url()}")
 
 
 
