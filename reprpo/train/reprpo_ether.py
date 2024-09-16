@@ -49,7 +49,11 @@ class ETHER(_ETHERConfig, TrainingArgumentswCollection):
     
     alpha: int = 0.001
 
+    Htype: str = 'etherplus'
+
     nb: int = 32
+
+    lr: float = 1e-3
 
     alpha: int = 0.0001
     """balancing retrain and reroute losses"""

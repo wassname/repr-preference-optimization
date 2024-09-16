@@ -43,7 +43,7 @@ class PL_REPRPO_SIDE_ETHER_MODEL(PL_MODEL):
                                                       Htype=Htype,
                                                       ether_dropout=ether_dropout,
                                                       flip_side=flip_side,
-                                                      reduction=128, # 16k
+                                                      reduction=512, # 16k/
                                                       ) for k,dim_hs in hra_sizes.items()})
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
         # TODO check dtype etc
@@ -68,6 +68,8 @@ class SideinETHER(_ETHERConfig, Sidein):
     """
     alpha: int = 0.001
 
+    batch_size: int = 12
+
     _reprpo_class = PL_REPRPO_SIDE_ETHER_MODEL
 
 
@@ -78,6 +80,8 @@ class SideoutETHER(_ETHERConfig, Sideout):
     alpha: int = 0.001
 
     collect_input: bool = False
+
+    batch_size: int = 12
 
     _reprpo_class = PL_REPRPO_SIDE_ETHER_MODEL
 

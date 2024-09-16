@@ -79,7 +79,7 @@ import warnings
 def silence():
     # wandb logger is too verbose
     logger = logging.getLogger("wandb")
-    logger.setLevel(logging.WARNING)
+    logger.setLevel(logging.ERROR)
     os.environ['WANDB_SILENT'] = 'true'
 
     # datasets is too verbose
@@ -89,10 +89,11 @@ def silence():
 
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    # # Silence all loggers with "transforms" in their name
-    # for name in logging.root.manager.loggerDict:
-    #     if "transforms" in name:
-    #         logging.getLogger(name).setLevel(logging.ERROR)
+    # Silence all loggers with "transforms" in their name
+    for name in logging.root.manager.loggerDict:
+        blocklist = ["transformers", "lightning"]
+        if any(blocked in name for blocked in blocklist):
+            logging.getLogger(name).setLevel(logging.ERROR)
 
     logging.basicConfig(level=logging.ERROR)
 
@@ -108,7 +109,7 @@ def train(training_args:MethodsUnion):
     print('PL_MODEL', PL_MODEL)
     if training_args.verbose:
         print('training_args')
-        pprint(training_args.__dict__)
+        pprint(training_args, compact=True)
         print('model_kwargs', model_kwargs.keys())
 
     ds_name_train = args.dataset.replace('genie_dpo-', '')
@@ -294,7 +295,7 @@ def train(training_args:MethodsUnion):
 
             fast_dev_run=args.dev,
             enable_progress_bar=training_args.verbose,
-            enable_model_summary=training_args.verbose,
+            # enable_model_summary=training_args.verbose,
             
         )
 
@@ -328,7 +329,7 @@ def train(training_args:MethodsUnion):
     ]
     datasets += dist2datasets(GENIES, N=N, source=[args.dataset]) # our hard OOS test
     # datasets += get_ethics_datasets(N=N)
-    datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['code_hard', #'truthful_qa',# 'wrong_arc', 'ranking_logic',
+    datasets += [load_dataset_n('wassname/genie_dpo', name=name, split='test', N=N) for name in ['math_make_questions', #'truthful_qa',# 'wrong_arc', 'ranking_logic',
     # 'math', 'sycophancy_mimicry'
     ]]
 
