@@ -1,6 +1,7 @@
 # not really needed as this is the default params
 base_model: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
 collection_layers: 
+  - 8
   - 10
   - 12
   - 14
