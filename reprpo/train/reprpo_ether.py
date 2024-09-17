@@ -53,7 +53,7 @@ class ETHER(_ETHERConfig, TrainingArgumentswCollection):
 
     nb: int = 32
 
-    lr: float = 1e-3
+    # lr: float = 1e-3
 
     alpha: int = 0.0001
     """balancing retrain and reroute losses"""

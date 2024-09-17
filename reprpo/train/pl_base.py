@@ -28,7 +28,7 @@ class TrainingArguments:
     lr: float = 3e-4
     weight_decay: float = 0.0
 
-    n_samples: int = 1800 * 1
+    n_samples: int = 1800 * 2
     max_length: int = 196
     max_prompt_length: int = 96
     base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"

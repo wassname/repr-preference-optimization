@@ -91,7 +91,7 @@ def silence():
 
     # Silence all loggers with "transforms" in their name
     for name in logging.root.manager.loggerDict:
-        blocklist = ["transformers", "lightning"]
+        blocklist = ["transformers", "lightning", "wandb"]
         if any(blocked in name for blocked in blocklist):
             logging.getLogger(name).setLevel(logging.ERROR)
 
@@ -107,10 +107,7 @@ def train(training_args:MethodsUnion):
     model_kwargs = {k:getattr(training_args, k) for k in training_args._model_keys}
     print('*'*80)
     print('PL_MODEL', PL_MODEL)
-    if training_args.verbose:
-        print('training_args')
-        pprint(training_args, compact=True)
-        print('model_kwargs', model_kwargs.keys())
+
 
     ds_name_train = args.dataset.replace('genie_dpo-', '')
     model_name = training_args.base_model.split("/")[-1]
@@ -123,14 +120,20 @@ def train(training_args:MethodsUnion):
     group_name=f'{ds_name_train}-{model_name}'
     if os.environ.get('WANDB_GROUP', None) is not None:
         group_name = os.environ.get('WANDB_GROUP') + '_' +group_name
-    print(f"Using WANDB_GROUP={group_name}")
-    print(f"Using finetune_name={finetune_name}")
+    if training_args.verbose:
+        print('training_args')
+        pprint(training_args, compact=True)
+        print('model_kwargs', model_kwargs.keys())
+
+        print(f"WANDB url = {wandb.run.get_url()}")
+        print(f"Using WANDB_GROUP={group_name}")
+        print(f"Using finetune_name={finetune_name}")
 
     run_fname = f'{adapter_name}/{ts}' # short for wandb
     wandb.require(experiment='service')
 
     config = training_args.__dict__
-    run = wandb.init(project=f'reprpo', name=run_fname, entity='wassname', group=group_name, config=config)
+    run = wandb.init(project=f'reprpo2', name=run_fname, entity='wassname', group=group_name, config=config)
 
 
     model, tokenizer = load_model(training_args.base_model, load_in_4bit=training_args.load_in_4bit,  load_in_8bit=training_args.load_in_8bit,  
@@ -339,7 +342,7 @@ def train(training_args:MethodsUnion):
                                 datasets=datasets,
                                     batch_size=args.batch_size,
                                     bf16=True,
-                                    torch_empty_cache_steps=100,)
+                                    torch_empty_cache_steps=100, verbose=training_args.verbose)
 
 
     
@@ -456,11 +459,11 @@ def train(training_args:MethodsUnion):
 
     relacc = df_final.iloc[0,:]
     eps = 1e-6
-    relrelacc = ((relacc+eps) / (relacc['train'] + eps)).drop('train')*100-100
+    relrelacc = ((relacc+eps) / (relacc['train'] + eps)).drop('train')
     df_relrel = relrelacc.to_frame(f'{adapter_name}').T
-    df_relrel.index.name = 'acc_inc/acc_inc_train [pp]'
+    df_relrel.index.name = 'acc_inc/acc_inc_train'
     print(df_relrel.round(3).to_markdown())
-    print(f"""Table 4: Percent accuracy increase (over base) compared to that of the training dataset `{ds_alias['train']}` [in percentage points]. It measures what fraction of the learning from train generalised to other splits""")
+    print(f"""Table 4: Percent accuracy increase (over base) compared to that of the training dataset `{ds_alias['train']}` [in percentage points]. It measures what fraction of the learning from train generalised to other splits\n""")
 
     run.log({f'res/relrel_acc/{k}': v for k,v in relrelacc.to_dict().items()})
     # also just log final metrics to wandb so we can view a group
@@ -468,7 +471,7 @@ def train(training_args:MethodsUnion):
     run.log({f'res/acc/{k}': v for k,v in df_res2.iloc[0].to_dict().items()})
 
 
-    print(f"WANDB url = {wandb.run.get_url()}")
+    
 
 
 

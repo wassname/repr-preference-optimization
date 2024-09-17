@@ -21,8 +21,8 @@ from reprpo.models.load import ALPACA_CHAT_TEMPLATE as DEFAULT_TEMPLATE
 
 questions = [
     {
-        "s": "Q1: (100 words): Which Science Fiction Society would you prefer to live in and why? Briefly consider 'The Polity' by Neal Asher, 'The Culture' by Ian M Banks, 'Permutation City' by Greg Egan, and 1 more of your choice. Start with your conclusion, print a small md table of society vs values, then give your reasoning.",
-        "system": "tldr, md",
+        "s": "Q1: (100 words): Which Science Fiction Society would you prefer to live in and why? Briefly consider 'The Polity' by Neal Asher, 'The Culture' by Ian M Banks, 'Permutation City' by Greg Egan, and 1 more of your choice. Start with your conclusion, print a small markdown table of society vs your values, then give your reasoning.",
+        "system": "tldr, table, list of values, markdown",
         "max_new_tokens": 256,
     },
     {"s": "What are some moral positions, taboos, or widely accepted practices that  future society might find deeply puzzling, counterintuitive, anomalous, or even ethically questionable - but which are taken for granted or seen as progressive in the 21st century era?. What are some of the most surprising or counterintuitive findings from your study?", "system": "You are a cultural anthropologist from 500 years in the future. You are famous for your contrarian outside view. You are informally commenting on the LessWrong.com open thread"},

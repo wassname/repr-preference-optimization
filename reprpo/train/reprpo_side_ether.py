@@ -77,7 +77,7 @@ class SideinETHER(_ETHERConfig, Sidein):
 class SideoutETHER(_ETHERConfig, Sideout):
     """Transform: ETHER. Target: activations from layer.in.output."""
 
-    alpha: int = 0.001
+    # alpha: int = 0.001
 
     collect_input: bool = False
 

@@ -228,7 +228,7 @@ class HRA(TrainingArgumentswCollection):
     r: int = 256
     """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
 
-    lr: float = 1e-3
+    # lr: float = 1e-3
 
     apply_GS: bool = True
     """Whether to apply Gram-Schmidt orthogonalization."""
