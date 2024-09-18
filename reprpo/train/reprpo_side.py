@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
 import itertools
-from reprpo.train.reprpo_hra import dist_ratio, norm_mean
+from reprpo.train.reprpo_hra import dist_ratio
 
 
 
@@ -75,14 +75,14 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
 def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-12) -> Float[Tensor, "b l"]:
 
     dist = mean_with_attention(a-b, attn)  # reduces over tokens
-    dist = norm_mean(dist, dim=-1) # over h
+    dist = torch.norm(dist, dim=-1) # over h
     dist = dist + eps
     log_dist_ratio = torch.log(dist)
 
     # if provided with reference points, return the distance as a ratio to the reference distance
     if (a_ref is not None) and (b_ref is not None) and (attn_ref is not None):
         dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
-        dist_ref = norm_mean(dist_ref, dim=-1)
+        dist_ref = torch.norm(dist_ref, dim=-1)
         dist_ref = dist_ref + eps
 
     # get the ratio in log space to avoid div by zero

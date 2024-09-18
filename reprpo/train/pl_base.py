@@ -28,7 +28,7 @@ class TrainingArguments:
     lr: float = 3e-4
     weight_decay: float = 0.0
 
-    n_samples: int = 1800 * 2
+    n_samples: int = 1800 * 1
     max_length: int = 196
     max_prompt_length: int = 96
     base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
@@ -132,7 +132,7 @@ class PL_MODEL(pl.LightningModule):
         return [optimizer], [lr_scheduler]
 
 
-from reprpo.gen import get_model_generations
+from reprpo.gen import get_model_generations, display_gen
 from lightning.pytorch.callbacks import Callback
 
 
@@ -143,7 +143,9 @@ class GenCallback(Callback):
         self.every = every
 
     def do_gen(self, model):
-        get_model_generations(model, model.tokenizer, max_new_tokens=32, N=1)
+        df_gen = get_model_generations(model, model.tokenizer, max_new_tokens=32, N=1)
+        display_gen(df_gen)
+
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         n = batch_idx + 1

@@ -2615,9 +2615,12 @@ rying a few changes
 |:------------------|------:|------:|-------:|--------:|
 | DPO               |  4.43 | -2.381|  0.405 |   1.237 |
 | HRA squared       | 3.797 | -4.932|  0.946 |   0.169 |
-| HRA abs trans(ref)| 8.543 | -0.14 |  0.809 |   0.789 |
 | HRA abs no_rel_l  | 8.208 | 0.279 |  0.809 |   0.732 |
-| HRA torch.norm    |
+| HRA abs trans(ref)| 8.543 | -0.14 |  0.809 |   0.789 |
+| HRA torch.norm    |  9.38 | -0.14 |  0.809 |   0.789 |
+
+
+huh using torch norm seems as good if not better... ok. it's simpler
 
 well the new one with abs seems a lot better
 
@@ -2646,6 +2649,9 @@ hat about cosine, this already measures distance as a ratio?
 
 so ideas cosine:
 and kl(softmax(log_softmax. But it we take the log softmax like so...
+
+`log(pi_rej) - log(ref_cho) - log(rej) - log(ref_cho)`
+`log(softmax(_hs_)) - log(softmax(_hs_)) - log(softmax(hs)) - log(softmax(hs))`
 `log_softmax(pi_rej) - log_softmax(ref_cho) - log_softmax(ref_rej) - log_softmax(ref_cho)` 
 `log_softmax(pi_rej/ref_rej) - log_softmax(ref_cho/ref_cho)` 
 `log_softmax(pi_rej/ref_rej) - log_softmax(1)`
@@ -2656,3 +2662,7 @@ But this is because I don't want to increase coo, just bring pi close to cho but
 hs of cho, and decrease hs of ref
 
 `log_softmax(pi_cho/ref_cho)-log_softmax(pi_rej/ref_rej)` and maybe this will work? Maybe we want a margin though? or will softmax do it for us...  
+
+```
+hrakl --verbose --batch-size 48 --lr=1e-4
+```

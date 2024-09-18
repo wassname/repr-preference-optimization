@@ -13,7 +13,7 @@ from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
 from reprpo.helpers.svd_decomposer import SoftSVDDecomposer, DualSVDDecomposer, SVDDecomposer
-from reprpo.train.reprpo_hra import reprpo_forward, norm_mean, dist_ratio
+from reprpo.train.reprpo_hra import reprpo_forward, dist_ratio
 
 def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomposer):
 
@@ -103,9 +103,9 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
         # Lets monitor the comparitive norms of the decomposed parts
-        hs = norm_mean(ref_cho.hs)
-        hs_r = norm_mean(res_det(ref_cho.hs))
-        hs_io = norm_mean(decomposer(ref_cho.hs))
+        hs = torch.norm(ref_cho.hs)
+        hs_r = torch.norm(res_det(ref_cho.hs))
+        hs_io = torch.norm(decomposer(ref_cho.hs))
         info['hs_r/hs'] = (hs_r / hs).mean()
         info['hs_io/hs'] = (hs_io / hs).mean()
         info['hs_r/hs_io'] = (hs_r / hs_io).mean()

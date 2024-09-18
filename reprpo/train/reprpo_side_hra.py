@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import itertools
 
 from ..layers.hra import HRATransform
-from .reprpo_hra import HRA, norm_mean
+from .reprpo_hra import HRA
 from .reprpo_side import Sidein, Sideout, get_layer_paths, validate_layer_paths, detach_hsd, reprpo_forward_baukit, dist_ratio_dict
 
 
@@ -117,7 +117,7 @@ def compute_reprpo_side_hra_loss_batch(
 
         # Lets monitor the comparitive norms of the decomposed parts
         def norm_hsd(hs):
-            return {k: norm_mean(v) for k, v in hs.items()}
+            return {k: torch.norm(v) for k, v in hs.items()}
         hs = norm_hsd(ref_cho.hs)
         hs_t = norm_hsd(res_det(ref_cho.hs))
         # hs_resid = norm_hsd(ref_cho.hs - res_det(ref_cho.hs))
@@ -126,7 +126,7 @@ def compute_reprpo_side_hra_loss_batch(
         # info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
 
         # also the norm of the weights of the transformation
-        info['transform_norm'] = torch.concat([norm_mean(p) for p in transforms.parameters()]).mean()
+        info['transform_norm'] = torch.concat([torch.norm(p) for p in transforms.parameters()]).mean()
 
         info = dict(
             loss_reroute=loss_reroute.mean(),

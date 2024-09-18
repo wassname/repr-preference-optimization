@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
-from reprpo.train.reprpo_hra import reprpo_forward, norm_mean, dist_ratio
+from reprpo.train.reprpo_hra import reprpo_forward, dist_ratio
 
 def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers):
 
@@ -80,7 +80,7 @@ def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers):
     ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
     nll_loss_ratio = nll_loss / ref_nll_loss
     
-    loss = (loss_reroute + loss_retain * alpha).nanmean()
+    loss = (loss_reroute.mean() + loss_retain * alpha).nanmean()
 
     # get the dpo metrics for comparison
     _, info = compute_dpo_loss(

@@ -273,11 +273,11 @@ def train(training_args:MethodsUnion):
                 # checkpoint_callback
             ]
     if args.verbose:
-        callbacks+=[GenCallback(every=max_steps//2)]
+        callbacks+=[GenCallback(every=max_steps//5+1)]
 
     trainer = pl.Trainer(
             max_steps=max_steps,
-            limit_val_batches=10,
+            limit_val_batches=6,
             gradient_clip_val=0.3,
 
             # accelerator='gpu',
@@ -404,8 +404,8 @@ def train(training_args:MethodsUnion):
         return df_metrics
 
     
-    df_gen = get_model_generations(model, tokenizer, N=2)
-    display_gen(df_gen.head(1))
+    df_gen = get_model_generations(model, tokenizer, N=3)
+    display_gen(df_gen.head(2))
 
     # FIXME, only pass in adapter col, not q index or base
     df_gen_w = wandb.Table(dataframe=df_gen)

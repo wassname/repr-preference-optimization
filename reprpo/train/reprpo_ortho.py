@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
-from reprpo.train.reprpo_hra import reprpo_forward, norm_mean, dist_ratio
+from reprpo.train.reprpo_hra import reprpo_forward, dist_ratio
 
 
 def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, transform):
@@ -104,15 +104,15 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, trans
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
         # Lets monitor the comparitive norms of the decomposed parts
-        hs = norm_mean(ref_cho.hs)
-        hs_t = norm_mean(res_det(ref_cho.hs))
-        hs_resid = norm_mean(ref_cho.hs - res_det(ref_cho.hs))
+        hs = torch.norm(ref_cho.hs)
+        hs_t = torch.norm(res_det(ref_cho.hs))
+        hs_resid = torch.norm(ref_cho.hs - res_det(ref_cho.hs))
         info['hs_t/hs'] = (hs_t / hs).mean()
         info['hs_resid/hs'] = (hs_resid / hs).mean()
         info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
 
         # also the norm of the weights of the transformation
-        info['transform_norm'] = norm_mean(transform.weight).mean()
+        info['transform_norm'] = torch.norm(transform.weight).mean()
 
 
         info = dict(

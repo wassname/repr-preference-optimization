@@ -33,9 +33,30 @@
             "program": "${workspaceFolder}/nbs/train2.py",
             "console": "integratedTerminal",
             "args": [
-                "sidein-ether",
+                "hra",
                 "--dev", 
                 "--verbose",
+            ]
+        },
+        {
+            "name": "scratch",
+            "type": "debugpy",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0", 
+            "TOKENIZERS_PARALLELISM": "false",
+            //  "REPR_CONFIG": "./configs/dev.yaml", 
+             "REPR_CONFIG": "./configs/llama3_7b.yaml", 
+            //  "WANDB_MODE": "offline"
+            },
+            "pythonArgs": ["-Xfrozen_modules=off"],
+            "request": "launch",
+            "program": "${workspaceFolder}/nbs/train2.py",
+            "console": "integratedTerminal",
+            "args": [
+                "hrakl",
+                "--verbose",
+                // "--batch-size=88", 
+                "--lr=1e-4"
             ]
         }
     ]

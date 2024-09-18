@@ -53,12 +53,12 @@ def mean_with_attention(
     layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
     return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
 
-def norm_mean(a, dim=-1, ord=2):
-    # so normal torch norm is $||a||_2 = \sqrt{\sum_i a_i^2}$
-    # we    want to do $||a||_2 = \sqrt{\mean_i a_i^2}$
-    # we don't want to sum over hs, because layers have varying hs sizes
-    # return torch.pow(torch.abs(a), ord).mean(dim)#.pow(1./ord)
-    return torch.norm(a, p=ord, dim=dim)
+# def norm_mean(a, dim=-1, ord=2):
+#     # so normal torch norm is $||a||_2 = \sqrt{\sum_i a_i^2}$
+#     # we    want to do $||a||_2 = \sqrt{\mean_i a_i^2}$
+#     # we don't want to sum over hs, because layers have varying hs sizes
+#     # return torch.pow(torch.abs(a), ord).mean(dim)#.pow(1./ord)
+#     return torch.norm(a, p=ord, dim=dim)
 
 def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16, alpha = 1) -> Float[Tensor, "b"]:
     """Compute the distance ratio between two sets of hidden states, weighted by attention masks.
@@ -69,14 +69,14 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16, alpha = 1) -> Floa
 
 
     dist = mean_with_attention(a-b, attn)  # reduces over tokens
-    dist = norm_mean(dist, dim=-1)
+    dist = torch.norm(dist, dim=-1)
     dist = dist + eps
     log_dist_ratio = torch.log(dist)
 
     # if provided with reference points, return the distance as a ratio to the reference distance
     if (a_ref is not None) and (b_ref is not None) and (attn_ref is not None):
         dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
-        dist_ref = norm_mean(dist_ref, dim=-1)
+        dist_ref = torch.norm(dist_ref, dim=-1)
         dist_ref = dist_ref + eps # mean of 1e-5, very small
         log_dist_ratio -= torch.log(dist_ref).detach()
     
@@ -175,15 +175,15 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
         # Lets monitor the comparitive norms of the decomposed parts
-        hs = norm_mean(ref_cho.hs)
-        hs_t = norm_mean(res_det(ref_cho.hs))
-        hs_resid = norm_mean(ref_cho.hs - res_det(ref_cho.hs))
+        hs = torch.norm(ref_cho.hs)
+        hs_t = torch.norm(res_det(ref_cho.hs))
+        hs_resid = torch.norm(ref_cho.hs - res_det(ref_cho.hs))
         info['hs_t/hs'] = (hs_t / hs).mean()
         info['hs_resid/hs'] = (hs_resid / hs).mean()
         info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
 
         # also the norm of the weights of the transformation
-        info['transform_norm'] = torch.concat([norm_mean(p) for p in transform.parameters()]).mean()
+        info['transform_norm'] = sum([torch.norm(p).mena() for p in transform.parameters()])
 
 
         info = dict(
