@@ -14,76 +14,7 @@ from types import SimpleNamespace
 from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
-
-
-
-
-
-def collect_hs(hs):
-    """The residual stream or hs of the diff of the hs."""
-    hs = rearrange(list(hs), "l b t h -> l b t h")
-    return rearrange(hs, "l b t h -> b l t h")
-
-def reprpo_forward(model, input_ids, attn_mask, collection_layers):
-    outs = model(
-        input_ids,
-        attention_mask=attn_mask,
-        use_cache=False,
-        return_dict=True,
-        output_hidden_states=True,
-    )
-    hs = collect_hs(outs.hidden_states)[:, collection_layers]
-
-    logprobs = compute_logprobs(
-        logits=outs.logits, labels=input_ids, selection_mask=attn_mask
-    )
-
-    return SimpleNamespace(hs=hs, logprobs=logprobs, logits=outs.logits)
-
-def mult_with_attention(
-    x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
-) -> Float[Tensor, "b l t h"]:
-    """x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
-    return (x * layer_attn_mask) / layer_attn_mask.sum(dim, keepdim=True)
-
-def mean_with_attention(
-    x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
-) -> Float[Tensor, "b l h"]:
-    """x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
-    return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
-
-def norm(a, dim=-1):
-    # return torch.abs(a).mean(dim)
-    return torch.pow(a, 2).mean(dim)
-
-def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16) -> Float[Tensor, "b l"]:
-
-
-    dist = mean_with_attention(a-b, attn)  # reduces over tokens
-    # dist = reduce(dist, "b l t h -> b l h", torch.nanmean)
-    # dist = torch.norm_except_dim(dist, pow=1, dim=-1)
-    dist = norm(dist, dim=-1)
-    # dist = torch.norm(dist, p=2, dim=-1)
-    dist = dist + eps
-
-    dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
-    # dist_ref = reduce(dist_ref, "b l t h -> b l h", torch.nanmean)
-    # dist_ref = torch.norm_except_dim(dist_ref, pow=1, dim=-1) + eps
-    dist_ref = norm(dist_ref, dim=-1)
-    # dist_ref = torch.norm(dist_ref, p=2, dim=-1)
-    assert torch.isfinite(dist_ref).all()
-    dist_ref = dist_ref + eps # mean of 1e-5, very small
-
-    # get the ratio in log space to avoid div by zero
-    # NOTE: for retain dist start at zero
-    # log_dist_ratio = dist / (dist_ref+ eps)
-    log_dist_ratio = torch.log(dist) - torch.log(dist_ref).detach()
-    assert torch.isfinite(log_dist_ratio).all()
-
-    alpha = 1
-    return log_dist_ratio.nanmean(-1) * alpha
+from reprpo.train.reprpo_hra import reprpo_forward, norm_mean, dist_ratio
 
 
 def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, transform):
@@ -173,15 +104,15 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, trans
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
         # Lets monitor the comparitive norms of the decomposed parts
-        hs = norm(ref_cho.hs)
-        hs_t = norm(res_det(ref_cho.hs))
-        hs_resid = norm(ref_cho.hs - res_det(ref_cho.hs))
+        hs = norm_mean(ref_cho.hs)
+        hs_t = norm_mean(res_det(ref_cho.hs))
+        hs_resid = norm_mean(ref_cho.hs - res_det(ref_cho.hs))
         info['hs_t/hs'] = (hs_t / hs).mean()
         info['hs_resid/hs'] = (hs_resid / hs).mean()
         info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
 
         # also the norm of the weights of the transformation
-        info['transform_norm'] = norm(transform.weight).mean()
+        info['transform_norm'] = norm_mean(transform.weight).mean()
 
 
         info = dict(

@@ -14,27 +14,27 @@ from dataclasses import dataclass
 import itertools
 
 from ..layers.hra import HRATransform
-from .reprpo_hra import HRA, norm
-from .reprpo_side import Sidein, Sideout, get_layer_paths, validate_layer_paths, detach_hsd, reprpo_forward, dist_ratio
+from .reprpo_hra import HRA, norm_mean
+from .reprpo_side import Sidein, Sideout, get_layer_paths, validate_layer_paths, detach_hsd, reprpo_forward_baukit, dist_ratio_dict
 
 
 
 def compute_reprpo_side_hra_loss_batch(
-    batch, model, layer_paths, alpha, collect_input, transforms
+    batch, model, layer_paths, alpha, collect_input, transforms, rel_loss=True
 ):
     """Compute the DPO loss on an input batch"""
 
     model.eval()
     with torch.no_grad():
         with model.disable_adapter():
-            ref_cho = reprpo_forward(
+            ref_cho = reprpo_forward_baukit(
                 model=model,
                 input_ids=batch["chosen"],
                 attn_mask=batch["chosen_mask"],
                 layer_paths=layer_paths,
                 collect_input=collect_input,
             )
-            ref_rej = reprpo_forward(
+            ref_rej = reprpo_forward_baukit(
                 model=model,
                 input_ids=batch["rejected"],
                 attn_mask=batch["rejected_mask"],
@@ -43,14 +43,14 @@ def compute_reprpo_side_hra_loss_batch(
             )
 
     model.train()
-    pi_cho = reprpo_forward(
+    pi_cho = reprpo_forward_baukit(
         model=model,
         input_ids=batch["chosen"],
         attn_mask=batch["chosen_mask"],
         layer_paths=layer_paths,
         collect_input=collect_input,
     )
-    pi_rej = reprpo_forward(
+    pi_rej = reprpo_forward_baukit(
         model=model,
         input_ids=batch["rejected"],
         attn_mask=batch["rejected_mask"],
@@ -62,30 +62,31 @@ def compute_reprpo_side_hra_loss_batch(
 
     comb_attn_mask = cho_attn_mask * rej_attn_mask
 
-    # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
-    # and again we scale it using the reference model as a stable target
-    loss_retain = dist_ratio(
-        detach_hsd(ref_cho.hs),
-        pi_cho.hs,
-        comb_attn_mask,
-        ref_cho.hs,
-        ref_rej.hs,
-        comb_attn_mask,
-    )
-
     def res_det(hs):
         """use learnable transformation to get the residual part of the hs"""
         return {k: transforms[k](v) for k, v in hs.items()}
 
+    
+    # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
+    # and again we scale it using the reference model as a stable target
+    loss_retain = dist_ratio_dict(
+        detach_hsd(ref_cho.hs),
+        pi_cho.hs,
+        comb_attn_mask,
+        ref_cho.hs if rel_loss else None,
+        ref_rej.hs if rel_loss else None,
+        comb_attn_mask if rel_loss else None,
+    )
+
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
-    loss_reroute = dist_ratio(
+    loss_reroute = dist_ratio_dict(
         res_det(detach_hsd(ref_cho.hs)),
         res_det(pi_rej.hs),
         comb_attn_mask,
-        ref_cho.hs,
-        ref_rej.hs,
-        comb_attn_mask,
+        ref_cho.hs if rel_loss else None,
+        ref_rej.hs if rel_loss else None,
+        comb_attn_mask if rel_loss else None,
     )
 
 
@@ -116,7 +117,7 @@ def compute_reprpo_side_hra_loss_batch(
 
         # Lets monitor the comparitive norms of the decomposed parts
         def norm_hsd(hs):
-            return {k: norm(v) for k, v in hs.items()}
+            return {k: norm_mean(v) for k, v in hs.items()}
         hs = norm_hsd(ref_cho.hs)
         hs_t = norm_hsd(res_det(ref_cho.hs))
         # hs_resid = norm_hsd(ref_cho.hs - res_det(ref_cho.hs))
@@ -125,7 +126,7 @@ def compute_reprpo_side_hra_loss_batch(
         # info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
 
         # also the norm of the weights of the transformation
-        info['transform_norm'] = torch.concat([norm(p) for p in transforms.parameters()]).mean()
+        info['transform_norm'] = torch.concat([norm_mean(p) for p in transforms.parameters()]).mean()
 
         info = dict(
             loss_reroute=loss_reroute.mean(),
@@ -141,7 +142,7 @@ def compute_reprpo_side_hra_loss_batch(
 
 
 class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers, r, apply_GS, collect_input, collection_keys_in: list=None, collection_keys_out: list=None, **kwargs):
+    def __init__(self, *args, alpha, collection_layers, r, apply_GS, collect_input, collection_keys_in: list=None, collection_keys_out: list=None, rel_loss=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         collection_keys = collection_keys_in if collect_input else collection_keys_out
@@ -165,7 +166,8 @@ class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
             self.hparams.layer_paths,
             self.hparams.alpha,
             collect_input=self.hparams.collect_input,
-            transforms=self.transforms
+            transforms=self.transforms,
+            rel_loss=self.hparams.rel_loss,
         )
 
 
@@ -181,7 +183,7 @@ class SideinHRA(Sidein, HRA):
     """weights retrain and reroute losses"""
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'r', 'apply_GS']
+    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'r', 'apply_GS', 'rel_loss']
 
 
 @dataclass
@@ -197,4 +199,4 @@ class SideoutHRA(Sideout, HRA):
     """rank"""
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out', 'r', 'apply_GS']
+    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out', 'r', 'apply_GS', 'rel_loss']

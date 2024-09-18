@@ -39,12 +39,12 @@ def reprpo_forward(model, input_ids, attn_mask, collection_layers):
 
     return SimpleNamespace(hs=hs, logprobs=logprobs, logits=outs.logits)
 
-def mult_with_attention(
-    x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
-) -> Float[Tensor, "b l t h"]:
-    """x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
-    return (x * layer_attn_mask) / layer_attn_mask.sum(dim, keepdim=True)
+# def mult_with_attention(
+#     x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
+# ) -> Float[Tensor, "b l t h"]:
+#     """x, weighted by the attention mask, over dim (token or batch)"""
+#     layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
+#     return (x * layer_attn_mask) / layer_attn_mask.sum(dim, keepdim=True)
 
 def mean_with_attention(
     x: Float[Tensor, "b l t h"], attn_mask: Float[Tensor, "b t"], dim: int = 2
@@ -53,39 +53,38 @@ def mean_with_attention(
     layer_attn_mask = repeat(attn_mask, "b t -> b l t h", l=x.shape[1], h=1).detach()
     return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
 
-def norm(a, dim=-1):
-    # return torch.abs(a).mean(dim)
-    return torch.pow(a, 2).mean(dim)
+def norm_mean(a, dim=-1, ord=2):
+    # so normal torch norm is $||a||_2 = \sqrt{\sum_i a_i^2}$
+    # we    want to do $||a||_2 = \sqrt{\mean_i a_i^2}$
+    # we don't want to sum over hs, because layers have varying hs sizes
+    # return torch.pow(torch.abs(a), ord).mean(dim)#.pow(1./ord)
+    return torch.norm(a, p=ord, dim=dim)
 
-def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16) -> Float[Tensor, "b l"]:
+def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16, alpha = 1) -> Float[Tensor, "b"]:
+    """Compute the distance ratio between two sets of hidden states, weighted by attention masks.
+    
+    log_dist_ratio = log(||a-b|| / ||a_ref - b_ref||)
+    log_dist_ratio = log(||a-b||) - log(||a_ref - b_ref||))
+    """
 
 
     dist = mean_with_attention(a-b, attn)  # reduces over tokens
-    # dist = reduce(dist, "b l t h -> b l h", torch.nanmean)
-    # dist = torch.norm_except_dim(dist, pow=1, dim=-1)
-    dist = norm(dist, dim=-1)
-    # dist = torch.norm(dist, p=2, dim=-1)
+    dist = norm_mean(dist, dim=-1)
     dist = dist + eps
+    log_dist_ratio = torch.log(dist)
 
-    dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
-    # dist_ref = reduce(dist_ref, "b l t h -> b l h", torch.nanmean)
-    # dist_ref = torch.norm_except_dim(dist_ref, pow=1, dim=-1) + eps
-    dist_ref = norm(dist_ref, dim=-1)
-    # dist_ref = torch.norm(dist_ref, p=2, dim=-1)
-    assert torch.isfinite(dist_ref).all()
-    dist_ref = dist_ref + eps # mean of 1e-5, very small
-
-    # get the ratio in log space to avoid div by zero
-    # NOTE: for retain dist start at zero
-    # log_dist_ratio = dist / (dist_ref+ eps)
-    log_dist_ratio = torch.log(dist) - torch.log(dist_ref).detach()
-    assert torch.isfinite(log_dist_ratio).all()
-
-    alpha = 1
+    # if provided with reference points, return the distance as a ratio to the reference distance
+    if (a_ref is not None) and (b_ref is not None) and (attn_ref is not None):
+        dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
+        dist_ref = norm_mean(dist_ref, dim=-1)
+        dist_ref = dist_ref + eps # mean of 1e-5, very small
+        log_dist_ratio -= torch.log(dist_ref).detach()
+    
+    assert torch.isfinite(log_dist_ratio).all()    
     return log_dist_ratio.nanmean(-1) * alpha
 
 
-def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transform):
+def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transform, rel_loss=True):
 
     model.eval()
     with torch.no_grad():
@@ -119,8 +118,12 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
     assert torch.isfinite(pi_rej.hs).all()
     cho_attn_mask = batch["chosen_mask"]
     rej_attn_mask = batch["rejected_mask"]
-
     comb_attn_mask = cho_attn_mask * rej_attn_mask
+
+    def res_det(hs):
+        """use learnable transformation to get the residual part of the hs"""
+        return transform(hs)
+
     # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
     # and again we scale it using the reference model as a stable target
     # so should start at a -ve and go to 0 (as we optimize rr, not this)
@@ -128,14 +131,11 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
         ref_cho.hs.detach(),
         pi_cho.hs,
         comb_attn_mask,
-        ref_cho.hs,
+        ref_cho.hs if rel_loss else None,
         ref_rej.hs,
         comb_attn_mask,
     ) 
 
-    def res_det(hs):
-        """use learnable transformation to get the residual part of the hs"""
-        return transform(hs)
 
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
@@ -145,8 +145,11 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
         res_det(ref_cho.hs).detach(),
         res_det(pi_rej.hs),
         comb_attn_mask,
-        (ref_cho.hs),
-        (ref_rej.hs),
+        # TODO what if we apply the transformation to the reference hs?
+        # If we don't, we incentivize the model to learn a transformation with a small magnitude, and one where the distance can be reduced
+        # if we do, we incentivize the model to learn an ortho transform that can be reduced
+        res_det(ref_cho.hs) if rel_loss else None,
+        res_det(ref_rej.hs),
         comb_attn_mask,
     )
 
@@ -172,15 +175,15 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
         # Lets monitor the comparitive norms of the decomposed parts
-        hs = norm(ref_cho.hs)
-        hs_t = norm(res_det(ref_cho.hs))
-        hs_resid = norm(ref_cho.hs - res_det(ref_cho.hs))
+        hs = norm_mean(ref_cho.hs)
+        hs_t = norm_mean(res_det(ref_cho.hs))
+        hs_resid = norm_mean(ref_cho.hs - res_det(ref_cho.hs))
         info['hs_t/hs'] = (hs_t / hs).mean()
         info['hs_resid/hs'] = (hs_resid / hs).mean()
         info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
 
         # also the norm of the weights of the transformation
-        info['transform_norm'] = torch.concat([norm(p) for p in transform.parameters()]).mean()
+        info['transform_norm'] = torch.concat([norm_mean(p) for p in transform.parameters()]).mean()
 
 
         info = dict(
@@ -195,7 +198,7 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
     return loss, info
 
 class PL_REPRPO_HRA_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers, r, apply_GS, **kwargs):
+    def __init__(self, *args, alpha, collection_layers, r, apply_GS, rel_loss=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
@@ -209,7 +212,8 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
             model,
             self.hparams.alpha,
             self.hparams.collection_layers,
-            self.transform
+            self.transform,
+            rel_loss=self.hparams.rel_loss
         )
 
 
@@ -233,5 +237,7 @@ class HRA(TrainingArgumentswCollection):
     apply_GS: bool = True
     """Whether to apply Gram-Schmidt orthogonalization."""
 
+    rel_loss: bool = True
+
     _reprpo_class = PL_REPRPO_HRA_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'r', 'apply_GS' ]
+    _model_keys = ['alpha', 'collection_layers', 'r', 'apply_GS', 'rel_loss' ]

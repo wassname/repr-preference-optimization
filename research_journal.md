@@ -2599,3 +2599,60 @@ I would like to try some with all llama layers
 
 hm
  yes using all layers especially iinal layers seems to lelp ether change the styel
+
+# 2024-09-17 13:55:52
+
+T
+rying a few changes
+
+- noirel loss, runing https://wandb.ai/wassname/reprpo2/runs/1swp9iv6
+- next the change I made with  res_det(ref_rej.hs) inside the distance
+- oh also I made norm abs, not sq.... norm lets see if these make it better more stable etc
+- yes
+
+
+| acc_inc/eval_ds   |   oos |   rnd |   test |   train |
+|:------------------|------:|------:|-------:|--------:|
+| DPO               |  4.43 | -2.381|  0.405 |   1.237 |
+| HRA squared       | 3.797 | -4.932|  0.946 |   0.169 |
+| HRA abs trans(ref)| 8.543 | -0.14 |  0.809 |   0.789 |
+| HRA abs no_rel_l  | 8.208 | 0.279 |  0.809 |   0.732 |
+| HRA torch.norm    |
+
+well the new one with abs seems a lot better
+
+
+# losses
+
+I want rej to be close to cho, but also pi_chi to stay close to cho. So I can think of it like two mse's
+
+`log(|pi_rej - ref_cho|) - log(|ref_rej - ref_cho|) `
+
+Could I think of it as a prob ratio instead? Yes either cosine between hs, or kl div between hs and chi.
+
+but K is similar `log(pi_rej) - log(ref_cho) - log(rej) - log(ref_cho)` but it wont work as we have negative values, pi_ref are not probs
+
+
+we could do (ratio-1)^2
+
+but hs are not prob dists? so we would hae to take exp, or softmax
+
+
+cosine embedding loss
+
+w
+hat about cosine, this already measures distance as a ratio?
+
+
+so ideas cosine:
+and kl(softmax(log_softmax. But it we take the log softmax like so...
+`log_softmax(pi_rej) - log_softmax(ref_cho) - log_softmax(ref_rej) - log_softmax(ref_cho)` 
+`log_softmax(pi_rej/ref_rej) - log_softmax(ref_cho/ref_cho)` 
+`log_softmax(pi_rej/ref_rej) - log_softmax(1)`
+`log_softmax(pi_rej/ref_rej) - 0`
+`log_softmax(pi_rej/ref_rej)`
+
+But this is because I don't want to increase coo, just bring pi close to cho but what if I increase
+hs of cho, and decrease hs of ref
+
+`log_softmax(pi_cho/ref_cho)-log_softmax(pi_rej/ref_rej)` and maybe this will work? Maybe we want a margin though? or will softmax do it for us...  

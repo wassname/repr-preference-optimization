@@ -97,6 +97,8 @@ def silence():
 
     logging.basicConfig(level=logging.ERROR)
 
+    # os.environ["TQDM_DISABLE"] = "1"
+
 
 def train(training_args:MethodsUnion):
     if not training_args.verbose:
@@ -125,7 +127,8 @@ def train(training_args:MethodsUnion):
         pprint(training_args, compact=True)
         print('model_kwargs', model_kwargs.keys())
 
-        print(f"WANDB url = {wandb.run.get_url()}")
+        if wandb.run is not None:
+            print(f"WANDB url = {wandb.run.get_url()}")
         print(f"Using WANDB_GROUP={group_name}")
         print(f"Using finetune_name={finetune_name}")
 

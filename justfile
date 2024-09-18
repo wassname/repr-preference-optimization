@@ -49,6 +49,7 @@ run_all:
     python nbs/train2.py sidein-ether
     python nbs/train2.py dpo
     python nbs/train2.py ether
+    python nbs/train2.py hra --no-rel-loss --verbose --lr 1e-5
     # biggest first so we find out about OOM first
     python nbs/train2.py sideout-hra
     python nbs/train2.py ortho
