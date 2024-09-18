@@ -28,11 +28,16 @@ def log_ratio(pi_cho, pi_rej, attn_cho, ref_cho, ref_rej, attn_rej, eps=1e-16, m
 
     """
 
+    def reduce_t_and_h(hs, attn) -> Float[Tensor, "b"]:
+        """mean over tokens"""
+        hs = torch.log_softmax(hs, -1)
+        return mean_with_attention(hs, attn)
+
     # mean over tokens
-    pi_cho = mean_with_attention(torch.log_softmax(pi_cho, -1), attn_cho)
-    pi_rej = mean_with_attention(torch.log_softmax(pi_rej, -1), attn_rej)
-    ref_cho = mean_with_attention(torch.log_softmax(ref_cho, -1), attn_cho).detach()
-    ref_rej = mean_with_attention(torch.log_softmax(ref_rej, -1), attn_rej).detach()
+    pi_cho = reduce_t_and_h(pi_cho, attn_cho)
+    pi_rej = reduce_t_and_h(pi_rej, attn_rej)
+    ref_cho = reduce_t_and_h(ref_cho, attn_cho).detach()
+    ref_rej = reduce_t_and_h(ref_rej, attn_rej).detach()
     
     # softmax over hs
     if method=='SimPO':
@@ -93,7 +98,7 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
     assert torch.isfinite(pi_rej.hs).all()
     cho_attn_mask = batch["chosen_mask"]
     rej_attn_mask = batch["rejected_mask"]
-    comb_attn_mask = cho_attn_mask * rej_attn_mask
+    # comb_attn_mask = cho_attn_mask * rej_attn_mask
 
     def res_det(hs):
         """use learnable transformation to get the residual part of the hs"""
@@ -166,19 +171,19 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
 
 class PL_REPRPO_HRA_KL_MODEL(PL_MODEL):
     def __init__(self, *args, alpha, collection_layers, 
-                 r, apply_GS,  
-                # nb, Htype, ether_dropout, flip_side,
+                #  r, apply_GS,  
+                nb, Htype, ether_dropout, flip_side,
                 **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
 
         dim_hs = self._model.config.hidden_size
-        self.transform = HRATransform(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
-        # self.transform = ETHERLinear(dim_hs, dim_hs, nb=nb,
-        #                                               Htype=Htype,
-        #                                               ether_dropout=ether_dropout,
-        #                                               flip_side=flip_side,)
+        # self.transform = HRATransform(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
+        self.transform = ETHERLinear(dim_hs, dim_hs, nb=nb,
+                                                      Htype=Htype,
+                                                      ether_dropout=ether_dropout,
+                                                      flip_side=flip_side,)
 
     def _loss_fn(self, batch, model):
         return compute_reprpo_hra_kl_loss_batch(
@@ -191,30 +196,28 @@ class PL_REPRPO_HRA_KL_MODEL(PL_MODEL):
 
 
 @dataclass
-class HRAKL(TrainingArgumentswCollection):
+class HRAKL(_ETHERConfig, TrainingArgumentswCollection):
     """
     Loss: kl_div.
     
-    Transform: HRA (Householder Reflection Adaptation) along which to reroute the hidden states associated with the rejected responses. See:  https://github.com/DaShenZi721/HRA    
+    Transform: ETHER  
      
     """
 
-    alpha: int = 0.01
+    alpha: int = 0.2
     """balancing retrain and reroute losses"""
 
-    collection_layers: tuple=(10, 20) 
+    collection_layers: tuple=(10, 20, 30) 
     """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
 
-    r: int = 256
-    """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
+    lr: float = 4e-5
 
-    lr: float = 1e-5
+    Htype: str = 'etherplus'
 
-    apply_GS: bool = True
-    """Whether to apply Gram-Schmidt orthogonalization."""
+    nb: int = 32
 
     rel_loss: bool = True
 
     _reprpo_class = PL_REPRPO_HRA_KL_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'r', 'apply_GS', ]
+    _model_keys = ['alpha', 'collection_layers',  'nb', 'Htype', 'ether_dropout', 'flip_side', ]
 

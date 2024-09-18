@@ -22,12 +22,15 @@ run_ds:
     #!/usr/bin/zsh
     export REPR_CONFIG=./configs/llama3_7b.yaml
     . ./.venv/bin/activate
+
+    python nbs/train2.py hrakl
+
     export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
     export DS=(code_easy alpaca_mmlu math raven_matrices alpaca_easy alpaca_mmlu alpaca_low_quality alpaca_short us_history_textbook)
     for ds in $DS; do
         echo "DS=$ds"
         . ./.venv/bin/activate
-        python nbs/train2.py sideout-ether --dataset $ds
+        # python nbs/train2.py sideout-ether --dataset $ds
         python nbs/train2.py ether --dataset $ds
         python nbs/train2.py sidein --dataset $ds
         python nbs/train2.py dpo --dataset $ds

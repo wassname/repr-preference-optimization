@@ -19,8 +19,9 @@ import itertools
 from ..layers.ether import ETHERLinear, ETHERLinearSmall, _ETHERConfig
 from .reprpo_hra import compute_reprpo_hra_loss_batch
 
+
 class PL_REPRPO_ETHER_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers, nb, Htype, ether_dropout, flip_side, **kwargs):
+    def __init__(self, *args, alpha, collection_layers, nb, Htype, ether_dropout, flip_side, rel_loss=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers = collection_layers
@@ -49,20 +50,17 @@ class ETHER(_ETHERConfig, TrainingArgumentswCollection):
     """
     
     alpha: int = 0.001
+    """balancing retrain and reroute losses"""
 
     Htype: str = 'etherplus'
 
     nb: int = 32
 
-    # lr: float = 1e-3
-
-    alpha: int = 0.0001
-    """balancing retrain and reroute losses"""
-
-    collection_layers: tuple=(10, 20) 
+    collection_layers: tuple = (10, 20)
     """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
 
     rel_loss: bool = True
 
     _reprpo_class = PL_REPRPO_ETHER_MODEL
+
     _model_keys = ['alpha', 'collection_layers',  'nb', 'Htype', 'ether_dropout', 'flip_side', 'rel_loss',]

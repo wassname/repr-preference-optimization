@@ -2666,3 +2666,8 @@ hs of cho, and decrease hs of ref
 ```
 hrakl --verbose --batch-size 48 --lr=1e-4
 ```
+
+ideas for the kl lossr
+ight now I am increasing prob of cho on the subspace, decreasing rej, and keeping cho the same on the overall
+- [ ] decrease rej, but keep cho the same?
+- [ ] lm_head?

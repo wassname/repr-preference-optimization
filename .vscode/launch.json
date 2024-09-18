@@ -56,7 +56,7 @@
                 "hrakl",
                 "--verbose",
                 // "--batch-size=88", 
-                "--lr=1e-4"
+                // "--lr=1e-4"
             ]
         }
     ]
