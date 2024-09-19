@@ -110,8 +110,6 @@ def train(training_args: MethodsUnion):
         pprint(training_args, compact=True)
         print("model_kwargs", model_kwargs.keys())
 
-        if wandb.run is not None:
-            print(f"WANDB url = {wandb.run.get_url()}")
         print(f"Using WANDB_GROUP={group_name}")
         print(f"Using finetune_name={finetune_name}")
 
@@ -127,6 +125,7 @@ def train(training_args: MethodsUnion):
         config=config,
     )
 
+    
     model, tokenizer = load_model(
         training_args.base_model,
         load_in_4bit=training_args.load_in_4bit,
@@ -205,15 +204,15 @@ def train(training_args: MethodsUnion):
     )
 
     if training_args.verbose:
-        print("QC one dataset row")
-        r = dataset2["train"][0]
-        print(r["prompt"])
+        # print("QC one dataset row")
+        # r = dataset2["train"][0]
+        # print(r["prompt"])
+        # print("===")
+        # print(r["chosen"])
+        # print("---")
+        # print(r["rejected"])
         print("===")
-        print(r["chosen"])
-        print("---")
-        print(r["rejected"])
-        print()
-        print()
+        # print()
 
         print("QC one train batch (after pad/crop")
         batch = next(iter(dl_train))
@@ -223,8 +222,11 @@ def train(training_args: MethodsUnion):
         print(tokenizer.decode(batch["chosen"][0]))
         print("---")
         print(tokenizer.decode(batch["rejected"][0]))
-        print()
-        print()
+        print("===")
+
+
+    if wandb.run is not None:
+        print(f"WANDB url = {wandb.run.get_url()}")
 
     # ## Trainer
     # - https://lightning.ai/docs/pytorch/latest/notebooks/lightning_examples/text-transformers.html

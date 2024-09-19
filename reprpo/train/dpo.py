@@ -58,6 +58,17 @@ def compute_logprobs(logits, labels, selection_mask=None):
 
 
 
+def compute_ptheta(
+      model_chosen_logprobs,
+      model_rejected_logprobs,
+      reference_chosen_logprobs,
+      reference_rejected_logprobs,
+    ):
+    model_logratios = model_chosen_logprobs - model_rejected_logprobs
+    reference_logratios = reference_chosen_logprobs - reference_rejected_logprobs
+    logits = model_logratios - reference_logratios
+    return logits
+
 def compute_dpo_loss(
       model_chosen_logprobs,
       model_rejected_logprobs,
@@ -93,8 +104,10 @@ def compute_dpo_loss(
     # .mean() to average over the samples in the batch
     return losses.mean(), dict(
         chosen_rewards=chosen_rewards.mean(), rejected_rewards=rejected_rewards.mean(),
-        # model_logratios=model_logratios.mean(), reference_logratios=reference_logratios.mean(),
-        # logits=logits.mean()
+        dpo_loss=losses.mean(),
+        # model_logratios=model_logratios.mean(), 
+        # reference_logratios=reference_logratios.mean(),
+        logits=logits.mean()
     )
 
 
@@ -160,8 +173,8 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
         # info['retain_cosine'] = cosine_on_keys(pi_cho.hidden_states, ref_cho.hidden_states)
         # info['rr_cosine'] = cosine_on_keys(pi_rej.hidden_states, ref_cho.hidden_states)
 
-        nll_loss = info['nll_loss'] = cross_entropy_loss(pi_cho.logits, batch["chosen"])
-        ref_nll_loss = info['ref_nll_loss'] = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+        nll_loss = info['nll_loss'] = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask'])
+        ref_nll_loss = info['ref_nll_loss'] = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
         info['nll_loss_ratio'] = nll_loss / ref_nll_loss
 
     

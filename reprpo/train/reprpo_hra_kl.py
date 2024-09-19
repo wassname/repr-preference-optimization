@@ -11,7 +11,7 @@ from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from reprpo.train.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
-from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
+from reprpo.train.dpo import compute_logprobs, compute_dpo_loss, compute_ptheta
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
 from dataclasses import dataclass
@@ -47,18 +47,21 @@ def log_ratio(pi_cho, pi_rej, attn_cho, ref_cho, ref_rej, attn_rej, eps=1e-16, m
         ptheta_left = pi_rej  - ref_rej
         ptheta_right = pi_cho - ref_cho
     ptheta = ptheta_right - ptheta_left
+    # ptheta = - ptheta_left
     
     # since it's log it's reversed
     # assert ptheta_left.mean()<=ptheta_right.mean()
-    β = 2
-    # loss_reroute = -F.logsigmoid(β*ptheta)# DPO
-    loss_reroute = (β*ptheta_left - 1) ** 2  # IPO, but makes nan and inf. ptheta starts at 0, so the larger  and closer to 1 ptheta gets, the smaller the loss
+    β = 100
+    loss_reroute = (β*ptheta - 1) ** 2  # IPO, but makes nan and inf. ptheta starts at 0, so the larger  and closer to 1 ptheta gets, the smaller the loss
     # loss_reroute = max(0, 1-β*ptheta)  #
     
 
     # this way if the ratio varies, it get larger
     # the optimiser can minimise the loss by making the ratio closer to log(1)=0
     loss_retain = (β * ptheta_right)**2 
+
+    # loss_reroute = -F.logsigmoid(β*ptheta)# DPO
+    # loss_retain = -F.logsigmoid(β*ptheta_right)# DPO
 
     return loss_reroute, loss_retain
 
@@ -102,7 +105,7 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
 
     def p(hs):
         """to log probs."""
-        hs = model.lm_head(hs)
+        # hs = model.lm_head(hs)
         hs = torch.log_softmax(hs, -1)
         return hs
 
@@ -111,14 +114,14 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
         return transform(hs)
 
     # loss_retain: more of chosen, less of rejected, on the plane defined by the learnable orthogonal transformation
-    # loss_reroute, _ = log_ratio(
-    #     t(p(pi_cho.hs)),
-    #     t(p(pi_rej.hs)),
-    #     cho_attn_mask,
-    #     t(p(ref_cho.hs)),
-    #     t(p(ref_rej.hs)),
-    #     rej_attn_mask,
-    # )
+    loss_t_reroute, loss_t_retain = log_ratio(
+        t(p(pi_cho.hs)),
+        t(p(pi_rej.hs)),
+        cho_attn_mask,
+        t(p(ref_cho.hs)),
+        t(p(ref_rej.hs)),
+        rej_attn_mask,
+    )
 
     # # loss_reroute: keep chosen the same
     # TODO do opposite transform? residual?
@@ -131,19 +134,42 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
         rej_attn_mask,
     )
 
-    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
-    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
-    nll_loss_ratio = nll_loss / ref_nll_loss
-    
-    loss = (loss_reroute + loss_retain * alpha).nanmean()
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask'])
+    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
+    nll_loss_ratio = nll_loss - ref_nll_loss
+
+    # we want to punish it for coherency loss, which nll is a proxy for
+    # but not reward it for coherency increase over the reference model
+    # as this is not what we are optimising
+    loss_nll_retain = F.relu(nll_loss_ratio) #  - math.log(0.9))
+    # β = 2
+    # loss_nll_retain = (β*nll_loss_ratio - 1) ** 2
+    # loss_nll_retain = F.logsigmoid(nll_loss - ref_nll_loss)
+
+    # or use nll on cho?
 
     # get the dpo metrics for comparison
-    _, info = compute_dpo_loss(
+    loss_dpo, info = compute_dpo_loss(
         pi_cho.logprobs,
         pi_rej.logprobs,
         ref_cho.logprobs,
         ref_rej.logprobs,
     )
+    ptheta = compute_ptheta(
+        pi_cho.logprobs,
+        pi_rej.logprobs,
+        ref_cho.logprobs,
+        ref_rej.logprobs,
+    )
+    
+    
+    # this loss says: find a transform, where you can make the good hidden states more common and the bad hidden states less common, while not making the outputs incoherent (nll) or favouring the bad response (dpo)
+    # TODO if this works tidy it up, and find a way to naturally balance the losses, for example make all in log domain
+    loss_dpo_retain = F.relu(ptheta)
+    loss_reroute = loss_t_reroute
+    # loss_retain = loss_dpo
+    loss_retain = loss_nll_retain.mean(1) + loss_dpo_retain
+    loss = loss_reroute.mean() + alpha * loss_retain.mean()
 
     def cosine_on_keys(hs1, hs2):
         return F.cosine_similarity(hs1, hs2, dim=-1).nanmean()
@@ -167,9 +193,11 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
         info = dict(
             loss_reroute=loss_reroute.mean(),
             loss_retain=loss_retain.mean() * alpha,
-            nll_loss=nll_loss,
-            ref_nll_loss=ref_nll_loss,
-            nll_loss_ratio=nll_loss_ratio,
+            nll_loss=nll_loss.mean(),
+            ref_nll_loss=ref_nll_loss.mean(),
+            nll_loss_ratio=nll_loss_ratio.mean(),
+            loss_nll_retain=loss_nll_retain.mean(),
+            loss_dpo_retain=loss_dpo_retain.mean(),
             **info,
         )
     assert torch.isfinite(loss)
@@ -185,7 +213,7 @@ class PL_REPRPO_HRA_KL_MODEL(PL_MODEL):
         self.hparams.collection_layers = collection_layers
 
         dim_hs = self._model.config.hidden_size
-        dim_hs = self._model.config.vocab_size
+        # dim_hs = self._model.config.vocab_size
         # self.transform = HRATransform(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
         self.transform = ETHERLinear(dim_hs, dim_hs, nb=nb,
                                                       Htype=Htype,
@@ -211,13 +239,13 @@ class HRAKL(_ETHERConfig, TrainingArgumentswCollection):
      
     """
 
-    alpha: int = 0.2
+    alpha: int = 1
     """balancing retrain and reroute losses"""
 
     collection_layers: tuple=(10, 20, 30) 
     """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
 
-    lr: float = 4e-5
+    # lr: float = 5e-4
 
     Htype: str = 'etherplus'
 

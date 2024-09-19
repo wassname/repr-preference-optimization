@@ -56,8 +56,10 @@
             "args": [
                 "hrakl",
                 "--verbose",
-                "--batch-size=32", 
+                // "--eval_samples=128",
+                // "--batch-size=24", 
                 // "--lr=1e-4"
+                "--n_samples=6000",
             ]
         }
     ]

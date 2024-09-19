@@ -2670,6 +2670,12 @@ hrakl --verbose --batch-size 48 --lr=1e-4
 ideas for the kl lossr
 ight now I am increasing prob of cho on the subspace, decreasing rej, and keeping cho the same on the overall
 - [/] decrease rej, but keep cho the same? (rather than bringing it closer to cho) hmmm
+    | adapter/ds                |   train |   test |   oos |   rnd |
+    |:--------------------------|--------:|-------:|------:|------:|
+    | HRAKL-us_history_textbook |   0.987 |  0.989 | 0.787 | 0.959 |
+    | base                      |   0.986 |  0.989 | 0.796 | 0.955 |
+    - not improving as much, keep the text coherent thought hmm
+    - well what if I add nll loss instead of retain? just need it to be scaled
 - [x] ok try without the ether subpace... because why would probs work their? might make more sense to turn to probs first...
   | adapter/ds                |   train |   test |   oos |   rnd |
   |:--------------------------|--------:|-------:|------:|------:|
@@ -2680,3 +2686,33 @@ ight now I am increasing prob of cho on the subspace, decreasing rej, and keepin
 - [ ] then try with lm_head? (but then too much focus on tokens...we will see)
 - [ ] and with prob before ether (because a transformation prob doesn't retain the ranking that is the main feature of uncalibrated llm logits)
 - [ ] apply it all to side?
+
+
+
+Actually I don't want to just match chosen, I want to find an internal correction that's in the direction of rej->cho that maintains coherency
+
+so right now I've been doing that by ensuring that the cho hs remain the same.... but that limits me, it can't learn anything new! really I just need to make sure it's coherent.
+
+
+So like cho up, ref down, and it must maintain either nll? How can I make sure it maintains coherency? One way is to make sure I am modifying the internals on a intervention that does not change the internals
+
+ideas:
+- hs changes, but only ones that improve nll_cho?
+- bounded change to hs? like in ppo?
+  - bounded to the realistic space of hs?
+  - bounded to 20% improve?
+  - bounded to some constraint  
+
+
+note that the dpo losses do not measure coherence only relative likelihoods, so I can't use them to measure coherence. Maybe SimPo losses?
+
+
+But DPO is already finding some modification of the hs that increases the log prob ratios. And normal SFT is already finding some modifiation of hs the incrweases nll. I want to move away from relying on that, and instead just use coherency as a limit not a guide. Hmm. Is there a way to describe coherency in terms of hs?
+
+
+softplus(nll_loss - ref_nll_loss + log(0.9))
+
+
+Hmm the hrakl (actually ether) exp is stable, it gives a good output but not a good score. Maybe with some tweaking, 
+- [ ] liek do it on the side?
+- [ ] or without transform?

@@ -107,8 +107,8 @@ def compute_reprpo_side_hra_loss_batch(
             ]
         ).nanmean()
 
-    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
-    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask'])
+    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
     nll_loss_ratio = nll_loss / ref_nll_loss
     
     with torch.no_grad():

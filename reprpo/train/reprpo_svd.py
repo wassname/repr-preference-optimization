@@ -81,8 +81,8 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         comb_attn_mask,
     )
 
-    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"])
-    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"])
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask'])
+    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
     nll_loss_ratio = nll_loss / ref_nll_loss
     
     loss = (loss_reroute + loss_retain * alpha).nanmean()
