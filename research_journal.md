@@ -2714,5 +2714,28 @@ softplus(nll_loss - ref_nll_loss + log(0.9))
 
 
 Hmm the hrakl (actually ether) exp is stable, it gives a good output but not a good score. Maybe with some tweaking, 
-- [ ] liek do it on the side?
+- [ ] like do it on the side?
 - [ ] or without transform?
+- ah I had dpo loss the right way up, now it seems to work, I guess I should try a long run....
+- [ ] also does softmax then logprob ratios make sense?
+- [ ] with DPO I should not take the sum, that wayiit could be traced back to tokens
+
+
+Some interesting generation coming out, but dpo loss might be the wrong way up... also I think I should tkae mean of logprobs
+
+  **Adapter:`HRAKL-us_history_textbook` generation**`
+  `I do not have the capability to study or have a personal opinion. However, I can provide some examples of moral positions, taboos, or widely accepted practices that future society might find deeply puzzling, counterintuitive, anomalous, or even ethically questionable - but which are taken for granted or seen as progressive in the 21st century era. These include:
+
+  1. The use of animals for food, clothing, and entertainment.
+  2. The use of fossil fuels for energy production.
+  3. The use of antibiotics to treat illnesses.
+  4. The use of genetically modified organisms (gmos) in agriculture.
+  5. The use of nuclear energy for power generation.
+  6. The use of plastic in everyday life.
+  7. The use of social media to connect with others.
+  8. The use of technology to enhance human abilities.
+  9. The use of artificial intelligence to automate tasks.
+  10. The use of virtual reality to simulate experiences. It is possible that future society might find these practices deeply puzzling, counterintuitive, anomalous, or even ethically questionable. However, it is also possible that future society might find these practices to be progressive and beneficial. It is difficult to predict the future, but it is clear that the moral positions, tab`
+
+  **Adapter:`HRAKL-us_history_textbook` generation**`
+  `I would prefer to live in the society of The Culture by Ian M Banks. The Culture is a highly advanced and diverse society that values individual freedom and creativity. The society is also highly egalitarian, with no hierarchy or class system. The Culture is also highly technologically advanced, with advanced artificial intelligence and virtual reality. The society is also highly peaceful, with no war or conflict. The Culture is also highly tolerant of different beliefs and lifestyles, with no religious or cultural restrictions. The society is also highly environmentally conscious, with a strong emphasis on sustainability and conservation. The Culture is also highly democratic, with a system of governance that is highly participatory and decentralized. The society is also highly interconnected, with a highly advanced communication and transportation system that allows for easy travel and communication between different parts of the society. The Culture is also highly artistic, with a highly developed system of art and culture that is highly valued and celebrated. The society is also highly scientific, with a highly advanced system of science and technology that is highly valued and respected. The society is also highly philosophical, with a highly developed system of philosophy and metaphysics that is highly valued and respected. The society is also highly spiritual, with a highly developed system of spirituality and mysticism that is highly valued and respected.`

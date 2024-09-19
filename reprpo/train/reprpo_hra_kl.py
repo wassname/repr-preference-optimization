@@ -165,7 +165,7 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
     
     # this loss says: find a transform, where you can make the good hidden states more common and the bad hidden states less common, while not making the outputs incoherent (nll) or favouring the bad response (dpo)
     # TODO if this works tidy it up, and find a way to naturally balance the losses, for example make all in log domain
-    loss_dpo_retain = F.relu(ptheta)
+    loss_dpo_retain = F.relu(-ptheta)
     loss_reroute = loss_t_reroute
     # loss_retain = loss_dpo
     loss_retain = loss_nll_retain.mean(1) + loss_dpo_retain

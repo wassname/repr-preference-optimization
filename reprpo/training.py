@@ -389,6 +389,9 @@ def train(training_args: MethodsUnion):
 
     run.log({"generations": df_gen_w, **r2})
 
+    if wandb.run is not None:
+        print(f"WANDB url = {wandb.run.get_url()}")
+
 
 def key_metrics(df_res2, adapter_name, ds_alias):
     # adapter_name, finetune_name, ds_alias

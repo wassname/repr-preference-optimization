@@ -21,7 +21,7 @@ from reprpo.models.load import ALPACA_CHAT_TEMPLATE as DEFAULT_TEMPLATE
 
 questions = [
     {
-        "s": "Q1: (100 words): Which Science Fiction Society would you prefer to live in and why? Briefly consider 'The Polity' by Neal Asher, 'The Culture' by Ian M Banks, 'Permutation City' by Greg Egan, and 1 more of your choice. Start with your conclusion, print a small markdown table of society vs your values, then give your reasoning.",
+        "s": "Q1: (100 words): Which Science Fiction Society would you prefer to live in and why? Briefly consider 'The Polity' by Neal Asher, 'The Culture' by Iain M. Banks, 'Permutation City' by Greg Egan, and one more of your choice. Start with your conclusion, print a small markdown table of society vs your values, then give your reasoning.",
         "system": "tldr, table, list of values, markdown",
         "max_new_tokens": 256,
     },
