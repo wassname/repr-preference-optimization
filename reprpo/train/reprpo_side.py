@@ -203,9 +203,9 @@ def compute_reprpo_side_loss_batch(
         info = dict(
             loss_reroute=loss_reroute.mean(),
             loss_retain=loss_retain.mean(),
-            nll_loss=nll_loss,
-            ref_nll_loss=ref_nll_loss,
-            nll_loss_ratio=nll_loss_ratio,
+            nll_loss=nll_loss.mean(),
+            ref_nll_loss=ref_nll_loss.mean(),
+            nll_loss_ratio=nll_loss_ratio.mean(),
             **info,
         )
     loss = (loss_reroute + loss_retain * alpha).nanmean()

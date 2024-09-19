@@ -49,7 +49,7 @@ def compute_logprobs(logits, labels, selection_mask=None):
 
         # Calculate the average log probability excluding padding tokens
         # This averages over the tokens, so the shape is (batch_size, num_tokens)
-        avg_log_prob = selected_log_probs.sum(-1) #/ mask.sum(-1)
+        avg_log_prob = selected_log_probs.sum(-1) / mask.sum(-1)
 
         return avg_log_prob
 

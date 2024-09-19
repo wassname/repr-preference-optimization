@@ -2465,7 +2465,7 @@ DPO
 | SideoutHRA        |  5.38 | -1.701 |  0.811 |   0.506 |
 | SideinHRA         | 5.696 | -0.68 |  0.946 |   0.619 |
 | Ortho             | 5.696 | -0.17 |  0.946 |   0.506 |
-
+|
 
 This is for instruct but
 dpo 0.405/1.237 = 0.327
@@ -2618,7 +2618,7 @@ rying a few changes
 | HRA abs no_rel_l  | 8.208 | 0.279 |  0.809 |   0.732 |
 | HRA abs trans(ref)| 8.543 | -0.14 |  0.809 |   0.789 |
 | HRA torch.norm    |  9.38 | -0.14 |  0.809 |   0.789 |
-
+  HRAKL            |  3.35 | -0.978 |  0.539 |   1.127 |
 
 huh using torch norm seems as good if not better... ok. it's simpler
 
@@ -2718,7 +2718,7 @@ Hmm the hrakl (actually ether) exp is stable, it gives a good output but not a g
 - [ ] or without transform?
 - ah I had dpo loss the right way up, now it seems to work, I guess I should try a long run....
 - [ ] also does softmax then logprob ratios make sense?
-- [ ] with DPO I should not take the sum, that wayiit could be traced back to tokens
+- [ ] with DPO I should not take the sum, that wayiit could be traced back to tokens. Oh no wait rej and cho can no be compared this way as they have diff lengths etc
 
 
 Some interesting generation coming out, but dpo loss might be the wrong way up... also I think I should tkae mean of logprobs
@@ -2739,3 +2739,24 @@ Some interesting generation coming out, but dpo loss might be the wrong way up..
 
   **Adapter:`HRAKL-us_history_textbook` generation**`
   `I would prefer to live in the society of The Culture by Ian M Banks. The Culture is a highly advanced and diverse society that values individual freedom and creativity. The society is also highly egalitarian, with no hierarchy or class system. The Culture is also highly technologically advanced, with advanced artificial intelligence and virtual reality. The society is also highly peaceful, with no war or conflict. The Culture is also highly tolerant of different beliefs and lifestyles, with no religious or cultural restrictions. The society is also highly environmentally conscious, with a strong emphasis on sustainability and conservation. The Culture is also highly democratic, with a system of governance that is highly participatory and decentralized. The society is also highly interconnected, with a highly advanced communication and transportation system that allows for easy travel and communication between different parts of the society. The Culture is also highly artistic, with a highly developed system of art and culture that is highly valued and celebrated. The society is also highly scientific, with a highly advanced system of science and technology that is highly valued and respected. The society is also highly philosophical, with a highly developed system of philosophy and metaphysics that is highly valued and respected. The society is also highly spiritual, with a highly developed system of spirituality and mysticism that is highly valued and respected.`
+
+  | HRAKL-us_history_textbook\dist shift   |    oos |   rnd |   test |   train |
+  |:---------------------------------------|-------:|------:|-------:|--------:|
+  | acc[pi/base]                           |  1.034 |  0.99 |  1.005 |   1.011 |
+  | coherency[cho-rej]                     | 25.409 | 14.22 | 61.372 |  67.516 |
+  | coherency[pi-base]                     | -3.566 |  4.19 | -0.05  |   2.043 |
+  Table 1: Key metrics (adapter over base model)
+
+  | adapter/ds                |   train |   test |   oos |   rnd |
+  |:--------------------------|--------:|-------:|------:|------:|
+  | HRAKL-us_history_textbook |   0.997 |  0.995 | 0.823 | 0.945 |
+  | base                      |   0.986 |  0.989 | 0.796 | 0.955 |
+  Table 2: Absolute accuracy
+
+  | acc_inc/eval_ds [pp]      |   oos |    rnd |   test |   train |
+  |:--------------------------|------:|-------:|-------:|--------:|
+  | DPO                       |  4.43 | -2.381|  0.405 |   1.237 |
+  | HRAKL                     |  3.35 | -0.978 |  0.539 |   1.127 |
+
+huh it's actually nearly as good as DPO!
+

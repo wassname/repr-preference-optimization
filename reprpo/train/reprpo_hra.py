@@ -189,9 +189,9 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
         info = dict(
             loss_reroute=loss_reroute.mean(),
             loss_retain=loss_retain.mean() * alpha,
-            nll_loss=nll_loss,
-            ref_nll_loss=ref_nll_loss,
-            nll_loss_ratio=nll_loss_ratio,
+            nll_loss=nll_loss.mean(),
+            ref_nll_loss=ref_nll_loss.mean(),
+            nll_loss_ratio=nll_loss_ratio.mean(),
             **info,
         )
     assert torch.isfinite(loss)

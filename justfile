@@ -26,7 +26,7 @@ run_ds:
     python scripts/train.py hrakl
 
     export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
-    export DS=(code_easy alpaca_mmlu math raven_matrices alpaca_easy alpaca_mmlu alpaca_low_quality alpaca_short us_history_textbook)
+    export DS=(alpaca_easy alpaca_mmlu alpaca_low_quality alpaca_short code_easy alpaca_mmlu math raven_matrices  us_history_textbook)
     for ds in $DS; do
         echo "DS=$ds"
         . ./.venv/bin/activate
@@ -34,6 +34,7 @@ run_ds:
         python scripts/train.py ether --dataset $ds
         python scripts/train.py sidein --dataset $ds
         python scripts/train.py dpo --dataset $ds
+        python scripts/train.py hrakl --dataset $ds
     done
 
 run_all:
