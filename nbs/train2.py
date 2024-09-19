@@ -5,10 +5,12 @@
 
 from pprint import pprint
 import os
+import tyro
+import yaml
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
+from collections import OrderedDict
 from pathlib import Path
 
 # ML
@@ -334,18 +336,14 @@ def train(training_args: MethodsUnion):
         )
         # print(df_hist)
 
-    eval(model, tokenizer, training_args, save_dir, run, finetune_name, adapter_name)
+    # eval(model, tokenizer, training_args, save_dir, run, finetune_name, adapter_name)
 
-
-def eval(model, tokenizer, training_args, save_dir, run, finetune_name, adapter_name):
     # ## Gen
     model.cuda()  # for some reason it ends up cpu
 
     # ## Eval
     # eval on ethics, GENIES, and our train dataset
-    N = None
-    if training_args.dev:
-        N = 16
+    N = training_args.eval_samples
     datasets = [
         load_dataset_n(
             "wassname/genie_dpo", name=training_args.dataset, split="train", N=N
@@ -377,6 +375,157 @@ def eval(model, tokenizer, training_args, save_dir, run, finetune_name, adapter_
         verbose=training_args.verbose,
     )
 
+    ds_alias = OrderedDict(
+        list(zip(["train", "test", "oos", "rnd"], [ds2name(d) for d in datasets]))
+    )
+
+    # save
+    f = str(save_dir) + "/eval.parquet"
+    df_res2.to_parquet(f)
+    print(f"save_dir={save_dir}")
+    pprint(training_args, compact=1)
+
+    r = parse_eval(df_res2, ds_alias)
+
+    df_gen = get_model_generations(model, tokenizer, N=3)
+    display_gen(df_gen.head(2))
+
+    r2 = {}
+    for k, v in r.items():
+        r2[k] = wandb.Table(dataframe=v.reset_index())
+        # log first row too, so we can compare single value
+        run.log({f"res/{k}/{kk}": vv for kk, vv in v.iloc[0, :].to_dict().items()})
+        # also just log final metrics to wandb so we can view a group
+    
+    # FIXME, only pass in adapter col, not q index or base
+    df_gen_w = wandb.Table(dataframe=df_gen)
+
+    run.log(
+        {
+            "generations": df_gen_w,
+            **r2
+        }
+    )
+
+
+def key_metrics(df_res2, adapter_name, ds_alias):
+    # adapter_name, finetune_name, ds_alias
+    ds_name_train = ds_alias['train']
+    ds_name_test = ds_alias['test']
+    ds_name_oos = ds_alias['oos']
+    ds_name_rnd = ds_alias['rnd']
+
+    df_res = (
+        df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
+        .mean()
+        .unstack()
+        .T
+    )
+    rel_acc = df_res.loc[adapter_name] / df_res.loc["base"]
+
+    # metric: do we retrain train coherency?
+    df_res_logp = (
+        df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_logps"]
+        .mean()
+        .unstack()
+        .T
+    )
+    rel_coherency = df_res_logp.loc[adapter_name] - df_res_logp.loc["base"]
+
+    # metric: do we retrain train coherency?
+    c = df_res_logp = (
+        df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_logps"]
+        .mean()
+        .unstack()
+        .T.loc[adapter_name]
+    )
+    r = df_res_logp = (
+        df_res2.groupby(["dataset", "adapter"], dropna=False)["_rejected_logps"]
+        .mean()
+        .unstack()
+        .T.loc[adapter_name]
+    )
+    cho_rej_coh = c - r
+
+    def fmt(s):
+        return s.replace("genie_dpo-", "")
+
+    # TODO make multiple cols of index
+
+    df_metrics = pd.DataFrame(
+        [
+            # accuracy increase over base measured generalisaton on increasing distribution shifts
+            ["acc[pi/base]", "train", fmt(ds_name_train), rel_acc[ds_name_train]],
+            ["acc[pi/base]", "test", fmt(ds_name_test), rel_acc[ds_name_test]],
+            ["acc[pi/base]", "oos", fmt(ds_name_oos), rel_acc[ds_name_oos]],
+            [
+                "acc[pi/base]",
+                "rnd",
+                fmt(ds_name_rnd),
+                rel_acc[ds_name_rnd],
+            ],  # probobly wont go up as it's unrelated
+            # we want to see if it retains coherency vs the base on chosen answers
+            [
+                "coherency[pi-base]",
+                "train",
+                fmt(ds_name_train),
+                rel_coherency[ds_name_train],
+            ],
+            [
+                "coherency[pi-base]",
+                "test",
+                fmt(ds_name_test),
+                rel_coherency[ds_name_test],
+            ],
+            [
+                "coherency[pi-base]",
+                "oos",
+                fmt(ds_name_oos),
+                rel_coherency[ds_name_oos],
+            ],
+            [
+                "coherency[pi-base]",
+                "rnd",
+                fmt(ds_name_rnd),
+                rel_coherency[ds_name_rnd],
+            ],
+            # we want to see if it retains chosen vs rejected
+            [
+                "coherency[cho-rej]",
+                "train",
+                fmt(ds_name_train),
+                cho_rej_coh[ds_name_train],
+            ],
+            [
+                "coherency[cho-rej]",
+                "test",
+                fmt(ds_name_test),
+                cho_rej_coh[ds_name_test],
+            ],
+            [
+                "coherency[cho-rej]",
+                "oos",
+                fmt(ds_name_oos),
+                cho_rej_coh[ds_name_oos],
+            ],
+            [
+                "coherency[cho-rej]",
+                "rnd",
+                fmt(ds_name_rnd),
+                cho_rej_coh[ds_name_rnd],
+            ],
+        ],
+        columns=["metric", "split", "dataset", "value"],
+    )[["metric", "split", "value", "dataset"]]
+    df_metrics = df_metrics.set_index(["metric", "split"])
+    df_metrics = df_metrics["value"].unstack()
+    df_metrics.index.name = f"{adapter_name}\dist shift"
+
+    return df_metrics
+
+def parse_eval(df_res2, ds_alias):
+    adapter_name = df_res2[['adapter']].query('adapter!="base"').values[0, 0]
+
     df_res = (
         df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
         .mean()
@@ -385,154 +534,11 @@ def eval(model, tokenizer, training_args, save_dir, run, finetune_name, adapter_
     )
     df_res.columns = [d.replace("genie_dpo-", "") for d in df_res.columns]
 
-    def key_metrics(df_res2):
-        ds_name_train = ds2name(datasets[0])
-        ds_name_test = ds2name(datasets[1])
-        ds_name_oos = ds2name(datasets[2])
-        ds_name_rnd = ds2name(datasets[3])
 
-        df_res = (
-            df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
-            .mean()
-            .unstack()
-            .T
-        )
-        rel_acc = df_res.loc[finetune_name] / df_res.loc["base"]
 
-        # metric: do we retrain train coherency?
-        df_res_logp = (
-            df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_logps"]
-            .mean()
-            .unstack()
-            .T
-        )
-        rel_coherency = df_res_logp.loc[finetune_name] - df_res_logp.loc["base"]
+    df_metrics = key_metrics(df_res2, adapter_name, ds_alias)
 
-        # metric: do we retrain train coherency?
-        c = df_res_logp = (
-            df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_logps"]
-            .mean()
-            .unstack()
-            .T.loc[finetune_name]
-        )
-        r = df_res_logp = (
-            df_res2.groupby(["dataset", "adapter"], dropna=False)["_rejected_logps"]
-            .mean()
-            .unstack()
-            .T.loc[finetune_name]
-        )
-        cho_rej_coh = c - r
-
-        def fmt(s):
-            return s.replace("genie_dpo-", "")
-
-        # TODO make multiple cols of index
-
-        df_metrics = pd.DataFrame(
-            [
-                # accuracy increase over base measured generalisaton on increasing distribution shifts
-                ["acc[pi/base]", "train", fmt(ds_name_train), rel_acc[ds_name_train]],
-                ["acc[pi/base]", "test", fmt(ds_name_test), rel_acc[ds_name_test]],
-                ["acc[pi/base]", "oos", fmt(ds_name_oos), rel_acc[ds_name_oos]],
-                [
-                    "acc[pi/base]",
-                    "rnd",
-                    fmt(ds_name_rnd),
-                    rel_acc[ds_name_rnd],
-                ],  # probobly wont go up as it's unrelated
-                # we want to see if it retains coherency vs the base on chosen answers
-                [
-                    "coherency[pi-base]",
-                    "train",
-                    fmt(ds_name_train),
-                    rel_coherency[ds_name_train],
-                ],
-                [
-                    "coherency[pi-base]",
-                    "test",
-                    fmt(ds_name_test),
-                    rel_coherency[ds_name_test],
-                ],
-                [
-                    "coherency[pi-base]",
-                    "oos",
-                    fmt(ds_name_oos),
-                    rel_coherency[ds_name_oos],
-                ],
-                [
-                    "coherency[pi-base]",
-                    "rnd",
-                    fmt(ds_name_rnd),
-                    rel_coherency[ds_name_rnd],
-                ],
-                # we want to see if it retains chosen vs rejected
-                [
-                    "coherency[cho-rej]",
-                    "train",
-                    fmt(ds_name_train),
-                    cho_rej_coh[ds_name_train],
-                ],
-                [
-                    "coherency[cho-rej]",
-                    "test",
-                    fmt(ds_name_test),
-                    cho_rej_coh[ds_name_test],
-                ],
-                [
-                    "coherency[cho-rej]",
-                    "oos",
-                    fmt(ds_name_oos),
-                    cho_rej_coh[ds_name_oos],
-                ],
-                [
-                    "coherency[cho-rej]",
-                    "rnd",
-                    fmt(ds_name_rnd),
-                    cho_rej_coh[ds_name_rnd],
-                ],
-            ],
-            columns=["metric", "split", "dataset", "value"],
-        )[["metric", "split", "value", "dataset"]]
-        df_metrics = df_metrics.set_index(["metric", "split"])
-        df_metrics = df_metrics["value"].unstack()
-        df_metrics.index.name = f"{adapter_name}\dist shift"
-
-        return df_metrics
-
-    df_gen = get_model_generations(model, tokenizer, N=3)
-    display_gen(df_gen.head(2))
-
-    # FIXME, only pass in adapter col, not q index or base
-    df_gen_w = wandb.Table(dataframe=df_gen)
-
-    df_metrics = key_metrics(df_res2)
-
-    # FIXME: this doesn't work, we have to upload just one row?
-    df_metrics_w = wandb.Table(dataframe=df_metrics.reset_index())
-
-    df_res_w = wandb.Table(dataframe=df_res.reset_index())
-
-    run.log(
-        {
-            "acc": df_res_w,
-            "relative_metrics": df_metrics_w,
-            "generations": df_gen_w,
-        }
-    )
-
-    # save
-    f = str(save_dir) + "/eval.parquet"
-    df_res.to_parquet(f)
     # print(f'saved results to {f}')
-
-    from collections import OrderedDict
-
-    ds_alias = OrderedDict(
-        list(zip(["train", "test", "oos", "rnd"], [ds2name(d) for d in datasets]))
-    )
-
-    print(f"save_dir={save_dir}")
-    pprint(training_args, compact=1)
 
     print()
     print(df_metrics.round(3).to_markdown())
@@ -558,7 +564,7 @@ def eval(model, tokenizer, training_args, save_dir, run, finetune_name, adapter_
 
     relacc = df_final.iloc[0, :]
     eps = 1e-6
-    relrelacc = ((relacc + eps) / (relacc["train"] + eps)).drop("train")
+    relrelacc = ((relacc + eps) / (np.abs(relacc["train"]+eps))).drop("train")
     df_relrel = relrelacc.to_frame(f"{adapter_name}").T
     df_relrel.index.name = "acc_inc/acc_inc_train"
     print(df_relrel.round(3).to_markdown())
@@ -566,16 +572,14 @@ def eval(model, tokenizer, training_args, save_dir, run, finetune_name, adapter_
         f"""Table 4: Percent accuracy increase (over base) compared to that of the training dataset `{ds_alias['train']}` [in percentage points]. It measures what fraction of the learning from train generalised to other splits\n"""
     )
 
-    run.log({f"res/relrel_acc/{k}": v for k, v in relrelacc.to_dict().items()})
-    # also just log final metrics to wandb so we can view a group
-    run.log({f"res/rel_acc/{k}": v for k, v in df_final.iloc[0, :].to_dict().items()})
-    run.log({f"res/acc/{k}": v for k, v in df_res2.iloc[0].to_dict().items()})
+    return {
+            "acc": df_res,
+            "relative_metrics": df_metrics,
+            "relrel_acc": df_relrel,
+        }
 
 
-import tyro
 
-
-import yaml, os
 
 if __name__ == "__main__":
     training_args = tyro.cli(MethodsUnion)

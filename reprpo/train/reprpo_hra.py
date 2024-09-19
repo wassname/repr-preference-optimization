@@ -183,7 +183,7 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
         info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
 
         # also the norm of the weights of the transformation
-        info['transform_norm'] = sum([torch.norm(p).mena() for p in transform.parameters()])
+        info['transform_norm'] = sum([torch.norm(p).mean() for p in transform.parameters()])
 
 
         info = dict(

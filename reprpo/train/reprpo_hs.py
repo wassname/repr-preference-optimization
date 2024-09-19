@@ -121,7 +121,7 @@ def validate_args(model, args):
     # first check collection layers exist'
 
     # HACK: llama specific
-    assert max(args.collection_layers)<(model.config.num_hidden_layers-1), 'collection layers should be less than the number of layers'
+    assert max(args.collection_layers)<(model.config.num_hidden_layers+1), 'collection layers should be less than the number of layers'
 
 class PL_REPRPO_HS_MODEL(PL_MODEL):
     def __init__(self, *args, alpha, collection_layers, **kwargs):

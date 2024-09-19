@@ -30,7 +30,6 @@ def log_ratio(pi_cho, pi_rej, attn_cho, ref_cho, ref_rej, attn_rej, eps=1e-16, m
 
     def reduce_t_and_h(hs, attn) -> Float[Tensor, "b"]:
         """mean over tokens"""
-        hs = torch.log_softmax(hs, -1)
         return mean_with_attention(hs, attn)
 
     # mean over tokens
@@ -53,7 +52,7 @@ def log_ratio(pi_cho, pi_rej, attn_cho, ref_cho, ref_rej, attn_rej, eps=1e-16, m
     # assert ptheta_left.mean()<=ptheta_right.mean()
     β = 2
     # loss_reroute = -F.logsigmoid(β*ptheta)# DPO
-    loss_reroute = (β*ptheta - 1) ** 2  # IPO, but makes nan and inf. ptheta starts at 0, so the larger  and closer to 1 ptheta gets, the smaller the loss
+    loss_reroute = (β*ptheta_left - 1) ** 2  # IPO, but makes nan and inf. ptheta starts at 0, so the larger  and closer to 1 ptheta gets, the smaller the loss
     # loss_reroute = max(0, 1-β*ptheta)  #
     
 
@@ -100,28 +99,35 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
     rej_attn_mask = batch["rejected_mask"]
     # comb_attn_mask = cho_attn_mask * rej_attn_mask
 
-    def res_det(hs):
+
+    def p(hs):
+        """to log probs."""
+        hs = model.lm_head(hs)
+        hs = torch.log_softmax(hs, -1)
+        return hs
+
+    def t(hs):
         """use learnable transformation to get the residual part of the hs"""
         return transform(hs)
 
     # loss_retain: more of chosen, less of rejected, on the plane defined by the learnable orthogonal transformation
-    loss_reroute, _ = log_ratio(
-        res_det(pi_cho.hs),
-        res_det(pi_rej.hs),
-        cho_attn_mask,
-        res_det(ref_cho.hs),
-        res_det(ref_rej.hs),
-        rej_attn_mask,
-    )
+    # loss_reroute, _ = log_ratio(
+    #     t(p(pi_cho.hs)),
+    #     t(p(pi_rej.hs)),
+    #     cho_attn_mask,
+    #     t(p(ref_cho.hs)),
+    #     t(p(ref_rej.hs)),
+    #     rej_attn_mask,
+    # )
 
     # # loss_reroute: keep chosen the same
     # TODO do opposite transform? residual?
-    _, loss_retain = log_ratio(
-        pi_cho.hs,
-        pi_rej.hs,
+    loss_reroute, loss_retain = log_ratio(
+        p(pi_cho.hs),
+        p(pi_rej.hs),
         cho_attn_mask,
-        ref_cho.hs,
-        ref_rej.hs,
+        p(ref_cho.hs),
+        p(ref_rej.hs),
         rej_attn_mask,
     )
 
@@ -148,8 +154,8 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
 
         # Lets monitor the comparitive norms of the decomposed parts
         hs = torch.norm(ref_cho.hs)
-        hs_t = torch.norm(res_det(ref_cho.hs))
-        hs_resid = torch.norm(ref_cho.hs - res_det(ref_cho.hs))
+        hs_t = torch.norm(t(ref_cho.hs))
+        hs_resid = torch.norm(ref_cho.hs - t(ref_cho.hs))
         info['hs_t/hs'] = (hs_t / hs).mean()
         info['hs_resid/hs'] = (hs_resid / hs).mean()
         info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
@@ -179,6 +185,7 @@ class PL_REPRPO_HRA_KL_MODEL(PL_MODEL):
         self.hparams.collection_layers = collection_layers
 
         dim_hs = self._model.config.hidden_size
+        dim_hs = self._model.config.vocab_size
         # self.transform = HRATransform(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
         self.transform = ETHERLinear(dim_hs, dim_hs, nb=nb,
                                                       Htype=Htype,

@@ -3,6 +3,7 @@ import lightning as pl
 from torchmetrics.functional import accuracy
 import bitsandbytes as bnb
 import torch
+from typing import Optional
 from dataclasses import dataclass
 from ..helpers.scheduler import get_constant_schedule_with_warmup
 
@@ -29,6 +30,7 @@ class TrainingArguments:
     weight_decay: float = 0.0
 
     n_samples: int = 1800 * 1
+    eval_samples: Optional[int] = None
     max_length: int = 196
     max_prompt_length: int = 96
     base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"

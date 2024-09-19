@@ -1,8 +1,10 @@
-# base_model: 'yujiepan/llama-3-tiny-random'
-base_model: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
-n_samples: 256
+base_model: 'yujiepan/llama-3-tiny-random'
+# base_model: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+n_samples: 64
+eval_samples: 64
 collection_layers: 
   - 0
   - 1
+  - 2
 dev: true
 verbose: true

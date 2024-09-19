@@ -2669,5 +2669,14 @@ hrakl --verbose --batch-size 48 --lr=1e-4
 
 ideas for the kl lossr
 ight now I am increasing prob of cho on the subspace, decreasing rej, and keeping cho the same on the overall
-- [ ] decrease rej, but keep cho the same?
-- [ ] lm_head?
+- [/] decrease rej, but keep cho the same? (rather than bringing it closer to cho) hmmm
+- [x] ok try without the ether subpace... because why would probs work their? might make more sense to turn to probs first...
+  | adapter/ds                |   train |   test |   oos |   rnd |
+  |:--------------------------|--------:|-------:|------:|------:|
+  | HRAKL-us_history_textbook |   0.989 |  0.98  | 0.741 | 0.935 |
+  | base                      |   0.986 |  0.989 | 0.796 | 0.955 |
+  Table 2: Absolute accuracy
+
+- [ ] then try with lm_head? (but then too much focus on tokens...we will see)
+- [ ] and with prob before ether (because a transformation prob doesn't retain the ranking that is the main feature of uncalibrated llm logits)
+- [ ] apply it all to side?

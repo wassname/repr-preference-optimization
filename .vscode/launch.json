@@ -33,7 +33,7 @@
             "program": "${workspaceFolder}/nbs/train2.py",
             "console": "integratedTerminal",
             "args": [
-                "hra",
+                "hs",
                 "--dev", 
                 "--verbose",
             ]
@@ -52,10 +52,11 @@
             "request": "launch",
             "program": "${workspaceFolder}/nbs/train2.py",
             "console": "integratedTerminal",
+            "autoReload": {"enable": true},
             "args": [
                 "hrakl",
                 "--verbose",
-                // "--batch-size=88", 
+                "--batch-size=32", 
                 // "--lr=1e-4"
             ]
         }
