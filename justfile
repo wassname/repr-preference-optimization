@@ -16,24 +16,24 @@ default:
 # run one method, by argument
 run METHOD='reprpo_ortho':
     . ./.venv/bin/activate
-    python nbs/train2.py {{METHOD}} --verbose
+    python scripts/train.py {{METHOD}} --verbose
 
 run_ds:
     #!/usr/bin/zsh
     export REPR_CONFIG=./configs/llama3_7b.yaml
     . ./.venv/bin/activate
 
-    python nbs/train2.py hrakl
+    python scripts/train.py hrakl
 
     export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
     export DS=(code_easy alpaca_mmlu math raven_matrices alpaca_easy alpaca_mmlu alpaca_low_quality alpaca_short us_history_textbook)
     for ds in $DS; do
         echo "DS=$ds"
         . ./.venv/bin/activate
-        # python nbs/train2.py sideout-ether --dataset $ds
-        python nbs/train2.py ether --dataset $ds
-        python nbs/train2.py sidein --dataset $ds
-        python nbs/train2.py dpo --dataset $ds
+        # python scripts/train.py sideout-ether --dataset $ds
+        python scripts/train.py ether --dataset $ds
+        python scripts/train.py sidein --dataset $ds
+        python scripts/train.py dpo --dataset $ds
     done
 
 run_all:
@@ -49,23 +49,23 @@ run_all:
     # export HF_DATASETS_DISABLE_PROGRESS_BARS=1
 
     . ./.venv/bin/activate
-    python nbs/train2.py sidein-ether
-    python nbs/train2.py dpo
-    python nbs/train2.py ether
-    python nbs/train2.py hra --no-rel-loss --verbose --lr 1e-5
+    python scripts/train.py sidein-ether
+    python scripts/train.py dpo
+    python scripts/train.py ether
+    python scripts/train.py hra --no-rel-loss --verbose --lr 1e-5
     # biggest first so we find out about OOM first
-    python nbs/train2.py sideout-hra
-    python nbs/train2.py ortho
-    python nbs/train2.py sidein
-    python nbs/train2.py hra
-    python nbs/train2.py sidein-hra
-    python nbs/train2.py sideout
-    python nbs/train2.py hs
-    python nbs/train2.py svd
-    python nbs/train2.py sidein-ether --Htype oft
-    python nbs/train2.py sidein-ether --Htype ether
-    python nbs/train2.py svd --quantile 1.0
-    python nbs/train2.py hra --no-apply_GS
+    python scripts/train.py sideout-hra
+    python scripts/train.py ortho
+    python scripts/train.py sidein
+    python scripts/train.py hra
+    python scripts/train.py sidein-hra
+    python scripts/train.py sideout
+    python scripts/train.py hs
+    python scripts/train.py svd
+    python scripts/train.py sidein-ether --Htype oft
+    python scripts/train.py sidein-ether --Htype ether
+    python scripts/train.py svd --quantile 1.0
+    python scripts/train.py hra --no-apply_GS
 
 run_llama:
     #!/usr/bin/zsh
@@ -77,7 +77,7 @@ dev:
     #!/usr/bin/zsh
     export REPR_CONFIG=./configs/dev.yaml
     . ./.venv/bin/activate
-    python nbs/train2.py -m pdb sidein-hra
+    python scripts/train.py -m pdb sidein-hra
 
 # copy trained models from runpod
 cp:
@@ -88,5 +88,5 @@ run_temp:
     #!/usr/bin/zsh
     export REPR_CONFIG=./configs/llama3_7b.yaml
     . ./.venv/bin/activate
-    python nbs/train2.py sidein-ether
-    python nbs/train2.py ether
+    python scripts/train.py sidein-ether
+    python scripts/train.py ether

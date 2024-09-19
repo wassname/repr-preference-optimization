@@ -3,77 +3,61 @@
 # https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
 
 
-from pprint import pprint
 import os
-import tyro
-import yaml
+from pprint import pprint
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import logging
+import warnings
 from collections import OrderedDict
-from pathlib import Path
-
-# ML
-from peft import LoraConfig, get_peft_model
-from reprpo.models.load import load_model, print_trainable_parameters
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
-from einops import rearrange, reduce, repeat
-from jaxtyping import Float, Int, Bool
-from torch.utils.data import DataLoader
-
-from reprpo.gen import get_model_generations, display_gen
-from reprpo.helpers.shypothesis import shypothesis
-from reprpo.evaluate import evaluate_adapters
-from reprpo.data.collate3 import TokenizeRow
-
-from open_pref_eval.evaluation import evaluate_model
-from open_pref_eval.plot.radar import radar_plot
-from open_pref_eval.datasets.genies import dist2datasets, GENIES
-from open_pref_eval.datasets.ethics import get_ethics_datasets
-from open_pref_eval.datasets import load_dataset_n
-from open_pref_eval.datasets import ds2name
-from open_pref_eval.plot.radar import radar_plot
-
-from peft.tuners import BOFTConfig, OFTConfig, LoraConfig, IA3Config
-
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-import wandb
-from datasets import load_dataset
+# from matplotlib import pyplot as plt
+# lightning
+import lightning as pl
 
 # Numeric
 import numpy as np
 import pandas as pd
-# from matplotlib import pyplot as plt
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from datasets import load_dataset
 
-# lightning
-import lightning as pl
-from lightning.pytorch.loggers.wandb import WandbLogger
+# get a union class from the enum
+from datasets.utils.logging import disable_progress_bar
+from einops import rearrange, reduce, repeat
+from jaxtyping import Bool, Float, Int
 from lightning.pytorch.loggers.csv_logs import CSVLogger
+from lightning.pytorch.loggers.wandb import WandbLogger
+from open_pref_eval.datasets import ds2name, load_dataset_n
+from open_pref_eval.datasets.ethics import get_ethics_datasets
+from open_pref_eval.datasets.genies import GENIES, dist2datasets
+from open_pref_eval.evaluation import evaluate_model
+from open_pref_eval.plot.radar import radar_plot
 
+# ML
+from peft import LoraConfig, get_peft_model
+from peft.tuners import BOFTConfig, IA3Config, LoraConfig, OFTConfig
+from torch.utils.data import DataLoader
+
+import reprpo.silence
+import wandb
+from reprpo.data.collate3 import TokenizeRow
+from reprpo.evaluate import evaluate_adapters
+from reprpo.gen import display_gen, generation_test, get_model_generations
+from reprpo.helpers.lightning_hist import plot_hist, read_metrics_csv
+from reprpo.helpers.shypothesis import shypothesis
 
 # Local
 from reprpo.helpers.torch import clear_mem
-from reprpo.gen import generation_test
-import reprpo.silence
-from reprpo.helpers.lightning_hist import read_metrics_csv, plot_hist
+from reprpo.models.load import load_model, print_trainable_parameters
 from reprpo.train import Methods, MethodsUnion
-
-
-from reprpo.train.dpo import compute_dpo_loss_batch, PL_DPO_MODEL
-
-
+from reprpo.train.dpo import PL_DPO_MODEL, compute_dpo_loss_batch
 from reprpo.train.pl_base import TrainingArguments, TrainingArgumentswCollection
-from typing import Union
-
-# get a union class from the enum
-
-from datasets.utils.logging import disable_progress_bar
-import logging
-import warnings
 
 
 def silence():
@@ -263,6 +247,7 @@ def train(training_args: MethodsUnion):
         print(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
 
     from lightning.pytorch.callbacks import LearningRateMonitor
+
     from reprpo.train.pl_base import GenCallback
 
     pl_model = PL_MODEL(
@@ -396,24 +381,19 @@ def train(training_args: MethodsUnion):
         # log first row too, so we can compare single value
         run.log({f"res/{k}/{kk}": vv for kk, vv in v.iloc[0, :].to_dict().items()})
         # also just log final metrics to wandb so we can view a group
-    
+
     # FIXME, only pass in adapter col, not q index or base
     df_gen_w = wandb.Table(dataframe=df_gen)
 
-    run.log(
-        {
-            "generations": df_gen_w,
-            **r2
-        }
-    )
+    run.log({"generations": df_gen_w, **r2})
 
 
 def key_metrics(df_res2, adapter_name, ds_alias):
     # adapter_name, finetune_name, ds_alias
-    ds_name_train = ds_alias['train']
-    ds_name_test = ds_alias['test']
-    ds_name_oos = ds_alias['oos']
-    ds_name_rnd = ds_alias['rnd']
+    ds_name_train = ds_alias["train"]
+    ds_name_test = ds_alias["test"]
+    ds_name_oos = ds_alias["oos"]
+    ds_name_rnd = ds_alias["rnd"]
 
     df_res = (
         df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
@@ -523,8 +503,9 @@ def key_metrics(df_res2, adapter_name, ds_alias):
 
     return df_metrics
 
+
 def parse_eval(df_res2, ds_alias):
-    adapter_name = df_res2[['adapter']].query('adapter!="base"').values[0, 0]
+    adapter_name = df_res2[["adapter"]].query('adapter!="base"').values[0, 0]
 
     df_res = (
         df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
@@ -533,8 +514,6 @@ def parse_eval(df_res2, ds_alias):
         .T
     )
     df_res.columns = [d.replace("genie_dpo-", "") for d in df_res.columns]
-
-
 
     df_metrics = key_metrics(df_res2, adapter_name, ds_alias)
 
@@ -556,7 +535,7 @@ def parse_eval(df_res2, ds_alias):
     df_final.index.name = "acc_inc/eval_ds [pp]"
     print(df_final.round(3).to_markdown())
     print(
-        f"""Table 3: Accuracy increase (in percentage points) after training with named adapter on `{training_args.dataset}` compared to base model `{training_args.base_model}` for various distribution shifts:"""
+        f"""Table 3: Accuracy increase (in percentage points) after training with named adapter on `{ds_alias["train"]}` compared to base model for various distribution shifts:"""
     )
     for k, v in ds_alias.items():
         print(f"- `{k}`: `{v}`")
@@ -564,7 +543,7 @@ def parse_eval(df_res2, ds_alias):
 
     relacc = df_final.iloc[0, :]
     eps = 1e-6
-    relrelacc = ((relacc + eps) / (np.abs(relacc["train"]+eps))).drop("train")
+    relrelacc = ((relacc + eps) / (np.abs(relacc["train"] + eps))).drop("train")
     df_relrel = relrelacc.to_frame(f"{adapter_name}").T
     df_relrel.index.name = "acc_inc/acc_inc_train"
     print(df_relrel.round(3).to_markdown())
@@ -573,27 +552,7 @@ def parse_eval(df_res2, ds_alias):
     )
 
     return {
-            "acc": df_res,
-            "relative_metrics": df_metrics,
-            "relrel_acc": df_relrel,
-        }
-
-
-
-
-if __name__ == "__main__":
-    training_args = tyro.cli(MethodsUnion)
-
-    # tyro has a default option, but it doesn't work with subcommands, so I apply overides manually
-    # e.g. REPR_CONFIG=./configs/dev.yaml
-    overrides = {}
-    f = os.environ.get("REPR_CONFIG")
-    print("f", f)
-    if f is not None:
-        overrides = yaml.safe_load(open(f))
-        for k, v in overrides.items():
-            setattr(training_args, k, v)
-        print(f"loaded default config from {f}")
-        # print(args)
-
-    train(training_args)
+        "acc": df_res,
+        "relative_metrics": df_metrics,
+        "relrel_acc": df_relrel,
+    }
