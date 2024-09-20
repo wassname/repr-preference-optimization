@@ -40,8 +40,11 @@ class TrainingArguments:
 class TrainingArgumentswCollection(TrainingArguments):
     alpha: int = 0.1
 
-    collection_layers: tuple=(10, 12, 14, 16, 18) 
-    """layers to collect hs from."""
+    collection_layers_side: tuple=(10, 12, 14, 16, 18) 
+    """layers to collect activations from in side layers."""
+
+    collection_layers_hs: tuple=(10, 20, 30)
+    """The layers to collect the hidden states from. Thisis for methods that operate on the redundant residual stream so only needs a couple of points of collection"""
     
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
@@ -146,13 +149,13 @@ class GenCallback(Callback):
 
     def do_gen(self, model):
         df_gen = get_model_generations(model, model.tokenizer, max_new_tokens=32, N=1)
-        display_gen(df_gen)
+        display_gen(df_gen, with_q=False)
 
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         n = batch_idx + 1
         if n % self.every == 0:
-            print(f"Generated on batch {batch_idx}")
+            print(f"\nGenerated on batch {batch_idx}")
             self.do_gen(trainer.model._model)
 
     def on_train_epoch_end(self, trainer, pl_module):

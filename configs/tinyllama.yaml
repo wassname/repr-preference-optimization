@@ -1,11 +1,14 @@
 # not really needed as this is the default params
 base_model: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
-collection_layers: 
+collection_layers_side: 
   - 8
   - 10
   - 12
   - 14
   - 16
+  - 18
+collection_layers_hs
+  - 8
   - 18
 collection_keys_in:
   - "base_model.model.model.layers.{layer}.self_attn.o_proj"

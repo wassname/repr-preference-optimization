@@ -173,9 +173,9 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
         # info['retain_cosine'] = cosine_on_keys(pi_cho.hidden_states, ref_cho.hidden_states)
         # info['rr_cosine'] = cosine_on_keys(pi_rej.hidden_states, ref_cho.hidden_states)
 
-        nll_loss = info['nll_loss'] = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask'])
-        ref_nll_loss = info['ref_nll_loss'] = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
-        info['nll_loss_ratio'] = nll_loss / ref_nll_loss
+        nll_loss = info['nll_loss'] = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask']).mean()
+        ref_nll_loss = info['ref_nll_loss'] = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask']).mean()
+        info['nll_loss_ratio'] = (nll_loss / ref_nll_loss).mean()
 
     
     return loss, info

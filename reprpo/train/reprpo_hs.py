@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import itertools
 from reprpo.train.reprpo_hra import reprpo_forward, dist_ratio
 
-def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers):
+def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers_hs):
 
     model.eval()
     with torch.no_grad():
@@ -23,13 +23,13 @@ def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers):
                 model=model,
                 input_ids=batch["chosen"],
                 attn_mask=batch["chosen_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
             ref_rej = reprpo_forward(
                 model=model,
                 input_ids=batch["rejected"],
                 attn_mask=batch["rejected_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
 
     model.train()
@@ -37,13 +37,13 @@ def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers):
         model=model,
         input_ids=batch["chosen"],
         attn_mask=batch["chosen_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     pi_rej = reprpo_forward(
         model=model,
         input_ids=batch["rejected"],
         attn_mask=batch["rejected_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     assert torch.isfinite(pi_rej.hs).all()
     cho_attn_mask = batch["chosen_mask"]
@@ -121,13 +121,13 @@ def validate_args(model, args):
     # first check collection layers exist'
 
     # HACK: llama specific
-    assert max(args.collection_layers)<(model.config.num_hidden_layers+1), 'collection layers should be less than the number of layers'
+    assert max(args.collection_layers_hs)<(model.config.num_hidden_layers+1), 'collection layers should be less than the number of layers'
 
 class PL_REPRPO_HS_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers, **kwargs):
+    def __init__(self, *args, alpha, collection_layers_hs, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
-        self.hparams.collection_layers = collection_layers
+        self.hparams.collection_layers_hs = collection_layers_hs
         validate_args(self._model, self.hparams)
 
 
@@ -137,7 +137,7 @@ class PL_REPRPO_HS_MODEL(PL_MODEL):
             batch,
             model,
             self.hparams.alpha,
-            self.hparams.collection_layers,
+            self.hparams.collection_layers_hs,
         )
 
 @dataclass
@@ -150,6 +150,6 @@ class HS(TrainingArgumentswCollection):
     lr: float = 3e-5
 
     _reprpo_class = PL_REPRPO_HS_MODEL
-    _model_keys = ['alpha', 'collection_layers']
+    _model_keys = ['alpha', 'collection_layers_hs']
 
 

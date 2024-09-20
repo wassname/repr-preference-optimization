@@ -1548,11 +1548,11 @@ Here it looked like it was getting worse but after 1k steps it got better!! This
 
 ⭐ run=32_reprpo_svd, N=144
 
-| dataset            |   base |   ReprPO |
-|:-------------------|-------:|---------:|
-| truthful_qa_binary |  0.506 |    0.516 |
-| toxic-dpo-v0.2     |  0.619 |    0.369 |
-| help_steer2-dpo    |  0.512 |    0.523 |
+| dataset            |  base | ReprPO |
+| :----------------- | ----: | -----: |
+| truthful_qa_binary | 0.506 |  0.516 |
+| toxic-dpo-v0.2     | 0.619 |  0.369 |
+| help_steer2-dpo    | 0.512 |  0.523 |
 
 args = ReprPOSVDTrainingArguments(model_name='microsoft/Phi-3-mini-4k-instruct', use_bnb=True, use_gradient_checkpointing=False, use_inputs=True, n_epochs=1, batch_size=7, lr=0.0005, weight_decay=0.0, n_samples=58500, max_length=128, max_prompt_length=64, alpha=0.1, quantile=0.75, dual_svd=False)
 
@@ -1616,13 +1616,13 @@ and base model
 
 ok finally reasonable result (although the text output is garbage needs more training  it's one base model)
 
-| dataset                             |   dpo-us_history_textbook |   base |
-|:------------------------------------|--------------------------:|-------:|
-| genie_dpo-us_history_textbook-train |                     0.999 |  0.981 |
-| genie_dpo-us_history_textbook-test  |                     0.996 |  0.979 |
-| genie_dpo-us_history_fiction-test   |                     0.908 |  0.769 |
-| genie_dpo-us_history-test           |                     0.869 |  0.715 |
-| genie_dpo-code_hard-test            |                     0.776 |  0.775 |
+| dataset                             | dpo-us_history_textbook |  base |
+| :---------------------------------- | ----------------------: | ----: |
+| genie_dpo-us_history_textbook-train |                   0.999 | 0.981 |
+| genie_dpo-us_history_textbook-test  |                   0.996 | 0.979 |
+| genie_dpo-us_history_fiction-test   |                   0.908 | 0.769 |
+| genie_dpo-us_history-test           |                   0.869 | 0.715 |
+| genie_dpo-code_hard-test            |                   0.776 | 0.775 |
 
 
 saved results to /workspace/repr-preference-optimization/outputs/NousResearchMeta-Llama-3.1-8B/dpo/us_history_textbook/2024-09-04_05-43-43/eval.parquet
@@ -1630,13 +1630,13 @@ saved results to /workspace/repr-preference-optimization/outputs/NousResearchMet
 ================================================================================
 ⭐ run=train, N=750
 
-| dataset                             |   reprpo_sidein-us_history_textbook |   base |
-|:------------------------------------|------------------------------------:|-------:|
-| genie_dpo-us_history_textbook-train |                               0.987 |  0.981 |
-| genie_dpo-us_history_textbook-test  |                               0.975 |  0.979 |
-| genie_dpo-us_history_fiction-test   |                               0.856 |  0.769 |
-| genie_dpo-us_history-test           |                               0.843 |  0.715 |
-| genie_dpo-code_hard-test            |                               0.775 |  0.775 |
+| dataset                             | reprpo_sidein-us_history_textbook |  base |
+| :---------------------------------- | --------------------------------: | ----: |
+| genie_dpo-us_history_textbook-train |                             0.987 | 0.981 |
+| genie_dpo-us_history_textbook-test  |                             0.975 | 0.979 |
+| genie_dpo-us_history_fiction-test   |                             0.856 | 0.769 |
+| genie_dpo-us_history-test           |                             0.843 | 0.715 |
+| genie_dpo-code_hard-test            |                             0.775 | 0.775 |
 
 save_dir=/workspace/repr-preference-optimization/outputs/NousResearchMeta-Llama-3.1-8B/reprpo_sidein/us_history_textbook/2024-09-04_08-10-34
 
@@ -2002,10 +2002,10 @@ reprpo_sidein-us_history_textbook                  0.697333                     
 saved results to /media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/TinyLlama_TinyLlama-1.1B-Chat-v1.0_reprpo_sidein_us_history_textbook/2024-09-11_06-17-23/eval.parquet
 ⭐ run=reprpo_sidein/061704, N=750
 
-| adapter                           |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
-|:----------------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
-| base                              |            0.704 |                     0.675 |                      0.949 |                       0.956 |
-| reprpo_sidein-us_history_textbook |            0.697 |                     0.717 |                      0.956 |                       0.97  |
+| adapter                           | code_hard-test | us_history_fiction-test | us_history_textbook-test | us_history_textbook-train |
+| :-------------------------------- | -------------: | ----------------------: | -----------------------: | ------------------------: |
+| base                              |          0.704 |                   0.675 |                    0.949 |                     0.956 |
+| reprpo_sidein-us_history_textbook |          0.697 |                   0.717 |                    0.956 |                      0.97 |
 # HRA
 
 TODO also try with this transform
@@ -2105,10 +2105,10 @@ dpo-us_history_textbook                  0.682667                           0.67
 saved results to /media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/TinyLlama_TinyLlama-1.1B-Chat-v1.0_dpo_us_history_textbook/2024-09-10_22-50-57/eval.parquet
 ⭐ run=dpo/225046, N=750
 
-| adapter                 |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
-|:------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
-| base                    |            0.704 |                     0.675 |                      0.949 |                       0.956 |
-| dpo-us_history_textbook |            0.683 |                     0.679 |                      0.963 |                       1     |
+| adapter                 | code_hard-test | us_history_fiction-test | us_history_textbook-test | us_history_textbook-train |
+| :---------------------- | -------------: | ----------------------: | -----------------------: | ------------------------: |
+| base                    |          0.704 |                   0.675 |                    0.949 |                     0.956 |
+| dpo-us_history_textbook |          0.683 |                   0.679 |                    0.963 |                         1 |
 
 
 ================================================================================
@@ -2134,10 +2134,10 @@ reprpo_ortho-us_history_textbook                  0.701333                      
 saved results to /media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/TinyLlama_TinyLlama-1.1B-Chat-v1.0_reprpo_ortho_us_history_textbook/2024-09-10_20-43-11/eval.parquet
 ⭐ run=reprpo_ortho/204300, N=750
 
-| adapter                          |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
-|:---------------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
-| base                             |            0.704 |                     0.675 |                      0.949 |                       0.956 |
-| reprpo_ortho-us_history_textbook |            0.701 |                     0.732 |                      0.965 |                       0.972 |
+| adapter                          | code_hard-test | us_history_fiction-test | us_history_textbook-test | us_history_textbook-train |
+| :------------------------------- | -------------: | ----------------------: | -----------------------: | ------------------------: |
+| base                             |          0.704 |                   0.675 |                    0.949 |                     0.956 |
+| reprpo_ortho-us_history_textbook |          0.701 |                   0.732 |                    0.965 |                     0.972 |
 
 
 It seems to be working? Now I'd like the check how much of this transform is interpreted by lm_head
@@ -2165,18 +2165,18 @@ df_final = pd.DataFrame({
 }, index=[adapter_name])
 print(df_final.round(3).to_markdown())
 
-|                                |   train |   test |   oos |   rnd |
-|:-------------------------------|--------:|-------:|------:|------:|
+|      | train | test |  oos |  rnd |
+| :--- | ----: | ---: | ---: | ---: |
 
 
 
 
 runpod llama-7b 3.1 chat run dpo
-|                                |   train |   test |   oos |   rnd |
-|:------------------------       |--------:|-------:|------:|------:|
-| dpo-us_history_textbook        |   1.011 |  1.005 | 1.076 | 0.978 |
-| reprpo_hra-us_history_textbook |   1.007 |  1.012 | 1.079 | 0.971 |
-| reprpo_ortho-us_history_textbook |   1.008 |  1.012 | 1.074 | 0.984 |
+|                                  | train |  test |   oos |   rnd |
+| :------------------------------- | ----: | ----: | ----: | ----: |
+| dpo-us_history_textbook          | 1.011 | 1.005 | 1.076 | 0.978 |
+| reprpo_hra-us_history_textbook   | 1.007 | 1.012 | 1.079 | 0.971 |
+| reprpo_ortho-us_history_textbook | 1.008 | 1.012 | 1.074 | 0.984 |
 
 # 2024-09-12 06:38:45
 
@@ -2188,36 +2188,36 @@ args = ReprPOHRATrainingArguments(model_name='NousResearch/Meta-Llama-3.1-8B-Ins
 save_dir=/workspace/repr-preference-optimization/outputs/NousResearch_Meta-Llama-3.1-8B-Instruct_reprpo_hra_us_history_textbook/2024-09-11_12-28-42
 key metrics (adapter over base model)
 
- |                                                      |   dpo-us_history_textbook |
-|:-----------------------------------------------------|--------------------------:|
-| acc[a/base]_train [us_history_textbook-train]        |                     1.011 |
-| acc[a/base]_test [us_history_textbook-test]          |                     1.005 |
-| acc[a/base]_oos [us_history_fiction-test]            |                     1.087 |
-| acc[a/base]_rnd [code_hard-test]                     |                     0.974 |
-| coherency[a-base]_train [us_history_textbook-train]  |                  -370.539 |
-| coherency[a-base]_test [us_history_textbook-test]    |                  -363.017 |
-| coherency[a-base]_oos [us_history_fiction-test]      |                  -453.218 |
-| coherency[a-base]_rnd [code_hard-test]               |                  -401.851 |
-| coherency[cho-rej]_train [us_history_textbook-train] |                   604.605 |
-| coherency[cho-rej]_test [us_history_textbook-test]   |                   550.363 |
-| coherency[cho-rej]_oos [us_history_fiction-test]     |                   363.469 |
-| coherency[cho-rej]_rnd [code_hard-test]              |                    36.903 | 
+  |                                                      | dpo-us_history_textbook |
+  | :--------------------------------------------------- | ----------------------: |
+  | acc[a/base]_train [us_history_textbook-train]        |                   1.011 |
+  | acc[a/base]_test [us_history_textbook-test]          |                   1.005 |
+  | acc[a/base]_oos [us_history_fiction-test]            |                   1.087 |
+  | acc[a/base]_rnd [code_hard-test]                     |                   0.974 |
+  | coherency[a-base]_train [us_history_textbook-train]  |                -370.539 |
+  | coherency[a-base]_test [us_history_textbook-test]    |                -363.017 |
+  | coherency[a-base]_oos [us_history_fiction-test]      |                -453.218 |
+  | coherency[a-base]_rnd [code_hard-test]               |                -401.851 |
+  | coherency[cho-rej]_train [us_history_textbook-train] |                 604.605 |
+  | coherency[cho-rej]_test [us_history_textbook-test]   |                 550.363 |
+  | coherency[cho-rej]_oos [us_history_fiction-test]     |                 363.469 |
+  | coherency[cho-rej]_rnd [code_hard-test]              |                  36.903 |
 
 absolute accuracy
-| adapter                 |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
-|:------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
-| base                    |            0.773 |                     0.841 |                      0.987 |                       0.989 |
-| dpo-us_history_textbook |            0.753 |                     0.915 |                      0.992 |                       1     | 
-| reprpo_sidein-us_history_textbook |            0.768 |                     0.888 |                      0.996 |                       0.995 |
-| reprpo_ortho-us_history_textbook |            0.755 |                     0.908 |                      0.996 |                       0.998
-| reprpo_hra-us_history_textbook |            0.756 |                     0.905 |                      0.996 |                       0.997 | 
+| adapter                           | code_hard-test | us_history_fiction-test | us_history_textbook-test | us_history_textbook-train |
+| :-------------------------------- | -------------: | ----------------------: | -----------------------: | ------------------------: |
+| base                              |          0.773 |                   0.841 |                    0.987 |                     0.989 |
+| dpo-us_history_textbook           |          0.753 |                   0.915 |                    0.992 |                         1 |
+| reprpo_sidein-us_history_textbook |          0.768 |                   0.888 |                    0.996 |                     0.995 |
+| reprpo_ortho-us_history_textbook  |          0.755 |                   0.908 |                    0.996 |                     0.998 |
+| reprpo_hra-us_history_textbook    |          0.756 |                   0.905 |                    0.996 |                     0.997 |
 
-| increased accuracy over base model %   |   train |   test |   oos |   rnd |
-|:---------------------------------------|--------:|-------:|------:|------:|
-| dpo-us_history_textbook                |   1.011 |  1.005 | 1.087 | 0.974 |
-| reprpo_sidein-us_history_textbook      |   1.006 |  1.009 | 1.055 | 0.993 |
-| reprpo_ortho-us_history_textbook       |   1.009 |  1.009 | 1.079 | 0.976 |
-| reprpo_hra-us_history_textbook         |   1.008 |  1.009 | 1.076 | 0.978 |
+| increased accuracy over base model % | train |  test |   oos |   rnd |
+| :----------------------------------- | ----: | ----: | ----: | ----: |
+| dpo-us_history_textbook              | 1.011 | 1.005 | 1.087 | 0.974 |
+| reprpo_sidein-us_history_textbook    | 1.006 | 1.009 | 1.055 | 0.993 |
+| reprpo_ortho-us_history_textbook     | 1.009 | 1.009 | 1.079 | 0.976 |
+| reprpo_hra-us_history_textbook       | 1.008 | 1.009 | 1.076 | 0.978 |
 
 
 # 2024-09-12 08:07:20
@@ -2231,30 +2231,30 @@ svd went up... but that's kind a of a problem with that alg
 args = ReprPOHSTrainingArguments(load_in_4bit=False, load_in_8bit=False, use_gradient_checkpointing=False, batch_size=15, lr=6e-05, weight_decay=0.0, n_samples=23400, max_length=196, max_prompt_length=96, collection_layers=(10, 12, 14, 16, 18), alpha=0.3, adapter_name='reprpo_hs', l3r=3e-05)
 save_dir=/media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/TinyLlama_TinyLlama-1.1B-Chat-v1.0_reprpo_hs_us_history_textbook/2024-09-12_09-09-39
 key metrics (adapter over base model)
- |                                                      |   reprpo_hs-us_history_textbook |
-|:-----------------------------------------------------|--------------------------------:|
-| acc[a/base]_train [us_history_textbook-train]        |                           1.002 |
-| acc[a/base]_test [us_history_textbook-test]          |                           1.003 |
-| acc[a/base]_oos [us_history_fiction-test]            |                           1.006 |
-| acc[a/base]_rnd [code_hard-test]                     |                           0.998 |
-| coherency[a-base]_train [us_history_textbook-train]  |                           0.04  |
-| coherency[a-base]_test [us_history_textbook-test]    |                           0.063 |
-| coherency[a-base]_oos [us_history_fiction-test]      |                           0.062 |
-| coherency[a-base]_rnd [code_hard-test]               |                          -0.207 |
-| coherency[cho-rej]_train [us_history_textbook-train] |                          40.448 |
-| coherency[cho-rej]_test [us_history_textbook-test]   |                          38.357 |
-| coherency[cho-rej]_oos [us_history_fiction-test]     |                          12.138 |
-| coherency[cho-rej]_rnd [code_hard-test]              |                           6.011 | 
+  |                                                      | reprpo_hs-us_history_textbook |
+  | :--------------------------------------------------- | ----------------------------: |
+  | acc[a/base]_train [us_history_textbook-train]        |                         1.002 |
+  | acc[a/base]_test [us_history_textbook-test]          |                         1.003 |
+  | acc[a/base]_oos [us_history_fiction-test]            |                         1.006 |
+  | acc[a/base]_rnd [code_hard-test]                     |                         0.998 |
+  | coherency[a-base]_train [us_history_textbook-train]  |                          0.04 |
+  | coherency[a-base]_test [us_history_textbook-test]    |                         0.063 |
+  | coherency[a-base]_oos [us_history_fiction-test]      |                         0.062 |
+  | coherency[a-base]_rnd [code_hard-test]               |                        -0.207 |
+  | coherency[cho-rej]_train [us_history_textbook-train] |                        40.448 |
+  | coherency[cho-rej]_test [us_history_textbook-test]   |                        38.357 |
+  | coherency[cho-rej]_oos [us_history_fiction-test]     |                        12.138 |
+  | coherency[cho-rej]_rnd [code_hard-test]              |                         6.011 |
 
 absolute accuracy
-| adapter                       |   code_hard-test |   us_history_fiction-test |   us_history_textbook-test |   us_history_textbook-train |
-|:------------------------------|-----------------:|--------------------------:|---------------------------:|----------------------------:|
-| base                          |            0.704 |                     0.675 |                      0.949 |                       0.956 |
-| reprpo_hs-us_history_textbook |            0.703 |                     0.679 |                      0.952 |                       0.958 | 
+| adapter                       | code_hard-test | us_history_fiction-test | us_history_textbook-test | us_history_textbook-train |
+| :---------------------------- | -------------: | ----------------------: | -----------------------: | ------------------------: |
+| base                          |          0.704 |                   0.675 |                    0.949 |                     0.956 |
+| reprpo_hs-us_history_textbook |          0.703 |                   0.679 |                    0.952 |                     0.958 |
 
-| increased accuracy over base model %   |   train |   test |   oos |   rnd |
-|:---------------------------------------|--------:|-------:|------:|------:|
-| reprpo_hs-us_history_textbook          |   1.002 |  1.003 | 1.006 | 0.998 |
+| increased accuracy over base model % | train |  test |   oos |   rnd |
+| :----------------------------------- | ----: | ----: | ----: | ----: |
+| reprpo_hs-us_history_textbook        | 1.002 | 1.003 | 1.006 | 0.998 |
 
 
 hs runs
@@ -2319,22 +2319,22 @@ args =
  'weight_decay': 0.0}
 
 4bit 
-  | SideoutHRA\dist shift   |    oos |    rnd |   test |   train |
-  |:------------------------|-------:|-------:|-------:|--------:|
-  | acc[pi/base]            |  1.04  |  1.003 |  1.01  |   1.004 |
-  | coherency[cho-rej]      | 21.478 |  9.826 | 49.43  |  51.084 |
-  | coherency[pi-base]      |  1.719 | -0.616 |  3.021 |   2.807 |
+  | SideoutHRA\dist shift |    oos |    rnd |  test |  train |
+  | :-------------------- | -----: | -----: | ----: | -----: |
+  | acc[pi/base]          |   1.04 |  1.003 |  1.01 |  1.004 |
+  | coherency[cho-rej]    | 21.478 |  9.826 | 49.43 | 51.084 |
+  | coherency[pi-base]    |  1.719 | -0.616 | 3.021 |  2.807 |
   Table 1: Key metrics (adapter over base model)
 
-  | adapter/ds                     |   train |   test |   oos |   rnd |
-  |:-------------------------------|--------:|-------:|------:|------:|
-  | SideoutHRA-us_history_textbook |   0.985 |  0.988 | 0.8   | 0.793 |
-  | base                           |   0.981 |  0.979 | 0.769 | 0.791 |
+  | adapter/ds                     | train |  test |   oos |   rnd |
+  | :----------------------------- | ----: | ----: | ----: | ----: |
+  | SideoutHRA-us_history_textbook | 0.985 | 0.988 |   0.8 | 0.793 |
+  | base                           | 0.981 | 0.979 | 0.769 | 0.791 |
   Table 2: Absolute accuracy
 
-  | acc_inc/eval_ds   |   oos |   rnd |   test |   train |
-  |:------------------|------:|------:|-------:|--------:|
-  | SideoutHRA        |  1.04 | 1.003 |   1.01 |   1.004 |
+  | acc_inc/eval_ds |  oos |   rnd | test | train |
+  | :-------------- | ---: | ----: | ---: | ----: |
+  | SideoutHRA      | 1.04 | 1.003 | 1.01 | 1.004 |
 
 
 
@@ -2406,8 +2406,8 @@ ortho lr
 
 llama
 instruct
-| acc_inc/eval_ds   |   oos |   rnd |   test |   train |
-|:------------------|------:|------:|-------:|--------:|
+| acc_inc/eval_ds |  oos |  rnd | test | train |
+| :-------------- | ---: | ---: | ---: | ----: |
 - 3e-3 nan
 | 3e-4             | 5.714 | -1.02 |  1.081 |   0.393  |
 | 6e-5             |  4    | -0.2  |  .8    |   .3     |
@@ -2416,11 +2416,11 @@ llamah
 hra
 no gs
 just like in the HRA paper it's insenstivie to lr
-| acc_inc/eval_ds   |   oos |    rnd |   test |   train |
-|:------------------|------:|-------:|-------:|--------:|
-| HRA 3e-4          | 5.238 | -1.531 |  1.081 |   0.393 |
-| HRA 1e-3          | 4.286 | -3.571 |  0.946 |   0.449 |
-| HRA  gs 1e-3      | 6.962 | -5.612 |  1.081 |   0.619 |
+| acc_inc/eval_ds |   oos |    rnd |  test | train |
+| :-------------- | ----: | -----: | ----: | ----: |
+| HRA 3e-4        | 5.238 | -1.531 | 1.081 | 0.393 |
+| HRA 1e-3        | 4.286 | -3.571 | 0.946 | 0.449 |
+| HRA  gs 1e-3    | 6.962 | -5.612 | 1.081 | 0.619 |
 1-2 incoherent
 
 noee it starting talking about metritocracy rather diveresity so it has promise
@@ -2428,9 +2428,9 @@ noee it starting talking about metritocracy rather diveresity so it has promise
 
 side in hra, lr = 1e-3
 
-| acc_inc/eval_ds   |   oos |    rnd |   test |   train |
-|:------------------|------:|-------:|-------:|--------:|
-| SideinHRA         | 4.905 | -2.551 |  0.811 |   0.619 |1
+| acc_inc/eval_ds |   oos |    rnd |  test | train |
+| :-------------- | ----: | -----: | ----: | ----: |
+| SideinHRA       | 4.905 | -2.551 | 0.811 | 0.619 | 1 |
 e-2? incoherent
 
 | SideinETHER       | 5.854 | -2.041 |  0.946 |   0.731 |
@@ -2454,18 +2454,18 @@ But also I'm looking at thing that are underfit vs dpo, so maybe I should look a
 
 So
 DPO 
-| acc_inc/eval_ds   |   oos |   rnd |   test |   train |
-|:------------------|------:|------:|-------:|--------:|
-| HS                | 0.475 |     0 | -0.135 |       0 |
-| HRA               | 3.797 | -4.932 |  0.946 |   0.169 |
-| DPO               |  4.43 | -2.381 |  0.405 |   1.237 |
-| Sideout           | 4.747 | -0.51 |  0.676 |    0.45 |
-| Sidein            | 5.222 | -1.531 |  0.811 |   0.506 |
-| SideinETHER       | 5.222 | -2.891 |  1.081 |   0.562 |
-| SideoutHRA        |  5.38 | -1.701 |  0.811 |   0.506 |
-| SideinHRA         | 5.696 | -0.68 |  0.946 |   0.619 |
-| Ortho             | 5.696 | -0.17 |  0.946 |   0.506 |
-|
+| acc_inc/eval_ds |   oos |    rnd |   test | train |
+| :-------------- | ----: | -----: | -----: | ----: |
+| HS              | 0.475 |      0 | -0.135 |     0 |
+| HRA             | 3.797 | -4.932 |  0.946 | 0.169 |
+| DPO             |  4.43 | -2.381 |  0.405 | 1.237 |
+| Sideout         | 4.747 |  -0.51 |  0.676 |  0.45 |
+| Sidein          | 5.222 | -1.531 |  0.811 | 0.506 |
+| SideinETHER     | 5.222 | -2.891 |  1.081 | 0.562 |
+| SideoutHRA      |  5.38 | -1.701 |  0.811 | 0.506 |
+| SideinHRA       | 5.696 |  -0.68 |  0.946 | 0.619 |
+| Ortho           | 5.696 |  -0.17 |  0.946 | 0.506 |
+|                 |
 
 This is for instruct but
 dpo 0.405/1.237 = 0.327
@@ -2495,13 +2495,13 @@ but we still have the question, if this method gives better generalsation, how d
 
 # 2024-09-16 02:40:00
 
-| acc_inc/eval_ds   |   oos |    rnd |   test |   train |
-|:------------------|------:|-------:|-------:|--------:|
-| DPO               |  4.43 | -2.381 |  0.405 |   1.237 |
+| acc_inc/eval_ds |  oos |    rnd |  test | train |
+| :-------------- | ---: | -----: | ----: | ----: |
+| DPO             | 4.43 | -2.381 | 0.405 | 1.237 |
 
 
 | DPO\dist shift     |      oos |      rnd |     test |    train |
-|:-------------------|---------:|---------:|---------:|---------:|
+| :----------------- | -------: | -------: | -------: | -------: |
 | acc[pi/base]       |    1.044 |    0.976 |    1.004 |    1.012 |
 | coherency[cho-rej] |  179.589 |   28.635 |  384.813 |  414.011 |
 | coherency[pi-base] | -344.484 | -273.629 | -270.292 | -266.762 |
@@ -2574,15 +2574,15 @@ In contrast, while "The Polity" by Neal Asher and "Permutation City" by Greg Ega
 
 Table 1: Key metrics (adapter over base model)
 
-| adapter/ds                 |   train |   test |   oos |   rnd |
-|:---------------------------|--------:|-------:|------:|------:|
-| Sidein-us_history_textbook |   0.993 |  0.995 | 0.887 | 0.772 |
-| base                       |   0.988 |  0.987 | 0.843 | 0.784 |
+| adapter/ds                 | train |  test |   oos |   rnd |
+| :------------------------- | ----: | ----: | ----: | ----: |
+| Sidein-us_history_textbook | 0.993 | 0.995 | 0.887 | 0.772 |
+| base                       | 0.988 | 0.987 | 0.843 | 0.784 |
 Table 2: Absolute accuracy
 
-| acc_inc/eval_ds   |   oos |    rnd |   test |   train |
-|:------------------|------:|-------:|-------:|--------:|
-| Sidein            | 5.222 | -1.531 |  0.811 |   0.506 |
+| acc_inc/eval_ds |   oos |    rnd |  test | train |
+| :-------------- | ----: | -----: | ----: | ----: |
+| Sidein          | 5.222 | -1.531 | 0.811 | 0.506 |
 Table 3: Accuracy increase (in percentage points) after training with named adapter on `us_history_textbook` compared to base model `NousResearch/Meta-Llama-3.1-8B-Instruct` for various distribution shifts:
 - `train`: `genie_dpo-us_history_textbook-train`
 - `test`: `genie_dpo-us_history_textbook-test`
@@ -2591,11 +2591,11 @@ Table 3: Accuracy increase (in percentage points) after training with named adap
 I would like to try some with all llama layers
 
 
-| acc_inc/eval_ds   |   oos |    rnd |   test |   train |
-|:------------------|------:|-------:|-------:|--------:|
-| ETHER             | 7.203 | -1.706 |  0.809 |   0.451 |
-| SideinETHER       | 5.695 | -0.683 |  0.674 |   0.676 |
-| DPO               |  4.43 | -2.381 |  0.405 |   1.237 |
+| acc_inc/eval_ds |   oos |    rnd |  test | train |
+| :-------------- | ----: | -----: | ----: | ----: |
+| ETHER           | 7.203 | -1.706 | 0.809 | 0.451 |
+| SideinETHER     | 5.695 | -0.683 | 0.674 | 0.676 |
+| DPO             |  4.43 | -2.381 | 0.405 | 1.237 |
 
 hm
  yes using all layers especially iinal layers seems to lelp ether change the styel
@@ -2611,14 +2611,14 @@ rying a few changes
 - yes
 
 
-| acc_inc/eval_ds   |   oos |   rnd |   test |   train |
-|:------------------|------:|------:|-------:|--------:|
-| DPO               |  4.43 | -2.381|  0.405 |   1.237 |
-| HRA squared       | 3.797 | -4.932|  0.946 |   0.169 |
-| HRA abs no_rel_l  | 8.208 | 0.279 |  0.809 |   0.732 |
-| HRA abs trans(ref)| 8.543 | -0.14 |  0.809 |   0.789 |
-| HRA torch.norm    |  9.38 | -0.14 |  0.809 |   0.789 |
-  HRAKL            |  3.35 | -0.978 |  0.539 |   1.127 |
+| acc_inc/eval_ds    |   oos |    rnd |  test | train |
+| :----------------- | ----: | -----: | ----: | ----: |
+| DPO                |  4.43 | -2.381 | 0.405 | 1.237 |
+| HRA squared        | 3.797 | -4.932 | 0.946 | 0.169 |
+| HRA abs no_rel_l   | 8.208 |  0.279 | 0.809 | 0.732 |
+| HRA abs trans(ref) | 8.543 |  -0.14 | 0.809 | 0.789 |
+| HRA torch.norm     |  9.38 |  -0.14 | 0.809 | 0.789 |
+| HRAKL              |  3.35 | -0.978 | 0.539 | 1.127 |
 
 huh using torch norm seems as good if not better... ok. it's simpler
 
@@ -2670,17 +2670,17 @@ hrakl --verbose --batch-size 48 --lr=1e-4
 ideas for the kl lossr
 ight now I am increasing prob of cho on the subspace, decreasing rej, and keeping cho the same on the overall
 - [/] decrease rej, but keep cho the same? (rather than bringing it closer to cho) hmmm
-    | adapter/ds                |   train |   test |   oos |   rnd |
-    |:--------------------------|--------:|-------:|------:|------:|
-    | HRAKL-us_history_textbook |   0.987 |  0.989 | 0.787 | 0.959 |
-    | base                      |   0.986 |  0.989 | 0.796 | 0.955 |
+    | adapter/ds                | train |  test |   oos |   rnd |
+    | :------------------------ | ----: | ----: | ----: | ----: |
+    | HRAKL-us_history_textbook | 0.987 | 0.989 | 0.787 | 0.959 |
+    | base                      | 0.986 | 0.989 | 0.796 | 0.955 |
     - not improving as much, keep the text coherent thought hmm
     - well what if I add nll loss instead of retain? just need it to be scaled
 - [x] ok try without the ether subpace... because why would probs work their? might make more sense to turn to probs first...
-  | adapter/ds                |   train |   test |   oos |   rnd |
-  |:--------------------------|--------:|-------:|------:|------:|
-  | HRAKL-us_history_textbook |   0.989 |  0.98  | 0.741 | 0.935 |
-  | base                      |   0.986 |  0.989 | 0.796 | 0.955 |
+  | adapter/ds                | train |  test |   oos |   rnd |
+  | :------------------------ | ----: | ----: | ----: | ----: |
+  | HRAKL-us_history_textbook | 0.989 |  0.98 | 0.741 | 0.935 |
+  | base                      | 0.986 | 0.989 | 0.796 | 0.955 |
   Table 2: Absolute accuracy
 
 - [ ] then try with lm_head? (but then too much focus on tokens...we will see)
@@ -2740,24 +2740,24 @@ Some interesting generation coming out, but dpo loss might be the wrong way up..
   **Adapter:`HRAKL-us_history_textbook` generation**`
   `I would prefer to live in the society of The Culture by Ian M Banks. The Culture is a highly advanced and diverse society that values individual freedom and creativity. The society is also highly egalitarian, with no hierarchy or class system. The Culture is also highly technologically advanced, with advanced artificial intelligence and virtual reality. The society is also highly peaceful, with no war or conflict. The Culture is also highly tolerant of different beliefs and lifestyles, with no religious or cultural restrictions. The society is also highly environmentally conscious, with a strong emphasis on sustainability and conservation. The Culture is also highly democratic, with a system of governance that is highly participatory and decentralized. The society is also highly interconnected, with a highly advanced communication and transportation system that allows for easy travel and communication between different parts of the society. The Culture is also highly artistic, with a highly developed system of art and culture that is highly valued and celebrated. The society is also highly scientific, with a highly advanced system of science and technology that is highly valued and respected. The society is also highly philosophical, with a highly developed system of philosophy and metaphysics that is highly valued and respected. The society is also highly spiritual, with a highly developed system of spirituality and mysticism that is highly valued and respected.`
 
-  | HRAKL-us_history_textbook\dist shift   |    oos |   rnd |   test |   train |
-  |:---------------------------------------|-------:|------:|-------:|--------:|
-  | acc[pi/base]                           |  1.034 |  0.99 |  1.005 |   1.011 |
-  | coherency[cho-rej]                     | 25.409 | 14.22 | 61.372 |  67.516 |
-  | coherency[pi-base]                     | -3.566 |  4.19 | -0.05  |   2.043 |
+  | HRAKL-us_history_textbook\dist shift |    oos |   rnd |   test |  train |
+  | :----------------------------------- | -----: | ----: | -----: | -----: |
+  | acc[pi/base]                         |  1.034 |  0.99 |  1.005 |  1.011 |
+  | coherency[cho-rej]                   | 25.409 | 14.22 | 61.372 | 67.516 |
+  | coherency[pi-base]                   | -3.566 |  4.19 |  -0.05 |  2.043 |
   Table 1: Key metrics (adapter over base model)
 
-  | adapter/ds                |   train |   test |   oos |   rnd |
-  |:--------------------------|--------:|-------:|------:|------:|
-  | HRAKL-us_history_textbook |   0.997 |  0.995 | 0.823 | 0.945 |
-  | base                      |   0.986 |  0.989 | 0.796 | 0.955 |
+  | adapter/ds                | train |  test |   oos |   rnd |
+  | :------------------------ | ----: | ----: | ----: | ----: |
+  | HRAKL-us_history_textbook | 0.997 | 0.995 | 0.823 | 0.945 |
+  | base                      | 0.986 | 0.989 | 0.796 | 0.955 |
   Table 2: Absolute accuracy
 
-  | acc_inc/eval_ds [pp]      |   oos |    rnd |   test |   train |
-  |:--------------------------|------:|-------:|-------:|--------:|
-  | DPO                       |  4.43 | -2.381|  0.405 |   1.237 |
-  |ether KL                     |  3.35 | -0.978 |  0.539 |   1.127 |
-  | hs KL                       | -1.34 | -1.397 |  0.404 |   0.901 |
+  | acc_inc/eval_ds [pp] |   oos |    rnd |  test | train |
+  | :------------------- | ----: | -----: | ----: | ----: |
+  | DPO                  |  4.43 | -2.381 | 0.405 | 1.237 |
+  | ether KL             |  3.35 | -0.978 | 0.539 | 1.127 |
+  | hs KL                | -1.34 | -1.397 | 0.404 | 0.901 |
 huh it's actually nearly as good as DPO!
 
 also does the softmax of hs make sense? in the end I just wantt go along a vector cho-rej, but that doessn't describe a loss
@@ -2778,3 +2778,82 @@ oi - ref_hs_rej
 # and then we look at the vector of dir projected onto ref_dir
 loss = 
 ```
+
+
+# 2024-09-20 06:51:42
+
+it kind of works,
+
+| adapter/ds                 | train | test |   oos |   rnd |
+| :------------------------- | ----: | ---: | ----: | ----: |
+| HSDist-us_history_textbook | 0.977 |    1 | 0.758 | 0.938 |
+| base                       | 0.984 |    1 | 0.742 | 0.984 |
+Table 2: Absolute accuracy
+
+| acc_inc/eval_ds [pp]      |   train |   test |   oos |    rnd |
+| :------------------------ | ------: | -----: | ----: | -----: |
+| DPO                       |    4.43 | -2.381 | 0.405 |  1.237 |
+| ether KL                  |    3.35 | -0.978 | 0.539 |  1.127 |
+| HSDist-nonll              |   1.587 |      0 | 6.316 | -3.968 |
+| hs KL                     |   -1.34 | -1.397 | 0.404 |  0.901 |
+| HSDist-dpo nll angle proj |  -0.794 |      0 | 2.105 | -4.762 |
+| HSDist-nodpo              | -34.127 | -24.21 | -57.8 | -23.01 |
+| HSDist nonll ether        |
+
+- trying with no dpo.... dpo retrain loss up to 0.3
+- 
+| adapter/ds                 | train |  test |   oos |   rnd |
+| :------------------------- | ----: | ----: | ----: | ----: |
+| HSDist-us_history_textbook | 0.648 | 0.758 | 0.312 | 0.758 |
+| base                       | 0.984 |     1 | 0.742 | 0.984 |
+Table 2: Absolute accuracy
+
+
+with no nll
+
+  | HSDist-us_history_textbook\dist shift |   train |    test |     oos |    rnd |
+  | :------------------------------------ | ------: | ------: | ------: | -----: |
+  | coherency[cho-rej]                    |  90.583 |  104.27 |  56.188 | 30.343 |
+  | coherency[pi-base]  :(                | -50.273 | -48.241 | -90.774 | -27.96 |
+  Table 1: Key metrics (adapter over base model)
+with nodpo
+
+
+  | HSDist-us_history_textbook\dist shift |    train |     test |      oos |      rnd |
+  | :------------------------------------ | -------: | -------: | -------: | -------: |
+  | coherency[cho-rej]  :(                |   10.393 |   20.142 |  -46.065 |    20.93 |
+  | coherency[pi-base]                    | -380.049 | -359.122 | -446.682 | -225.346 |
+  Table 1: Key metrics (adapter over base model)
+
+wih both
+
+  | HSDist-us_history_textbook\dist shift |   train |    test |     oos |     rnd |
+  | :------------------------------------ | ------: | ------: | ------: | ------: |
+  | coherency[cho-rej]                    |  76.312 |  88.423 |  42.001 |  24.354 |
+  | coherency[pi-base]                    | -42.244 | -46.528 | -73.635 | -21.506 |
+  Table 1: Key metrics (adapter over base model)
+
+compare to dpo
+
+  | DPO\dist shift     |    train |     test |      oos |      rnd |
+  | :----------------- | -------: | -------: | -------: | -------: |
+  | coherency[cho-rej] |  414.011 |  384.813 |  179.589 |   28.635 |
+  | coherency[pi-base] | -266.762 | -270.292 | -344.484 | -273.629 |
+  Table 1: Key metrics (adapter over base model)
+  
+  | dpo coherency [cho-rej |  train |   test |     oos |    rnd |
+  | :--------------------- | -----: | -----: | ------: | -----: |
+  | dpo                    |    414 |    385 |     180 |     29 |
+  | hdside no nll          | 90.583 | 104.27 |  56.188 | 30.343 |
+  | hs_dist no dpo         | 10.393 | 20.142 | -46.065 |  20.93 |
+  | hs_dist both           | 76.312 | 88.423 |  42.001 | 24.354 |
+
+  | nll coh [pi-base] |  train |   test |     oos |    rnd |
+  | :----------------- | -----: | -----: | ------: | -----: |
+  | dpo                |   -267 |   -270 |    -344 |   -274 |
+  | hdside no nll      |   -50  |   -48  |     -91 |    -28 |
+  | hs_dist no dpo     |  -380  |  -359  |    -447 |   -225 |
+  | hs_dist both       |   -42  |   -47  |     -74 |    -22 |
+
+
+now with ether....

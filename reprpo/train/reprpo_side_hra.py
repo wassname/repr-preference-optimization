@@ -142,11 +142,11 @@ def compute_reprpo_side_hra_loss_batch(
 
 
 class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers, r, apply_GS, collect_input, collection_keys_in: list=None, collection_keys_out: list=None, rel_loss=True, **kwargs):
+    def __init__(self, *args, alpha, collection_layers_side, r, apply_GS, collect_input, collection_keys_in: list=None, collection_keys_out: list=None, rel_loss=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         collection_keys = collection_keys_in if collect_input else collection_keys_out
-        self.hparams.layer_paths = get_layer_paths(collection_keys, collection_layers)
+        self.hparams.layer_paths = get_layer_paths(collection_keys, collection_layers_side)
         validate_layer_paths(self._model, self.hparams.layer_paths)
         self.hparams.collect_input = collect_input
 
@@ -183,7 +183,7 @@ class SideinHRA(Sidein, HRA):
     """weights retrain and reroute losses"""
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'r', 'apply_GS', 'rel_loss']
+    _model_keys = ['alpha', 'collection_layers_side', 'collect_input' ,'collection_keys_in', 'r', 'apply_GS', 'rel_loss']
 
 
 @dataclass
@@ -199,4 +199,4 @@ class SideoutHRA(Sideout, HRA):
     """rank"""
 
     _reprpo_class = PL_REPRPO_SIDE_HRA_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out', 'r', 'apply_GS', 'rel_loss']
+    _model_keys = ['alpha', 'collection_layers_side', 'collect_input' ,'collection_keys_out', 'r', 'apply_GS', 'rel_loss']

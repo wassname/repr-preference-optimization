@@ -33,7 +33,7 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "hs",
+                "side",
                 "--dev", 
                 "--verbose",
             ]
@@ -59,7 +59,7 @@
                 "--eval_samples=128",
                 // "--batch-size=24", 
                 // "--lr=4e-5"
-                "--n_samples=6000",
+                "--n_samples=3000",
             ]
         }
     ]

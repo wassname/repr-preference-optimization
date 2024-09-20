@@ -4,7 +4,7 @@ base_model: 'princeton-nlp/Llama-3-Base-8B-SFT'
 # load_in_4bit: True
 # load_in_8bit: False
 # batch_size: 16
-collection_layers: # 0-31
+collection_layers_side: # 0-31
   - 13
   - 14
   - 15
@@ -24,3 +24,7 @@ collection_layers: # 0-31
   - 29
   - 30
   - 31
+collection_layers_hs:
+- 10
+- 20
+- 30

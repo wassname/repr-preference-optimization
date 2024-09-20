@@ -276,12 +276,12 @@ def generation_test(
 
     return pd.Series(data)
 
-def display_gen(df_gen):
+def display_gen(df_gen, with_q=True):
     for row in df_gen.itertuples(index=False):
-        print(f"**Question**\n`{row[0]}`\n")
-        print("-" * 80)
+        if with_q:
+            print(f"**Question**\n`{row[0]}`\n")
         for i in range(1, len(row)):
+            print("-" * 80)
             print(f"**Adapter:`{df_gen.columns[i]}` generation**`")
             print(f"`{row[i]}`")
-            print("-" * 80)
         print("=" * 80)

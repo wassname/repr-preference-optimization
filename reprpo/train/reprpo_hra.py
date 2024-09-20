@@ -23,7 +23,7 @@ def collect_hs(hs):
     hs = rearrange(list(hs), "l b t h -> l b t h")
     return rearrange(hs, "l b t h -> b l t h")
 
-def reprpo_forward(model, input_ids, attn_mask, collection_layers):
+def reprpo_forward(model, input_ids, attn_mask, collection_layers_hs):
     outs = model(
         input_ids,
         attention_mask=attn_mask,
@@ -31,7 +31,7 @@ def reprpo_forward(model, input_ids, attn_mask, collection_layers):
         return_dict=True,
         output_hidden_states=True,
     )
-    hs = collect_hs(outs.hidden_states)[:, collection_layers]
+    hs = collect_hs(outs.hidden_states)[:, collection_layers_hs]
 
     logprobs = compute_logprobs(
         logits=outs.logits, labels=input_ids, selection_mask=attn_mask
@@ -84,7 +84,7 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-16, alpha = 1) -> Floa
     return log_dist_ratio.nanmean(-1) * alpha
 
 
-def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transform, rel_loss=True):
+def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers_hs, transform, rel_loss=True):
 
     model.eval()
     with torch.no_grad():
@@ -93,13 +93,13 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
                 model=model,
                 input_ids=batch["chosen"],
                 attn_mask=batch["chosen_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
             ref_rej = reprpo_forward(
                 model=model,
                 input_ids=batch["rejected"],
                 attn_mask=batch["rejected_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
 
     model.train()
@@ -107,13 +107,13 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
         model=model,
         input_ids=batch["chosen"],
         attn_mask=batch["chosen_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     pi_rej = reprpo_forward(
         model=model,
         input_ids=batch["rejected"],
         attn_mask=batch["rejected_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     assert torch.isfinite(pi_rej.hs).all()
     cho_attn_mask = batch["chosen_mask"]
@@ -198,10 +198,10 @@ def compute_reprpo_hra_loss_batch(batch, model, alpha, collection_layers, transf
     return loss, info
 
 class PL_REPRPO_HRA_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers, r, apply_GS, rel_loss=True, **kwargs):
+    def __init__(self, *args, alpha, collection_layers_hs, r, apply_GS, rel_loss=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
-        self.hparams.collection_layers = collection_layers
+        self.hparams.collection_layers_hs = collection_layers_hs
 
         dim_hs = self._model.config.hidden_size
         self.transform = HRATransform(dim_hs, dim_hs, r=r, apply_GS=apply_GS)
@@ -211,7 +211,7 @@ class PL_REPRPO_HRA_MODEL(PL_MODEL):
             batch,
             model,
             self.hparams.alpha,
-            self.hparams.collection_layers,
+            self.hparams.collection_layers_hs,
             self.transform,
             rel_loss=self.hparams.rel_loss
         )
@@ -226,9 +226,6 @@ class HRA(TrainingArgumentswCollection):
     alpha: int = 0.0001
     """balancing retrain and reroute losses"""
 
-    collection_layers: tuple=(10, 20) 
-    """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
-
     r: int = 256
     """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
 
@@ -240,4 +237,4 @@ class HRA(TrainingArgumentswCollection):
     rel_loss: bool = True
 
     _reprpo_class = PL_REPRPO_HRA_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'r', 'apply_GS', 'rel_loss' ]
+    _model_keys = ['alpha', 'collection_layers_hs', 'r', 'apply_GS', 'rel_loss' ]

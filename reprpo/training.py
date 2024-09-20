@@ -328,6 +328,9 @@ def train(training_args: MethodsUnion):
     # ## Gen
     model.cuda()  # for some reason it ends up cpu
 
+    df_gen = get_model_generations(model, tokenizer, N=3)
+    display_gen(df_gen.head(2))
+
     # ## Eval
     # eval on ethics, GENIES, and our train dataset
     N = training_args.eval_samples
@@ -372,8 +375,7 @@ def train(training_args: MethodsUnion):
     print(f"save_dir={save_dir}")
     pprint(training_args, compact=1)
 
-    df_gen = get_model_generations(model, tokenizer, N=3)
-    display_gen(df_gen.head(2))
+
 
     r = parse_eval(df_res2, ds_alias)
 

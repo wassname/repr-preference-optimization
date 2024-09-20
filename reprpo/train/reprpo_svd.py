@@ -15,7 +15,7 @@ import itertools
 from reprpo.helpers.svd_decomposer import SoftSVDDecomposer, DualSVDDecomposer, SVDDecomposer
 from reprpo.train.reprpo_hra import reprpo_forward, dist_ratio
 
-def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomposer):
+def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers_hs, decomposer):
 
     model.eval()
     with torch.no_grad():
@@ -24,13 +24,13 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
                 model=model,
                 input_ids=batch["chosen"],
                 attn_mask=batch["chosen_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
             ref_rej = reprpo_forward(
                 model=model,
                 input_ids=batch["rejected"],
                 attn_mask=batch["rejected_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
 
     model.train()
@@ -38,13 +38,13 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
         model=model,
         input_ids=batch["chosen"],
         attn_mask=batch["chosen_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     pi_rej = reprpo_forward(
         model=model,
         input_ids=batch["rejected"],
         attn_mask=batch["rejected_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     assert torch.isfinite(pi_rej.hs).all()
     cho_attn_mask = batch["chosen_mask"]
@@ -123,10 +123,10 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers, decomp
     return loss, info
 
 class PL_REPRPO_SVD_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_layers=[10, 20], quantile=0.75, dual_svd=True, **kwargs):
+    def __init__(self, *args, alpha=1, collection_layers_hs=[10, 20], quantile=0.75, dual_svd=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
-        self.hparams.collection_layers = collection_layers
+        self.hparams.collection_layers_hs = collection_layers_hs
 
         # convert
         if dual_svd:
@@ -150,7 +150,7 @@ class PL_REPRPO_SVD_MODEL(PL_MODEL):
             batch,
             model,
             self.hparams.alpha,
-            self.hparams.collection_layers,
+            self.hparams.collection_layers_hs,
             self.decomposer,
         )
 
@@ -184,4 +184,4 @@ class SVD(TrainingArgumentswCollection):
     lr: float = 3e-5
 
     _reprpo_class = PL_REPRPO_SVD_MODEL
-    _model_keys = ['alpha', 'quantile', 'dual_svd', 'collection_layers']
+    _model_keys = ['alpha', 'quantile', 'dual_svd', 'collection_layers_hs']

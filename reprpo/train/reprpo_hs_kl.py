@@ -66,7 +66,7 @@ def log_ratio(pi_cho, pi_rej, attn_cho, ref_cho, ref_rej, attn_rej, eps=1e-16, m
     return loss_reroute, loss_retain
 
 
-def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, transform):
+def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers_hs, transform):
 
     model.eval()
     with torch.no_grad():
@@ -75,13 +75,13 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
                 model=model,
                 input_ids=batch["chosen"],
                 attn_mask=batch["chosen_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
             ref_rej = reprpo_forward(
                 model=model,
                 input_ids=batch["rejected"],
                 attn_mask=batch["rejected_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
 
     model.train()
@@ -89,13 +89,13 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
         model=model,
         input_ids=batch["chosen"],
         attn_mask=batch["chosen_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     pi_rej = reprpo_forward(
         model=model,
         input_ids=batch["rejected"],
         attn_mask=batch["rejected_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     assert torch.isfinite(pi_rej.hs).all()
     cho_attn_mask = batch["chosen_mask"]
@@ -205,13 +205,13 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
     return loss, info
 
 class PL_REPRPO_HRA_KL_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers, 
+    def __init__(self, *args, alpha, collection_layers_hs, 
                 #  r, apply_GS,  
                 nb, Htype, ether_dropout, flip_side,
                 **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
-        self.hparams.collection_layers = collection_layers
+        self.hparams.collection_layers_hs = collection_layers_hs
 
         dim_hs = self._model.config.hidden_size
         # dim_hs = self._model.config.vocab_size
@@ -226,7 +226,7 @@ class PL_REPRPO_HRA_KL_MODEL(PL_MODEL):
             batch,
             model,
             self.hparams.alpha,
-            self.hparams.collection_layers,
+            self.hparams.collection_layers_hs,
             self.transform,
         )
 
@@ -243,9 +243,6 @@ class HsKL(_ETHERConfig, TrainingArgumentswCollection):
     alpha: int = 1
     """balancing retrain and reroute losses"""
 
-    collection_layers: tuple=(10, 20, 30) 
-    """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
-
     # lr: float = 5e-4
 
     Htype: str = 'etherplus'
@@ -255,5 +252,5 @@ class HsKL(_ETHERConfig, TrainingArgumentswCollection):
     rel_loss: bool = True
 
     _reprpo_class = PL_REPRPO_HRA_KL_MODEL
-    _model_keys = ['alpha', 'collection_layers',  'nb', 'Htype', 'ether_dropout', 'flip_side', ]
+    _model_keys = ['alpha', 'collection_layers_hs',  'nb', 'Htype', 'ether_dropout', 'flip_side', ]
 

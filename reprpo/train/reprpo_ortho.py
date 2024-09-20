@@ -17,7 +17,7 @@ import itertools
 from reprpo.train.reprpo_hra import reprpo_forward, dist_ratio
 
 
-def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, transform):
+def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers_hs, transform):
 
     model.eval()
     with torch.no_grad():
@@ -26,13 +26,13 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, trans
                 model=model,
                 input_ids=batch["chosen"],
                 attn_mask=batch["chosen_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
             ref_rej = reprpo_forward(
                 model=model,
                 input_ids=batch["rejected"],
                 attn_mask=batch["rejected_mask"],
-                collection_layers=collection_layers,
+                collection_layers_hs=collection_layers_hs,
             )
 
     model.train()
@@ -40,13 +40,13 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, trans
         model=model,
         input_ids=batch["chosen"],
         attn_mask=batch["chosen_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     pi_rej = reprpo_forward(
         model=model,
         input_ids=batch["rejected"],
         attn_mask=batch["rejected_mask"],
-        collection_layers=collection_layers,
+        collection_layers_hs=collection_layers_hs,
     )
     assert torch.isfinite(pi_rej.hs).all()
     cho_attn_mask = batch["chosen_mask"]
@@ -127,10 +127,10 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers, trans
     return loss, info
 
 class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers, **kwargs):
+    def __init__(self, *args, alpha, collection_layers_hs, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
-        self.hparams.collection_layers = collection_layers
+        self.hparams.collection_layers_hs = collection_layers_hs
 
         dim_hs = self._model.config.hidden_size
         t = nn.Linear(dim_hs, dim_hs, bias=False)
@@ -142,7 +142,7 @@ class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
             batch,
             model,
             self.hparams.alpha,
-            self.hparams.collection_layers,
+            self.hparams.collection_layers_hs,
             self.transform
         )
 
@@ -159,7 +159,7 @@ class Ortho(TrainingArgumentswCollection):
     lr: float = 3e-4
 
     """The layers to collect the hidden states from, as this operates on the HS which does not vary much we need few points of collection"""
-    collection_layers: tuple=(10, 20) 
+    collection_layers_hs: tuple=(10, 20) 
 
     _reprpo_class = PL_REPRPO_ORTHO_MODEL
-    _model_keys = ['alpha', 'collection_layers', ]
+    _model_keys = ['alpha', 'collection_layers_hs', ]

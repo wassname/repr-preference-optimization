@@ -268,4 +268,4 @@ class _ETHERConfig:
 
     # lr: float = 1e-3
 
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in', 'nb', 'Htype', 'ether_dropout', 'flip_side']
+    _model_keys = ['alpha', 'collection_layers_side', 'collect_input' ,'collection_keys_in', 'nb', 'Htype', 'ether_dropout', 'flip_side']

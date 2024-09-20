@@ -21,10 +21,10 @@ from .reprpo_hra import compute_reprpo_hra_loss_batch
 
 
 class PL_REPRPO_ETHER_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers, nb, Htype, ether_dropout, flip_side, rel_loss=True, **kwargs):
+    def __init__(self, *args, alpha, collection_layers_hs, nb, Htype, ether_dropout, flip_side, rel_loss=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
-        self.hparams.collection_layers = collection_layers
+        self.hparams.collection_layers_hs = collection_layers_hs
 
         dim_hs = self._model.config.hidden_size
         self.transform = ETHERLinear(dim_hs, dim_hs, nb=nb,
@@ -37,7 +37,7 @@ class PL_REPRPO_ETHER_MODEL(PL_MODEL):
             batch,
             model,
             self.hparams.alpha,
-            self.hparams.collection_layers,
+            self.hparams.collection_layers_hs,
             self.transform,
             rel_loss=self.hparams.rel_loss,
         )
@@ -56,11 +56,8 @@ class ETHER(_ETHERConfig, TrainingArgumentswCollection):
 
     nb: int = 32
 
-    collection_layers: tuple = (10, 20)
-    """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
-
     rel_loss: bool = True
 
     _reprpo_class = PL_REPRPO_ETHER_MODEL
 
-    _model_keys = ['alpha', 'collection_layers',  'nb', 'Htype', 'ether_dropout', 'flip_side', 'rel_loss',]
+    _model_keys = ['alpha', 'collection_layers_hs',  'nb', 'Htype', 'ether_dropout', 'flip_side', 'rel_loss',]

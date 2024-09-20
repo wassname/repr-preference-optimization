@@ -16,9 +16,9 @@ from reprpo.train.reprpo_hra import dist_ratio
 
 
 
-def get_layer_paths(collection_keys, collection_layers):
+def get_layer_paths(collection_keys, collection_layers_side):
     layer_paths = [
-        [p.format(layer=layer) for p in collection_keys] for layer in collection_layers
+        [p.format(layer=layer) for p in collection_keys] for layer in collection_layers_side
     ]
     layer_paths = list(itertools.chain(*layer_paths))
     return layer_paths
@@ -214,11 +214,11 @@ def compute_reprpo_side_loss_batch(
 
 
 class PL_REPRPO_SIDE_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha: float, collection_layers: list, collect_input: bool, collection_keys_in: list=None, collection_keys_out: list=None, **kwargs):
+    def __init__(self, *args, alpha: float, collection_layers_side: list, collect_input: bool, collection_keys_in: list=None, collection_keys_out: list=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         collection_keys = collection_keys_in if collect_input else collection_keys_out
-        self.hparams.layer_paths = get_layer_paths(collection_keys, collection_layers)
+        self.hparams.layer_paths = get_layer_paths(collection_keys, collection_layers_side)
         validate_layer_paths(self._model, self.hparams.layer_paths)
         self.hparams.collect_input = collect_input
 
@@ -244,7 +244,7 @@ class Sidein(TrainingArgumentswCollection):
     """
 
     _reprpo_class = PL_REPRPO_SIDE_MODEL
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_in']
+    _model_keys = ['alpha', 'collection_layers_side', 'collect_input' ,'collection_keys_in']
 
 
 
@@ -260,6 +260,6 @@ class Sideout(TrainingArgumentswCollection):
     collect_input: bool = False
 
 
-    _model_keys = ['alpha', 'collection_layers', 'collect_input' ,'collection_keys_out']
+    _model_keys = ['alpha', 'collection_layers_side', 'collect_input' ,'collection_keys_out']
 
     _reprpo_class = PL_REPRPO_SIDE_MODEL
