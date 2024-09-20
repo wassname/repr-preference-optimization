@@ -33,7 +33,7 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "side",
+                "sidein-ether",
                 "--dev", 
                 "--verbose",
             ]
