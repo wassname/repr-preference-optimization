@@ -372,11 +372,12 @@ def train(training_args: MethodsUnion):
     print(f"save_dir={save_dir}")
     pprint(training_args, compact=1)
 
-    r = parse_eval(df_res2, ds_alias)
-
     df_gen = get_model_generations(model, tokenizer, N=3)
     display_gen(df_gen.head(2))
 
+    r = parse_eval(df_res2, ds_alias)
+
+    # WANDB logging
     r2 = {}
     for k, v in r.items():
         r2[k] = wandb.Table(dataframe=v.reset_index())
@@ -506,7 +507,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     df_metrics = df_metrics["value"].unstack()
     df_metrics.index.name = f"{adapter_name}\dist shift"
 
-    return df_metrics
+    return df_metrics[list(ds_alias.keys())]
 
 
 def parse_eval(df_res2, ds_alias):

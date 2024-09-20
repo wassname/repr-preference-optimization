@@ -56,10 +56,10 @@
             "args": [
                 "hs-dist",
                 "--verbose",
-                "--eval_samples=64",
+                "--eval_samples=128",
                 // "--batch-size=24", 
-                // "--lr=1e-4"
-                // "--n_samples=6000",
+                // "--lr=4e-5"
+                "--n_samples=6000",
             ]
         }
     ]

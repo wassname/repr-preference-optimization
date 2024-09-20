@@ -22,46 +22,67 @@ from .reprpo_hra import mean_with_attention, reprpo_forward, dist_ratio
 
 from torch.linalg import vecdot
 
-def loss_dist_along_pref_vect(pi_cho, pi_rej, attn_cho, ref_cho, ref_rej, attn_rej) -> Float[Tensor, "b"]:
+def loss_dist_along_pref_vect(pi_cho, pi_rej, attn_cho, ref_cho, ref_rej, attn_rej, eps=1e-12) -> Float[Tensor, "b"]:
     """Reward for moving hs along preference vector
     """
 
-    def proj(a, b):
-        """Project a onto b"""
-        dot = torch.linalg.vecdot
-        d = dot(a, b)[..., None]  / dot(b, b)[..., None] * b
-        return d
+    # def proj(a, b):
+    #     """Project a onto b"""
+    #     dot = torch.linalg.vecdot
+    #     d = dot(a, b)[..., None]  / dot(b, b)[..., None] * b
+    #     return d
 
-    def dist(a, ref_dir):
-        """Distance from origin with sign"""
-        dot = torch.linalg.vecdot
-        return torch.norm(a, dim=-1) * torch.sign(dot(a, ref_dir))
+    # def dist(a, ref_dir):
+    #     """Distance from origin with sign"""
+    #     dot = torch.linalg.vecdot
+    #     return torch.norm(a, dim=-1) * torch.sign(dot(a, ref_dir))
     
     pi_cho = mean_with_attention(pi_cho, attn_cho)
     pi_rej = mean_with_attention(pi_rej, attn_rej)
     ref_cho = mean_with_attention(ref_cho, attn_cho)#.detach()
     ref_rej = mean_with_attention(ref_rej, attn_rej)#.detach()
 
-    ref_dir = (ref_cho - ref_rej) # preference vector
-    ref_dir_norm = torch.norm(ref_dir, dim=-1, keepdim=True)
+    pref_dir = (ref_cho - ref_rej) # preference vector
     cho = pi_cho-ref_cho # vector describing movement of chosen hidden state compared to base model
     rej = pi_rej-ref_rej
 
-    def proj(a, b):
-        """Project a onto b"""
-        return torch.sum(cho * ref_dir, dim=-1, keepdim=True) * ref_dir / ref_dir_norm
-    proj_cho = proj(cho, ref_dir)
-    ortho_cho = cho - proj_cho
-    proj_rej = proj(rej, ref_dir)
-    ortho_rej = rej - proj_rej
+    ref_dir_norm = torch.sqrt(torch.linalg.vecdot(pref_dir, pref_dir)).clamp(eps).detach()
+    def signed_proj_magnitude(a, ref_dir):
+        # get signed projection of `a` along ref_dir
+        # like cosine similairy, but without the |a| in the denominator
+        a_proj = torch.linalg.vecdot(a, ref_dir, dim=-1) / ref_dir_norm
 
-    # here we have a loss where we reward the model for moving the hidden states along the preference (chosen-rejected) vector
-    # and punished for any movement orthogonal to this vector
-    β = 2 # factor to punish orthogonal movement
-    loss_reroute = -dist(proj_cho, ref_dir) -dist(proj_rej, ref_dir) + abs(dist(ortho_cho, ref_dir)) * β  + abs(dist(ortho_rej, ref_dir)) * β 
+        # get unsigned length or remainder using pythagorian theorem (we don't care about magnitude here as we )
+        a_orth= torch.sqrt(a.pow(2).sum(-1)-a_proj**2)
+        angle = -F.cosine_similarity(cho, ref_dir, dim=-1)
+        # works, but orth gives a nan
+        return a_proj, a_orth, angle
+    
 
+    β = .01 # factor to punish orthogonal movement
+    signed_cho_proj_pref, cho_orth_pref, cho_cossim = signed_proj_magnitude(cho, pref_dir)
+    signed_rej_proj_pref, ref_orth_pref, rej_cossim = signed_proj_magnitude(rej, pref_dir)
 
-    return loss_reroute
+    # cho is preferenced over rej, so we expect the hs of cho to stay further along the preference vector than the hs of rej
+    is_cho_ahead_of_rej = (torch.linalg.vecdot(pi_cho-pi_rej, pref_dir, dim=-1) / ref_dir_norm)
+    if not is_cho_ahead_of_rej.mean()<0:
+        warnings.warn("cho should be further than rej")
+
+    # FIXME: make sure cho is further than rej
+    # they all start at zero
+    loss_reroute = (
+        # if either of the policies hs move along the preference vector that's good, it reduces the loss
+        -signed_cho_proj_pref -signed_rej_proj_pref 
+
+        # FIXME do I really need this... if a direction is ok with DPO and NLL loss then it should be ok here?
+        # if they move orthogonal to the preference vector that's bad, it increases the loss
+        #  + β  * (cho_orth_pref + ref_orth_pref)
+
+        # we could also optimize angle, we want it to be close to 1, so we make it negative
+        # - cho_cossim - rej_cossim
+    )
+
+    return torch.tanh(loss_reroute/10)/10 # TODO find better scaling, it needs to be small compared to nll and dpo losses which can be <0.1
 
 
 def compute_reprpo_hs_dist_loss_batch(batch, model, alpha, collection_layers, transform):
@@ -243,7 +264,7 @@ class HSDist(_ETHERConfig, TrainingArgumentswCollection):
     collection_layers: tuple=(10, 20, 30) 
     """The layers to collect the hidden states from. HRA operates on the residual stream so only needs a couple of points of collection"""
 
-    lr: float = 1e-3
+    lr: float = 4e-5
 
     Htype: str = 'etherplus'
 
