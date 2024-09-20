@@ -52,8 +52,8 @@ class PL_REPRPO_SIDE_ETHER_MODEL(PL_MODEL):
         return compute_reprpo_side_hra_loss_batch(
             batch,
             model,
-            self.hparams.layer_paths,
-            self.hparams.alpha,
+            layer_paths=self.hparams.layer_paths,
+            alpha=self.hparams.alpha,
             collect_input=self.hparams.collect_input,
             transforms=self.transforms
         )

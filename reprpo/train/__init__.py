@@ -12,6 +12,7 @@ from .reprpo_side_ether import SideinETHER, SideoutETHER
 from .reprpo_ether import ETHER
 from .reprpo_hs_kl import HsKL
 from .reprpo_hs_dist import HSDist
+from .reprpo_side_dist import SideDist
 
 class Methods(enum.Enum):
     dpo = DPO
@@ -28,5 +29,6 @@ class Methods(enum.Enum):
     reprpo_ether = ETHER
     reprpo_hra_kl = HsKL
     reprpo_hsdist = HSDist
+    reprpo_hsdist_side = SideDist
 
 MethodsUnion = Union[tuple(e.value for e in Methods)]

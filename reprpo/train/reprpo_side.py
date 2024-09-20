@@ -33,7 +33,7 @@ def detach_hsd(hs):
     return {k: v.detach() for k, v in hs.items()}
 
 
-def mean_with_attention(
+def mean_with_attention_l(
     x: Float[Tensor, "b t h"], attn_mask: Float[Tensor, "b t"], dim: int = 1
 ) -> Float[Tensor, "b h"]:
     """mean of x, weighted by the attention mask, over dim (token or batch)"""
@@ -74,14 +74,14 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
 
 def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-12) -> Float[Tensor, "b l"]:
 
-    dist = mean_with_attention(a-b, attn)  # reduces over tokens
+    dist = mean_with_attention_l(a-b, attn)  # reduces over tokens
     dist = torch.norm(dist, dim=-1) # over h
     dist = dist + eps
     log_dist_ratio = torch.log(dist)
 
     # if provided with reference points, return the distance as a ratio to the reference distance
     if (a_ref is not None) and (b_ref is not None) and (attn_ref is not None):
-        dist_ref = mean_with_attention(a_ref-b_ref, attn_ref).detach()
+        dist_ref = mean_with_attention_l(a_ref-b_ref, attn_ref).detach()
         dist_ref = torch.norm(dist_ref, dim=-1)
         dist_ref = dist_ref + eps
 

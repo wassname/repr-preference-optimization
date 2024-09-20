@@ -54,12 +54,13 @@
             "console": "integratedTerminal",
             "autoReload": {"enable": true},
             "args": [
-                "hs-dist",
+                // "hs-dist",
+                "side-dist",
                 "--verbose",
-                "--eval_samples=128",
+                // "--eval_samples=128",
                 // "--batch-size=24", 
                 // "--lr=4e-5"
-                "--n_samples=3000",
+                // "--n_samples=6000",
             ]
         }
     ]

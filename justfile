@@ -42,7 +42,7 @@ run_all:
     echo "EXTRA_ARGS=$EXTRA_ARGS"
 
     . ./.venv/bin/activate
-    for METHOD in sidein-ether dpo ether hra sideout-hra ortho sidein hra sidein-hra sideout hs svd sideout-ether hs-kl hs-dist; do
+    for METHOD in sidein-ether dpo ether hra sideout-hra ortho sidein hra sidein-hra sideout hs svd sideout-ether hs-kl hs-dist side-dist; do
         echo "METHOD=$METHOD"
         python scripts/train.py $METHOD $EXTRA_ARGS
     done
@@ -51,6 +51,7 @@ run_all:
     python scripts/train.py sidein-ether --Htype ether  $EXTRA_ARGS
     python scripts/train.py svd --quantile 1.0  $EXTRA_ARGS
     python scripts/train.py hra --no-apply_GS  $EXTRA_ARGS
+
 
 run_ds:
     #!/usr/bin/zsh
@@ -69,6 +70,8 @@ run_ds:
         python scripts/train.py sidein --dataset $ds
         python scripts/train.py dpo --dataset $ds
         python scripts/train.py hrakl --dataset $ds
+        python scripts/train.py side-dist --dataset $ds
+        python scripts/train.py hs-dist --dataset $ds
     done
 
 

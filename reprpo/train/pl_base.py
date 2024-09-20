@@ -29,7 +29,7 @@ class TrainingArguments:
     lr: float = 3e-4
     weight_decay: float = 0.0
 
-    n_samples: int = 1800 * 1
+    n_samples: int = 1800 * 3
     eval_samples: Optional[int] = None
     max_length: int = 196
     max_prompt_length: int = 96
