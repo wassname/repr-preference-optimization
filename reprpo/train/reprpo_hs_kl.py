@@ -111,6 +111,7 @@ def compute_reprpo_hra_kl_loss_batch(batch, model, alpha, collection_layers, tra
 
     def t(hs):
         """use learnable transformation to get the residual part of the hs"""
+        # return hs
         return transform(hs)
 
     # loss_retain: more of chosen, less of rejected, on the plane defined by the learnable orthogonal transformation
@@ -231,7 +232,7 @@ class PL_REPRPO_HRA_KL_MODEL(PL_MODEL):
 
 
 @dataclass
-class HRAKL(_ETHERConfig, TrainingArgumentswCollection):
+class HsKL(_ETHERConfig, TrainingArgumentswCollection):
     """
     Loss: kl_div.
     

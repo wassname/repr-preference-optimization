@@ -10,7 +10,8 @@ from .reprpo_ortho import Ortho
 from .reprpo_hra import HRA
 from .reprpo_side_ether import SideinETHER, SideoutETHER
 from .reprpo_ether import ETHER
-from .reprpo_hra_kl import HRAKL
+from .reprpo_hs_kl import HsKL
+from .reprpo_hs_dist import HSDist
 
 class Methods(enum.Enum):
     dpo = DPO
@@ -25,6 +26,7 @@ class Methods(enum.Enum):
     reprpo_side_ether = SideinETHER
     reprpo_sideout_ether = SideoutETHER
     reprpo_ether = ETHER
-    reprpo_hra_kl = HRAKL
+    reprpo_hra_kl = HsKL
+    reprpo_hsdist = HSDist
 
 MethodsUnion = Union[tuple(e.value for e in Methods)]

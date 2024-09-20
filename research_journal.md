@@ -2715,10 +2715,10 @@ softplus(nll_loss - ref_nll_loss + log(0.9))
 
 Hmm the hrakl (actually ether) exp is stable, it gives a good output but not a good score. Maybe with some tweaking, 
 - [ ] like do it on the side?
-- [ ] or without transform?
+- [x] or without transform? nah
 - ah I had dpo loss the right way up, now it seems to work, I guess I should try a long run....
-- [ ] also does softmax then logprob ratios make sense?
-- [ ] with DPO I should not take the sum, that wayiit could be traced back to tokens. Oh no wait rej and cho can no be compared this way as they have diff lengths etc
+- [ ] also does softmax then logprob ratios make sense? maybe use dir and ref_dir
+- [x] with DPO I should not take the sum, that wayiit could be traced back to tokens. Oh no wait rej and cho can no be compared this way as they have diff lengths etc
 
 
 Some interesting generation coming out, but dpo loss might be the wrong way up... also I think I should tkae mean of logprobs
@@ -2756,7 +2756,25 @@ Some interesting generation coming out, but dpo loss might be the wrong way up..
   | acc_inc/eval_ds [pp]      |   oos |    rnd |   test |   train |
   |:--------------------------|------:|-------:|-------:|--------:|
   | DPO                       |  4.43 | -2.381|  0.405 |   1.237 |
-  | HRAKL                     |  3.35 | -0.978 |  0.539 |   1.127 |
-
+  |ether KL                     |  3.35 | -0.978 |  0.539 |   1.127 |
+  | hs KL                       | -1.34 | -1.397 |  0.404 |   0.901 |
 huh it's actually nearly as good as DPO!
 
+also does the softmax of hs make sense? in the end I just wantt go along a vector cho-rej, but that doessn't describe a loss
+ 
+
+
+well we have
+```
+pi_hs_cho # the hidden states of the policy model when running the chosen response
+pi_hs_rej # rejected resposne
+ref_hs_cho # reference model
+ref_hs_rej
+
+#we can define two vector
+dir=pi_hs_cho - pi_hs_rej
+ref_dir=ref_hs_ch
+oi - ref_hs_rej
+# and then we look at the vector of dir projected onto ref_dir
+loss = 
+```
