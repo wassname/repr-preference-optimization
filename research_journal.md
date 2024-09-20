@@ -2794,11 +2794,12 @@ Table 2: Absolute accuracy
 | :------------------------ | ------: | -----: | ----: | -----: |
 | DPO                       |    4.43 | -2.381 | 0.405 |  1.237 |
 | ether KL                  |    3.35 | -0.978 | 0.539 |  1.127 |
-| HSDist-nonll              |   1.587 |      0 | 6.316 | -3.968 |
-| hs KL                     |   -1.34 | -1.397 | 0.404 |  0.901 |
+| HSDist-no ll              |   1.587 |      0 | 6.316 | -3.968 |
+| SideDist                  |   0.901 |  0.539 | 8.543 | 0.279 |
+| HSDist nonll ether        |   0.794 |      0 | 3.158 | -2.381 |
 | HSDist-dpo nll angle proj |  -0.794 |      0 | 2.105 | -4.762 |
+| hs KL                     |   -1.34 | -1.397 | 0.404 |  0.901 |
 | HSDist-nodpo              | -34.127 | -24.21 | -57.8 | -23.01 |
-| HSDist nonll ether        |
 
 - trying with no dpo.... dpo retrain loss up to 0.3
 - 
@@ -2857,3 +2858,10 @@ compare to dpo
 
 
 now with ether....
+
+TODO:
+- [ ] it would make sense to refactor it to always treat hs like a dict. That would remove lots of code. Also to make the loss per layer 
+- params
+  - transform: ether, hra, oft, none
+  - collection: layers, keys (make ones for hs?)
+  - loss_fn
