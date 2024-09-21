@@ -240,7 +240,7 @@ class HSKL(_ETHERConfig, TrainingArgumentswCollection):
      
     """
 
-    alpha: int = 1
+    alpha: float = 1
     """balancing retrain and reroute losses"""
 
     collection_layers_hs: tuple=(10, 20, 30) 

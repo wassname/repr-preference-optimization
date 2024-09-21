@@ -2861,7 +2861,18 @@ now with ether....
 
 TODO:
 - [ ] it would make sense to refactor it to always treat hs like a dict. That would remove lots of code. Also to make the loss per layer 
-- params
+- HS method
   - transform: ether, hra, oft, none
+    - and args per transform
   - collection: layers, keys (make ones for hs?)
-  - loss_fn
+  - loss_fn, takes in a layer, return loss and info
+  - configs? should I move to subconfigs or subclass?
+    - subconfigs not good via cli, would have to move to [experiments](https://brentyi.github.io/tyro/examples/03_config_systems/01_base_configs/)
+  - or should I go full hyra?
+
+# 2024-09-20 23:43:1
+
+how to run hyper param sweets?
+just wandb aseet
+Ax loops? https://ax.dev/docs/api.html
+https://hydra.cc/docs/tutorials/basic/running_your_app/multi-run/

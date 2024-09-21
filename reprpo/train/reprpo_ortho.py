@@ -154,7 +154,7 @@ class Ortho(TrainingArgumentswCollection):
     """
 
     """weights retrain and reroute losses"""
-    alpha: int = 0.001
+    alpha: float = 0.001
 
     lr: float = 3e-4
 

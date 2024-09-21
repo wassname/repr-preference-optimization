@@ -240,7 +240,7 @@ class HsKL(_ETHERConfig, TrainingArgumentswCollection):
      
     """
 
-    alpha: int = 1
+    alpha: float = 1
     """balancing retrain and reroute losses"""
 
     # lr: float = 5e-4

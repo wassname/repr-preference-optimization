@@ -10,13 +10,14 @@ see
 
 """
 from contextlib import contextmanager
-from transformers import PreTrainedTokenizer
+from transformers import PreTrainedTokenizerBase
 from typing import Any, Dict, List
+from datasets.formatting.formatting import LazyRow
 from dataclasses import dataclass
 import torch
 
 @contextmanager
-def tok_setings(tokenizer: PreTrainedTokenizer, **kwargs):
+def tok_setings(tokenizer: PreTrainedTokenizerBase, **kwargs):
     """
     Temporarily set the tokenizer settings to the values in kwargs
     """
@@ -29,13 +30,14 @@ def tok_setings(tokenizer: PreTrainedTokenizer, **kwargs):
         for k, v in old_settings.items():
             setattr(tokenizer, k, v)
 
+
 @dataclass
 class TokenizeRow:
-    tokenizer: PreTrainedTokenizer
+    tokenizer: PreTrainedTokenizerBase
     max_length: int
     max_prompt_length: int=64
 
-    def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def __call__(self, batch: LazyRow) -> Dict[str, Any]:
 
         out = {}
 

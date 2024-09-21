@@ -65,6 +65,9 @@ poetry install
 
 python -u nbs/train.py --method reprpo_ortho
 python -u nbs/train.py --method dpo
+
+# to test
+pytest
 ```
 
 

@@ -270,7 +270,7 @@ class HSDist(_ETHERConfig, TrainingArgumentswCollection):
      
     """
 
-    alpha: int = 10
+    alpha: float = 10
     """balancing retrain and reroute losses"""
 
     lr: float = 6e-5

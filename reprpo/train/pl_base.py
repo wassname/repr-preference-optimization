@@ -38,7 +38,7 @@ class TrainingArguments:
 
 @dataclass
 class TrainingArgumentswCollection(TrainingArguments):
-    alpha: int = 0.1
+    alpha: float = 0.1
 
     collection_layers_side: tuple=(10, 12, 14, 16, 18) 
     """layers to collect activations from in side layers."""
@@ -66,6 +66,8 @@ class TrainingArgumentswCollection(TrainingArguments):
 
 
 class PL_MODEL(pl.LightningModule):
+    _modules = {} # HACK for jaxtyping
+
     def __init__(self, model, num_iterations, lr=3e-4, weight_decay=0, batch_size=None, adam8bit=False, schedule='constant'):
         super().__init__()
         self._model = model
@@ -131,7 +133,7 @@ class PL_MODEL(pl.LightningModule):
             )
         elif self.hparams.schedule == 'constant':
             # same as GENIES warmup_ratio=0.03
-            num_warmup_steps = self.hparams.num_iterations * 0.03
+            num_warmup_steps = int(self.hparams.num_iterations * 0.03)
             scheduler= get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
         lr_scheduler = {"scheduler": scheduler, "interval": "step"}
         return [optimizer], [lr_scheduler]

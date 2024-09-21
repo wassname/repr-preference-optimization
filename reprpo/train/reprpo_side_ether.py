@@ -23,7 +23,7 @@ from .reprpo_side_hra import compute_reprpo_side_hra_loss_batch
 class PL_REPRPO_SIDE_ETHER_MODEL(PL_MODEL):
     def __init__(self, *args, alpha, collection_layers_side, 
                  nb, Htype, ether_dropout, flip_side, 
-                 collect_input, collection_keys_in: list=None, collection_keys_out: list=None, **kwargs):
+                 collect_input, collection_keys_in: tuple=None, collection_keys_out: tuple=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         collection_keys = collection_keys_in if collect_input else collection_keys_out
@@ -66,7 +66,7 @@ class PL_REPRPO_SIDE_ETHER_MODEL(PL_MODEL):
 class SideinETHER(_ETHERConfig, Sidein):
     """Transform: ETHER. Target: activations from layer.out.input
     """
-    alpha: int = 0.001
+    alpha: float = 0.001
 
     batch_size: int = 12
 
@@ -77,7 +77,7 @@ class SideinETHER(_ETHERConfig, Sidein):
 class SideoutETHER(_ETHERConfig, Sideout):
     """Transform: ETHER. Target: activations from layer.in.output."""
 
-    # alpha: int = 0.001
+    # alpha: float = 0.001
 
     collect_input: bool = False
 

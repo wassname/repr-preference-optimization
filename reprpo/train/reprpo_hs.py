@@ -144,7 +144,7 @@ class PL_REPRPO_HS_MODEL(PL_MODEL):
 class HS(TrainingArgumentswCollection):
     """Transform: None. Target: hidden_states"""
 
-    alpha: int = 0.3
+    alpha: float = 0.3
     """weights retrain and reroute losses"""
 
     lr: float = 3e-5

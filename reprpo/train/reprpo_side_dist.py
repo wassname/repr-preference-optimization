@@ -251,7 +251,7 @@ def compute_reprpo_side_dist_loss_batch(batch, model, layer_paths, alpha, collec
 class PL_REPRPO_SIDE_DIST_MODEL(PL_MODEL):
     def __init__(self, *args, alpha, 
                 nb, Htype, ether_dropout, flip_side,
-                collect_input, collection_layers_side, collection_keys_in: list=None, collection_keys_out: list=None,
+                collect_input, collection_layers_side, collection_keys_in: tuple=None, collection_keys_out: tuple=None,
                 **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
@@ -295,7 +295,7 @@ class SideDist(_ETHERConfig, TrainingArgumentswCollection):
      
     """
 
-    alpha: int = 10
+    alpha: float = 10
     """balancing retrain and reroute losses"""
 
     lr: float = 2e-5

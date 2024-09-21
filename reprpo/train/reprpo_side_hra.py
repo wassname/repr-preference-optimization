@@ -117,7 +117,7 @@ def compute_reprpo_side_hra_loss_batch(
 
         # Lets monitor the comparitive norms of the decomposed parts
         def norm_hsd(hs):
-            return {k: torch.norm(v) for k, v in hs.items()}
+            return {k: torch.norm(v, dim=-1) for k, v in hs.items()}
         hs = norm_hsd(ref_cho.hs)
         hs_t = norm_hsd(res_det(ref_cho.hs))
         # hs_resid = norm_hsd(ref_cho.hs - res_det(ref_cho.hs))
@@ -126,7 +126,7 @@ def compute_reprpo_side_hra_loss_batch(
         # info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
 
         # also the norm of the weights of the transformation
-        info['transform_norm'] = torch.concat([torch.norm(p) for p in transforms.parameters()]).mean()
+        info['transform_norm'] = torch.concat([torch.norm(p, dim=-1) for p in transforms.parameters()]).mean()
 
         info = dict(
             loss_reroute=loss_reroute.mean(),
@@ -142,7 +142,7 @@ def compute_reprpo_side_hra_loss_batch(
 
 
 class PL_REPRPO_SIDE_HRA_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers_side, r, apply_GS, collect_input, collection_keys_in: list=None, collection_keys_out: list=None, rel_loss=True, **kwargs):
+    def __init__(self, *args, alpha, collection_layers_side, r, apply_GS, collect_input, collection_keys_in: tuple=None, collection_keys_out: tuple=None, rel_loss=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         collection_keys = collection_keys_in if collect_input else collection_keys_out

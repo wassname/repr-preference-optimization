@@ -49,7 +49,7 @@ class ETHER(_ETHERConfig, TrainingArgumentswCollection):
     Transform: ETHER along which to reroute the hidden states associated with the rejected responses. (see https://arxiv.org/pdf/2405.20271v1)
     """
     
-    alpha: int = 0.001
+    alpha: float = 0.001
     """balancing retrain and reroute losses"""
 
     Htype: str = 'etherplus'

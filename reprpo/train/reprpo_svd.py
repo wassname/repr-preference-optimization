@@ -167,7 +167,7 @@ class SVD(TrainingArgumentswCollection):
     It's left in here to show a negative finding, and the question: where do transformer store the working internal memory?
     """
 
-    alpha: int = 0.3
+    alpha: float = 0.3
     """weights retrain and reroute losses"""
 
     quantile: float=0.5

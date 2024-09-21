@@ -223,7 +223,7 @@ class HRA(TrainingArgumentswCollection):
     Transform: HRA (Householder Reflection Adaptation) along which to reroute the hidden states associated with the rejected responses. See: https://github.com/DaShenZi721/HRA
     """
 
-    alpha: int = 0.0001
+    alpha: float = 0.0001
     """balancing retrain and reroute losses"""
 
     r: int = 256

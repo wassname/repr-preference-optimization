@@ -1,4 +1,4 @@
-set shell := ["zsh", "-c"]
+# set shell := ["zsh", "-uc"]
 
 # settings
 # set dotenv-load
@@ -13,21 +13,31 @@ export TOKENIZERS_PARALLELISM := "false"
 default:
     @just --list
 
-# run one method, by argument
-run METHOD='reprpo_ortho':
+
+# run pytest
+test:
+    . ./.venv/bin/activate
+    pytest --pdb -x -s -v \
+        --jaxtyping-packages=reprpo,beartype.beartype --beartype-packages='reprpo'
+
+test_notyping:
+    . ./.venv/bin/activate
+    pytest --pdb -x -s -v
+
+# run one method, with args
+run METHOD='reprpo_ortho' +EXTRA_ARGS='':
     #!/usr/bin/zsh
     export EXTRA_ARGS=${EXTRA_ARGS:-}
-    . ./.venv/bin/activate
+    source ./.venv/bin/activate
     python scripts/train.py {{METHOD}} $EXTRA_ARGS
 
-
-run_all_dev:
+run2 METHOD='reprpo_ortho' +EXTRA_ARGS='':
     #!/usr/bin/zsh
-    export REPR_CONFIG=./configs/dev.yaml
-    export EXTRA_ARGS="--dev"
-    just run_all
+    export EXTRA_ARGS="{{EXTRA_ARGS}}"
+    export METHOD="{{METHOD}}"
+    echo "METHOD={{METHOD}} $METHOD EXTRA_ARGS=${EXTRA_ARGS}"
 
-run_all:
+run_all +EXTRA_ARGS='':
     #!/usr/bin/zsh
     echo "REPR_CONFIG=$REPR_CONFIG"
     export WANDB_GROUP=${WANDB_GROUP:-mdl-$(date +%Y%m%d_%H%M%S)}
@@ -54,14 +64,22 @@ run_all:
 
 
 run_ds:
-    #!/usr/bin/zsh
+    #!/usr/bin/zsh -x
     export REPR_CONFIG=./configs/llama3_7b.yaml
-    . ./.venv/bin/activate
-
-    python scripts/train.py hrakl
+    source ./.venv/bin/activate
 
     export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
-    export DS=(alpaca_easy alpaca_mmlu alpaca_low_quality alpaca_short code_easy alpaca_mmlu math raven_matrices  us_history_textbook)
+    export DS=(
+        alpaca_easy
+        alpaca_mmlu 
+        alpaca_low_quality 
+        alpaca_short 
+        code_easy 
+        alpaca_mmlu 
+        math 
+        raven_matrices  
+        us_history_textbook
+    )
     for ds in $DS; do
         echo "DS=$ds"
         . ./.venv/bin/activate
@@ -69,7 +87,7 @@ run_ds:
         python scripts/train.py ether --dataset $ds
         python scripts/train.py sidein --dataset $ds
         python scripts/train.py dpo --dataset $ds
-        python scripts/train.py hrakl --dataset $ds
+        python scripts/train.py hs-kl --dataset $ds
         python scripts/train.py side-dist --dataset $ds
         python scripts/train.py hs-dist --dataset $ds
     done

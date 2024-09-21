@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from einops import rearrange, repeat, reduce
 
 from torch import Tensor
-from jaxtyping import Float
+from jaxtyping import Float, Int
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from reprpo.train.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
@@ -95,10 +95,10 @@ def dist_ratio(a, b, attn, a_ref, b_ref, attn_ref, eps=1e-12) -> Float[Tensor, "
 def dist_ratio_dict(
     a: Dict[str, Float[Tensor, "b t h"]],
     b: Dict[str, Float[Tensor, "b t h"]],
-    attn: Float[Tensor, "b t"],
+    attn: Int[Tensor, "b t"],
     a_ref: Dict[str, Float[Tensor, "b t h"]],
     b_ref: Dict[str, Float[Tensor, "b t h"]],
-    attn_ref: Float[Tensor, "b t"],
+    attn_ref: Int[Tensor, "b t"],
 ) -> float:
     dists = [
         dist_ratio(a[k], b[k], attn, a_ref[k], b_ref[k], attn_ref) for k in a.keys()
@@ -214,7 +214,7 @@ def compute_reprpo_side_loss_batch(
 
 
 class PL_REPRPO_SIDE_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha: float, collection_layers_side: list, collect_input: bool, collection_keys_in: list=None, collection_keys_out: list=None, **kwargs):
+    def __init__(self, *args, alpha: float, collection_layers_side: tuple, collect_input: bool, collection_keys_in: tuple=None, collection_keys_out: tuple=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         collection_keys = collection_keys_in if collect_input else collection_keys_out
