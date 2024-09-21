@@ -1,6 +1,6 @@
 from reprpo.interventions.config import ExperimentConfig
-from reprpo.interventions.losses import Losses, mse
-from reprpo.interventions.transforms import Transforms
+from reprpo.interventions.losses import Losses, mse, LossesType
+from reprpo.interventions.transforms import Transforms, TransformType
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 from .model import PL_REPRPO_MODEL
@@ -35,10 +35,10 @@ class ReprPOConfig(ExperimentConfig):
     collect_input: bool = True
     """use collection_keys_in? else use collection_keys_out."""
 
-    loss_fn: Losses = mse
+    loss_fn: LossesType = mse
     """loss function"""
 
-    transform: Transforms = Transforms.Ether.value
+    transform: TransformType = Transforms.Ether.value
     """transform function"""
 
     _cls = PL_REPRPO_MODEL

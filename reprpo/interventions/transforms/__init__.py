@@ -12,4 +12,4 @@ class Transforms(enum.Enum):
     HRA = HRAConfig
     none = NoneConfig
 
-LossesType= Union[tuple(e.value for e in Transforms)]
+TransformType= Union[tuple(e.value for e in Transforms)]

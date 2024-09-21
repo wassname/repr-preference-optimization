@@ -5,18 +5,21 @@ import yaml
 from reprpo import silence
 silence.test()
 
-from reprpo.interventions import Interventions, InterventionType
+from reprpo.experiments import experiment_configs
 from reprpo.training import train
+
+configs = [(k,v[1]) for k,v in experiment_configs.items()]
+print('configs', configs)
 
 
 # @jaxtyped(typechecker=typechecker)
-@pytest.mark.parametrize("Method", Interventions)
-def test_train_method_dev(Method):
+@pytest.mark.parametrize("name,config", configs)
+def test_train_method_dev(name, config):
     """test all methods in dev mode"""
 
     f="./configs/dev.yaml"
     overrides = yaml.safe_load(open(f))
-    training_args = Method.value()
+    training_args = config
     if f is not None:
         overrides = yaml.safe_load(open(f))
         for k, v in overrides.items():

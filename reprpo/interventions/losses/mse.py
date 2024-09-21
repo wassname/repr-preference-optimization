@@ -103,8 +103,8 @@ def mse_loss(pi_cho: ReprPOModelOutput,
 
 @dataclass(frozen=True)
 class MSELossConfig:
-    alpha: Float = 1.
-    eps: Float = 1e-12
+    alpha: float = 1.0
+    eps: float = 1e-12
 
     def c(self, *args, **kwargs):
         return mse_loss(*args, **kwargs, **asdict(self))

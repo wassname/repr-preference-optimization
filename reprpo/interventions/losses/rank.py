@@ -66,10 +66,10 @@ def rank_loss(pi_cho: ReprPOModelOutput,
     ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
     nll_loss_ratio = nll_loss - ref_nll_loss
     dpo_ptheta = compute_ptheta(
-        pi_cho.logprobs,
-        pi_rej.logprobs,
-        ref_cho.logprobs,
-        ref_rej.logprobs,
+        pi_cho.label_logprobs,
+        pi_rej.label_logprobs,
+        ref_cho.label_logprobs,
+        ref_rej.label_logprobs,
     )
     loss_dpo_retain = F.relu(-dpo_ptheta)
     loss_nll_retain = F.relu(nll_loss_ratio)
@@ -90,8 +90,8 @@ def rank_loss(pi_cho: ReprPOModelOutput,
 
 @dataclass(frozen=True)
 class RankLossConfig:
-    alpha: Float = 1
-    # eps: Float = 1e-12
+    alpha: float = 1.0
+    # eps: float = 1e-12
 
     def c(self, *args, **kwargs):
         return rank_loss(*args, **kwargs, **asdict(self))

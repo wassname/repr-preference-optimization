@@ -27,7 +27,7 @@ def prefec_loss(pi_cho: ReprPOModelOutput,
     
 
     def preproc_hs(o, k):
-        hs = o.hs
+        hs = o.hs[k]
         if transform is not None:
             hs = transform(hs)
         hs = hs.log_softmax(-1)
@@ -113,10 +113,10 @@ def prefec_loss(pi_cho: ReprPOModelOutput,
 
     # dpo loss, punished model if rejected completion is more likely than the chosen
     ptheta = compute_ptheta(
-        pi_cho.logprobs,
-        pi_rej.logprobs,
-        ref_cho.logprobs,
-        ref_rej.logprobs,
+        pi_cho.label_logprobs,
+        pi_rej.label_logprobs,
+        ref_cho.label_logprobs,
+        ref_rej.label_logprobs,
     )
     loss_dpo_retain = F.relu(-ptheta)
 
@@ -142,8 +142,8 @@ def prefec_loss(pi_cho: ReprPOModelOutput,
 
 @dataclass(frozen=True)
 class PrefVecLossConfig:
-    alpha: Float = 1
-    eps: Float = 1e-12
+    alpha: float = 1.0
+    eps: float = 1e-12
 
     def c(self, *args, **kwargs):
         return prefec_loss(*args, **kwargs, **asdict(self))

@@ -16,8 +16,8 @@ from reprpo.interventions.pl_base import PL_MODEL, ModelConfigBase
 from reprpo.interventions.helpers import compute_logprobs
 
 from .helpers import get_layer_paths, validate_layer_paths
-from ..losses import Losses
-from ..transforms import Transforms
+from ..losses import Losses, LossesType
+from ..transforms import Transforms, TransformType
 
 
 def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_input=True):
@@ -67,8 +67,8 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
 
 class PL_REPRPO_MODEL(PL_MODEL):
     def __init__(self, *args, collection_layers_side, collect_input, collection_keys_in: tuple=None, collection_keys_out: tuple=None,  
-                 loss_fn: Losses,
-                 transform: Transforms,
+                 loss_fn: LossesType,
+                 transform: TransformType,
                  **kwargs):
         super().__init__(*args, **kwargs)
         collection_keys = collection_keys_in if collect_input else collection_keys_out

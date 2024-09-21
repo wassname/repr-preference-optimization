@@ -4,28 +4,28 @@ from reprpo.interventions.transforms import Transforms
 
 experiment_configs = {
     "ether-side-mse": (
-        "",
+        "1",
         ReprPOConfig(
             transform=Transforms.Ether.value(),
             loss_fn=Losses.mse.value(),
         ),
     ),
     "ether-side-rank": (
-        "",
+        "2",
         ReprPOConfig(
             transform=Transforms.Ether.value(),
             loss_fn=Losses.rank.value(),
         ),
     ),
     "ether-side-prefvec": (
-        "",
+        "3",
         ReprPOConfig(
             transform=Transforms.Ether.value(),
             loss_fn=Losses.prefvec.value(),
         ),
     ),
     "none-side-prefvec": (
-        "",
+        "4",
         ReprPOConfig(
             transform=Transforms.none.value(),
             loss_fn=Losses.prefvec.value(),
