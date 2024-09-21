@@ -45,37 +45,53 @@ def mse_loss(pi_cho: ReprPOModelOutput,
     """
 
 
-    def preproc_hs(o):
+    def preproc_hs(o, k):
+        hs = o.hs[k]
         if transform is not None:
-            hs = transform(o.hs)
+            hs = transform(hs)
         hs = hs.log_softmax(-1)
         hs = mean_tokens_w_attention(hs, o.mask)
         return hs
 
-    hs_pi_cho = preproc_hs(pi_cho)
-    hs_pi_rej = preproc_hs(pi_rej)
-    hs_ref_cho = preproc_hs(ref_cho)#.detach()
-    hs_ref_rej = preproc_hs(ref_rej)#.detach()
+    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k):
+        hs_pi_cho = preproc_hs(pi_cho, k)
+        hs_pi_rej = preproc_hs(pi_rej, k)
+        hs_ref_cho = preproc_hs(ref_cho, k)#.detach()
+        hs_ref_rej = preproc_hs(ref_rej, k)#.detach()
 
-    # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
-    # and again we scale it using the reference model as a stable target
-    loss_retain = log_dist_ratio(
-        detach_hsd(hs_ref_cho),
-        hs_pi_cho,
-        hs_ref_cho,
-        hs_ref_rej,
-    )
+        # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
+        # and again we scale it using the reference model as a stable target
+        loss_retain = log_dist_ratio(
+            hs_ref_cho.detach(),
+            hs_pi_cho,
+            hs_ref_cho,
+            hs_ref_rej,
+        )
 
-    # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
-    # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
-    loss_reroute = log_dist_ratio(
-        detach_hsd(hs_ref_cho),
-        hs_pi_rej,
-        hs_ref_cho,
-        hs_ref_rej,
-    )
+        # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
+        # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
+        loss_reroute = log_dist_ratio(
+            hs_ref_cho.detach(),
+            hs_pi_rej,
+            hs_ref_cho,
+            hs_ref_rej,
+        )
+        return dict(
+            loss_retain=loss_retain,
+            loss_reroute=loss_reroute,
+        )
+
+    # compute losses per layer
+    ll = {k:
+              per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
+    # combine layer losses
+    ll_keys = next(iter(ll.values())).keys()
+    ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
+    loss_reroute , loss_retain = ll['loss_reroute'], ll['loss_retain']
+
     loss = (loss_reroute + loss_retain * alpha).nanmean()
 
+    # log info
     info = dict(
         loss_reroute=loss_reroute,
         loss_retain=loss_retain,
@@ -90,6 +106,5 @@ class MSELossConfig:
     alpha: Float = 1.
     eps: Float = 1e-12
 
-    @property
-    def c(self):
-        return log_dist_ratio(**asdict(self))
+    def c(self, *args, **kwargs):
+        return mse_loss(*args, **kwargs, **asdict(self))

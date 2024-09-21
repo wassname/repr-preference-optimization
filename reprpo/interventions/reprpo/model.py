@@ -54,8 +54,8 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
 
 class PL_REPRPO_MODEL(PL_MODEL):
     def __init__(self, *args, collection_layers_side, collect_input, collection_keys_in: tuple=None, collection_keys_out: tuple=None,  
-                 loss_config: Losses,
-                 transform_config: Transforms,
+                 loss_fn: Losses,
+                 transform: Transforms,
                  **kwargs):
         super().__init__(*args, **kwargs)
         collection_keys = collection_keys_in if collect_input else collection_keys_out
@@ -70,7 +70,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             hra_sizes = {p:get_module(self._model, p).out_features for p in self.hparams.layer_paths}
         
         self.transforms = torch.nn.ParameterDict({
-            k: transform_config.c(dim_hs, dim_hs) for k,dim_hs in hra_sizes.items()})
+            k: transform.c(dim_hs, dim_hs) for k,dim_hs in hra_sizes.items()})
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
 
     def _loss_fn(self, batch, model):
@@ -109,7 +109,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             collect_input=h.collect_input,
         )
         
-        return h.loss_config.c(
+        return h.loss_fn.c(
             pi_cho=pi_cho,
             pi_rej=pi_rej,
             ref_cho=ref_cho,

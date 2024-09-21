@@ -11,14 +11,11 @@ class ReprPOConfig(ExperimentConfig):
 
     lr: float = 1e-4
 
-    alpha: float = 0.1
-    """balanced retain and reroute"""
-
     collection_layers_side: tuple=(10, 12, 14, 16, 18) 
     """layers to collect activations from in side layers."""
 
-    collection_layers_hs: tuple=(10, 20, 30)
-    """The layers to collect the hidden states from. Thisis for methods that operate on the redundant residual stream so only needs a couple of points of collection"""
+    # collection_layers_hs: tuple=(10, 20, 30)
+    # """The layers to collect the hidden states from. Thisis for methods that operate on the redundant residual stream so only needs a couple of points of collection"""
     
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
@@ -46,4 +43,6 @@ class ReprPOConfig(ExperimentConfig):
 
     _cls = PL_REPRPO_MODEL
 
-    _model_keys = ['lr', 'alpha', 'collection_layers_side', 'collection_layers_hs', 'collection_keys_in', 'collection_keys_out', 'collect_input', 'loss_fn', 'transform', ]
+    _model_keys = ['lr', 'collection_layers_side', 
+    # 'collection_layers_hs',
+                    'collection_keys_in', 'collection_keys_out', 'collect_input', 'loss_fn', 'transform', ]

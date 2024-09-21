@@ -267,7 +267,6 @@ class ETHERConfig:
 
     reduction: int = 4
 
-    @property
-    def c(self):
-        return ETHERLinearSmall(**asdict(self))
+    def c(self, *args, **kwargs):
+        return ETHERLinearSmall(*args, **kwargs, **asdict(self), )
 

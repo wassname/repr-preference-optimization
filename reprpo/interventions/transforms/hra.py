@@ -85,5 +85,5 @@ class HRAConfig:
     """Whether to apply Gram-Schmidt orthogonalization."""
 
     @property
-    def c(self):
-        return HRATransform(**asdict(self))
+    def c(self, *args, **kwargs):
+        return HRATransform(*args, **kwargs, **asdict(self))

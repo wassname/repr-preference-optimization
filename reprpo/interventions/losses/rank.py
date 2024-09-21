@@ -1,6 +1,7 @@
 
 from jaxtyping import Float, Int
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+import torch
 from torch import Tensor
 from torch.nn import functional as F
 from dataclasses import dataclass, asdict
@@ -30,24 +31,35 @@ def rank_loss(pi_cho: ReprPOModelOutput,
     """
 
     def preproc_hs(o):
+        hs = o.hs
         if transform is not None:
-            hs = transform(o.hs)
+            hs = transform(hs)
         hs = hs.log_softmax(-1)
         hs = mean_tokens_w_attention(hs, o.mask)
         return hs
-    
-    β = 100
-    ptheta_left = preproc_hs(pi_rej)  - preproc_hs(ref_rej)
-    ptheta_right = preproc_hs(pi_cho) - preproc_hs(ref_cho)
 
 
-    ptheta = ptheta_right - ptheta_left
-    # OR?
-    # ptheta = - ptheta_left
+    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k):
+        
+        β = 100
+        ptheta_left = preproc_hs(pi_rej, k)  - preproc_hs(ref_rej, k)
+        ptheta_right = preproc_hs(pi_cho, k) - preproc_hs(ref_cho, k)
 
-    loss_reroute = (β*ptheta - 1) ** 2 # as in IPO
+        ptheta = ptheta_right - ptheta_left
+        # OR?
+        # ptheta = - ptheta_left
 
-    # loss_retain = (β * ptheta_right)**2 # make sure chosen ratio stays the same... but this woould limit us
+        loss_reroute = (β*ptheta - 1) ** 2 # as in IPO
+
+        # loss_retain = (β * ptheta_right)**2 # make sure chosen ratio stays the same... but this woould limit us
+        return dict(loss_reroute=loss_reroute)
+
+    # compute losses per layer
+    ll = {k:
+              per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
+    # combine layer losses
+    ll_keys = next(iter(ll.values())).keys()
+    ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
     nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask'])
     ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
@@ -80,6 +92,5 @@ class RankLossConfig:
     alpha: Float = 1
     eps: Float = 1e-12
 
-    @property
-    def c(self):
-        return rank_loss(**asdict(self))
+    def c(self, *args, **kwargs):
+        return rank_loss(*args, **kwargs, **asdict(self))

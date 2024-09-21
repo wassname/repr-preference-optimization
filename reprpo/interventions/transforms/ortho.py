@@ -15,6 +15,5 @@ class OrthoTransform(nn.Module):
 class OrthoConfig:
     orthogonal_map: Literal["householder", "cayley", "matrix_exp"] = "householder"
 
-    @property
-    def c(self):
-        return OrthoTransform(**asdict(self))
+    def c(self, *args, **kwargs,):
+        return OrthoTransform(*args, **kwargs, **asdict(self))
