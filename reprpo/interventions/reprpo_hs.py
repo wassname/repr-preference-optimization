@@ -6,16 +6,15 @@ from torch import Tensor
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
-from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
+from reprpo.interventions.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
+from reprpo.interventions.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
-from reprpo.helpers.svd_decomposer import SoftSVDDecomposer, DualSVDDecomposer, SVDDecomposer
-from reprpo.train.reprpo_hra import reprpo_forward, dist_ratio
+from reprpo.interventions.reprpo_hra import reprpo_forward, dist_ratio
 
-def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers_hs, decomposer):
+def compute_reprpo_hs_loss_batch(batch, model, alpha, collection_layers_hs):
 
     model.eval()
     with torch.no_grad():
@@ -63,21 +62,17 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers_hs, dec
         comb_attn_mask,
     ) 
 
-    def res_det(hs):
-        """use SVD to decompose hs into the inputoutput and residual components"""
-        hs_io = decomposer(hs)
-        return hs - hs_io#.detach() # FIXME, should I not detatch this?
 
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
     # start at 0 and go to -ve inf
     # start at log(1)=0 go to log(0)=-inf
     loss_reroute = dist_ratio(
-        res_det(ref_cho.hs).detach(),
-        res_det(pi_rej.hs),
+        (ref_cho.hs).detach(),
+        (pi_rej.hs),
         comb_attn_mask,
-        res_det(ref_cho.hs),
-        res_det(ref_rej.hs),
+        (ref_cho.hs),
+        (ref_rej.hs),
         comb_attn_mask,
     )
 
@@ -85,7 +80,7 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers_hs, dec
     ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
     nll_loss_ratio = nll_loss / ref_nll_loss
     
-    loss = (loss_reroute + loss_retain * alpha).nanmean()
+    loss = (loss_reroute.mean() + loss_retain * alpha).nanmean()
 
     # get the dpo metrics for comparison
     _, info = compute_dpo_loss(
@@ -102,13 +97,13 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers_hs, dec
         info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
         info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
-        # Lets monitor the comparitive norms of the decomposed parts
-        hs = torch.norm(ref_cho.hs)
-        hs_r = torch.norm(res_det(ref_cho.hs))
-        hs_io = torch.norm(decomposer(ref_cho.hs))
-        info['hs_r/hs'] = (hs_r / hs).mean()
-        info['hs_io/hs'] = (hs_io / hs).mean()
-        info['hs_r/hs_io'] = (hs_r / hs_io).mean()
+        # # Lets monitor the comparitive norms of the decomposed parts
+        # hs = norm(ref_cho.hs)
+        # hs_r = norm((ref_cho.hs))
+        # hs_io = norm(decomposer(ref_cho.hs))
+        # info['hs_r/hs'] = (hs_r / hs).mean()
+        # info['hs_io/hs'] = (hs_io / hs).mean()
+        # info['hs_r/hs_io'] = (hs_r / hs_io).mean()
 
 
         info = dict(
@@ -122,66 +117,39 @@ def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers_hs, dec
     assert torch.isfinite(loss)
     return loss, info
 
-class PL_REPRPO_SVD_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha=1, collection_layers_hs=[10, 20], quantile=0.75, dual_svd=True, **kwargs):
+def validate_args(model, args):
+    # first check collection layers exist'
+
+    # HACK: llama specific
+    assert max(args.collection_layers_hs)<(model.config.num_hidden_layers+1), 'collection layers should be less than the number of layers'
+
+class PL_REPRPO_HS_MODEL(PL_MODEL):
+    def __init__(self, *args, alpha, collection_layers_hs, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers_hs = collection_layers_hs
+        validate_args(self._model, self.hparams)
 
-        # convert
-        if dual_svd:
-            self.decomposer = DualSVDDecomposer(
-                self._model.get_input_embeddings().weight.clone().float(),
-                self._model.lm_head.weight.clone(),
-                quantile=quantile,
-            )
-        else:
-            if quantile < 1:
-                self.decomposer = SoftSVDDecomposer(
-                    self._model.lm_head.weight.clone().float(), quantile=quantile
-                )
-            else:
-                self.decomposer = SVDDecomposer(
-                    self._model.lm_head.weight.clone().float()
-                )
+
 
     def _loss_fn(self, batch, model):
-        return compute_reprpo_svd_loss_batch(
+        return compute_reprpo_hs_loss_batch(
             batch,
             model,
             self.hparams.alpha,
             self.hparams.collection_layers_hs,
-            self.decomposer,
         )
 
-
-
 @dataclass
-class SVD(TrainingArgumentswCollection):
-    """
-    Target: hs. Transform: SVD
-    """
-    """
-    This intervention does not seem to work of converge. It attempt to remove the parts of the hs that are used by lm_head, but because hs is low rank, and lm_head is highrank, it is all used. Hence we try to train on a tiny noisy residual, and cannot.
-
-    It's left in here to show a negative finding, and the question: where do transformer store the working internal memory?
-    """
+class HS(TrainingArgumentswCollection):
+    """Transform: None. Target: hidden_states"""
 
     alpha: float = 0.3
     """weights retrain and reroute losses"""
 
-    quantile: float=0.5
-    """What quantile of top singular values to from from hs
-
-    Note if you set this to 1, we switch to normal SVD
-    
-    we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
-
-
-    dual_svd: bool = False
-    """if true, will use the embedding and lm_head, if false only lm_head"""
-
     lr: float = 3e-5
 
-    _reprpo_class = PL_REPRPO_SVD_MODEL
-    _model_keys = ['alpha', 'quantile', 'dual_svd', 'collection_layers_hs']
+    _reprpo_class = PL_REPRPO_HS_MODEL
+    _model_keys = ['alpha', 'collection_layers_hs']
+
+

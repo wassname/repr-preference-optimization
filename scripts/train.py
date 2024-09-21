@@ -1,11 +1,11 @@
 import os
 import tyro
 import yaml
-from reprpo.train import Methods, MethodsUnion
+from reprpo.interventions import Interventions, InterventionType
 from reprpo.training import train
 
 if __name__ == "__main__":
-    training_args = tyro.cli(MethodsUnion)
+    training_args = tyro.cli(InterventionType)
 
     # tyro has a default option, but it doesn't work with subcommands, so I apply overides manually
     # e.g. REPR_CONFIG=./configs/dev.yaml

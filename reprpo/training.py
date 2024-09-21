@@ -28,7 +28,7 @@ import torch.nn.functional as F
 from datasets import load_dataset
 
 # get a union class from the enum
-from datasets.utils.logging import disable_progress_bar
+
 from einops import rearrange, reduce, repeat
 from jaxtyping import Bool, Float, Int
 from lightning.pytorch.loggers.csv_logs import CSVLogger
@@ -55,36 +55,13 @@ from reprpo.helpers.shypothesis import shypothesis
 # Local
 from reprpo.helpers.torch import clear_mem
 from reprpo.models.load import load_model, print_trainable_parameters
-from reprpo.train import Methods, MethodsUnion
-from reprpo.train.dpo import PL_DPO_MODEL, compute_dpo_loss_batch
-from reprpo.train.pl_base import TrainingArguments, TrainingArgumentswCollection
+from reprpo.interventions import Interventions, InterventionType
+from reprpo.interventions.dpo import PL_DPO_MODEL, compute_dpo_loss_batch
+from reprpo.interventions.pl_base import TrainingArguments, TrainingArgumentswCollection
+from .silence import silence
 
 
-def silence():
-    # wandb logger is too verbose
-    logger = logging.getLogger("wandb")
-    logger.setLevel(logging.ERROR)
-    os.environ["WANDB_SILENT"] = "true"
-
-    # datasets is too verbose
-    disable_progress_bar()
-    # from datasets.utils.logging import set_verbosity_error
-    # set_verbosity_error()
-
-    warnings.filterwarnings("ignore", category=UserWarning)
-
-    # Silence all loggers with "transforms" in their name
-    for name in logging.root.manager.loggerDict:
-        blocklist = ["transformers", "lightning", "wandb"]
-        if any(blocked in name for blocked in blocklist):
-            logging.getLogger(name).setLevel(logging.ERROR)
-
-    logging.basicConfig(level=logging.ERROR)
-
-    # os.environ["TQDM_DISABLE"] = "1"
-
-
-def train(training_args: MethodsUnion):
+def train(training_args: InterventionType):
     if not training_args.verbose:
         silence()
     torch.set_float32_matmul_precision("medium")
@@ -250,7 +227,7 @@ def train(training_args: MethodsUnion):
 
     from lightning.pytorch.callbacks import LearningRateMonitor
 
-    from reprpo.train.pl_base import GenCallback
+    from reprpo.interventions.pl_base import GenCallback
 
     pl_model = PL_MODEL(
         model,

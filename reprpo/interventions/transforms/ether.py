@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 import math
 from dataclasses import dataclass
-
+from ..types import Config
 
 class ETHERLayer(nn.Module):
     def __init__(self, nb: int, 
@@ -244,7 +244,7 @@ class ETHERLinearSmall(ETHERLinear):
         return self.linear_up(super_out)
 
 @dataclass
-class _ETHERConfig:
+class ETHERConfig(Config):
     """ETHER parameters"""
 
     nb: int = 4
@@ -266,6 +266,6 @@ class _ETHERConfig:
     flip_side: bool = False
     """apply ETHER on the other (smaller) side to reduce computational overhead"""
 
-    # lr: float = 1e-3
+    reduction: int = 4
 
-    _model_keys = ['alpha', 'collection_layers_side', 'collect_input' ,'collection_keys_in', 'nb', 'Htype', 'ether_dropout', 'flip_side']
+    _cls = ETHERLinearSmall

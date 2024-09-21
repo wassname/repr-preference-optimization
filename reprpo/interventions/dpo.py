@@ -1,17 +1,15 @@
 import torch
 import torch.nn.functional as F
-from reprpo.train.pl_base import PL_MODEL
+from reprpo.interventions.pl_base import PL_MODEL
 from dataclasses import dataclass
 from .pl_base import TrainingArguments, cross_entropy_loss
-from einops import rearrange
+# from einops import rearrange
 
 
-
-
-def collect_hs(hs):
-    """The residual stream or hs of the diff of the hs."""
-    hs = rearrange(list(hs), "l b t h -> l b t h")
-    return rearrange(hs, "l b t h -> b l t h")
+# def collect_hs(hs):
+#     """The residual stream or hs of the diff of the hs."""
+#     hs = rearrange(list(hs), "l b t h -> l b t h")
+#     return rearrange(hs, "l b t h -> b l t h")
 
 def compute_logprobs(logits, labels, selection_mask=None):
     """
@@ -185,8 +183,5 @@ class PL_DPO_MODEL(PL_MODEL):
         return compute_dpo_loss_batch(batch, model)
 
 @dataclass
-class DPO(TrainingArguments):
+class DPOConfig:
     lr: float = 6e-5
-
-    _reprpo_class = PL_DPO_MODEL
-    _model_keys = []

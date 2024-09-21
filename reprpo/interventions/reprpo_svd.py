@@ -1,23 +1,21 @@
 import torch
 import torch.nn.functional as F
-from torch import Tensor
-from torch import nn
-
 from einops import rearrange, repeat, reduce
 
+from torch import Tensor
 from jaxtyping import Float
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.train.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
-from reprpo.train.dpo import compute_logprobs, compute_dpo_loss
+from reprpo.interventions.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
+from reprpo.interventions.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict
 from dataclasses import dataclass
 import itertools
-from reprpo.train.reprpo_hra import reprpo_forward, dist_ratio
+from reprpo.helpers.svd_decomposer import SoftSVDDecomposer, DualSVDDecomposer, SVDDecomposer
+from reprpo.interventions.reprpo_hra import reprpo_forward, dist_ratio
 
-
-def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers_hs, transform):
+def compute_reprpo_svd_loss_batch(batch, model, alpha, collection_layers_hs, decomposer):
 
     model.eval()
     with torch.no_grad():
@@ -66,8 +64,9 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers_hs, tr
     ) 
 
     def res_det(hs):
-        """use learnable transformation to get the residual part of the hs"""
-        return transform(hs)
+        """use SVD to decompose hs into the inputoutput and residual components"""
+        hs_io = decomposer(hs)
+        return hs - hs_io#.detach() # FIXME, should I not detatch this?
 
     # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
     # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
@@ -77,8 +76,8 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers_hs, tr
         res_det(ref_cho.hs).detach(),
         res_det(pi_rej.hs),
         comb_attn_mask,
-        (ref_cho.hs),
-        (ref_rej.hs),
+        res_det(ref_cho.hs),
+        res_det(ref_rej.hs),
         comb_attn_mask,
     )
 
@@ -105,14 +104,11 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers_hs, tr
 
         # Lets monitor the comparitive norms of the decomposed parts
         hs = torch.norm(ref_cho.hs)
-        hs_t = torch.norm(res_det(ref_cho.hs))
-        hs_resid = torch.norm(ref_cho.hs - res_det(ref_cho.hs))
-        info['hs_t/hs'] = (hs_t / hs).mean()
-        info['hs_resid/hs'] = (hs_resid / hs).mean()
-        info['hs_t/hs_resid'] = (hs_t / hs_resid).mean()
-
-        # also the norm of the weights of the transformation
-        info['transform_norm'] = torch.norm(transform.weight).mean()
+        hs_r = torch.norm(res_det(ref_cho.hs))
+        hs_io = torch.norm(decomposer(ref_cho.hs))
+        info['hs_r/hs'] = (hs_r / hs).mean()
+        info['hs_io/hs'] = (hs_io / hs).mean()
+        info['hs_r/hs_io'] = (hs_r / hs_io).mean()
 
 
         info = dict(
@@ -126,40 +122,66 @@ def compute_reprpo_orth_loss_batch(batch, model, alpha, collection_layers_hs, tr
     assert torch.isfinite(loss)
     return loss, info
 
-class PL_REPRPO_ORTHO_MODEL(PL_MODEL):
-    def __init__(self, *args, alpha, collection_layers_hs, **kwargs):
+class PL_REPRPO_SVD_MODEL(PL_MODEL):
+    def __init__(self, *args, alpha=1, collection_layers_hs=[10, 20], quantile=0.75, dual_svd=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams.alpha = alpha
         self.hparams.collection_layers_hs = collection_layers_hs
 
-        dim_hs = self._model.config.hidden_size
-        t = nn.Linear(dim_hs, dim_hs, bias=False)
-        torch.nn.init.orthogonal_(t.weight)
-        self.transform = torch.nn.utils.parametrizations.orthogonal(t, orthogonal_map="householder")
+        # convert
+        if dual_svd:
+            self.decomposer = DualSVDDecomposer(
+                self._model.get_input_embeddings().weight.clone().float(),
+                self._model.lm_head.weight.clone(),
+                quantile=quantile,
+            )
+        else:
+            if quantile < 1:
+                self.decomposer = SoftSVDDecomposer(
+                    self._model.lm_head.weight.clone().float(), quantile=quantile
+                )
+            else:
+                self.decomposer = SVDDecomposer(
+                    self._model.lm_head.weight.clone().float()
+                )
 
     def _loss_fn(self, batch, model):
-        return compute_reprpo_orth_loss_batch(
+        return compute_reprpo_svd_loss_batch(
             batch,
             model,
             self.hparams.alpha,
             self.hparams.collection_layers_hs,
-            self.transform
+            self.decomposer,
         )
 
 
+
 @dataclass
-class Ortho(TrainingArgumentswCollection):
+class SVD(TrainingArgumentswCollection):
     """
-    Transform: linear layer with orthonormal parametrization. Target: hs
+    Target: hs. Transform: SVD
+    """
+    """
+    This intervention does not seem to work of converge. It attempt to remove the parts of the hs that are used by lm_head, but because hs is low rank, and lm_head is highrank, it is all used. Hence we try to train on a tiny noisy residual, and cannot.
+
+    It's left in here to show a negative finding, and the question: where do transformer store the working internal memory?
     """
 
+    alpha: float = 0.3
     """weights retrain and reroute losses"""
-    alpha: float = 0.001
 
-    lr: float = 3e-4
+    quantile: float=0.5
+    """What quantile of top singular values to from from hs
 
-    """The layers to collect the hidden states from, as this operates on the HS which does not vary much we need few points of collection"""
-    collection_layers_hs: tuple=(10, 20) 
+    Note if you set this to 1, we switch to normal SVD
+    
+    we decompose the embedded and de-embedding layers using SVD then remove the top <quantile> of singular values from the hidden states"""
 
-    _reprpo_class = PL_REPRPO_ORTHO_MODEL
-    _model_keys = ['alpha', 'collection_layers_hs', ]
+
+    dual_svd: bool = False
+    """if true, will use the embedding and lm_head, if false only lm_head"""
+
+    lr: float = 3e-5
+
+    _reprpo_class = PL_REPRPO_SVD_MODEL
+    _model_keys = ['alpha', 'quantile', 'dual_svd', 'collection_layers_hs']

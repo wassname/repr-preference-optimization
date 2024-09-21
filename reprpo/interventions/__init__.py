@@ -14,7 +14,7 @@ from .reprpo_hs_kl import HsKL
 from .reprpo_hs_dist import HSDist
 from .reprpo_side_dist import SideDist
 
-class Methods(enum.Enum):
+class Interventions(enum.Enum):
     dpo = DPO
     reprpo_svd = SVD
     reprpo_hs = HS
@@ -31,4 +31,4 @@ class Methods(enum.Enum):
     reprpo_hsdist = HSDist
     reprpo_hsdist_side = SideDist
 
-MethodsUnion = Union[tuple(e.value for e in Methods)]
+InterventionType = Union[tuple(e.value for e in Interventions)]

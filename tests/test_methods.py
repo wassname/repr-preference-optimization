@@ -1,21 +1,16 @@
 import os
-os.environ["WANDB_MODE"] = "disabled"
-# os.environ["WANDB_SILENT"] = "true"
-os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = "1"
-# os.environ["HF_DATASETS_OFFLINE"] = "1"
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-# os.environ["TQDM_DISABLE"] = "true"
-
-# from jaxtyping import jaxtyped
-# from typeguard import typechecked as typechecker
 import pytest
 import yaml
 
-from reprpo.train import Methods, MethodsUnion
+from reprpo import silence
+silence.test()
+
+from reprpo.interventions import Interventions, InterventionType
 from reprpo.training import train
 
+
 # @jaxtyped(typechecker=typechecker)
-@pytest.mark.parametrize("Method", Methods)
+@pytest.mark.parametrize("Method", Interventions)
 def test_train_method_dev(Method):
     """test all methods in dev mode"""
 

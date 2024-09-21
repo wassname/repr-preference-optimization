@@ -2868,7 +2868,24 @@ TODO:
   - loss_fn, takes in a layer, return loss and info
   - configs? should I move to subconfigs or subclass?
     - subconfigs not good via cli, would have to move to [experiments](https://brentyi.github.io/tyro/examples/03_config_systems/01_base_configs/)
+    - I still want to be able to loop? yes
   - or should I go full hyra?
+
+
+I'll just stick to tyro
+
+I like
+- just python: e.g. dataclasses
+- minimal configcli for free
+- modular
+- overrides via on config
+
+- experimental config
+- model
+  - dpo
+  - reprpo
+    - loss_fn
+    - transform
 
 # 2024-09-20 23:43:1
 
