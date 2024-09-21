@@ -30,8 +30,8 @@ def rank_loss(pi_cho: ReprPOModelOutput,
     - nll to make sure the chosen is at least as likely
     """
 
-    def preproc_hs(o):
-        hs = o.hs
+    def preproc_hs(o, k):
+        hs = o.hs[k]
         if transform is not None:
             hs = transform(hs)
         hs = hs.log_softmax(-1)
@@ -60,6 +60,7 @@ def rank_loss(pi_cho: ReprPOModelOutput,
     # combine layer losses
     ll_keys = next(iter(ll.values())).keys()
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
+    loss_reroute = ll['loss_reroute']
 
     nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask'])
     ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
@@ -90,7 +91,7 @@ def rank_loss(pi_cho: ReprPOModelOutput,
 @dataclass(frozen=True)
 class RankLossConfig:
     alpha: Float = 1
-    eps: Float = 1e-12
+    # eps: Float = 1e-12
 
     def c(self, *args, **kwargs):
         return rank_loss(*args, **kwargs, **asdict(self))

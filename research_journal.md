@@ -2913,5 +2913,7 @@ ah _cls doesn't work, change to a static method
 damn maybe I should jsut ignore cli and use functional programming, ust enumerate  experiments
 hyrda try that?
 
-- [ ] fix them, per layer
+- [x] fix them, per layer
+- [ ] collect hs?
+- [ ] test all
 - [ ] define experiments

@@ -42,7 +42,7 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "reprpo",
+                "none-hs-prefvec",
                 "--dev", 
                 "--verbose",
             ]

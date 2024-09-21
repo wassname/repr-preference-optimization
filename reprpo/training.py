@@ -73,7 +73,7 @@ def train(training_args: ExperimentConfig):
     print("*" * 80)
     print("PL_MODEL", PL_MODEL)
 
-    ds_name_train = training_args.dataset.replace("genie_dpo-", "")
+    ds_name_train = training_args.dataset.replace("genies_preferences-", "")
     model_name = training_args.base_model.split("/")[-1]
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
@@ -123,7 +123,9 @@ def train(training_args: ExperimentConfig):
         use_rslora=True,
         # use_dora=True,
         task_type="CAUSAL_LM",
+        # note qlora uses all linear layers
         target_modules=["q_proj", "v_proj"],  # gemma, llama
+        # target_modules=["q_proj", "v_proj", "down_proj"],  # gemma, llama
         # target_modules=[
         # FIXME: I'm not sure we can do LORA on the layer we are targeting?
         # "qkv_proj", "gate_up_proj", # in
@@ -136,7 +138,7 @@ def train(training_args: ExperimentConfig):
         print(model)
 
     # ## Load data
-    dataset2 = load_dataset("wassname/genie_dpo", name=training_args.dataset)
+    dataset2 = load_dataset("wassname/genies_preferences", name=training_args.dataset)
 
     # ### Data Loader
     # We use huggingface datasets, which are pretokenized. So that we can stack
@@ -317,10 +319,10 @@ def train(training_args: ExperimentConfig):
     N = training_args.eval_samples
     datasets = [
         load_dataset_n(
-            "wassname/genie_dpo", name=training_args.dataset, split="train", N=N
+            "wassname/genies_preferences", name=training_args.dataset, split="train", N=N
         ),
         load_dataset_n(
-            "wassname/genie_dpo", name=training_args.dataset, split="test", N=N
+            "wassname/genies_preferences", name=training_args.dataset, split="test", N=N
         ),
     ]
     datasets += dist2datasets(
@@ -328,7 +330,7 @@ def train(training_args: ExperimentConfig):
     )  # our hard OOS test
     # datasets += get_ethics_datasets(N=N)
     datasets += [
-        load_dataset_n("wassname/genie_dpo", name=name, split="test", N=N)
+        load_dataset_n("wassname/genies_preferences", name=name, split="test", N=N)
         for name in [
             "math_make_questions",  #'truthful_qa',# 'wrong_arc', 'ranking_logic',
             # 'math', 'sycophancy_mimicry'
@@ -417,7 +419,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     cho_rej_coh = c - r
 
     def fmt(s):
-        return s.replace("genie_dpo-", "")
+        return s.replace("genies_preferences-", "")
 
     # TODO make multiple cols of index
 
@@ -502,7 +504,7 @@ def parse_eval(df_res2, ds_alias):
         .unstack()
         .T
     )
-    df_res.columns = [d.replace("genie_dpo-", "") for d in df_res.columns]
+    df_res.columns = [d.replace("genies_preferences-", "") for d in df_res.columns]
 
     df_metrics = key_metrics(df_res2, adapter_name, ds_alias)
 
@@ -512,7 +514,7 @@ def parse_eval(df_res2, ds_alias):
     print(df_metrics.round(3).to_markdown())
     print("""Table 1: Key metrics (adapter over base model)\n""")
 
-    cols = [v.replace("genie_dpo-", "") for v in ds_alias.values()]
+    cols = [v.replace("genies_preferences-", "") for v in ds_alias.values()]
     df_res2 = df_res[cols]
     df_res2.columns = list(ds_alias.keys())
     df_res2.index.name = "adapter/ds"

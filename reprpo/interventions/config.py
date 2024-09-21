@@ -7,7 +7,7 @@ from dataclasses import dataclass
 @dataclass
 class ExperimentConfig:
     
-    """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
+    """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences"""
 
     dataset: str = 'us_history_textbook'
     """train dataset."""

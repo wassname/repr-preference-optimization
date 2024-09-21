@@ -5,23 +5,10 @@ from reprpo.training import train
 from reprpo.interventions import Interventions, DPOConfig, ReprPOConfig
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
-
-default_configs = {
-    "reprpo": (
-        "Small experiment.",
-        ReprPOConfig(
-            transform=Transforms.Ether.value(),
-            loss_fn=Losses.mse.value(),
-        ),
-    ),
-    "dpo": (
-        "DPO experiment.",
-        DPOConfig
-    ),
-}
+from reprpo.experiments import experiment_configs
 
 if __name__ == "__main__":
-    training_args = tyro.extras.overridable_config_cli(default_configs)
+    training_args = tyro.extras.overridable_config_cli(experiment_configs)
 
     # tyro has a default option, but it doesn't work with subcommands, so I apply overides manually
     # e.g. REPR_CONFIG=./configs/dev.yaml
