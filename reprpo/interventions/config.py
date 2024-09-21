@@ -1,7 +1,6 @@
 import torch
 from typing import Optional, Callable, Union
 from dataclasses import dataclass
-from . import Interventions
 
 
 
@@ -9,8 +8,6 @@ from . import Interventions
 class ExperimentConfig:
     
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
-
-    intervention: Interventions = Interventions.reprpo
 
     dataset: str = 'us_history_textbook'
     """train dataset."""
@@ -31,6 +28,8 @@ class ExperimentConfig:
     max_length: int = 196
     max_prompt_length: int = 96
     base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+
+    
 
 
 

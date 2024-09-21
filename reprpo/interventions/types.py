@@ -15,12 +15,3 @@ class ReprPOModelOutput:
     label_logprobs: Float[Tensor, "b l t"]
     mask: Mask
 
-
-@dataclass
-class Config:
-
-    _cls: Callable
-
-    @property
-    def c(self, *args, **kwargs):
-        return self._cls(*args, **asdict(self), **kwargs)

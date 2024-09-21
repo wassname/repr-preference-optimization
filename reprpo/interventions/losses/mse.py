@@ -4,9 +4,9 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 from torch import Tensor
 from torch.nn import functional as F
 import torch
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from .helpers import cross_entropy_loss
-from ..types import HS, Mask, ReprPOModelOutput, Config
+from ..types import HS, Mask, ReprPOModelOutput
 from ..reprpo.helpers import mean_tokens_w_attention, detach_hsd
 
 
@@ -85,9 +85,11 @@ def mse_loss(pi_cho: ReprPOModelOutput,
     return loss, info
 
 
-@dataclass
-class MSELossConfig(Config):
-    alpha: Float = 1
+@dataclass(frozen=True)
+class MSELossConfig:
+    alpha: Float = 1.
     eps: Float = 1e-12
 
-    _cls = log_dist_ratio
+    @property
+    def c(self):
+        return log_dist_ratio(**asdict(self))

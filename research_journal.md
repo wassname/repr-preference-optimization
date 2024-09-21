@@ -2900,3 +2900,15 @@ https://hydra.cc/docs/tutorials/basic/running_your_app/multi-run/
 refactoring... ah tyro can't do experiment multi deep
 
 well dpo and reprpo can just subclass experiment config, then I can have an experiment determin the name of loss and transform?
+
+
+TODO-
+experiment
+dpo
+reprpo
+
+
+ah _cls doesn't work, change to a static method
+
+damn maybe I should jsut ignore cli and use functional programming, ust enumerate  experiments
+hyrda try that?

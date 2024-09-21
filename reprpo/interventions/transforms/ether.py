@@ -7,8 +7,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import math
-from dataclasses import dataclass
-from ..types import Config
+from dataclasses import dataclass, asdict
 
 class ETHERLayer(nn.Module):
     def __init__(self, nb: int, 
@@ -243,14 +242,14 @@ class ETHERLinearSmall(ETHERLinear):
         super_out = super().forward(x)
         return self.linear_up(super_out)
 
-@dataclass
-class ETHERConfig(Config):
+@dataclass(frozen=True)
+class ETHERConfig:
     """ETHER parameters"""
 
     nb: int = 4
     """number of diagonal blocks"""
 
-    Htype: Literal['ether', 'etherplus', 'oft', 'etherplusHH'] = 'ether'
+    Htype: str = 'etherplus'
     """type of transformation 
 
     - ether: like HRA but allowing a negative unit vector (reflection)
@@ -268,4 +267,7 @@ class ETHERConfig(Config):
 
     reduction: int = 4
 
-    _cls = ETHERLinearSmall
+    @property
+    def c(self):
+        return ETHERLinearSmall(**asdict(self))
+

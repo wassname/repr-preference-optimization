@@ -1,12 +1,15 @@
-from reprpo.interventions.pl_base import ModelConfigBase
+from reprpo.interventions.config import ExperimentConfig
 from reprpo.interventions.losses import Losses, mse
 from reprpo.interventions.transforms import Transforms
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 from .model import PL_REPRPO_MODEL
 
+
 @dataclass
-class ReprPOConfig(ModelConfigBase):
+class ReprPOConfig(ExperimentConfig):
+
+    lr: float = 1e-4
 
     alpha: float = 0.1
     """balanced retain and reroute"""
@@ -38,7 +41,9 @@ class ReprPOConfig(ModelConfigBase):
     loss_fn: Losses = mse
     """loss function"""
 
-    transform: Optional[Transforms] = None
+    transform: Transforms = Transforms.Ether.value
     """transform function"""
 
     _cls = PL_REPRPO_MODEL
+
+    _model_keys = ['lr', 'alpha', 'collection_layers_side', 'collection_layers_hs', 'collection_keys_in', 'collection_keys_out', 'collect_input', 'loss_fn', 'transform', ]

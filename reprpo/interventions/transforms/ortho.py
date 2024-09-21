@@ -1,8 +1,7 @@
 import torch
 from torch import nn
 import math
-from dataclasses import dataclass
-from ..types import Config
+from dataclasses import dataclass, asdict
 from typing import Literal
 
 class OrthoTransform(nn.Module):
@@ -12,8 +11,10 @@ class OrthoTransform(nn.Module):
         torch.nn.init.orthogonal_(self.ortho.weight)
         self.transform = torch.nn.utils.parametrizations.orthogonal(self.ortho, orthogonal_map=orthogonal_map)
 
-@dataclass
-class OrthoConfig(Config):
+@dataclass(frozen=True)
+class OrthoConfig:
     orthogonal_map: Literal["householder", "cayley", "matrix_exp"] = "householder"
 
-    _cls = OrthoTransform
+    @property
+    def c(self):
+        return OrthoTransform(**asdict(self))

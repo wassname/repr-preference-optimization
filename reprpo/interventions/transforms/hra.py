@@ -1,9 +1,8 @@
 import torch
 from torch import nn
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import warnings
-from ..types import Config
 
 
 class HRATransform(nn.Module):
@@ -75,8 +74,8 @@ class HRATransform(nn.Module):
         delta_weight = self.get_delta_weight()
         return torch.matmul(input, delta_weight)
 
-@dataclass
-class HRAConfig(Config):
+@dataclass(frozen=True)
+class HRAConfig:
 
     r: int = 8
     """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
@@ -85,4 +84,6 @@ class HRAConfig(Config):
     apply_GS: bool = True
     """Whether to apply Gram-Schmidt orthogonalization."""
 
-    _cls = HRATransform
+    @property
+    def c(self):
+        return HRATransform(**asdict(self))

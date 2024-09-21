@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from reprpo.interventions.pl_base import PL_MODEL
 from dataclasses import dataclass
-from .pl_base import ModelConfigBase
+from reprpo.interventions.config import ExperimentConfig
 from .losses.helpers import cross_entropy_loss
 from .helpers import compute_logprobs
 
@@ -124,7 +124,7 @@ class PL_DPO_MODEL(PL_MODEL):
         return compute_dpo_loss_batch(batch, model)
 
 @dataclass
-class DPOConfig(ModelConfigBase):
+class DPOConfig(ExperimentConfig):
     lr: float = 6e-5
 
     _cls = PL_DPO_MODEL

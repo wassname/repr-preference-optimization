@@ -68,7 +68,7 @@ def train(training_args: ExperimentConfig):
         silence()
     torch.set_float32_matmul_precision("medium")
 
-    PL_MODEL = training_args.intervention
+    PL_MODEL = training_args._cls
     
     print("*" * 80)
     print("PL_MODEL", PL_MODEL)
@@ -87,7 +87,7 @@ def train(training_args: ExperimentConfig):
     if training_args.verbose:
         print("training_args")
         pprint(training_args, compact=True)
-        print("model_kwargs", model_kwargs.keys())
+        # print("model_kwargs", model_kwargs.keys())
 
         print(f"Using WANDB_GROUP={group_name}")
         print(f"Using finetune_name={finetune_name}")
@@ -228,17 +228,20 @@ def train(training_args: ExperimentConfig):
         print(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
 
 
-
+    model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
     pl_model = PL_MODEL(
         model,
         adam8bit=training_args.load_in_4bit
         or training_args.load_in_8bit,  # saved mem, but seems unstable?
         schedule="constant",
-        weight_decay=training_args.weight_decay,
-        lr=training_args.lr,
+        # weight_decay=training_args.weight_decay,
+        # lr=training_args.lr,
         num_iterations=max_steps,
         batch_size=training_args.batch_size,
-        **model_kwargs,
+
+        # model args
+        **model_kwargs
+
     )
 
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -256,6 +259,7 @@ def train(training_args: ExperimentConfig):
     if training_args.verbose:
         callbacks += [GenCallback(every=max_steps // 5 + 1)]
 
+    model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
     trainer = pl.Trainer(
         max_steps=max_steps,
         limit_val_batches=6,
