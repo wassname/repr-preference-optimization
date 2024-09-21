@@ -33,6 +33,9 @@ from einops import rearrange, reduce, repeat
 from jaxtyping import Bool, Float, Int
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.loggers.wandb import WandbLogger
+from lightning.pytorch.callbacks import LearningRateMonitor
+from reprpo.helpers.pl_gen import GenCallback
+
 from open_pref_eval.datasets import ds2name, load_dataset_n
 from open_pref_eval.datasets.ethics import get_ethics_datasets
 from open_pref_eval.datasets.genies import GENIES, dist2datasets
@@ -224,9 +227,7 @@ def train(training_args: ExperimentConfig):
         )
         print(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
 
-    from lightning.pytorch.callbacks import LearningRateMonitor
 
-    from reprpo.interventions.pl_base import GenCallback
 
     pl_model = PL_MODEL(
         model,

@@ -10,7 +10,7 @@ class ExperimentConfig:
     
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genie_dpo"""
 
-    intervention: Interventions = Interventions.ReprPO
+    intervention: Interventions = Interventions.reprpo
 
     dataset: str = 'us_history_textbook'
     """train dataset."""

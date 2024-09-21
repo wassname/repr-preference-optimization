@@ -2893,3 +2893,10 @@ how to run hyper param sweets?
 just wandb aseet
 Ax loops? https://ax.dev/docs/api.html
 https://hydra.cc/docs/tutorials/basic/running_your_app/multi-run/
+
+# 2024-09-21 07:40:40
+
+
+refactoring... ah tyro can't do experiment multi deep
+
+well dpo and reprpo can just subclass experiment config, then I can have an experiment determin the name of loss and transform?
