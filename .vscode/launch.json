@@ -42,7 +42,7 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "sidein-ether",
+                "reprpo",
                 "--dev", 
                 "--verbose",
             ]

@@ -6,10 +6,9 @@ from torch.nn import functional as F
 import torch
 from dataclasses import dataclass
 
-from .helpers import cross_entropy_loss
+from .helpers import cross_entropy_loss, compute_ptheta
 from ..types import HS, Mask, ReprPOModelOutput, Config
-from ..reprpo import mean_tokens_w_attention
-from reprpo.interventions.dpo import compute_ptheta
+from ..reprpo.helpers import mean_tokens_w_attention
 
 
 def prefec_loss(pi_cho: ReprPOModelOutput,

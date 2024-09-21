@@ -7,9 +7,7 @@ import torch
 from dataclasses import dataclass
 from .helpers import cross_entropy_loss
 from ..types import HS, Mask, ReprPOModelOutput, Config
-from ..reprpo import mean_tokens_w_attention, detach_hsd
-
-
+from ..reprpo.helpers import mean_tokens_w_attention, detach_hsd
 
 
 def log_dist_ratio(a, b, a_ref, b_ref, eps=1e-12) -> Float[Tensor, "b l"]:

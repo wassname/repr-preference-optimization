@@ -4,10 +4,10 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 from torch import Tensor
 from torch.nn import functional as F
 from dataclasses import dataclass
-from .helpers import cross_entropy_loss
+from .helpers import cross_entropy_loss, compute_ptheta
 from ..types import HS, Mask, ReprPOModelOutput, Config
-from ..reprpo import mean_tokens_w_attention
-from reprpo.interventions.dpo import compute_ptheta
+from ..reprpo.helpers import mean_tokens_w_attention
+
 
 
 def rank_loss(pi_cho: ReprPOModelOutput,

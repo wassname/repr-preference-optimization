@@ -44,30 +44,29 @@ from peft import LoraConfig, get_peft_model
 from peft.tuners import BOFTConfig, IA3Config, LoraConfig, OFTConfig
 from torch.utils.data import DataLoader
 
-import reprpo.silence
 import wandb
 from reprpo.data.collate3 import TokenizeRow
-from reprpo.evaluate import evaluate_adapters
-from reprpo.gen import display_gen, generation_test, get_model_generations
+from reprpo.gen import display_gen, get_model_generations
 from reprpo.helpers.lightning_hist import plot_hist, read_metrics_csv
-from reprpo.helpers.shypothesis import shypothesis
 
 # Local
 from reprpo.helpers.torch import clear_mem
 from reprpo.models.load import load_model, print_trainable_parameters
 from reprpo.interventions import Interventions, InterventionType
-from reprpo.interventions.dpo import PL_DPO_MODEL, compute_dpo_loss_batch
-from reprpo.interventions.pl_base import TrainingArguments, TrainingArgumentswCollection
-from .silence import silence
+from reprpo.interventions.dpo import PL_DPO_MODEL
+from reprpo.interventions.config import ExperimentConfig
+from .silence import silence, remove_warnings
+
+remove_warnings()
 
 
-def train(training_args: InterventionType):
+def train(training_args: ExperimentConfig):
     if not training_args.verbose:
         silence()
     torch.set_float32_matmul_precision("medium")
 
-    PL_MODEL = training_args._reprpo_class
-    model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
+    PL_MODEL = training_args.intervention
+    
     print("*" * 80)
     print("PL_MODEL", PL_MODEL)
 

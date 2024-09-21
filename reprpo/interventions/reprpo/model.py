@@ -7,40 +7,17 @@ from torch import Tensor
 from jaxtyping import Float, Int
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from reprpo.interventions.pl_base import PL_MODEL, TrainingArgumentswCollection, cross_entropy_loss
-from reprpo.interventions.dpo import compute_logprobs, compute_dpo_loss
 from types import SimpleNamespace
 from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
-import itertools
+
 from reprpo.interventions.types import ReprPOModelOutput, HS, Mask
+from reprpo.interventions.pl_base import PL_MODEL, ModelConfigBase
+from reprpo.interventions.helpers import compute_logprobs
 
-
-
-def get_layer_paths(collection_keys, collection_layers_side):
-    layer_paths = [
-        [p.format(layer=layer) for p in collection_keys] for layer in collection_layers_side
-    ]
-    layer_paths = list(itertools.chain(*layer_paths))
-    return layer_paths
-
-
-def validate_layer_paths(model, layer_paths):
-    for p in layer_paths:
-        get_module(model, p)
-
-
-def detach_hsd(hs):
-    """detach dict of hidden states"""
-    return {k: v.detach() for k, v in hs.items()}
-
-
-def mean_tokens_w_attention(
-    x: HS, attn_mask: Mask, dim: int = 1
-) -> Float[Tensor, "b h"]:
-    """mean of x, weighted by the attention mask, over dim (token or batch)"""
-    layer_attn_mask = repeat(attn_mask, "b t -> b t h", h=1).detach()
-    return (x * layer_attn_mask).sum(dim) / layer_attn_mask.sum(dim)
+from .helpers import get_layer_paths, validate_layer_paths
+from ..losses import Losses
+from ..transforms import Transforms
 
 
 def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_input=True):
@@ -73,8 +50,7 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
 
     return ReprPOModelOutput(hs=reprs, logits=outs.logits, label_logprobs=logprobs, mask=attn_mask)
 
-from reprpo.interventions.losses import Losses
-from reprpo.interventions.transforms import Transforms
+
 
 class PL_REPRPO_MODEL(PL_MODEL):
     def __init__(self, *args, collection_layers_side, collect_input, collection_keys_in: tuple=None, collection_keys_out: tuple=None,  
@@ -142,39 +118,3 @@ class PL_REPRPO_MODEL(PL_MODEL):
         )
 
 
-@dataclass
-class ReprPOConfig(ModelConfigBase):
-    alpha: float = 0.1
-    """balanced retain and reroute"""
-
-    collection_layers_side: tuple=(10, 12, 14, 16, 18) 
-    """layers to collect activations from in side layers."""
-
-    collection_layers_hs: tuple=(10, 20, 30)
-    """The layers to collect the hidden states from. Thisis for methods that operate on the redundant residual stream so only needs a couple of points of collection"""
-    
-    collection_keys_in: tuple = (
-        "base_model.model.model.layers.{layer}.self_attn.o_proj",
-        "base_model.model.model.layers.{layer}.mlp.down_proj",
-    )
-    """keys to collect inputs from."""
-
-    collection_keys_out: tuple = (
-        "base_model.model.model.layers.{layer}.self_attn.q_proj",
-        "base_model.model.model.layers.{layer}.self_attn.k_proj",
-        "base_model.model.model.layers.{layer}.self_attn.v_proj",
-        "base_model.model.model.layers.{layer}.mlp.gate_proj",
-        "base_model.model.model.layers.{layer}.mlp.up_proj",
-    )
-    """keys to collect outputs from."""
-
-    collect_input: bool = True
-    """use collection_keys_in? else use collection_keys_out."""
-
-    loss_fn: Losses
-    """loss function"""
-
-    transform: Optional[Transforms] = None
-    """transform function"""
-
-    _cls = PL_REPRPO_MODEL
