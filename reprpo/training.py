@@ -55,15 +55,12 @@ from reprpo.helpers.lightning_hist import plot_hist, read_metrics_csv
 # Local
 from reprpo.helpers.torch import clear_mem
 from reprpo.models.load import load_model, print_trainable_parameters
-from reprpo.interventions import Interventions, InterventionType
-from reprpo.interventions.dpo import PL_DPO_MODEL
-from reprpo.interventions.config import ExperimentConfig
 from .silence import silence, remove_warnings
 
 remove_warnings()
 
 
-def train(training_args: ExperimentConfig):
+def train(training_args):
     if not training_args.verbose:
         silence()
     torch.set_float32_matmul_precision("medium")

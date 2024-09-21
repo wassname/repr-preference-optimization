@@ -12,7 +12,7 @@ Mask = Int[Tensor, "b t"]
 @dataclass
 class ReprPOModelOutput:
     hs: Dict[str, HS]
-    logits: Float[Tensor, "b l t h"]
-    label_logprobs: Float[Tensor, "b l t"]
+    logits: Float[Tensor, "b t h"]
+    label_logprobs: Float[Tensor, "b"]
     mask: Mask
 
