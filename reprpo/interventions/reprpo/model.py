@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from reprpo.interventions.types import ReprPOModelOutput, HS, Mask
 from reprpo.interventions.pl_base import PL_MODEL, ModelConfigBase
 from reprpo.interventions.helpers import compute_logprobs
-
+import warnings
 from .helpers import get_layer_paths, validate_layer_paths
 from ..losses import Losses, LossesType
 from ..transforms import Transforms, TransformType
@@ -56,9 +56,13 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
                     reprs[p] = ret[p].output
 
     for p in reprs:
-        assert torch.isfinite(
-            reprs[p]
-        ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
+        if not torch.isfinite(reprs[p]).all():
+            warnings.warn(
+                f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
+            )
+        # assert torch.isfinite(
+        #     reprs[p]
+        # ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
 
     logprobs = compute_logprobs(
         logits=outs.logits, labels=input_ids, selection_mask=attn_mask

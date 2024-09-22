@@ -376,9 +376,9 @@ def train(training_args):
         # also just log final metrics to wandb so we can view a group
 
     # FIXME, only pass in adapter col, not q index or base
-    df_gen_w = wandb.Table(dataframe=df_gen)
-
-    run.log({"generations": df_gen_w, **r2})
+    if not training_args.dev:
+        df_gen_w = wandb.Table(dataframe=df_gen)
+        run.log({"generations": df_gen_w, **r2})
 
     if wandb.run is not None:
         print(f"WANDB url = {wandb.run.get_url()}")

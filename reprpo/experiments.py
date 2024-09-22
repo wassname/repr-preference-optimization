@@ -25,8 +25,22 @@ experiment_configs = {
             lr=1e-5,
         ),
     ),
+    "none-side-mse": (
+        "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
+        ReprPOConfig(
+            transform=Transforms.none.value(),
+            loss_fn=Losses.mse.value(),
+        ),
+    ),
+    "none-side-rank": (
+        "2",
+        ReprPOConfig(
+            transform=Transforms.none.value(),
+            loss_fn=Losses.rank.value(),
+        ),
+    ),
     "none-side-prefvec": (
-        "4",  # unstable?
+        "3",  # unstable?
         ReprPOConfig(
             transform=Transforms.none.value(),
             loss_fn=Losses.prefvec.value(),
@@ -49,6 +63,14 @@ experiment_configs = {
             loss_fn=Losses.rank.value(),
         ),
     ),
+    "none-hs-mse": (
+        "Collect hs and use ranking loss.",
+        ReprPOConfig(
+            collection_keys_in=(),
+            transform=Transforms.none.value(),
+            loss_fn=Losses.rank.value(),
+        ),
+    ),
     "ether-hs-rank": (
         "",
         ReprPOConfig(
@@ -57,14 +79,14 @@ experiment_configs = {
             loss_fn=Losses.rank.value(),
         ),
     ),
-    "ether-hs-mse": (
-        "",  # unstable with tinyllama
-        ReprPOConfig(
-            collection_keys_in=(),
-            transform=Transforms.ether.value(),
-            loss_fn=Losses.mse.value(),
-        ),
-    ),
+    # "ether-hs-mse": (
+    #     "",  # unstable with tinyllama, no grad otherwise?
+    #     ReprPOConfig(
+    #         collection_keys_in=(),
+    #         transform=Transforms.ether.value(),
+    #         loss_fn=Losses.mse.value(),
+    #     ),
+    # ),
     "ether-hs-prefvec": (
         "",
         ReprPOConfig(

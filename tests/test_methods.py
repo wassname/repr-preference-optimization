@@ -17,7 +17,9 @@ print("configs", configs)
 # @jaxtyped(typechecker=typechecker)
 @pytest.mark.parametrize("name,config", configs)
 def test_train_method_dev(name, config):
-    """test all methods in dev mode"""
+    """test all methods in dev mode
+    ~10s
+    """
 
     f = "./configs/dev.yaml"
     overrides = yaml.safe_load(open(f))
@@ -33,7 +35,9 @@ def test_train_method_dev(name, config):
 
 @pytest.mark.parametrize("name,config", configs)
 def test_train_method_dev1b(name, config):
-    """test all methods in dev with a larger model"""
+    """test all methods in dev with a small model
+    ~50s
+    """
 
     f = "./configs/dev1b.yaml"
     overrides = yaml.safe_load(open(f))

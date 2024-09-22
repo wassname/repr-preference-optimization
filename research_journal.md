@@ -2919,3 +2919,6 @@ hyrda try that?
 - [ ] make eval script or nb that saves all results?
 - [x] define experiments
 - change verbose to int, and make the really long things as 2
+
+
+hm with the pytests maybe I should enforce serial running https://github.com/pytest-dev/pytest-xdist/issues/84

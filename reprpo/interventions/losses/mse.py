@@ -19,7 +19,7 @@ def log_dist_ratio(a: HS2, b: HS2, a_ref: HS2, b_ref: HS2, eps=1e-12) -> Float[T
 
     # if provided with reference points, return the distance as a ratio to the reference distance
     if (a_ref is not None) and (b_ref is not None):
-        dist_ref = (a_ref - b_ref).detach()
+        dist_ref = (a_ref - b_ref)
         dist_ref = torch.norm(dist_ref, dim=-1)
         dist_ref = dist_ref + eps
 
