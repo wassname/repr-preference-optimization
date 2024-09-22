@@ -14,9 +14,10 @@ class Losses(enum.Enum):
     Define losses that take in ReprPOModelOutput
     and output loss, info
     """
+
     rank = RankLossConfig
     prefvec = PrefVecLossConfig
     mse = MSELossConfig
 
 
-LossesType= Union[tuple(e.value for e in Losses)]
+LossesType = Union[tuple(e.value for e in Losses)]

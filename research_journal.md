@@ -2914,6 +2914,8 @@ damn maybe I should jsut ignore cli and use functional programming, ust enumerat
 hyrda try that?
 
 - [x] fix them, per layer
-- [ ] collect hs?
+- [x] collect hs?
 - [ ] test all
-- [ ] define experiments
+- [ ] make eval script or nb that saves all results?
+- [x] define experiments
+- change verbose to int, and make the really long things as 2

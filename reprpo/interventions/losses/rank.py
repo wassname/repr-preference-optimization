@@ -1,4 +1,3 @@
-
 from jaxtyping import Float, Int
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 import torch
@@ -10,16 +9,16 @@ from ..types import HS, Mask, ReprPOModelOutput
 from ..reprpo.helpers import mean_tokens_w_attention
 
 
-
-def rank_loss(pi_cho: ReprPOModelOutput,
-            pi_rej: ReprPOModelOutput, 
-            ref_cho: ReprPOModelOutput, 
-            ref_rej: ReprPOModelOutput, 
-            batch: Dict[str, Any],
-            transform: Optional[Callable] = None,
-            # custom loss_args
-            alpha: Float = 1,
-            ):
+def rank_loss(
+    pi_cho: ReprPOModelOutput,
+    pi_rej: ReprPOModelOutput,
+    ref_cho: ReprPOModelOutput,
+    ref_rej: ReprPOModelOutput,
+    batch: Dict[str, Any],
+    transform: Optional[Callable] = None,
+    # custom loss_args
+    alpha: float = 1,
+):
     """
     This loss treats the hidden states like probabilities by taking the softmax. Despite the fact that they are not used as probabilities, this lets us modify the relative ranking as if they are.
 
@@ -38,32 +37,31 @@ def rank_loss(pi_cho: ReprPOModelOutput,
         hs = mean_tokens_w_attention(hs, o.mask)
         return hs
 
-
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k):
-        
         β = 100
-        ptheta_left = preproc_hs(pi_rej, k)  - preproc_hs(ref_rej, k)
+        ptheta_left = preproc_hs(pi_rej, k) - preproc_hs(ref_rej, k)
         ptheta_right = preproc_hs(pi_cho, k) - preproc_hs(ref_cho, k)
 
         ptheta = ptheta_right - ptheta_left
         # OR?
         # ptheta = - ptheta_left
 
-        loss_reroute = (β*ptheta - 1) ** 2 # as in IPO
+        loss_reroute = (β * ptheta - 1) ** 2  # as in IPO
 
         # loss_retain = (β * ptheta_right)**2 # make sure chosen ratio stays the same... but this woould limit us
         return dict(loss_reroute=loss_reroute)
 
     # compute losses per layer
-    ll = {k:
-              per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
+    ll = {k: per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
     # combine layer losses
     ll_keys = next(iter(ll.values())).keys()
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
-    loss_reroute = ll['loss_reroute']
+    loss_reroute = ll["loss_reroute"]
 
-    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask'])
-    ref_nll_loss = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask'])
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch["chosen_mask"])
+    ref_nll_loss = cross_entropy_loss(
+        ref_cho.logits, batch["chosen"], batch["chosen_mask"]
+    )
     nll_loss_ratio = nll_loss - ref_nll_loss
     dpo_ptheta = compute_ptheta(
         pi_cho.label_logprobs,
@@ -87,6 +85,7 @@ def rank_loss(pi_cho: ReprPOModelOutput,
     )
     info = {k: v.mean().detach() for k, v in info.items()}
     return loss, info
+
 
 @dataclass(frozen=True)
 class RankLossConfig:

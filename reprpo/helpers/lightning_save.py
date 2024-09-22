@@ -1,6 +1,7 @@
 from lightning.pytorch.callbacks import ModelCheckpoint
 from weakref import proxy
 
+
 class AdapterModelCheckpoint(ModelCheckpoint):
     def _save_checkpoint(self, trainer: "pl.Trainer", filepath: str) -> None:
         trainer.model.save_pretrained(filepath)

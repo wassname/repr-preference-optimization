@@ -7,14 +7,13 @@ from .losses.helpers import cross_entropy_loss
 from .helpers import compute_logprobs
 
 
-
 def compute_dpo_loss(
-      model_chosen_logprobs,
-      model_rejected_logprobs,
-      reference_chosen_logprobs,
-      reference_rejected_logprobs,
-      beta=0.1,
-    ):
+    model_chosen_logprobs,
+    model_rejected_logprobs,
+    reference_chosen_logprobs,
+    reference_rejected_logprobs,
+    beta=0.1,
+):
     """Compute the DPO loss for a batch of policy and reference model log probabilities.
 
     Args:
@@ -42,11 +41,12 @@ def compute_dpo_loss(
 
     # .mean() to average over the samples in the batch
     return losses.mean(), dict(
-        chosen_rewards=chosen_rewards.mean(), rejected_rewards=rejected_rewards.mean(),
+        chosen_rewards=chosen_rewards.mean(),
+        rejected_rewards=rejected_rewards.mean(),
         dpo_loss=losses.mean(),
-        # model_logratios=model_logratios.mean(), 
+        # model_logratios=model_logratios.mean(),
         # reference_logratios=reference_logratios.mean(),
-        logits=logits.mean()
+        logits=logits.mean(),
     )
 
 
@@ -54,10 +54,10 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
     """Compute the DPO loss on an input batch"""
 
     model_kwargs = dict(
-                    use_cache=False,
-            return_dict=True,
-            output_hidden_states=True,
-    )  
+        use_cache=False,
+        return_dict=True,
+        output_hidden_states=True,
+    )
 
     # FIXME: I need to mask out the prompt?
 
@@ -65,34 +65,36 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
     with torch.no_grad():
         with model.disable_adapter():
             ref_cho = model(
-                batch["chosen"], 
-                attention_mask=batch["chosen_mask"], 
-                **model_kwargs
+                batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs
             )
             ref_chosen_log_probas = compute_logprobs(
                 logits=ref_cho.logits,
                 labels=batch["chosen"],
-                selection_mask=batch["chosen_mask"]
+                selection_mask=batch["chosen_mask"],
             )
-            ref_rej = model(batch["rejected"], attention_mask=batch["rejected_mask"],**model_kwargs)
+            ref_rej = model(
+                batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
+            )
             ref_rejected_log_probas = compute_logprobs(
                 logits=ref_rej.logits,
                 labels=batch["rejected"],
-                selection_mask=batch["rejected_mask"]
+                selection_mask=batch["rejected_mask"],
             )
-    
+
     model.train()
-    pi_cho = model(batch["chosen"], attention_mask=batch["chosen_mask"],**model_kwargs)
+    pi_cho = model(batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs)
     policy_chosen_log_probas = compute_logprobs(
         logits=pi_cho.logits,
         labels=batch["chosen"],
-        selection_mask=batch["chosen_mask"]
+        selection_mask=batch["chosen_mask"],
     )
-    pi_rej = model(batch["rejected"], attention_mask=batch["rejected_mask"],**model_kwargs)
+    pi_rej = model(
+        batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
+    )
     policy_rejected_log_probas = compute_logprobs(
         logits=pi_rej.logits,
         labels=batch["rejected"],
-        selection_mask=batch["rejected_mask"]
+        selection_mask=batch["rejected_mask"],
     )
 
     loss, info = compute_dpo_loss(
@@ -100,31 +102,38 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
         model_rejected_logprobs=policy_rejected_log_probas,
         reference_chosen_logprobs=ref_chosen_log_probas,
         reference_rejected_logprobs=ref_rejected_log_probas,
-        beta=beta
+        beta=beta,
     )
-    
+
     # def cosine_on_keys(hs1, hs2):
     #     hs1 = collect_hs(hs1)
     #     hs2 = collect_hs(hs2)
     #     return F.cosine_similarity(hs1, hs2, dim=-1).nanmean()
-    
+
     with torch.no_grad():
         # info['retain_cosine'] = cosine_on_keys(pi_cho.hidden_states, ref_cho.hidden_states)
         # info['rr_cosine'] = cosine_on_keys(pi_rej.hidden_states, ref_cho.hidden_states)
 
-        nll_loss = info['nll_loss'] = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch['chosen_mask']).mean()
-        ref_nll_loss = info['ref_nll_loss'] = cross_entropy_loss(ref_cho.logits, batch["chosen"], batch['chosen_mask']).mean()
-        info['nll_loss_ratio'] = (nll_loss / ref_nll_loss).mean()
+        nll_loss = info["nll_loss"] = cross_entropy_loss(
+            pi_cho.logits, batch["chosen"], batch["chosen_mask"]
+        ).mean()
+        ref_nll_loss = info["ref_nll_loss"] = cross_entropy_loss(
+            ref_cho.logits, batch["chosen"], batch["chosen_mask"]
+        ).mean()
+        info["nll_loss_ratio"] = (nll_loss / ref_nll_loss).mean()
 
-    
     return loss, info
+
 
 class PL_DPO_MODEL(PL_MODEL):
     def _loss_fn(self, batch, model):
         return compute_dpo_loss_batch(batch, model)
+
 
 @dataclass
 class DPOConfig(ExperimentConfig):
     lr: float = 6e-5
 
     _cls = PL_DPO_MODEL
+
+    _model_keys = ["lr"]

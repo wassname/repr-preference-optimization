@@ -6,10 +6,12 @@ from .ether import ETHERConfig
 from .hra import HRAConfig
 from .none import NoneConfig
 
+
 class Transforms(enum.Enum):
     Ortho = OrthoConfig
     Ether = ETHERConfig
     HRA = HRAConfig
     none = NoneConfig
 
-TransformType= Union[tuple(e.value for e in Transforms)]
+
+TransformType = Union[tuple(e.value for e in Transforms)]

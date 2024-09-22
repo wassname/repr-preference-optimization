@@ -1,4 +1,3 @@
-
 from reprpo.gen import get_model_generations, display_gen
 from lightning.pytorch.callbacks import Callback
 
@@ -13,7 +12,6 @@ class GenCallback(Callback):
         df_gen = get_model_generations(model, model.tokenizer, max_new_tokens=32, N=1)
         display_gen(df_gen, with_q=False)
 
-
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         n = batch_idx + 1
         if n % self.every == 0:
@@ -22,5 +20,3 @@ class GenCallback(Callback):
 
     def on_train_epoch_end(self, trainer, pl_module):
         self.do_gen(trainer.model._model)
-
-

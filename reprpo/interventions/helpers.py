@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 
+
 def compute_logprobs(logits, labels, selection_mask=None):
     """
     Compute log probabilities.
@@ -24,9 +25,7 @@ def compute_logprobs(logits, labels, selection_mask=None):
 
     # Gather the log probabilities for the actual labels
     selected_log_probs = torch.gather(
-        input=log_probs,
-        dim=-1,
-        index=labels.unsqueeze(-1)
+        input=log_probs, dim=-1, index=labels.unsqueeze(-1)
     ).squeeze(-1)
 
     if selection_mask is not None:

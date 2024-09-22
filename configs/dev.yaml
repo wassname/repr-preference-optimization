@@ -6,4 +6,4 @@ collection_layers_side:
 collection_layers_hs:
   - 1
 dev: true
-verbose: true
+verbose: 1

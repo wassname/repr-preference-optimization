@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn.functional as F
 from einops import rearrange, repeat, reduce
@@ -21,7 +20,6 @@ from ..transforms import Transforms, TransformType
 
 
 def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_input=True):
-
     # if the layer paths are just str(ints) then just collect the hidden states
     try:
         layer_paths = [int(p) for p in layer_paths]
@@ -32,9 +30,8 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
             return_dict=True,
             output_hidden_states=True,
         )
-        reprs = {str(k):outs.hidden_states[k] for k in layer_paths}
-    except ValueError:           
-
+        reprs = {str(k): outs.hidden_states[k] for k in layer_paths}
+    except ValueError:
         reprs = {}
         with TraceDict(
             model,
@@ -55,42 +52,71 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
                     reprs[p] = ret[p].input
                 else:
                     reprs[p] = ret[p].output
-                assert torch.isfinite(reprs[p]).all()
-    
+
+    for p in reprs:
+        assert torch.isfinite(
+            reprs[p]
+        ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
 
     logprobs = compute_logprobs(
         logits=outs.logits, labels=input_ids, selection_mask=attn_mask
     )
-    return ReprPOModelOutput(hs=reprs, logits=outs.logits, label_logprobs=logprobs, mask=attn_mask)
-
+    return ReprPOModelOutput(
+        hs=reprs, logits=outs.logits, label_logprobs=logprobs, mask=attn_mask
+    )
 
 
 class PL_REPRPO_MODEL(PL_MODEL):
-    def __init__(self, *args, collection_layers_side, collect_input, collection_keys_in: tuple=None, collection_keys_out: tuple=None,  
-                 loss_fn: LossesType,
-                 transform: TransformType,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        collection_layers_side,
+        collect_input,
+        collection_keys_in: tuple = None,
+        collection_keys_out: tuple = None,
+        loss_fn: LossesType,
+        transform: TransformType,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
+        self.hparams.loss_fn = loss_fn
+        self.hparams.transform = transform
+        self.hparams.collection_layers_side = collection_layers_side
+        self.hparams.collect_input = collect_input
+
         collection_keys = collection_keys_in if collect_input else collection_keys_out
-        if len(collection_keys)>0:
-            self.hparams.layer_paths = get_layer_paths(collection_keys, collection_layers_side)
+
+        # set layer_paths
+        if len(collection_keys) > 0:
+            self.hparams.layer_paths = get_layer_paths(
+                collection_keys, collection_layers_side
+            )
             validate_layer_paths(self._model, self.hparams.layer_paths)
-            self.hparams.collect_input = collect_input
             # we do one learnable householder roation per layer
             if collect_input:
-                hra_sizes = {p:get_module(self._model, p).in_features for p in self.hparams.layer_paths}
+                hra_sizes = {
+                    p: get_module(self._model, p).in_features
+                    for p in self.hparams.layer_paths
+                }
             else:
-                hra_sizes = {p:get_module(self._model, p).out_features for p in self.hparams.layer_paths}
+                hra_sizes = {
+                    p: get_module(self._model, p).out_features
+                    for p in self.hparams.layer_paths
+                }
         else:
             # if no collection keys, we collect hidden states instead
             # we generally need only a few so lets just take the first and last
-            self.hparams.layer_paths = tuple(set([collection_layers_side[0], collection_layers_side[-1]]))
+            self.hparams.layer_paths = tuple(
+                set([collection_layers_side[0], collection_layers_side[-1]])
+            )
             self.hparams.layer_paths = [str(s) for s in self.hparams.layer_paths]
-            hra_sizes = {k: self._model.config.hidden_size for k in self.hparams.layer_paths}
+            hra_sizes = {
+                k: self._model.config.hidden_size for k in self.hparams.layer_paths
+            }
 
-        
-        self.transforms = torch.nn.ParameterDict({
-            k: transform.c(dim_hs, dim_hs) for k,dim_hs in hra_sizes.items()})
+        self.transforms = torch.nn.ParameterDict(
+            {k: transform.c(dim_hs, dim_hs) for k, dim_hs in hra_sizes.items()}
+        )
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
 
     def _loss_fn(self, batch, model):
@@ -128,7 +154,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
         )
-        
+
         return h.loss_fn.c(
             pi_cho=pi_cho,
             pi_rej=pi_rej,
@@ -136,5 +162,3 @@ class PL_REPRPO_MODEL(PL_MODEL):
             ref_rej=ref_rej,
             batch=batch,
         )
-
-

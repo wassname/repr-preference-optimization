@@ -16,6 +16,7 @@ from datasets.formatting.formatting import LazyRow
 from dataclasses import dataclass
 import torch
 
+
 @contextmanager
 def tok_setings(tokenizer: PreTrainedTokenizerBase, **kwargs):
     """
@@ -35,42 +36,61 @@ def tok_setings(tokenizer: PreTrainedTokenizerBase, **kwargs):
 class TokenizeRow:
     tokenizer: PreTrainedTokenizerBase
     max_length: int
-    max_prompt_length: int=64
+    max_prompt_length: int = 64
 
     def __call__(self, batch: LazyRow) -> Dict[str, Any]:
-
         out = {}
 
         # encode and truncate prompt
-        with tok_setings(self.tokenizer, truncation_side='left'):
-            prompt = self.tokenizer.encode_plus(batch['prompt'], add_special_tokens=False, padding=False, truncation=True, max_length=self.max_prompt_length)['input_ids']
-        max_ans_length=self.max_length - len(prompt) - self.tokenizer.num_special_tokens_to_add()
+        with tok_setings(self.tokenizer, truncation_side="left"):
+            prompt = self.tokenizer.encode_plus(
+                batch["prompt"],
+                add_special_tokens=False,
+                padding=False,
+                truncation=True,
+                max_length=self.max_prompt_length,
+            )["input_ids"]
+        max_ans_length = (
+            self.max_length - len(prompt) - self.tokenizer.num_special_tokens_to_add()
+        )
 
-        with tok_setings(self.tokenizer, padding_side='right', truncation_side='right'):
+        with tok_setings(self.tokenizer, padding_side="right", truncation_side="right"):
             for key in ["chosen", "rejected"]:
                 encoded_inputs = {}
                 # tokenizer and truncate
-                ans = self.tokenizer.encode_plus(batch[key], add_special_tokens=False, truncation=True, max_length=max_ans_length)['input_ids']            
-                out[key+'_truncated'] = len(ans)>=max_ans_length
-                
+                ans = self.tokenizer.encode_plus(
+                    batch[key],
+                    add_special_tokens=False,
+                    truncation=True,
+                    max_length=max_ans_length,
+                )["input_ids"]
+                out[key + "_truncated"] = len(ans) >= max_ans_length
+
                 ids = prompt + ans
 
                 # add special tokens
                 ids = self.tokenizer.build_inputs_with_special_tokens(ids)
                 encoded_inputs = {
                     "input_ids": ids,
-                    "special_tokens_mask": self.tokenizer.get_special_tokens_mask(ids, already_has_special_tokens=True)
+                    "special_tokens_mask": self.tokenizer.get_special_tokens_mask(
+                        ids, already_has_special_tokens=True
+                    ),
                 }
 
                 # pad and attention mask
-                encoded_inputs = self.tokenizer.pad(encoded_inputs, max_length=self.max_length, padding='max_length', return_attention_mask=True)
+                encoded_inputs = self.tokenizer.pad(
+                    encoded_inputs,
+                    max_length=self.max_length,
+                    padding="max_length",
+                    return_attention_mask=True,
+                )
 
-                out[key] = encoded_inputs['input_ids']
-                out[key+'_mask'] = encoded_inputs['attention_mask']
+                out[key] = encoded_inputs["input_ids"]
+                out[key + "_mask"] = encoded_inputs["attention_mask"]
 
         # I also want to output a token mask but it's complicated by the special tokens
         # FIXME: this assumes one bos and on eos token
-        out['prompt_truncated'] = len(prompt)>=self.max_prompt_length
+        out["prompt_truncated"] = len(prompt) >= self.max_prompt_length
         prompt = self.tokenizer.build_inputs_with_special_tokens(prompt)[:-1]
         # encoded_inputs = {
         #     "input_ids": prompt,
@@ -78,8 +98,6 @@ class TokenizeRow:
         # # }
         # encoded_inputs = self.tokenizer.pad(encoded_inputs, max_length=self.max_length, padding='max_length', return_attention_mask=True)
         # out['prompt'] = encoded_inputs['input_ids']
-        out['prompt_mask'] = [1] * len(prompt) + [0] * (self.max_length - len(prompt))
+        out["prompt_mask"] = [1] * len(prompt) + [0] * (self.max_length - len(prompt))
 
         return out
-
-

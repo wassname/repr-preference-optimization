@@ -18,17 +18,19 @@ experiment_configs = {
         ),
     ),
     "ether-side-prefvec": (
-        "3",
+        "3",  # unstable?
         ReprPOConfig(
             transform=Transforms.Ether.value(),
             loss_fn=Losses.prefvec.value(),
+            lr=1e-5,
         ),
     ),
     "none-side-prefvec": (
-        "4",
+        "4",  # unstable?
         ReprPOConfig(
             transform=Transforms.none.value(),
             loss_fn=Losses.prefvec.value(),
+            lr=1e-5,
         ),
     ),
     "none-hs-prefvec": (
@@ -87,8 +89,5 @@ experiment_configs = {
             loss_fn=Losses.prefvec.value(),
         ),
     ),
-    "dpo": (
-        "DPO experiment.",
-        DPOConfig
-    ),
+    "dpo": ("DPO experiment.", DPOConfig()),
 }

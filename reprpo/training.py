@@ -11,7 +11,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import logging
 import warnings
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
@@ -61,12 +61,12 @@ remove_warnings()
 
 
 def train(training_args):
-    if not training_args.verbose:
+    if training_args.verbose < 1:
         silence()
     torch.set_float32_matmul_precision("medium")
 
     PL_MODEL = training_args._cls
-    
+
     print("*" * 80)
     print("PL_MODEL", PL_MODEL)
 
@@ -81,7 +81,7 @@ def train(training_args):
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = os.environ.get("WANDB_GROUP") + "_" + group_name
-    if training_args.verbose:
+    if training_args.verbose > 0:
         print("training_args")
         pprint(training_args, compact=True)
         # print("model_kwargs", model_kwargs.keys())
@@ -92,7 +92,7 @@ def train(training_args):
     run_fname = f"{adapter_name}/{ts}"  # short for wandb
     wandb.require(experiment="service")
 
-    config = training_args.__dict__
+    config = asdict(training_args)
     run = wandb.init(
         project=f"reprpo2",
         name=run_fname,
@@ -101,7 +101,6 @@ def train(training_args):
         config=config,
     )
 
-    
     model, tokenizer = load_model(
         training_args.base_model,
         load_in_4bit=training_args.load_in_4bit,
@@ -109,29 +108,40 @@ def train(training_args):
         # attn_implementation='eager' # for gemma
     )
 
+    def find_all_linear_names(args, model):
+        import bitsandbytes as bnb
+
+        cls = (
+            bnb.nn.Linear4bit
+            if args.bits == 4
+            else (bnb.nn.Linear8bitLt if args.bits == 8 else torch.nn.Linear)
+        )
+        lora_module_names = set()
+        for name, module in model.named_modules():
+            if isinstance(module, cls):
+                names = name.split(".")
+                lora_module_names.add(names[0] if len(names) == 1 else names[-1])
+
+        if "lm_head" in lora_module_names:  # needed for 16-bit
+            lora_module_names.remove("lm_head")
+        return list(lora_module_names)
+
     # ### Load adapter
+    """
+    Note that GENIES and PEFT use the default targets for llama ["q_proj", "v_proj"]
+    but other papers like qlora and HRA use all linear layers
+    """
     peft_config = LoraConfig(
         r=64,
         lora_alpha=16,
-        # lora_dropout=0.1,  # Changed
-        # bias="none",
-        # lora_alpha=16,
-        # r=16,
         use_rslora=True,
         # use_dora=True,
         task_type="CAUSAL_LM",
-        # note qlora uses all linear layers
-        target_modules=["q_proj", "v_proj"],  # gemma, llama
-        # target_modules=["q_proj", "v_proj", "down_proj"],  # gemma, llama
-        # target_modules=[
-        # FIXME: I'm not sure we can do LORA on the layer we are targeting?
-        # "qkv_proj", "gate_up_proj", # in
-        # "down_proj",  "o_proj", # out
-        #             ], # PHI3
+        # target_modules=["all-linear"], #  QLoRA-style training
     )
     model = get_peft_model(model, peft_config, adapter_name=finetune_name)
     print_trainable_parameters(model)
-    if training_args.verbose:
+    if training_args.verbose > 1:
         print(model)
 
     # ## Load data
@@ -154,7 +164,7 @@ def train(training_args):
         datasets.disable_caching()
     dataset3 = dataset2.map(tokenize_row, batched=False)
 
-    if training_args.verbose:
+    if training_args.verbose > 0:
         print(
             f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}"
         )
@@ -181,7 +191,7 @@ def train(training_args):
         # , collate_fn=default_data_collator
     )
 
-    if training_args.verbose:
+    if training_args.verbose > 1:
         # print("QC one dataset row")
         # r = dataset2["train"][0]
         # print(r["prompt"])
@@ -201,7 +211,6 @@ def train(training_args):
         print("---")
         print(tokenizer.decode(batch["rejected"][0]))
         print("===")
-
 
     if wandb.run is not None:
         print(f"WANDB url = {wandb.run.get_url()}")
@@ -226,7 +235,6 @@ def train(training_args):
         )
         print(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
 
-
     model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
     pl_model = PL_MODEL(
         model,
@@ -237,10 +245,8 @@ def train(training_args):
         # lr=training_args.lr,
         num_iterations=max_steps,
         batch_size=training_args.batch_size,
-
         # model args
-        **model_kwargs
-
+        **model_kwargs,
     )
 
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -280,8 +286,8 @@ def train(training_args):
         # too large, we will just save adapter afterwards
         enable_checkpointing=False,
         fast_dev_run=training_args.dev,
-        enable_progress_bar=training_args.verbose,
-        # enable_model_summary=training_args.verbose,
+        enable_progress_bar=training_args.verbose > 0,
+        enable_model_summary=training_args.verbose > 1,
     )
 
     # train
@@ -316,7 +322,10 @@ def train(training_args):
     N = training_args.eval_samples
     datasets = [
         load_dataset_n(
-            "wassname/genies_preferences", name=training_args.dataset, split="train", N=N
+            "wassname/genies_preferences",
+            name=training_args.dataset,
+            split="train",
+            N=N,
         ),
         load_dataset_n(
             "wassname/genies_preferences", name=training_args.dataset, split="test", N=N
@@ -354,8 +363,6 @@ def train(training_args):
     df_res2.to_parquet(f)
     print(f"save_dir={save_dir}")
     pprint(training_args, compact=1)
-
-
 
     r = parse_eval(df_res2, ds_alias)
 

@@ -3,16 +3,15 @@ from typing import Optional, Callable, Union
 from dataclasses import dataclass
 
 
-
 @dataclass
 class ExperimentConfig:
-    
+
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences"""
 
-    dataset: str = 'us_history_textbook'
+    dataset: str = "us_history_textbook"
     """train dataset."""
 
-    verbose: bool = False
+    verbose: int = 1
 
     dev: bool = False
     """fast run"""
@@ -28,8 +27,3 @@ class ExperimentConfig:
     max_length: int = 196
     max_prompt_length: int = 96
     base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-
-    
-
-
-

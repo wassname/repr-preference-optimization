@@ -11,9 +11,8 @@ class HRATransform(nn.Module):
     - https://github.com/huggingface/peft/blob/54be5a3db61748d698ca2e6b55bcfef229a9b475/src/peft/tuners/hra/layer.py#L197
     """
 
-    def __init__(self, in_features, out_features, 
-                 r=8, apply_GS=False):
-        super().__init__()        
+    def __init__(self, in_features, out_features, r=8, apply_GS=False):
+        super().__init__()
 
         self.hra_r = r
         self.apply_GS = apply_GS
@@ -26,7 +25,9 @@ class HRATransform(nn.Module):
 
     def reset_hra_parameters(self):
         if self.hra_r % 2 != 0:
-            warnings.warn("The symmetric initialization can NOT be performed when r is odd!")
+            warnings.warn(
+                "The symmetric initialization can NOT be performed when r is odd!"
+            )
             nn.init.kaiming_uniform_(self.hra_u, a=math.sqrt(5))
         else:
             shape = self.hra_u.shape
@@ -54,7 +55,10 @@ class HRATransform(nn.Module):
                     ui = ui - (weight[j].t() @ ui) * weight[j]
                 weight.append((ui / ui.norm()).view(-1, 1))
             weight = torch.cat(weight, dim=1)
-            weight = torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype) - 2 * weight @ weight.t()
+            weight = (
+                torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype)
+                - 2 * weight @ weight.t()
+            )
 
         else:
             opt_u = opt_u / opt_u.norm(dim=0)
@@ -66,24 +70,25 @@ class HRATransform(nn.Module):
 
             for i in indices:
                 ui = opt_u[:, i].view(-1, 1)
-                weight = weight @ (torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype) - 2 * ui @ ui.t())
+                weight = weight @ (
+                    torch.eye(shape[0], device=opt_u.device, dtype=opt_u.dtype)
+                    - 2 * ui @ ui.t()
+                )
 
         return weight
-    
+
     def forward(self, input):
         delta_weight = self.get_delta_weight()
         return torch.matmul(input, delta_weight)
 
+
 @dataclass(frozen=True)
 class HRAConfig:
-
     r: int = 8
     """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
-
 
     apply_GS: bool = True
     """Whether to apply Gram-Schmidt orthogonalization."""
 
-    @property
     def c(self, *args, **kwargs):
         return HRATransform(*args, **kwargs, **asdict(self))

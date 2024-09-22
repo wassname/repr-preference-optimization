@@ -8,4 +8,5 @@ class Interventions(enum.Enum):
     dpo = DPOConfig
     reprpo = ReprPOConfig
 
+
 InterventionType = Union[tuple(e.value for e in Interventions)]
