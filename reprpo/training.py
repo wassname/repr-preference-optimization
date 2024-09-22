@@ -314,8 +314,9 @@ def train(training_args):
     # ## Gen
     model.cuda()  # for some reason it ends up cpu
 
-    df_gen = get_model_generations(model, tokenizer, N=3)
-    display_gen(df_gen.head(2))
+    if not training_args.dev:
+        df_gen = get_model_generations(model, tokenizer, N=3)
+        display_gen(df_gen.head(2))
 
     # ## Eval
     # eval on ethics, GENIES, and our train dataset

@@ -6,6 +6,7 @@ from reprpo.interventions import Interventions, DPOConfig, ReprPOConfig
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 from reprpo.experiments import experiment_configs
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 if __name__ == "__main__":
     training_args = tyro.extras.overridable_config_cli(experiment_configs)

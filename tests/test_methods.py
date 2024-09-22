@@ -1,4 +1,5 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import pytest
 import yaml
 
@@ -19,6 +20,22 @@ def test_train_method_dev(name, config):
     """test all methods in dev mode"""
 
     f = "./configs/dev.yaml"
+    overrides = yaml.safe_load(open(f))
+    training_args = config
+    if f is not None:
+        overrides = yaml.safe_load(open(f))
+        for k, v in overrides.items():
+            setattr(training_args, k, v)
+
+    print(f"loaded default config from {f}")
+    print(training_args)
+    train(training_args)
+
+@pytest.mark.parametrize("name,config", configs)
+def test_train_method_dev1b(name, config):
+    """test all methods in dev with a larger model"""
+
+    f = "./configs/dev1b.yaml"
     overrides = yaml.safe_load(open(f))
     training_args = config
     if f is not None:

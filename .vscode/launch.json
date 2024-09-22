@@ -36,15 +36,16 @@
         {
             "name": "dev",
             "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", "REPR_CONFIG": "./configs/dev.yaml", "WANDB_MODE": "offline"},
+            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", 
+            "REPR_CONFIG": "./configs/dev.yaml", "WANDB_MODE": "offline"},
             "pythonArgs": ["-Xfrozen_modules=off"],
             "request": "launch",
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "none-hs-prefvec",
+                "ether-hs-mse",
                 "--dev", 
-                "--verbose",
+                "--verbose 1",
             ]
         },
         {

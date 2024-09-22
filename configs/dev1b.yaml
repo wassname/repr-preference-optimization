@@ -1,0 +1,11 @@
+base_model:  'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+n_samples: 64
+eval_samples: 32 # 10 mins to go through 750*4
+collection_layers_side: 
+  - 0
+collection_layers_hs:
+  - 1
+dev: true
+verbose: 1
+load_in_4bit: true
+batch_size: 2

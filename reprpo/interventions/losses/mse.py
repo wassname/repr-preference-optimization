@@ -51,7 +51,7 @@ def mse_loss(
         hs = mean_tokens_w_attention(hs, o.mask)
         return hs
 
-    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k):
+    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) ->  Dict[str, Float[Tensor, 'b']]:
         hs_pi_cho = preproc_hs(pi_cho, k)
         hs_pi_rej = preproc_hs(pi_rej, k)
         hs_ref_cho = preproc_hs(ref_cho, k)  # .detach()

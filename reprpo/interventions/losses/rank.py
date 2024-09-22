@@ -37,7 +37,7 @@ def rank_loss(
         hs = mean_tokens_w_attention(hs, o.mask)
         return hs
 
-    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k):
+    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, 'b']]:
         β = 100
         ptheta_left = preproc_hs(pi_rej, k) - preproc_hs(ref_rej, k)
         ptheta_right = preproc_hs(pi_cho, k) - preproc_hs(ref_cho, k)
@@ -49,7 +49,7 @@ def rank_loss(
         loss_reroute = (β * ptheta - 1) ** 2  # as in IPO
 
         # loss_retain = (β * ptheta_right)**2 # make sure chosen ratio stays the same... but this woould limit us
-        return dict(loss_reroute=loss_reroute)
+        return dict(loss_reroute=loss_reroute.mean(1))
 
     # compute losses per layer
     ll = {k: per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}

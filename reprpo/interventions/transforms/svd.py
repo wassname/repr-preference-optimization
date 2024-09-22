@@ -8,7 +8,7 @@ from typing import Optional, Callable
 
 
 class SVDLayer(nn.Module):
-    def __init__(self, dual_svd: bool, quantile: float, model: nn.Module) -> None:
+    def __init__(self, in_dim, out_dim, dual_svd: bool, quantile: float, model: nn.Module) -> None:
         super().__init__()
 
         W_e = model.get_input_embeddings().weight.clone().float()

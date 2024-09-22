@@ -13,5 +13,6 @@ def init_wandb(__vsc_ipynb_file__: str) -> str:
     # this hopefully fixes issues with multiprocessing
     import wandb
 
-    wandb.require(experiment="service")
+    # wandb.require(experiment="service")
+    wandb.require(experiment="core")
     return nb_name

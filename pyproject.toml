@@ -68,3 +68,4 @@ pytest-beartype = "^0.1.0"
 addopts = "--jaxtyping-packages=reprpo,beartype.beartype --beartype-packages='reprpo'"
 # beartype-packages = "reprpo,jaxtyping"
 # jaxtyping-packages = "reprpo,beartype.beartype"
+# durations=0

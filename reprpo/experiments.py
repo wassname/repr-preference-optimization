@@ -4,7 +4,7 @@ from reprpo.interventions.transforms import Transforms
 
 experiment_configs = {
     "ether-side-mse": (
-        "1",
+        "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
         ReprPOConfig(
             transform=Transforms.ether.value(),
             loss_fn=Losses.mse.value(),
@@ -34,7 +34,7 @@ experiment_configs = {
         ),
     ),
     "none-hs-prefvec": (
-        "",
+        "Collect hs and use PreferenceVector loss.",
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.none.value(),
@@ -42,7 +42,7 @@ experiment_configs = {
         ),
     ),
     "none-hs-rank": (
-        "",
+        "Collect hs and use ranking loss.",
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.none.value(),
@@ -58,7 +58,7 @@ experiment_configs = {
         ),
     ),
     "ether-hs-mse": (
-        "",
+        "",  # unstable with tinyllama
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.ether.value(),
@@ -82,7 +82,7 @@ experiment_configs = {
         ),
     ),
     "ortho-hs-prefvec": (
-        "",
+        "Collect hs, apply Orthogonal transform and use PreferenceVector loss.",
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.ortho.value(),
