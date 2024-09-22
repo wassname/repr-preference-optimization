@@ -5,7 +5,7 @@ from einops import rearrange, repeat, reduce
 from torch import Tensor
 from jaxtyping import Float, Int
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
-
+import os
 from types import SimpleNamespace
 from baukit.nethook import TraceDict, get_module
 from dataclasses import dataclass
@@ -56,13 +56,15 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
                     reprs[p] = ret[p].output
 
     for p in reprs:
-        if not torch.isfinite(reprs[p]).all():
-            warnings.warn(
-                f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
-            )
-        # assert torch.isfinite(
-        #     reprs[p]
-        # ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
+        if os.environ.get("DEBUG", False):
+            if not torch.isfinite(reprs[p]).all():
+                warnings.warn(
+                    f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
+                )
+        else:
+            assert torch.isfinite(
+                reprs[p]
+            ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
 
     logprobs = compute_logprobs(
         logits=outs.logits, labels=input_ids, selection_mask=attn_mask

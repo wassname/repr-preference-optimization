@@ -1,9 +1,10 @@
 from contextlib import contextmanager
 from peft import PeftModel
+from typing import Optional
 
 
 @contextmanager
-def set_adapter(model: PeftModel, adapter_name: str = None):
+def set_adapter(model: PeftModel, adapter_name: Optional[str] = None):
     old_adapter_name = model.active_adapter
     try:
         if adapter_name is not None:

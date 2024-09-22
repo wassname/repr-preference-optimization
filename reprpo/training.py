@@ -74,8 +74,9 @@ def train(training_args):
     model_name = training_args.base_model.split("/")[-1]
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
-    adapter_name = type(training_args).__name__
-    finetune_name = f"{adapter_name}-{ds_name_train}"
+    adapter_name = training_args._name
+
+    finetune_name = f"{adapter_name}_{ds_name_train}"
 
     # we can set an experiment group name from env vars, otherwise it will just groupt by model and training ds
     group_name = f"{ds_name_train}-{model_name}"
@@ -531,7 +532,7 @@ def parse_eval(df_res2, ds_alias):
     df_final.index.name = "acc_inc/eval_ds [pp]"
     print(df_final.round(3).to_markdown())
     print(
-        f"""Table 3: Accuracy increase (in percentage points) after training with named adapter on `{ds_alias["train"]}` compared to base model for various distribution shifts:"""
+        f"""Table 3⭐: Accuracy increase (in percentage points) after training with named adapter on `{ds_alias["train"]}` compared to base model for various distribution shifts:"""
     )
     for k, v in ds_alias.items():
         print(f"- `{k}`: `{v}`")
@@ -547,8 +548,16 @@ def parse_eval(df_res2, ds_alias):
         f"""Table 4: Percent accuracy increase (over base) compared to that of the training dataset `{ds_alias['train']}` [in percentage points]. It measures what fraction of the learning from train generalised to other splits\n"""
     )
 
+    # format for wandb. just one row, one data type per table
+    df_rel_coh = df_metrics.loc["coherency[cho-rej]"].to_frame(adapter_name).T
+    df_coh = df_metrics.loc["coherency[pi-base]"].to_frame(adapter_name).T
+    df_acc = df_res2.loc[adapter_name].to_frame(adapter_name).T
+    df_rel_coh.index.name = df_acc.index.name = df_coh.index.name = adapter_name
     return {
-        "acc": df_res,
-        "relative_metrics": df_metrics,
+        "acc": df_acc,
+        # "relative_metrics": df_metrics, # TODO break up into 3
         "relrel_acc": df_relrel,
+        '⭐rel_acc': df_final,
+        'coherency[cho-rej]': df_rel_coh,
+        'coherency[pi-base]': df_coh,
     }

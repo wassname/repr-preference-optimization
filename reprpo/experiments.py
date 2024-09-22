@@ -68,7 +68,7 @@ experiment_configs = {
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.none.value(),
-            loss_fn=Losses.rank.value(),
+            loss_fn=Losses.mse.value(),
         ),
     ),
     "ether-hs-rank": (
@@ -119,5 +119,10 @@ experiment_configs = {
             loss_fn=Losses.prefvec.value(),
         ),
     ),
+    # baseline
     "dpo": ("DPO experiment.", DPOConfig()),
+    # variants
+    # TODO svd dual
+    # TODO svd quantile 1
+    # TODO ether with Htype=ether and oft
 }

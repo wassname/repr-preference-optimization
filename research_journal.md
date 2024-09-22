@@ -2922,3 +2922,42 @@ hyrda try that?
 
 
 hm with the pytests maybe I should enforce serial running https://github.com/pytest-dev/pytest-xdist/issues/84
+
+# 2024-09-22 08:07:46
+
+I refactored the code to remove depup, now lets test it all
+- [x] unit tests pass
+- [ ] exps (all tinyllama by accident, 5m per run)
+  - [x] side-ether-rank, yes
+  - [x] hs-none-rank yes
+  - [ ] hs-none-mse misconfigured
+  - [x] none-side-rank
+  - [ ] * prefvec fail due to nan
+  - [ ] * mse, all had too high lr?
+  - [ ] none-side-mse lr=1e-4 too high?
+  - [ ] dpo: failed? why? lr=6e-05
+  - [ ] none-side-mse lr too hight?
+
+
+
+ether-hs-prefvec --lr=1e-5
+
+side-ETHER-PrefVec-us_history_textbook
+
+| acc_inc/eval_ds [pp] |   train |   test |    oos |    rnd |
+|:---------------------|--------:|-------:|-------:|-------:|
+| 1e-5                 |   1.105 |   -0.7 | -1.362 | -5.513 |
+| 1e-4                 |   2.384 |      0 | 6.226 | -19.908 |
+| 1e-3 incoherent
+
+
+ipo
+| acc_inc/eval_ds [pp] |   train |   test |    oos |    rnd |
+|:---------------------|--------:|-------:|-------:|-------:|
+| dpo-us_history_ 5e-7 |   1.337 | -3.081 | 19.261 | -16.845|
+| dpo_us_history_ 1e-6 |   0.756 |   0.28 | 1.946  |      0 |
+| dpo_us_history 1e-5 |  -1.163 | -1.961 | 17.51 | -8.882 |
+dpo
+| dpo_us_ 8e-7 |   0.698 |   0.56 | 1.556 | 0.153 |
+| 8e-6 |   2.965 |  1.821 | 1.556 | 0.306 |
+| 5e-5 |   4.419 |  2.801 | 5.253 | -1.685 |

@@ -56,9 +56,15 @@ def prefec_loss(
             a_proj = torch.linalg.vecdot(a, ref_dir, dim=-1) / ref_dir_norm
 
             # get unsigned length or remainder using pythagorian theorem (we don't care about magnitude here as we )
-            a_orth = torch.sqrt(a.pow(2).sum(-1) - a_proj**2)
+            # FIXME: this seem unstable, because it causes nan after 1 update if used
+            if torch.norm(a)>0:
+                a_orth = torch.sqrt(a.pow(2).sum(-1) - a_proj**2)
+            else:
+                a_orth = torch.zeros_like(a_proj)
+
+
             angle = F.cosine_similarity(cho, ref_dir, dim=-1)
-            # angle works, but orth gives a nan
+            # angle works
             return a_proj, a_orth, angle
 
         signed_cho_proj_pref, cho_orth_pref, cho_cossim = signed_proj_magnitude(
@@ -97,7 +103,9 @@ def prefec_loss(
     ll_keys = next(iter(ll.values())).keys()
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
-    loss_reroute = ll["loss_cho_proj"] + β * ll["loss_cho_orth"] + β * ll["loss_angle"]
+    loss_reroute = (ll["loss_cho_proj"]
+                    #  + β * ll["loss_cho_orth"] # causes nans after 1 step?
+                       + β * ll["loss_angle"])
 
     # TODO find better scaling, it needs to be small compared to nll and dpo losses which can be <0.1
     loss_reroute = torch.tanh(loss_reroute / 3) / 10

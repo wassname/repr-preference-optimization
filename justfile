@@ -20,9 +20,6 @@ test:
     pytest --pdb -x -s -v \
         --jaxtyping-packages=reprpo,beartype.beartype --beartype-packages='reprpo'
 
-test_notyping:
-    . ./.venv/bin/activate
-    pytest --pdb -x -s -v
 
 # run one method, with args
 run METHOD='reprpo_ortho' +EXTRA_ARGS='':
@@ -37,7 +34,7 @@ run2 METHOD='reprpo_ortho' +EXTRA_ARGS='':
     export METHOD="{{METHOD}}"
     echo "METHOD={{METHOD}} $METHOD EXTRA_ARGS=${EXTRA_ARGS}"
 
-run_all +EXTRA_ARGS='':
+run_all EXTRA_ARGS='':
     #!/usr/bin/zsh
     echo "REPR_CONFIG=$REPR_CONFIG"
     export WANDB_GROUP=${WANDB_GROUP:-mdl-$(date +%Y%m%d_%H%M%S)}
@@ -48,19 +45,19 @@ run_all +EXTRA_ARGS='':
     # export WANDB_SILENT"]=true
     # export HF_DATASETS_DISABLE_PROGRESS_BARS=1
 
-    export EXTRA_ARGS=${EXTRA_ARGS:-}
+    export EXTRA_ARGS=${EXTRA_ARGS:---verbose=0}
     echo "EXTRA_ARGS=$EXTRA_ARGS"
 
     . ./.venv/bin/activate
-    for METHOD in sidein-ether dpo ether hra sideout-hra ortho sidein hra sidein-hra sideout hs svd sideout-ether hs-kl hs-dist side-dist; do
+    for METHOD in dpo ether-side-mse ether-side-rank ether-side-prefvec none-side-mse none-side-rank none-side-prefvec none-hs-prefvec none-hs-rank none-hs-mse ether-hs-rank ether-hs-prefvec hra-hs-prefvec svd-hs-prefvec; do
         echo "METHOD=$METHOD"
         python scripts/train.py $METHOD $EXTRA_ARGS
     done
-    python scripts/train.py hra --no-rel-loss --verbose --lr 1e-5  $EXTRA_ARGS
-    python scripts/train.py sidein-ether --Htype oft  $EXTRA_ARGS
-    python scripts/train.py sidein-ether --Htype ether  $EXTRA_ARGS
-    python scripts/train.py svd --quantile 1.0  $EXTRA_ARGS
-    python scripts/train.py hra --no-apply_GS  $EXTRA_ARGS
+    # python scripts/train.py hra --no-rel-loss --verbose --lr 1e-5  $EXTRA_ARGS
+    # python scripts/train.py sidein-ether --Htype oft  $EXTRA_ARGS
+    # python scripts/train.py sidein-ether --Htype ether  $EXTRA_ARGS
+    # python scripts/train.py svd --quantile 1.0  $EXTRA_ARGS
+    # python scripts/train.py hra --no-apply_GS  $EXTRA_ARGS
 
 
 run_ds:
@@ -98,6 +95,7 @@ run_llama:
     #!/usr/bin/zsh
     export REPR_CONFIG=./configs/llama3_7b.yaml
     just run_all
+    just run_ds
 
 
 dev:
