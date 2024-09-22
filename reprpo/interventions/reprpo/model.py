@@ -17,6 +17,8 @@ from reprpo.interventions.helpers import compute_logprobs
 from .helpers import get_layer_paths, validate_layer_paths
 from ..losses import Losses, LossesType
 from ..transforms import Transforms, TransformType
+from ..losses.helpers import cross_entropy_loss
+from ..dpo import compute_dpo_loss
 
 
 def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_input=True):
@@ -115,12 +117,14 @@ class PL_REPRPO_MODEL(PL_MODEL):
             }
 
         self.transforms = torch.nn.ParameterDict(
-            {k: transform.c(dim_hs, dim_hs) for k, dim_hs in hra_sizes.items()}
+            {k: transform.c(dim_hs, dim_hs, model=self._model) for k, dim_hs in hra_sizes.items()}
         )
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
 
     def _loss_fn(self, batch, model):
         h = self.hparams
+
+        # collect the representations
         model.eval()
         with torch.no_grad():
             with model.disable_adapter():
@@ -155,10 +159,43 @@ class PL_REPRPO_MODEL(PL_MODEL):
             collect_input=h.collect_input,
         )
 
-        return h.loss_fn.c(
+        # run loss function
+        loss, info = h.loss_fn.c(
             pi_cho=pi_cho,
             pi_rej=pi_rej,
             ref_cho=ref_cho,
             ref_rej=ref_rej,
             batch=batch,
         )
+
+        # collect extra metrics
+        with torch.no_grad():
+            # get the dpo metrics for comparison
+            _, info_dpo = compute_dpo_loss(
+                pi_cho.label_logprobs,
+                pi_rej.label_logprobs,
+                ref_cho.label_logprobs,
+                ref_rej.label_logprobs,
+            )
+
+            # measures preference for cho>ref compared to base model. Should increase
+            info['logits'] = info_dpo['logits']
+
+            # measures if coherence has increased over ref model. Should be increase
+            info['chosen_rewards'] = info_dpo['chosen_rewards']
+
+            def cosine_on_keys(hs1, hs2):
+                return torch.stack(
+                    [
+                        F.cosine_similarity(hs1[k], hs2[k], dim=-1).nanmean()
+                        for k in hs1.keys()
+                    ]
+                ).nanmean()
+            # measure if chosen models are still close to the ref model, should stay at 1
+            info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
+            # measures if refject hs are getting close to cho, should rise towards 1
+            info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
+
+
+
+        return loss, {**info, **info_dpo}

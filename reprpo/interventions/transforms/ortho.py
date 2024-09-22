@@ -2,11 +2,11 @@ import torch
 from torch import nn
 import math
 from dataclasses import dataclass, asdict
-from typing import Literal
+from typing import Literal, Optional
 
 
 class OrthoTransform(nn.Module):
-    def __init__(self, in_features, out_features, orthogonal_map: str = "householder"):
+    def __init__(self, in_features, out_features, orthogonal_map: str = "householder", model: Optional[nn.Module]=None):
         super().__init__()
         self.ortho = nn.Linear(in_features, out_features, bias=False)
         torch.nn.init.orthogonal_(self.ortho.weight)

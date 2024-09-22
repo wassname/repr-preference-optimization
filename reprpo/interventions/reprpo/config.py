@@ -37,7 +37,7 @@ class ReprPOConfig(ExperimentConfig):
     loss_fn: LossesType = mse
     """loss function"""
 
-    transform: TransformType = Transforms.Ether.value
+    transform: TransformType = Transforms.ether.value
     """transform function"""
 
     _cls = PL_REPRPO_MODEL

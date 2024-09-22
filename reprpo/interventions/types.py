@@ -4,7 +4,7 @@ from jaxtyping import Float, Int
 from torch import Tensor
 from dataclasses import dataclass, asdict
 
-# HS1 = Float[Tensor, "b t h"]
+HS2 = Float[Tensor, "b h"]
 HS = Float[Tensor, "b t h"]
 Mask = Int[Tensor, "b t"]
 

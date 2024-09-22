@@ -44,8 +44,8 @@ def compute_dpo_loss(
         chosen_rewards=chosen_rewards.mean(),
         rejected_rewards=rejected_rewards.mean(),
         dpo_loss=losses.mean(),
-        # model_logratios=model_logratios.mean(),
-        # reference_logratios=reference_logratios.mean(),
+        model_logratios=model_logratios.mean(),
+        reference_logratios=reference_logratios.mean(),
         logits=logits.mean(),
     )
 

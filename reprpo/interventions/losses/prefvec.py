@@ -20,6 +20,7 @@ def prefec_loss(
     # custom loss_args
     alpha: float = 1.0,
     eps=1e-12,
+    β = 0.1,
 ):
     """
     movement of hs along the hs pref vector.
@@ -29,7 +30,6 @@ def prefec_loss(
         hs = o.hs[k]
         if transform is not None:
             hs = transform(hs)
-        hs = hs.log_softmax(-1)
         hs = mean_tokens_w_attention(hs, o.mask)
         return hs
 
@@ -79,14 +79,15 @@ def prefec_loss(
 
         return dict(
             loss_cho_proj=loss_cho_proj,
-            signed_cho_proj_pref=signed_cho_proj_pref,
-            signed_rej_proj_pref=signed_rej_proj_pref,
             loss_cho_orth=loss_cho_orth,
-            cho_orth_pref=cho_orth_pref,
-            ref_orth_pref=ref_orth_pref,
             loss_angle=loss_angle,
-            cho_cossim=cho_cossim,
-            rej_cossim=rej_cossim,
+
+            _cho_orth_pref=cho_orth_pref,
+            _ref_orth_pref=ref_orth_pref,
+            _signed_cho_proj_pref=signed_cho_proj_pref,
+            _signed_rej_proj_pref=signed_rej_proj_pref,
+            _cho_cossim=cho_cossim,
+            _rej_cossim=rej_cossim,
         )
 
     # compute losses per layer
@@ -96,7 +97,6 @@ def prefec_loss(
     ll_keys = next(iter(ll.values())).keys()
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
-    β = 0.1  # factor to punish orthogonal movement
     loss_reroute = ll["loss_cho_proj"] + β * ll["loss_cho_orth"] + β * ll["loss_angle"]
 
     # TODO find better scaling, it needs to be small compared to nll and dpo losses which can be <0.1
@@ -140,6 +140,9 @@ def prefec_loss(
 class PrefVecLossConfig:
     alpha: float = 1.0
     eps: float = 1e-12
+
+    β = 0.1
+    """factor to punish orthogonal movement"""
 
     def c(self, *args, **kwargs):
         return prefec_loss(*args, **kwargs, **asdict(self))

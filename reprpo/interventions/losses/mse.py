@@ -5,11 +5,11 @@ from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
 from .helpers import cross_entropy_loss
-from ..types import HS, Mask, ReprPOModelOutput
+from ..types import HS, HS2, Mask, ReprPOModelOutput
 from ..reprpo.helpers import mean_tokens_w_attention, detach_hsd
 
 
-def log_dist_ratio(a, b, a_ref, b_ref, eps=1e-12) -> Float[Tensor, "b"]:
+def log_dist_ratio(a: HS2, b: HS2, a_ref: HS2, b_ref: HS2, eps=1e-12) -> Float[Tensor, "b"]:
     """distance between a and b, as a log ratio to the distance between a_ref and b_ref"""
 
     dist = a - b
@@ -48,7 +48,6 @@ def mse_loss(
         hs = o.hs[k]
         if transform is not None:
             hs = transform(hs)
-        hs = hs.log_softmax(-1)
         hs = mean_tokens_w_attention(hs, o.mask)
         return hs
 
@@ -58,23 +57,26 @@ def mse_loss(
         hs_ref_cho = preproc_hs(ref_cho, k)  # .detach()
         hs_ref_rej = preproc_hs(ref_rej, k)  # .detach()
 
-        # loss_retain: the representation of policy chosen responses should be closer to the reference chosen responses
-        # and again we scale it using the reference model as a stable target
-        loss_retain = log_dist_ratio(
-            hs_ref_cho.detach(),
-            hs_pi_cho,
-            hs_ref_cho,
-            hs_ref_rej,
-        )
-
-        # loss_reroute: the representation of policy rejected responses should be closer to the reference chosen responses
+        # loss_reroute: the repr of policy rejected responses should be closer to the reference chosen responses
         # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
         loss_reroute = log_dist_ratio(
-            hs_ref_cho.detach(),
+            hs_ref_cho,#.detach(),
             hs_pi_rej,
             hs_ref_cho,
             hs_ref_rej,
+            eps=eps,
         )
+
+        # loss_retain: the repr of policy model chosen responses should be closer to the ref model chosen responses
+        # we scale it using the reference model as a stable target
+        loss_retain = log_dist_ratio(
+            hs_ref_cho,#.detach(),
+            hs_pi_cho,
+            hs_ref_cho,
+            hs_ref_rej,
+            eps=eps,
+        )
+
         return dict(
             loss_retain=loss_retain,
             loss_reroute=loss_reroute,

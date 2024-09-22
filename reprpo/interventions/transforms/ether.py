@@ -241,6 +241,7 @@ class ETHERLinearSmall(ETHERLinear):
         Htype: str = "ether",
         ether_dropout: float = 0.0,
         flip_side: bool = False,
+        model: Optional[nn.Module]=None,
         **kwargs,
     ):
         super().__init__(

@@ -6,21 +6,21 @@ experiment_configs = {
     "ether-side-mse": (
         "1",
         ReprPOConfig(
-            transform=Transforms.Ether.value(),
+            transform=Transforms.ether.value(),
             loss_fn=Losses.mse.value(),
         ),
     ),
     "ether-side-rank": (
         "2",
         ReprPOConfig(
-            transform=Transforms.Ether.value(),
+            transform=Transforms.ether.value(),
             loss_fn=Losses.rank.value(),
         ),
     ),
     "ether-side-prefvec": (
         "3",  # unstable?
         ReprPOConfig(
-            transform=Transforms.Ether.value(),
+            transform=Transforms.ether.value(),
             loss_fn=Losses.prefvec.value(),
             lr=1e-5,
         ),
@@ -53,7 +53,7 @@ experiment_configs = {
         "",
         ReprPOConfig(
             collection_keys_in=(),
-            transform=Transforms.Ether.value(),
+            transform=Transforms.ether.value(),
             loss_fn=Losses.rank.value(),
         ),
     ),
@@ -61,7 +61,7 @@ experiment_configs = {
         "",
         ReprPOConfig(
             collection_keys_in=(),
-            transform=Transforms.Ether.value(),
+            transform=Transforms.ether.value(),
             loss_fn=Losses.mse.value(),
         ),
     ),
@@ -69,7 +69,7 @@ experiment_configs = {
         "",
         ReprPOConfig(
             collection_keys_in=(),
-            transform=Transforms.Ether.value(),
+            transform=Transforms.ether.value(),
             loss_fn=Losses.prefvec.value(),
         ),
     ),
@@ -77,7 +77,7 @@ experiment_configs = {
         "",
         ReprPOConfig(
             collection_keys_in=(),
-            transform=Transforms.HRA.value(),
+            transform=Transforms.hra.value(),
             loss_fn=Losses.prefvec.value(),
         ),
     ),
@@ -85,7 +85,15 @@ experiment_configs = {
         "",
         ReprPOConfig(
             collection_keys_in=(),
-            transform=Transforms.Ortho.value(),
+            transform=Transforms.ortho.value(),
+            loss_fn=Losses.prefvec.value(),
+        ),
+    ),
+    "svd-hs-prefvec": (
+        "",
+        ReprPOConfig(
+            collection_keys_in=(),
+            transform=Transforms.svd.value(),
             loss_fn=Losses.prefvec.value(),
         ),
     ),
