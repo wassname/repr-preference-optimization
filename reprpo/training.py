@@ -241,7 +241,7 @@ def train(training_args):
         model,
         adam8bit=training_args.load_in_4bit
         or training_args.load_in_8bit,  # saved mem, but seems unstable?
-        schedule="constant",
+        schedule="onecycle",
         # weight_decay=training_args.weight_decay,
         # lr=training_args.lr,
         num_iterations=max_steps,

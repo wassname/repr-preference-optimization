@@ -50,7 +50,7 @@ run_all EXTRA_ARGS='':
 
     . ./.venv/bin/activate
     # for METHOD in ether-side-mse ether-side-rank ether-side-prefvec none-side-mse none-side-rank none-side-prefvec none-hs-prefvec none-hs-rank none-hs-mse ether-hs-rank ether-hs-prefvec hra-hs-prefvec ortho-hs-prefvec svd-hs-prefvec dpo; do
-    for METHOD in none-hs-prefvec none-hs-rank none-hs-mse ether-hs-rank ether-hs-prefvec hra-hs-prefvec ortho-hs-prefvec svd-hs-prefvec dpo; do
+    for METHOD in side-ether-mse side-ether-rank side-ether-prefvec side-none-mse side-none-rank side-none-prefvec hs-none-prefvec hs-none-rank hs-none-mse hs-ether-rank hs-ether-prefvec hs-hra-prefvec hs-ortho-prefvec hs-svd-prefvec dpo; do
         echo "METHOD=$METHOD"
         python scripts/train.py $METHOD $EXTRA_ARGS
     done
@@ -81,11 +81,12 @@ run_ds:
     for ds in $DS; do
         echo "DS=$ds"
         . ./.venv/bin/activate
-        # python scripts/train.py sideout-ether --dataset $ds
-        python scripts/train.py none-side-prefvec --dataset $ds
-        python scripts/train.py ether-side-prefvec --dataset $ds
+        python scripts/train.py side-none-rank --dataset $ds
+        python scripts/train.py side-none-mse --dataset $ds
+        python scripts/train.py hs-ether-prefvec --dataset $ds
+        python scripts/train.py side-none-prefvec --dataset $ds
         python scripts/train.py ether-hs-prefvec --dataset $ds
-        # python scripts/train.py dpo --dataset $ds
+        python scripts/train.py dpo --dataset $ds
     done
 
 

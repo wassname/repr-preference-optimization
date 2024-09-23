@@ -98,6 +98,7 @@ class PL_MODEL(pl.LightningModule):
                 total_steps=self.hparams.num_iterations,
                 verbose=True,
                 pct_start=0.1,
+                final_div_factor=1e2
             )
         elif self.hparams.schedule == "constant":
             # same as GENIES warmup_ratio=0.03

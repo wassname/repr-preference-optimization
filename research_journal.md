@@ -3002,4 +3002,29 @@ using nll, orth, angle, all the loses
 | side-ETHER-PrefVec_us_history_textbook | 1.352 | 0.135 | 11.725 | 0.279 |
 | side-ETHER-pv beta=.5                  | 1.296 | 0.674 | 13.065 | 0.279 |
 | side-ETHER-PrefVec sum attn            | 0.338 | 0.135 |  1.675 |  0.14 |
-| side-ETHER-PrefVec_ without angle |   0.845 |  0.539 | 11.558 | 1.257 |
+| side-ETHER-PrefVec_ without angle      | 0.845 | 0.539 | 11.558 | 1.257 |
+| side-ETHER-PrefVec with exp weight     | 0.901 | 0.674 |   4.02 | 0.838 |
+wandb.init(
+        project=f"reprpo2",
+        name=run_fname,
+        entity="wassname",
+        group=group_name,
+        config=cfg,
+    )
+
+long run
+| side-ETHER-PrefVec_us_history_textbook |   0.789 |  0.674 | 7.203 | 0.279 |
+this uses exp weight ,and 6000k samples, llama 8b
+
+https://wandb.ai/wassname/reprpo2/runs/n34yx7m9?nw=nwuserwassname
+
+so the cho proj went up (right direction)
+the cosim went up (more similar)
+cho orth pref constant good
+the rej actually went up more!
+the 
+try with lower lr?
+
+
+| side-ETHER-PrefVec_us_history_textbook |   0.789 |  0.674 | 7.035 | 0.279 |
+lr cosine diosn't change much 
