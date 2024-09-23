@@ -6,11 +6,5 @@ from dataclasses import dataclass, asdict
 
 @dataclass(frozen=True)
 class NoneConfig:
-    pass
 
-    def c(self, *args, **kwargs):
-        return torch.nn.Identity(
-            *args,
-            **kwargs,
-            **asdict(self),
-        )
+    _target_: str = "torch.nn.Identity"

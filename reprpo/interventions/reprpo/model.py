@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from einops import rearrange, repeat, reduce
-
+from hydra.utils import instantiate
 from torch import Tensor
 from jaxtyping import Float, Int
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
@@ -123,9 +123,13 @@ class PL_REPRPO_MODEL(PL_MODEL):
             }
 
         self.transforms = torch.nn.ParameterDict(
-            {k: transform.c(dim_hs, dim_hs, model=self._model) for k, dim_hs in hra_sizes.items()}
+            {k: 
+            #  transform.c(dim_hs, dim_hs, model=self._model)
+             instantiate(transform, dim_hs, dim_hs, model=self._model)
+               for k, dim_hs in hra_sizes.items()}
         )
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
+        self.loss_fn = instantiate(loss_fn)
 
     def _loss_fn(self, batch, model):
         h = self.hparams
@@ -166,7 +170,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
         )
 
         # run loss function
-        loss, info = h.loss_fn.c(
+        loss, info = self.loss_fn(
             pi_cho=pi_cho,
             pi_rej=pi_rej,
             ref_cho=ref_cho,

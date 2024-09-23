@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 from torch import Tensor
 from torch.nn import functional as F
 import torch
+
 from dataclasses import dataclass, asdict
 from .helpers import cross_entropy_loss
 from ..types import HS, HS2, Mask, ReprPOModelOutput
@@ -100,11 +101,18 @@ def mse_loss(
 
     return loss, info
 
+class MSELoss(torch.nn.Module):
+    def __init__(self, alpha: float = 1.0, eps: float = 1e-12):
+        super().__init__()
+        self.alpha = alpha
+        self.eps = eps
+
+    def forward(self, pi_cho, pi_rej, ref_cho, ref_rej, batch):
+        return mse_loss(pi_cho, pi_rej, ref_cho, ref_rej, batch, alpha=self.alpha, eps=self.eps)
 
 @dataclass(frozen=True)
 class MSELossConfig:
+
+    _target_: str = "reprpo.interventions.losses.mse.MSELoss"
     alpha: float = 1.0
     eps: float = 1e-12
-
-    def c(self, *args, **kwargs):
-        return mse_loss(*args, **kwargs, **asdict(self))

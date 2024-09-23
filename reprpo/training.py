@@ -11,7 +11,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import logging
 import warnings
 from collections import OrderedDict
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
@@ -48,33 +48,96 @@ from peft.tuners import BOFTConfig, IA3Config, LoraConfig, OFTConfig
 from torch.utils.data import DataLoader
 
 import wandb
+
+# config
+import hydra
+from hydra.core.config_store import ConfigStore
+
+# Local
 from reprpo.data.collate3 import TokenizeRow
 from reprpo.gen import display_gen, get_model_generations
 from reprpo.helpers.lightning_hist import plot_hist, read_metrics_csv
-
-# Local
 from reprpo.helpers.torch import clear_mem
 from reprpo.models.load import load_model, print_trainable_parameters
-from .silence import silence, remove_warnings
+from reprpo.silence import silence, remove_warnings
+
+from hydra.core.config_store import ConfigStore
+from reprpo.interventions.reprpo.config import ReprPOConfig
+from reprpo.interventions.dpo import DPOConfig
+
+
+
+
+@dataclass
+class ExperimentConfig:
+    """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences"""
+
+    intervention: Any = field(default_factory=lambda: ReprPOConfig)
+
+    dataset: str = "us_history_textbook"
+    """train dataset."""
+
+    verbose: int = 0
+
+    dev: bool = False
+    """fast run"""
+
+    load_in_4bit: bool = False
+    load_in_8bit: bool = False
+    use_gradient_checkpointing: bool = False
+
+    batch_size: int = 16
+
+    n_samples: int = 1800 * 2
+    eval_samples: Optional[int] = None
+    max_length: int = 196
+    max_prompt_length: int = 96
+    base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+
+
+from hydra.utils import instantiate
+from omegaconf import OmegaConf, DictConfig
+from reprpo.interventions.losses import Losses, mse, LossesType
+from reprpo.interventions.transforms import Transforms, TransformType
+cs = ConfigStore.instance()
+cs.store(name="expconf", node=ExperimentConfig)
+cs.store(group="intervention", name="dpo", node=DPOConfig)
+cs.store(group="intervention", name="repro", node=ReprPOConfig)
+for k in Losses:
+    cs.store(group="intervention.loss_fn", name=k.name, node=k.value)
+for k in Transforms:
+    cs.store(group="intervention.transform", name=k.name, node=k.value)
+# cs.store(group="intervention.loss_fn", name="mse", node=Losses.mse.value)
+# cs.store(group="intervention.transform", name="ether", node=Transforms.ether.value)
 
 remove_warnings()
 
-
-def train(training_args):
-    if training_args.verbose < 1:
+@hydra.main(config_name="expconf")
+def train(cfg):
+    if cfg.verbose < 1:
         silence()
     torch.set_float32_matmul_precision("medium")
 
-    PL_MODEL = training_args._cls
+    print(OmegaConf.to_yaml(cfg))
+    # connection = instantiate(training_args.intervention, kwargs=dict(model=model, num_iterations=num_iterations))
+    PL_MODEL = cfg.intervention._target_.split('.')[-1]
 
     print("*" * 80)
     print("PL_MODEL", PL_MODEL)
 
-    ds_name_train = training_args.dataset.replace("genies_preferences-", "")
-    model_name = training_args.base_model.split("/")[-1]
+    ds_name_train = cfg.dataset.replace("genies_preferences-", "")
+    model_name = cfg.base_model.split("/")[-1]
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
-    adapter_name = training_args._name
+    def get_adaptername(cfg):
+        c = cfg.intervention
+        PL_MODEL = c._target_.split('.')[-1]
+        if PL_MODEL == "dpo": return "dpo"
+        loss = c.loss_fn._target_.split('.')[-1]
+        transform = c.transform._target_.split('.')[-1]
+        h = 'side' if len(c.collection_layers_side) > 0 else 'hs'
+        return f"{h}-{transform}-{loss}"
+    adapter_name = get_adaptername(cfg)
 
     finetune_name = f"{adapter_name}_{ds_name_train}"
 
@@ -82,9 +145,9 @@ def train(training_args):
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = os.environ.get("WANDB_GROUP") + "_" + group_name
-    if training_args.verbose > 0:
+    if cfg.verbose > 0:
         print("training_args")
-        pprint(training_args, compact=True)
+        pprint(cfg, compact=True)
         # print("model_kwargs", model_kwargs.keys())
 
         print(f"Using WANDB_GROUP={group_name}")
@@ -93,7 +156,7 @@ def train(training_args):
     run_fname = f"{adapter_name}/{ts}"  # short for wandb
     wandb.require(experiment="service")
 
-    config = asdict(training_args)
+    config = OmegaConf.to_container(cfg, resolve=True)
     run = wandb.init(
         project=f"reprpo2",
         name=run_fname,
@@ -103,9 +166,9 @@ def train(training_args):
     )
 
     model, tokenizer = load_model(
-        training_args.base_model,
-        load_in_4bit=training_args.load_in_4bit,
-        load_in_8bit=training_args.load_in_8bit,
+        cfg.base_model,
+        load_in_4bit=cfg.load_in_4bit,
+        load_in_8bit=cfg.load_in_8bit,
         # attn_implementation='eager' # for gemma
     )
 
@@ -142,11 +205,11 @@ def train(training_args):
     )
     model = get_peft_model(model, peft_config, adapter_name=finetune_name)
     print_trainable_parameters(model)
-    if training_args.verbose > 1:
+    if cfg.verbose > 1:
         print(model)
 
     # ## Load data
-    dataset2 = load_dataset("wassname/genies_preferences", name=training_args.dataset)
+    dataset2 = load_dataset("wassname/genies_preferences", name=cfg.dataset)
 
     # ### Data Loader
     # We use huggingface datasets, which are pretokenized. So that we can stack
@@ -154,18 +217,18 @@ def train(training_args):
 
     tokenize_row = TokenizeRow(
         tokenizer,
-        max_length=training_args.max_length,
-        max_prompt_length=training_args.max_prompt_length,
+        max_length=cfg.max_length,
+        max_prompt_length=cfg.max_prompt_length,
     )
 
-    if training_args.dev:
+    if cfg.dev:
         # no cache
         import datasets
 
         datasets.disable_caching()
     dataset3 = dataset2.map(tokenize_row, batched=False)
 
-    if training_args.verbose > 0:
+    if cfg.verbose > 0:
         print(
             f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}"
         )
@@ -180,7 +243,7 @@ def train(training_args):
         ds["train"]
         .select_columns(["chosen", "rejected", "chosen_mask", "rejected_mask"])
         .with_format("torch"),
-        batch_size=training_args.batch_size,
+        batch_size=cfg.batch_size,
         #   collate_fn=default_data_collator
     )
 
@@ -188,11 +251,11 @@ def train(training_args):
         ds["test"]
         .select_columns(["chosen", "rejected", "chosen_mask", "rejected_mask"])
         .with_format("torch"),
-        batch_size=training_args.batch_size,
+        batch_size=cfg.batch_size,
         # , collate_fn=default_data_collator
     )
 
-    if training_args.verbose > 1:
+    if cfg.verbose > 1:
         # print("QC one dataset row")
         # r = dataset2["train"][0]
         # print(r["prompt"])
@@ -220,40 +283,47 @@ def train(training_args):
     # - https://lightning.ai/docs/pytorch/latest/notebooks/lightning_examples/text-transformers.html
     # - https://gist.github.com/wassname/e29d02b5026a531e13912cf768e6fdc8
 
-    max_steps = training_args.n_samples // training_args.batch_size
+    max_steps = cfg.n_samples // cfg.batch_size
 
     ideal_batch_size = max(
-        16, training_args.batch_size
+        16, cfg.batch_size
     )  # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
     accumulate_grad_batches = np.ceil(
-        ideal_batch_size / training_args.batch_size
+        ideal_batch_size / cfg.batch_size
     ).astype(int)
-    if training_args.verbose:
+    if cfg.verbose:
         print("max optimiser steps", max_steps)
         print("accumulate_grad_batches", accumulate_grad_batches)
         print(
-            "accumulated batch size", training_args.batch_size * accumulate_grad_batches
+            "accumulated batch size", cfg.batch_size * accumulate_grad_batches
         )
-        print(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
+        print(f"epochs {cfg.n_samples//len(dl_train.dataset)}")
 
-    model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
-    pl_model = PL_MODEL(
-        model,
-        adam8bit=training_args.load_in_4bit
-        or training_args.load_in_8bit,  # saved mem, but seems unstable?
-        schedule="constant",
-        # weight_decay=training_args.weight_decay,
-        # lr=training_args.lr,
-        num_iterations=max_steps,
-        batch_size=training_args.batch_size,
-        # model args
-        **model_kwargs,
-    )
+    # model_kwargs = {k: getattr(cfg, k) for k in cfg._model_keys}
+    pl_model = instantiate(
+        cfg.intervention, 
+        **dict(
+            model=model, num_iterations=max_steps,
+            schedule="constant",
+            adam8bit=cfg.load_in_4bit or cfg.load_in_8bit
+        ), _recursive_=False)
+    # pl_model = PL_MODEL(
+    #     model,
+    #     adam8bit=cfg.load_in_4bit
+    #     or cfg.load_in_8bit,  # saved mem, but seems unstable?
+    #     schedule="constant",
+    #     # weight_decay=training_args.weight_decay,
+    #     # lr=training_args.lr,
+    #     num_iterations=max_steps,
+    #     batch_size=cfg.batch_size,
+    #     # model args
+    #     **model_kwargs,
+    # )
 
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
     root_dir = Path(__file__).parent.parent
     model_fname = "_".join(
-        [training_args.base_model.replace("/", "_"), adapter_name, ds_name_train]
+        [cfg.base_model.replace("/", "_"), adapter_name, ds_name_train]
     )
     save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
     Path(save_dir).mkdir(exist_ok=True, parents=True)
@@ -262,10 +332,9 @@ def train(training_args):
         LearningRateMonitor(logging_interval="step"),
         # checkpoint_callback
     ]
-    if training_args.verbose:
+    if cfg.verbose:
         callbacks += [GenCallback(every=max_steps // 5 + 1)]
 
-    model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
     trainer = pl.Trainer(
         max_steps=max_steps,
         limit_val_batches=6,
@@ -286,9 +355,9 @@ def train(training_args):
         default_root_dir=save_dir,
         # too large, we will just save adapter afterwards
         enable_checkpointing=False,
-        fast_dev_run=training_args.dev,
-        enable_progress_bar=training_args.verbose > 0,
-        enable_model_summary=training_args.verbose > 1,
+        fast_dev_run=cfg.dev,
+        enable_progress_bar=cfg.verbose > 0,
+        enable_model_summary=cfg.verbose > 1,
     )
 
     # train
@@ -302,7 +371,7 @@ def train(training_args):
     print(f"saved to {save_dir}-adapter")
 
     # ### Hist
-    if not training_args.dev:
+    if not cfg.dev:
         df_hist = (
             read_metrics_csv(trainer.logger.experiment.metrics_file_path)
             .bfill()
@@ -315,26 +384,26 @@ def train(training_args):
     # ## Gen
     model.cuda()  # for some reason it ends up cpu
 
-    if not training_args.dev:
+    if not cfg.dev:
         df_gen = get_model_generations(model, tokenizer, N=3)
         display_gen(df_gen.head(2))
 
     # ## Eval
     # eval on ethics, GENIES, and our train dataset
-    N = training_args.eval_samples
+    N = cfg.eval_samples
     datasets = [
         load_dataset_n(
             "wassname/genies_preferences",
-            name=training_args.dataset,
+            name=cfg.dataset,
             split="train",
             N=N,
         ),
         load_dataset_n(
-            "wassname/genies_preferences", name=training_args.dataset, split="test", N=N
+            "wassname/genies_preferences", name=cfg.dataset, split="test", N=N
         ),
     ]
     datasets += dist2datasets(
-        GENIES, N=N, source=[training_args.dataset]
+        GENIES, N=N, source=[cfg.dataset]
     )  # our hard OOS test
     # datasets += get_ethics_datasets(N=N)
     datasets += [
@@ -350,10 +419,10 @@ def train(training_args):
         model=model,
         tokenizer=tokenizer,
         datasets=datasets,
-        batch_size=training_args.batch_size,
+        batch_size=cfg.batch_size,
         bf16=True,
         torch_empty_cache_steps=100,
-        verbose=training_args.verbose,
+        verbose=cfg.verbose,
     )
 
     ds_alias = OrderedDict(
@@ -364,7 +433,7 @@ def train(training_args):
     f = str(save_dir) + "/eval.parquet"
     df_res2.to_parquet(f)
     print(f"save_dir={save_dir}")
-    pprint(training_args, compact=1)
+    pprint(cfg, compact=1)
 
     r = parse_eval(df_res2, ds_alias)
 
@@ -377,7 +446,7 @@ def train(training_args):
         # also just log final metrics to wandb so we can view a group
 
     # FIXME, only pass in adapter col, not q index or base
-    if not training_args.dev:
+    if not cfg.dev:
         df_gen_w = wandb.Table(dataframe=df_gen)
         run.log({"generations": df_gen_w, **r2})
 
@@ -561,3 +630,7 @@ def parse_eval(df_res2, ds_alias):
         'coherency[cho-rej]': df_rel_coh,
         'coherency[pi-base]': df_coh,
     }
+
+
+if __name__ == "__main__":
+    train()

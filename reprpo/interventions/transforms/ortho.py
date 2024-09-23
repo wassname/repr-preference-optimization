@@ -17,11 +17,7 @@ class OrthoTransform(nn.Module):
 
 @dataclass(frozen=True)
 class OrthoConfig:
-    orthogonal_map: Literal["householder", "cayley", "matrix_exp"] = "householder"
+    orthogonal_map: str = "householder"
+    """orthogonal map to use for the transform, can be 'householder', 'cayley', or 'matrix_exp'."""
 
-    def c(
-        self,
-        *args,
-        **kwargs,
-    ):
-        return OrthoTransform(*args, **kwargs, **asdict(self))
+    _target_: str = "reprpo.interventions.transforms.ortho.OrthoTransform"

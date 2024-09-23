@@ -2,7 +2,6 @@ import torch
 import torch.nn.functional as F
 from reprpo.interventions.pl_base import PL_MODEL
 from dataclasses import dataclass
-from reprpo.interventions.config import ExperimentConfig
 from .losses.helpers import cross_entropy_loss
 from .helpers import compute_logprobs
 
@@ -131,12 +130,13 @@ class PL_DPO_MODEL(PL_MODEL):
 
 
 @dataclass
-class DPOConfig(ExperimentConfig):
+class DPOConfig:
+
+    __target__ = "reprpo.interventions.dpo.PL_DPO_MODEL"
+
     lr: float = 5e-5
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
-
-    _cls = PL_DPO_MODEL
 
     _model_keys = ["lr"]
 

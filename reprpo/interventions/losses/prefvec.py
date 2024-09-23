@@ -153,6 +153,13 @@ def prefec_loss(
 
     return loss, info
 
+class PrefVecLoss(torch.nn.Module):
+    def __init__(self, alpha, eps, β, use_orth_loss, use_angle_loss, use_dpo_loss, use_nll_loss):
+        super().__init__()
+        self.loss_kwargs = dict(alpha=alpha, eps=eps, β=β, use_orth_loss=use_orth_loss, use_angle_loss=use_angle_loss, use_dpo_loss=use_dpo_loss, use_nll_loss=use_nll_loss)
+
+    def forward(self, pi_cho, pi_rej, ref_cho, ref_rej, batch):
+        return prefec_loss(pi_cho, pi_rej, ref_cho, ref_rej, batch, **self.loss_kwargs)
 
 @dataclass(frozen=True)
 class PrefVecLossConfig:
@@ -184,5 +191,4 @@ class PrefVecLossConfig:
     use_nll_loss: bool = True
     """punish model if output is less coherent than reference model"""
 
-    def c(self, *args, **kwargs):
-        return prefec_loss(*args, **kwargs, **asdict(self))
+    _target_: str = "reprpo.interventions.losses.prefvec.PrefVecLoss"

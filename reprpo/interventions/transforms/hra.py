@@ -90,5 +90,4 @@ class HRAConfig:
     apply_GS: bool = True
     """Whether to apply Gram-Schmidt orthogonalization."""
 
-    def c(self, *args, **kwargs):
-        return HRATransform(*args, **kwargs, **asdict(self))
+    _target_: str = "reprpo.interventions.transforms.hra.HRATransform"

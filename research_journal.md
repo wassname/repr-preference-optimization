@@ -2997,3 +2997,5 @@ Fig . ds=us_history_textbook
 
 using nll, orth, angle, all the loses
 | side-ETHER-PrefVec_us_history_textbook |   1.352 |  0.135 | 11.725 | 0.279 |
+
+TODO make all losees into classes

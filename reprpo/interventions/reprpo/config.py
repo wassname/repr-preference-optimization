@@ -1,13 +1,14 @@
-from reprpo.interventions.config import ExperimentConfig
 from reprpo.interventions.losses import Losses, mse, LossesType
 from reprpo.interventions.transforms import Transforms, TransformType
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 from .model import PL_REPRPO_MODEL
 
 
 @dataclass
-class ReprPOConfig(ExperimentConfig):
+class ReprPOConfig:
+    _target_ : str = 'reprpo.interventions.reprpo.model.PL_REPRPO_MODEL'
+
     lr: float = 1e-4
 
     collection_layers_side: tuple = (10, 12, 14, 16, 18)
@@ -34,13 +35,15 @@ class ReprPOConfig(ExperimentConfig):
     collect_input: bool = True
     """use collection_keys_in? else use collection_keys_out."""
 
-    loss_fn: LossesType = mse
+    loss_fn: Any = field(default_factory=lambda: Losses.mse.value)
+    # loss_fn: Losses = Losses.mse
     """loss function"""
 
-    transform: TransformType = Transforms.ether.value
+    transform: Any = field(default_factory=lambda: Transforms.ether.value)
+    # transform: Transforms = Transforms.ether
     """transform function"""
 
-    _cls = PL_REPRPO_MODEL
+    # _cls = PL_REPRPO_MODEL
 
     _model_keys = [
         "lr",
@@ -53,9 +56,9 @@ class ReprPOConfig(ExperimentConfig):
         "transform",
     ]
 
-    @property
-    def _name(self):
-        transform = type(self.transform).__name__.replace('Config', '')
-        loss = type(self.loss_fn).__name__.replace('Config', '').replace('Loss', '')
-        h = 'side' if len(self.collection_layers_side) > 0 else 'hs'
-        return f"{h}-{transform}-{loss}"
+    # @property
+    # def _name(self):
+    #     transform = type(self.transform).__name__.replace('Config', '')
+    #     loss = type(self.loss_fn).__name__.replace('Config', '').replace('Loss', '')
+    #     h = 'side' if len(self.collection_layers_side) > 0 else 'hs'
+    #     return f"{h}-{transform}-{loss}"

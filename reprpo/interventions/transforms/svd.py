@@ -55,9 +55,4 @@ class SVDConfig:
     dual_svd: bool = False
     """if true, will use the embedding and lm_head, if false only lm_head"""
 
-    def c(self, *args, **kwargs):
-        return SVDLayer(
-            *args,
-            **kwargs,
-            **asdict(self),
-        )
+    _target_: str = "reprpo.interventions.transforms.svd.SVDLayer"

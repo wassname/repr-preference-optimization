@@ -288,9 +288,4 @@ class ETHERConfig:
 
     reduction: int = 4
 
-    def c(self, *args, **kwargs):
-        return ETHERLinearSmall(
-            *args,
-            **kwargs,
-            **asdict(self),
-        )
+    _target_: str = "reprpo.interventions.transforms.ether.ETHERLinearSmall"

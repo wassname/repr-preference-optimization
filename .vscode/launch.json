@@ -34,6 +34,21 @@
             "args": "${command:pickArgs}",
         },
         {
+            "name": "hydra",
+            "type": "debugpy",
+            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", 
+            "REPR_CONFIG": "./configs/dev.yaml", "WANDB_MODE": "offline"},
+            "pythonArgs": ["-Xfrozen_modules=off"],
+            "request": "launch",
+            "program": "${workspaceFolder}/reprpo/training.py",
+            "console": "integratedTerminal",
+            "args": [
+                // "ether-hs-rank",
+                // "--dev", 
+                // "--verbose=1",
+            ]
+        },
+        {
             "name": "dev",
             "type": "debugpy",
             "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", 
@@ -43,9 +58,9 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "ether-hs-rank",
-                "--dev", 
-                "--verbose=1",
+                // "ether-hs-rank",
+                // "--dev", 
+                // "--verbose=1",
             ]
         },
         {
