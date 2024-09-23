@@ -2999,3 +2999,8 @@ using nll, orth, angle, all the loses
 | side-ETHER-PrefVec_us_history_textbook |   1.352 |  0.135 | 11.725 | 0.279 |
 
 TODO make all losees into classes
+- [ ] now fix test,https://hydra.cc/docs/advanced/unit_testing/
+- [ ] and enact override from yaml or something...
+- [ ] play with multirun
+
+python reprpo/training.py --multirun 

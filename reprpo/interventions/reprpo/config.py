@@ -35,15 +35,14 @@ class ReprPOConfig:
     collect_input: bool = True
     """use collection_keys_in? else use collection_keys_out."""
 
-    loss_fn: Any = field(default_factory=lambda: Losses.mse.value)
-    # loss_fn: Losses = Losses.mse
+    loss_fn: Any = field(default_factory=lambda: Losses.prefvec.value)
     """loss function"""
+    # loss_fn: Losses = Losses.mse
 
     transform: Any = field(default_factory=lambda: Transforms.ether.value)
-    # transform: Transforms = Transforms.ether
     """transform function"""
+    # transform: Transforms = Transforms.ether
 
-    # _cls = PL_REPRPO_MODEL
 
     _model_keys = [
         "lr",
@@ -55,10 +54,3 @@ class ReprPOConfig:
         "loss_fn",
         "transform",
     ]
-
-    # @property
-    # def _name(self):
-    #     transform = type(self.transform).__name__.replace('Config', '')
-    #     loss = type(self.loss_fn).__name__.replace('Config', '').replace('Loss', '')
-    #     h = 'side' if len(self.collection_layers_side) > 0 else 'hs'
-    #     return f"{h}-{transform}-{loss}"

@@ -51,7 +51,9 @@ import wandb
 
 # config
 import hydra
-from hydra.core.config_store import ConfigStore
+
+from hydra.utils import instantiate
+from omegaconf import OmegaConf, DictConfig
 
 # Local
 from reprpo.data.collate3 import TokenizeRow
@@ -60,60 +62,17 @@ from reprpo.helpers.lightning_hist import plot_hist, read_metrics_csv
 from reprpo.helpers.torch import clear_mem
 from reprpo.models.load import load_model, print_trainable_parameters
 from reprpo.silence import silence, remove_warnings
+from reprpo.config import register_configs
 
-from hydra.core.config_store import ConfigStore
-from reprpo.interventions.reprpo.config import ReprPOConfig
-from reprpo.interventions.dpo import DPOConfig
-
-
-
-
-@dataclass
-class ExperimentConfig:
-    """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences"""
-
-    intervention: Any = field(default_factory=lambda: ReprPOConfig)
-
-    dataset: str = "us_history_textbook"
-    """train dataset."""
-
-    verbose: int = 0
-
-    dev: bool = False
-    """fast run"""
-
-    load_in_4bit: bool = False
-    load_in_8bit: bool = False
-    use_gradient_checkpointing: bool = False
-
-    batch_size: int = 16
-
-    n_samples: int = 1800 * 2
-    eval_samples: Optional[int] = None
-    max_length: int = 196
-    max_prompt_length: int = 96
-    base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-
-
-from hydra.utils import instantiate
-from omegaconf import OmegaConf, DictConfig
-from reprpo.interventions.losses import Losses, mse, LossesType
-from reprpo.interventions.transforms import Transforms, TransformType
-cs = ConfigStore.instance()
-cs.store(name="expconf", node=ExperimentConfig)
-cs.store(group="intervention", name="dpo", node=DPOConfig)
-cs.store(group="intervention", name="repro", node=ReprPOConfig)
-for k in Losses:
-    cs.store(group="intervention.loss_fn", name=k.name, node=k.value)
-for k in Transforms:
-    cs.store(group="intervention.transform", name=k.name, node=k.value)
-# cs.store(group="intervention.loss_fn", name="mse", node=Losses.mse.value)
-# cs.store(group="intervention.transform", name="ether", node=Transforms.ether.value)
-
+register_configs()
 remove_warnings()
+
 
 @hydra.main(config_name="expconf")
 def train(cfg):
+    return _train(cfg)
+
+def _train(cfg):
     if cfg.verbose < 1:
         silence()
     torch.set_float32_matmul_precision("medium")
@@ -129,6 +88,7 @@ def train(cfg):
     model_name = cfg.base_model.split("/")[-1]
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
+    # FIXME OmegaConf.to_object(cfg, resolve=True) might work better as we can get the types
     def get_adaptername(cfg):
         c = cfg.intervention
         PL_MODEL = c._target_.split('.')[-1]
@@ -172,23 +132,7 @@ def train(cfg):
         # attn_implementation='eager' # for gemma
     )
 
-    def find_all_linear_names(args, model):
-        import bitsandbytes as bnb
 
-        cls = (
-            bnb.nn.Linear4bit
-            if args.bits == 4
-            else (bnb.nn.Linear8bitLt if args.bits == 8 else torch.nn.Linear)
-        )
-        lora_module_names = set()
-        for name, module in model.named_modules():
-            if isinstance(module, cls):
-                names = name.split(".")
-                lora_module_names.add(names[0] if len(names) == 1 else names[-1])
-
-        if "lm_head" in lora_module_names:  # needed for 16-bit
-            lora_module_names.remove("lm_head")
-        return list(lora_module_names)
 
     # ### Load adapter
     """
