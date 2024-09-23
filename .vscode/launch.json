@@ -43,6 +43,7 @@
             "program": "${workspaceFolder}/reprpo/training.py",
             "console": "integratedTerminal",
             "args": [
+                "intervention=dpo"
                 // "ether-hs-rank",
                 // "--dev", 
                 // "--verbose=1",

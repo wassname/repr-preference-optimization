@@ -9,41 +9,64 @@ from reprpo.config import register_configs
 
 silence.test()
 
-# from reprpo.experiments import experiment_configs
 from reprpo.training import train
 
-# configs = [(k, v[1]) for k, v in experiment_configs.items()]
-# print("configs", configs)
+
+from reprpo.interventions.dpo import DPOConfig
+cs = register_configs()
+
+# # TODO need to do combinations of each
+# paths = ['intervention', 'reprpo.loss_fn', 'reprpo.transform']
+# overrides = {}
+# for p in paths:
+#     ps = cs.list(p)
+#     ps = [f"+{p}={v.replace('.yaml', '')}" for v in ps]
+#     overrides[p] = ps
+
+# # now do combinations
+# print('overrides', overrides)
+
+# TODO automate parts of this
+overrides = [
+    ['+intervention=dpo'],
+    # ['+intervention=reprpo','+intervention.loss_fn=mse','+intervention.transform=ether'],
+    # ['+intervention=reprpo','+intervention.loss_fn=prefvec','+intervention.transform=none'],
+    # ['+intervention=reprpo','+intervention.loss_fn=rank','+intervention.transform=svd'],
+    # ['+intervention=reprpo','+intervention.loss_fn=rank','+intervention.transform=svd'],
+]
+def get_overrides(p):
+    ps = cs.list(p)
+    return [f"+{p}={v.replace('.yaml', '')}" for v in ps]
+for o in get_overrides('reprpo.loss_fn'):
+    overrides.append(['+intervention=reprpo','+reprpo.transform=ether', o])
+for o in get_overrides('reprpo.transform'):
+    overrides.append(['+intervention=reprpo','+reprpo.loss_fn=prefrank', o])
+print('overrides', overrides)
 
 
 # @jaxtyped(typechecker=typechecker)
-# @pytest.mark.parametrize("name,config", configs)
-def test_train_method_dev():
+@pytest.mark.parametrize("overriders", overrides)
+def test_train_method_dev(overriders):
     """test all methods in dev mode
     ~10s
     """
 
-    cs = register_configs()
-
-    # cs.list('intervention.loss_fn')
-    # ['intervention', 'intervention.loss_fn', 'intervention.transform']
     hydra.initialize(config_path=".", job_name="unittest_main")
+    overrides=["+experiment=unit_test"]+overriders
+
+    # load in unit test overrides
+    f = "./configs/dev.yaml"
+    new_overrides = yaml.safe_load(open(f))
+    overrides += [f'{k}={v}' for k,v in new_overrides.items()]
+    print(f"loaded default config from {f}")
+    print(overrides)
 
     # set up exact config
-    hydra.compose(
-        config_name="config",
-        overrides=["+experiment=unit_test"],
+    training_args = hydra.compose(
+        config_name="expconf",
+        overrides=overrides,
     )
 
-    f = "./configs/dev.yaml"
-    overrides = yaml.safe_load(open(f))
-    training_args = config
-    if f is not None:
-        overrides = yaml.safe_load(open(f))
-        for k, v in overrides.items():
-            setattr(training_args, k, v)
-
-    print(f"loaded default config from {f}")
     print(training_args)
     train(training_args)
 

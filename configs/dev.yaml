@@ -1,9 +1,7 @@
 base_model: 'reciprocate/tiny-llama'
 n_samples: 64
 eval_samples: 32 # 10 mins to go through 750*4
-collection_layers_side: 
+intervention.collection_layers_side: 
   - 0
-collection_layers_hs:
-  - 1
 dev: true
 verbose: 1

@@ -1,19 +1,24 @@
 
 from hydra.core.config_store import ConfigStore
 from dataclasses import dataclass, field
-from typing import Any, Optional
-
+from typing import Any, Optional, List
+from omegaconf import MISSING, OmegaConf
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 from reprpo.interventions.reprpo.config import ReprPOConfig
 from reprpo.interventions.dpo import DPOConfig
 
+defaults = [
+    "_self_",
+    {"intervention": "reprpo"},
+]
 
 @dataclass
 class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences"""
 
-    intervention: Any = field(default_factory=lambda: ReprPOConfig)
+    defaults: List[Any] = field(default_factory=lambda: defaults)
+    intervention: Any = MISSING
 
     dataset: str = "us_history_textbook"
     """train dataset."""
@@ -40,11 +45,11 @@ def register_configs():
     cs = ConfigStore.instance()
     cs.store(name="expconf", node=ExperimentConfig)
     cs.store(group="intervention", name="dpo", node=DPOConfig)
-    cs.store(group="intervention", name="repro", node=ReprPOConfig)
+    cs.store(group="intervention", name="reprpo", node=ReprPOConfig)
     for k in Losses:
-        cs.store(group="intervention.loss_fn", name=k.name, node=k.value)
+        cs.store(group="reprpo.loss_fn", name=k.name, node=k.value)
     for k in Transforms:
-        cs.store(group="intervention.transform", name=k.name, node=k.value)
+        cs.store(group="reprpo.transform", name=k.name, node=k.value)
     return cs
 
 # cs = get_config_store()

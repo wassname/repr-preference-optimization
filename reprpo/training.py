@@ -90,12 +90,13 @@ def _train(cfg):
     ts = pd.Timestamp.now().strftime("%H%M%S")
     # FIXME OmegaConf.to_object(cfg, resolve=True) might work better as we can get the types
     def get_adaptername(cfg):
-        c = cfg.intervention
-        PL_MODEL = c._target_.split('.')[-1]
-        if PL_MODEL == "dpo": return "dpo"
-        loss = c.loss_fn._target_.split('.')[-1]
-        transform = c.transform._target_.split('.')[-1]
-        h = 'side' if len(c.collection_layers_side) > 0 else 'hs'
+        cfgo = OmegaConf.to_object(cfg)
+        intervention = type(cfgo.intervention).__name__.replace('Config','')
+        if intervention == "DPO":
+            return 'dpo'
+        loss = type(cfgo.intervention.loss_fn).__name__.replace('Config','')
+        transform = type(cfgo.intervention.transform).__name__.replace('Config','')
+        h = 'side' if len(cfg.intervention.collection_layers_side) > 0 else 'hs'
         return f"{h}-{transform}-{loss}"
     adapter_name = get_adaptername(cfg)
 

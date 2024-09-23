@@ -1,12 +1,22 @@
-from reprpo.interventions.losses import Losses, mse, LossesType
-from reprpo.interventions.transforms import Transforms, TransformType
+from reprpo.interventions.losses import Losses
+from reprpo.interventions.transforms import Transforms
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
-from .model import PL_REPRPO_MODEL
+from omegaconf import MISSING, OmegaConf
 
+# defaults = [
+#     "_self_",
+#     {"loss_fn": "prefvec"},
+#     {"loss_fn": "mse"},
+#     {"loss_fn": "rank"},
+#      {"transform": "ether"},
+#      {"transform": "none"},
+# ]
 
 @dataclass
 class ReprPOConfig:
+    # defaults: List[Any] = field(default_factory=lambda: defaults)
+
     _target_ : str = 'reprpo.interventions.reprpo.model.PL_REPRPO_MODEL'
 
     lr: float = 1e-4
@@ -14,14 +24,11 @@ class ReprPOConfig:
     collection_layers_side: tuple = (10, 12, 14, 16, 18)
     """layers to collect activations from in side layers."""
 
-    # collection_layers_hs: tuple=(10, 20, 30)
-    # """The layers to collect the hidden states from. Thisis for methods that operate on the redundant residual stream so only needs a couple of points of collection"""
-
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
-    """keys to collect inputs from."""
+    """keys to collect inputs from. if empty get hs."""
 
     collection_keys_out: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.q_proj",
@@ -35,22 +42,11 @@ class ReprPOConfig:
     collect_input: bool = True
     """use collection_keys_in? else use collection_keys_out."""
 
-    loss_fn: Any = field(default_factory=lambda: Losses.prefvec.value)
+
+    loss_fn: Any = MISSING
     """loss function"""
     # loss_fn: Losses = Losses.mse
 
-    transform: Any = field(default_factory=lambda: Transforms.ether.value)
+    transform: Any = MISSING
     """transform function"""
     # transform: Transforms = Transforms.ether
-
-
-    _model_keys = [
-        "lr",
-        "collection_layers_side",
-        # 'collection_layers_hs',
-        "collection_keys_in",
-        "collection_keys_out",
-        "collect_input",
-        "loss_fn",
-        "transform",
-    ]
