@@ -21,6 +21,10 @@ def prefec_loss(
     alpha: float = 1.0,
     eps=1e-12,
     β = 0.1,
+    use_orth_loss=True,
+    use_angle_loss=True,
+    use_dpo_loss=True,
+    use_nll_loss=True,
 ):
     """
     movement of hs along the hs pref vector.
@@ -56,8 +60,8 @@ def prefec_loss(
             a_proj = torch.linalg.vecdot(a, ref_dir, dim=-1) / ref_dir_norm
 
             # get unsigned length or remainder using pythagorian theorem (we don't care about magnitude here as we )
-            # FIXME: this seem unstable, because it causes nan after 1 update if used
             if torch.norm(a)>0:
+                # causes NaN's is used with norm(a)==0
                 a_orth = torch.sqrt(a.pow(2).sum(-1) - a_proj**2)
             else:
                 a_orth = torch.zeros_like(a_proj)
@@ -99,14 +103,14 @@ def prefec_loss(
     # compute losses per layer
     ll = {k: per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
     # combine layer losses
-    # combine layer losses
     ll_keys = next(iter(ll.values())).keys()
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
-    loss_reroute = (ll["loss_cho_proj"]
-                    #  + β * ll["loss_cho_orth"] # causes nans after 1 step?
-                       + β * ll["loss_angle"])
-
+    loss_reroute = ll["loss_cho_proj"]
+    if use_orth_loss:
+        loss_reroute += β * ll["loss_cho_orth"]
+    if use_angle_loss:
+        loss_reroute += β * ll["loss_angle"]
     # TODO find better scaling, it needs to be small compared to nll and dpo losses which can be <0.1
     loss_reroute = torch.tanh(loss_reroute / 3) / 10
 
@@ -115,8 +119,9 @@ def prefec_loss(
     ref_nll_loss = cross_entropy_loss(
         ref_cho.logits, batch["chosen"], batch["chosen_mask"]
     )
-    nll_loss_ratio = nll_loss - ref_nll_loss
+    nll_loss_ratio = (nll_loss - ref_nll_loss).mean(1)
     loss_nll_retain = F.relu(nll_loss_ratio)
+    # FIXME why is loss_nll_retain<>nll_loss_ratio is logs?
 
     # dpo loss, punished model if rejected completion is more likely than the chosen
     ptheta = compute_ptheta(
@@ -127,7 +132,12 @@ def prefec_loss(
     )
     loss_dpo_retain = F.relu(-ptheta)
 
-    loss_retain = loss_dpo_retain  # + loss_nll_retain.mean(1)
+    loss_retain = 0
+    if use_dpo_loss:
+        loss_retain += loss_dpo_retain
+    if use_nll_loss:
+        loss_retain += loss_nll_retain
+
     loss = loss_reroute.mean() + alpha * loss_retain.mean()
 
     info = dict(
@@ -146,11 +156,33 @@ def prefec_loss(
 
 @dataclass(frozen=True)
 class PrefVecLossConfig:
+    """
+    moves the hidden states of the chosen and rejected hidden states along the preference vector, with some constraints:
+    - keep text at least as coherent (relu(mode/base), 
+    - keep the chosen answer at least prefered (relu(rej-cho)
+    - punish movement orthogonal to the preference vector: by distance * β
+    - punish movement orthogonal to the preference vector: by angle * β
+    """
+
     alpha: float = 1.0
+    """balance between reroute and retain loss."""
+
     eps: float = 1e-12
 
-    β = 0.1
+    β = 0.5
     """factor to punish orthogonal movement"""
+
+    use_orth_loss: bool = True
+    """punish movement orthogonal to the preference vector: by distance"""
+
+    use_angle_loss: bool = True
+    """punish movement orthogonal to the preference vector: by angle"""
+
+    use_dpo_loss: bool = True
+    """punish model if rejected completion is more likely than the chosen"""
+
+    use_nll_loss: bool = True
+    """punish model if output is less coherent than reference model"""
 
     def c(self, *args, **kwargs):
         return prefec_loss(*args, **kwargs, **asdict(self))

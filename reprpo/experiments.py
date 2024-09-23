@@ -3,21 +3,22 @@ from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 
 experiment_configs = {
-    "ether-side-mse": (
+    # TODO remame to collect-transform-loss
+    "side-ether-mse": (
         "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
         ReprPOConfig(
             transform=Transforms.ether.value(),
             loss_fn=Losses.mse.value(),
         ),
     ),
-    "ether-side-rank": (
+    "side-ether-rank": (
         "2",
         ReprPOConfig(
             transform=Transforms.ether.value(),
             loss_fn=Losses.rank.value(),
         ),
     ),
-    "ether-side-prefvec": (
+    "side-ether-prefvec": (
         "3",  # unstable?
         ReprPOConfig(
             transform=Transforms.ether.value(),
@@ -25,21 +26,21 @@ experiment_configs = {
             lr=1e-5,
         ),
     ),
-    "none-side-mse": (
+    "side-none-mse": (
         "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
         ReprPOConfig(
             transform=Transforms.none.value(),
             loss_fn=Losses.mse.value(),
         ),
     ),
-    "none-side-rank": (
+    "side-none-rank": (
         "2",
         ReprPOConfig(
             transform=Transforms.none.value(),
             loss_fn=Losses.rank.value(),
         ),
     ),
-    "none-side-prefvec": (
+    "side-none-prefvec": (
         "3",  # unstable?
         ReprPOConfig(
             transform=Transforms.none.value(),
@@ -47,7 +48,7 @@ experiment_configs = {
             lr=1e-5,
         ),
     ),
-    "none-hs-prefvec": (
+    "hs-none-prefvec": (
         "Collect hs and use PreferenceVector loss.",
         ReprPOConfig(
             collection_keys_in=(),
@@ -55,7 +56,7 @@ experiment_configs = {
             loss_fn=Losses.prefvec.value(),
         ),
     ),
-    "none-hs-rank": (
+    "hs-none-rank": (
         "Collect hs and use ranking loss.",
         ReprPOConfig(
             collection_keys_in=(),
@@ -63,7 +64,7 @@ experiment_configs = {
             loss_fn=Losses.rank.value(),
         ),
     ),
-    "none-hs-mse": (
+    "hs-none-mse": (
         "Collect hs and use ranking loss.",
         ReprPOConfig(
             collection_keys_in=(),
@@ -71,7 +72,7 @@ experiment_configs = {
             loss_fn=Losses.mse.value(),
         ),
     ),
-    "ether-hs-rank": (
+    "hs-ether-rank": (
         "",
         ReprPOConfig(
             collection_keys_in=(),
@@ -79,7 +80,7 @@ experiment_configs = {
             loss_fn=Losses.rank.value(),
         ),
     ),
-    # "ether-hs-mse": (
+    # "hs-ether-mse": (
     #     "",  # unstable with tinyllama, no grad otherwise?
     #     ReprPOConfig(
     #         collection_keys_in=(),
@@ -87,7 +88,7 @@ experiment_configs = {
     #         loss_fn=Losses.mse.value(),
     #     ),
     # ),
-    "ether-hs-prefvec": (
+    "hs-ether-prefvec": (
         "",
         ReprPOConfig(
             collection_keys_in=(),
@@ -95,7 +96,7 @@ experiment_configs = {
             loss_fn=Losses.prefvec.value(),
         ),
     ),
-    "hra-hs-prefvec": (
+    "hs-hra-prefvec": (
         "",
         ReprPOConfig(
             collection_keys_in=(),
@@ -103,7 +104,7 @@ experiment_configs = {
             loss_fn=Losses.prefvec.value(),
         ),
     ),
-    "ortho-hs-prefvec": (
+    "hs-ortho-prefvec": (
         "Collect hs, apply Orthogonal transform and use PreferenceVector loss.",
         ReprPOConfig(
             collection_keys_in=(),
@@ -111,7 +112,7 @@ experiment_configs = {
             loss_fn=Losses.prefvec.value(),
         ),
     ),
-    "svd-hs-prefvec": (
+    "hs-svd-prefvec": (
         "",
         ReprPOConfig(
             collection_keys_in=(),

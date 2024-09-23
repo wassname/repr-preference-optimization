@@ -2795,7 +2795,7 @@ Table 2: Absolute accuracy
 | DPO                       |    4.43 | -2.381 | 0.405 |  1.237 |
 | ether KL                  |    3.35 | -0.978 | 0.539 |  1.127 |
 | HSDist-no ll              |   1.587 |      0 | 6.316 | -3.968 |
-| SideDist                  |   0.901 |  0.539 | 8.543 | 0.279 |
+| SideDist                  |   0.901 |  0.539 | 8.543 |  0.279 |
 | HSDist nonll ether        |   0.794 |      0 | 3.158 | -2.381 |
 | HSDist-dpo nll angle proj |  -0.794 |      0 | 2.105 | -4.762 |
 | hs KL                     |   -1.34 | -1.397 | 0.404 |  0.901 |
@@ -2849,12 +2849,12 @@ compare to dpo
   | hs_dist no dpo         | 10.393 | 20.142 | -46.065 |  20.93 |
   | hs_dist both           | 76.312 | 88.423 |  42.001 | 24.354 |
 
-  | nll coh [pi-base] |  train |   test |     oos |    rnd |
-  | :----------------- | -----: | -----: | ------: | -----: |
-  | dpo                |   -267 |   -270 |    -344 |   -274 |
-  | hdside no nll      |   -50  |   -48  |     -91 |    -28 |
-  | hs_dist no dpo     |  -380  |  -359  |    -447 |   -225 |
-  | hs_dist both       |   -42  |   -47  |     -74 |    -22 |
+  | nll coh [pi-base] | train | test |  oos |  rnd |
+  | :---------------- | ----: | ---: | ---: | ---: |
+  | dpo               |  -267 | -270 | -344 | -274 |
+  | hdside no nll     |   -50 |  -48 |  -91 |  -28 |
+  | hs_dist no dpo    |  -380 | -359 | -447 | -225 |
+  | hs_dist both      |   -42 |  -47 |  -74 |  -22 |
 
 
 now with ether....
@@ -2944,20 +2944,56 @@ ether-hs-prefvec --lr=1e-5
 
 side-ETHER-PrefVec-us_history_textbook
 
-| acc_inc/eval_ds [pp] |   train |   test |    oos |    rnd |
-|:---------------------|--------:|-------:|-------:|-------:|
-| 1e-5                 |   1.105 |   -0.7 | -1.362 | -5.513 |
-| 1e-4                 |   2.384 |      0 | 6.226 | -19.908 |
-| 1e-3 incoherent
+| acc_inc/eval_ds [pp] | train | test |    oos |     rnd |
+| :------------------- | ----: | ---: | -----: | ------: |
+| 1e-5                 | 1.105 | -0.7 | -1.362 |  -5.513 |
+| 1e-4                 | 2.384 |    0 |  6.226 | -19.908 |
+| 1e-3 incoherent+     |
 
 
 ipo
-| acc_inc/eval_ds [pp] |   train |   test |    oos |    rnd |
-|:---------------------|--------:|-------:|-------:|-------:|
-| dpo-us_history_ 5e-7 |   1.337 | -3.081 | 19.261 | -16.845|
-| dpo_us_history_ 1e-6 |   0.756 |   0.28 | 1.946  |      0 |
-| dpo_us_history 1e-5 |  -1.163 | -1.961 | 17.51 | -8.882 |
+| acc_inc/eval_ds [pp] |  train |   test |    oos |     rnd |
+| :------------------- | -----: | -----: | -----: | ------: |
+| dpo-us_history_ 5e-7 |  1.337 | -3.081 | 19.261 | -16.845 |
+| dpo_us_history_ 1e-6 |  0.756 |   0.28 |  1.946 |       0 |
+| dpo_us_history 1e-5  | -1.163 | -1.961 |  17.51 |  -8.882 |
 dpo
 | dpo_us_ 8e-7 |   0.698 |   0.56 | 1.556 | 0.153 |
 | 8e-6 |   2.965 |  1.821 | 1.556 | 0.306 |
 | 5e-5 |   4.419 |  2.801 | 5.253 | -1.685 |
+
+
+| acc_inc/eval_ds [pp]    |  train |   test |   oos |    rnd |
+| :---------------------- | -----: | -----: | ----: | -----: |
+| dpo_raven_matrices      | 19.763 | 17.085 | 2.842 |      0 |
+| dpo_alpaca_mmlu         |  24.82 |  9.717 | 9.316 | -5.863 |
+| dpo_alpaca_mmlu         |  24.82 |  9.717 | 9.316 | -5.863 |
+| dpo_alpaca_easy         |    2.8 |  2.929 | 2.338 |  -0.14 |
+| dpo_alpaca_easy         |    2.8 |  2.929 | 2.338 |  -0.14 |
+| dpo_us_history_textbook |  1.408 |  0.674 | 7.873 |  0.978 |
+| dpo_us_history_textbook |  1.408 |  0.674 | 9.548 |  1.955 |
+
+
+| acc_inc/base [perc points] |  train |   test |    oos |    rnd |
+| :------------------------------------------ | -----: | -----: | -----: | -----: |
+| side-ETHER-PrefVec                          |  1.352 |  **1.078** | **14.405** |  0.419 |
+| side-SVD-PrefVec                            |  1.408 |  0.539 |  10.72 | -0.698 |
+| dpo  [baseline]                             |  1.408 |  0.674 |  9.548 |  1.955 |
+| dpo  [baseline]                             |  1.408 |  0.674 |  7.873 |  0.978 |
+| side-ETHER-PrefVec                          |  1.296 |  0.404 |  5.025 | -0.419 |
+| side-None-PrefVec                           |  1.183 |   0.27 |  4.355 |  -0.14 |
+| side-None-Rank                              |  0.676 |  0.135 |  2.178 |   0.14 |
+| side-ETHER-Rank                             |  0.507 |  0.135 |  1.843 |   0.14 |
+| side-None-MSE                               |      0 |      0 |  0.503 |   0.14 |
+| side-None-MSE                               |      0 |      0 |   0.67 |   0.14 |
+| side-ETHER-MSE                              |      0 |      0 |  0.335 |   0.14 |
+| side-HRA-PrefVec                            | -0.169 | -1.078 | -1.508 | -3.212 |
+| side-None-Rank                              |   0.62 |  0.135 |  1.005 |  0.419 |
+| side-None-PrefVec                           |  1.296 |  0.539 |   13.4 |      0 |
+| side-ETHER-PrefVec                          |  1.352 |  0.404 | 13.233 |   0.14 |
+| side-ETHER-PrefVec                          |  0.299 |  9.787 |  0.103 |
+
+Fig . ds=us_history_textbook 
+
+using nll, orth, angle, all the loses
+| side-ETHER-PrefVec_us_history_textbook |   1.352 |  0.135 | 11.725 | 0.279 |
