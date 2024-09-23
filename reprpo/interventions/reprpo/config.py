@@ -20,7 +20,7 @@ class ReprPOConfig(ExperimentConfig):
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
-    """keys to collect inputs from."""
+    """keys to collect inputs from. **Set this to empty to collect from hs**"""
 
     collection_keys_out: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.q_proj",
@@ -34,7 +34,7 @@ class ReprPOConfig(ExperimentConfig):
     collect_input: bool = True
     """use collection_keys_in? else use collection_keys_out."""
 
-    loss_fn: LossesType = mse
+    loss: LossesType = mse
     """loss function"""
 
     transform: TransformType = Transforms.ether.value
@@ -49,13 +49,13 @@ class ReprPOConfig(ExperimentConfig):
         "collection_keys_in",
         "collection_keys_out",
         "collect_input",
-        "loss_fn",
+        "loss",
         "transform",
     ]
 
     @property
     def _name(self):
         transform = type(self.transform).__name__.replace('Config', '')
-        loss = type(self.loss_fn).__name__.replace('Config', '').replace('Loss', '')
+        loss = type(self.loss).__name__.replace('Config', '').replace('Loss', '')
         h = 'side' if len(self.collection_layers_side) > 0 else 'hs'
         return f"{h}-{transform}-{loss}"

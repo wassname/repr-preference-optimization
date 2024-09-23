@@ -65,11 +65,12 @@
             "autoReload": {"enable": true},
             "args": [
                 // "hs-dist",
-                "side-dist",
-                "--verbose",
+                "hs-ether-prefvec",
+                "--verbose=1",
+                "--loss.β=0.2",
                 // "--eval_samples=128",
                 // "--batch-size=24", 
-                // "--lr=4e-5"
+                "--lr=1e-5"
                 // "--n_samples=6000",
             ]
         }

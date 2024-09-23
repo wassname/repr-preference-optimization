@@ -22,7 +22,7 @@ def plot_hist(df, allowlist=None, logy=False, colormap="Accent"):
         filtered_df = df[filtered_columns]
         if len(filtered_df) and len(filtered_df.T):
             filtered_df.plot(
-                title=pattern, style=".", ms=3, colormap=colormap, alpha=0.4
+                title=pattern, style=".", ms=3, colormap=colormap, α=0.4
             )
             filtered_df.rolling(3).mean().plot(
                 title=pattern, style="-", ax=plt.gca(), legend=False, colormap=colormap

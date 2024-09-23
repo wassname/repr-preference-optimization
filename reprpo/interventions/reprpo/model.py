@@ -82,12 +82,12 @@ class PL_REPRPO_MODEL(PL_MODEL):
         collect_input,
         collection_keys_in: tuple = None,
         collection_keys_out: tuple = None,
-        loss_fn: LossesType,
+        loss: LossesType,
         transform: TransformType,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.hparams.loss_fn = loss_fn
+        self.hparams.loss = loss
         self.hparams.transform = transform
         self.hparams.collection_layers_side = collection_layers_side
         self.hparams.collect_input = collect_input
@@ -166,7 +166,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
         )
 
         # run loss function
-        loss, info = h.loss_fn.c(
+        loss, info = h.loss.c(
             pi_cho=pi_cho,
             pi_rej=pi_rej,
             ref_cho=ref_cho,

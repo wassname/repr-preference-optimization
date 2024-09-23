@@ -2974,26 +2974,32 @@ dpo
 | dpo_us_history_textbook |  1.408 |  0.674 | 9.548 |  1.955 |
 
 
-| acc_inc/base [perc points] |  train |   test |    oos |    rnd |
-| :------------------------------------------ | -----: | -----: | -----: | -----: |
-| side-ETHER-PrefVec                          |  1.352 |  **1.078** | **14.405** |  0.419 |
-| side-SVD-PrefVec                            |  1.408 |  0.539 |  10.72 | -0.698 |
-| dpo  [baseline]                             |  1.408 |  0.674 |  9.548 |  1.955 |
-| dpo  [baseline]                             |  1.408 |  0.674 |  7.873 |  0.978 |
-| side-ETHER-PrefVec                          |  1.296 |  0.404 |  5.025 | -0.419 |
-| side-None-PrefVec                           |  1.183 |   0.27 |  4.355 |  -0.14 |
-| side-None-Rank                              |  0.676 |  0.135 |  2.178 |   0.14 |
-| side-ETHER-Rank                             |  0.507 |  0.135 |  1.843 |   0.14 |
-| side-None-MSE                               |      0 |      0 |  0.503 |   0.14 |
-| side-None-MSE                               |      0 |      0 |   0.67 |   0.14 |
-| side-ETHER-MSE                              |      0 |      0 |  0.335 |   0.14 |
-| side-HRA-PrefVec                            | -0.169 | -1.078 | -1.508 | -3.212 |
-| side-None-Rank                              |   0.62 |  0.135 |  1.005 |  0.419 |
-| side-None-PrefVec                           |  1.296 |  0.539 |   13.4 |      0 |
-| side-ETHER-PrefVec                          |  1.352 |  0.404 | 13.233 |   0.14 |
-| side-ETHER-PrefVec                          |  0.299 |  9.787 |  0.103 |
+| acc_inc/base [perc points] |  train |      test |        oos |    rnd |
+| :------------------------- | -----: | --------: | ---------: | -----: |
+| side-ETHER-PrefVec         |  1.352 | **1.078** | **14.405** |  0.419 |
+| side-SVD-PrefVec           |  1.408 |     0.539 |      10.72 | -0.698 |
+| dpo  [baseline]            |  1.408 |     0.674 |      9.548 |  1.955 |
+| dpo  [baseline]            |  1.408 |     0.674 |      7.873 |  0.978 |
+| side-ETHER-PrefVec         |  1.296 |     0.404 |      5.025 | -0.419 |
+| side-None-PrefVec          |  1.183 |      0.27 |      4.355 |  -0.14 |
+| side-None-Rank             |  0.676 |     0.135 |      2.178 |   0.14 |
+| side-ETHER-Rank            |  0.507 |     0.135 |      1.843 |   0.14 |
+| side-None-MSE              |      0 |         0 |      0.503 |   0.14 |
+| side-None-MSE              |      0 |         0 |       0.67 |   0.14 |
+| side-ETHER-MSE             |      0 |         0 |      0.335 |   0.14 |
+| side-HRA-PrefVec           | -0.169 |    -1.078 |     -1.508 | -3.212 |
+| side-None-Rank             |   0.62 |     0.135 |      1.005 |  0.419 |
+| side-None-PrefVec          |  1.296 |     0.539 |       13.4 |      0 |
+| side-ETHER-PrefVec         |  1.352 |     0.404 |     13.233 |   0.14 |
+| side-ETHER-PrefVec         |  0.299 |     9.787 |      0.103 |
 
 Fig . ds=us_history_textbook 
 
 using nll, orth, angle, all the loses
-| side-ETHER-PrefVec_us_history_textbook |   1.352 |  0.135 | 11.725 | 0.279 |
+
+| acc_inc/base [perc points]             | train |  test |    oos |   rnd |
+| :------------------------------------- | ----: | ----: | -----: | ----: |
+| side-ETHER-PrefVec_us_history_textbook | 1.352 | 0.135 | 11.725 | 0.279 |
+| side-ETHER-pv beta=.5                  | 1.296 | 0.674 | 13.065 | 0.279 |
+| side-ETHER-PrefVec sum attn            | 0.338 | 0.135 |  1.675 |  0.14 |
+| side-ETHER-PrefVec_ without angle |   0.845 |  0.539 | 11.558 | 1.257 |

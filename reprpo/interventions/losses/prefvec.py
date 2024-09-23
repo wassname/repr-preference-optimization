@@ -7,7 +7,7 @@ from dataclasses import dataclass, asdict
 
 from .helpers import cross_entropy_loss, compute_ptheta
 from ..types import HS, Mask, ReprPOModelOutput
-from ..reprpo.helpers import mean_tokens_w_attention
+from ..reprpo.helpers import reduce_tokens_w_attention
 
 
 def prefec_loss(
@@ -18,13 +18,14 @@ def prefec_loss(
     batch: Dict[str, Any],
     transform: Optional[Callable] = None,
     # custom loss_args
-    alpha: float = 1.0,
+    α: float = 1.0,
     eps=1e-12,
     β = 0.1,
     use_orth_loss=True,
     use_angle_loss=True,
     use_dpo_loss=True,
     use_nll_loss=True,
+    weight_tokens=False,
 ):
     """
     movement of hs along the hs pref vector.
@@ -34,7 +35,7 @@ def prefec_loss(
         hs = o.hs[k]
         if transform is not None:
             hs = transform(hs)
-        hs = mean_tokens_w_attention(hs, o.mask)
+        hs = reduce_tokens_w_attention(hs, o.mask, weight_tokens=weight_tokens)
         return hs
 
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, 'b']]:
@@ -50,14 +51,13 @@ def prefec_loss(
         )  # vector describing movement of chosen hidden state compared to base model
         rej = hs_pi_rej - hs_ref_rej
 
-        ref_dir_norm = (
-            torch.sqrt(torch.linalg.vecdot(pref_dir, pref_dir)).clamp(eps).detach()
-        )
+        ref_dir_norm = torch.norm(pref_dir, dim=-1).clamp(eps)#.detach()
 
         def signed_proj_magnitude(a, ref_dir):
             # get signed projection of `a` along ref_dir
-            # like cosine similairy, but without the |a| in the denominator
-            a_proj = torch.linalg.vecdot(a, ref_dir, dim=-1) / ref_dir_norm
+            # like cosine similarity, but without the |a| in the denominator
+            a_proj = torch.linalg.vecdot(ref_dir, a , dim=-1) / ref_dir_norm
+            a_proj = torch.sum(ref_dir * a, dim=-1) / ref_dir_norm
 
             # get unsigned length or remainder using pythagorian theorem (we don't care about magnitude here as we )
             if torch.norm(a)>0:
@@ -67,7 +67,7 @@ def prefec_loss(
                 a_orth = torch.zeros_like(a_proj)
 
 
-            angle = F.cosine_similarity(cho, ref_dir, dim=-1)
+            angle = F.cosine_similarity(a, ref_dir, dim=-1)
             # angle works
             return a_proj, a_orth, angle
 
@@ -85,6 +85,8 @@ def prefec_loss(
         loss_cho_orth = cho_orth_pref + ref_orth_pref
 
         # we could also optimize angle, we want it to be close to 1, so we make it negative
+        #  cosine sim ranges from -1 meaning exactly opposite, to 1 meaning exactly the same, with 0 indicating orthogonality
+        # so 1-cosine sim ranges from 0 to 2, with 0 meaning exactly the same, and 2 meaning exactly opposite
         loss_angle = 2 - cho_cossim - rej_cossim
 
         return dict(
@@ -138,7 +140,7 @@ def prefec_loss(
     if use_nll_loss:
         loss_retain += loss_nll_retain
 
-    loss = loss_reroute.mean() + alpha * loss_retain.mean()
+    loss = loss_reroute.mean() + α * loss_retain.mean()
 
     info = dict(
         loss_reroute=loss_reroute,
@@ -164,18 +166,18 @@ class PrefVecLossConfig:
     - punish movement orthogonal to the preference vector: by angle * β
     """
 
-    alpha: float = 1.0
+    α: float = 1.0
     """balance between reroute and retain loss."""
 
     eps: float = 1e-12
 
-    β = 0.5
+    β: float = 0.5
     """factor to punish orthogonal movement"""
 
     use_orth_loss: bool = True
     """punish movement orthogonal to the preference vector: by distance"""
 
-    use_angle_loss: bool = True
+    use_angle_loss: bool = False
     """punish movement orthogonal to the preference vector: by angle"""
 
     use_dpo_loss: bool = True
@@ -183,6 +185,9 @@ class PrefVecLossConfig:
 
     use_nll_loss: bool = True
     """punish model if output is less coherent than reference model"""
+
+    weight_tokens: bool = True
+    """exp weight tokens along seq"""
 
     def c(self, *args, **kwargs):
         return prefec_loss(*args, **kwargs, **asdict(self))

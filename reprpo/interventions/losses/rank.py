@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from dataclasses import dataclass, asdict
 from .helpers import cross_entropy_loss, compute_ptheta
 from ..types import HS, Mask, ReprPOModelOutput
-from ..reprpo.helpers import mean_tokens_w_attention
+from ..reprpo.helpers import reduce_tokens_w_attention
 
 
 def rank_loss(
@@ -17,7 +17,7 @@ def rank_loss(
     batch: Dict[str, Any],
     transform: Optional[Callable] = None,
     # custom loss_args
-    alpha: float = 1,
+    α: float = 1,
 ):
     """
     This loss treats the hidden states like probabilities by taking the softmax. Despite the fact that they are not used as probabilities, this lets us modify the relative ranking as if they are.
@@ -34,7 +34,7 @@ def rank_loss(
         if transform is not None:
             hs = transform(hs)
         hs = hs.log_softmax(-1)
-        hs = mean_tokens_w_attention(hs, o.mask)
+        hs = reduce_tokens_w_attention(hs, o.mask)
         return hs
 
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, 'b']]:
@@ -73,7 +73,7 @@ def rank_loss(
     loss_nll_retain = F.relu(nll_loss_ratio)
     loss_retain = loss_nll_retain.mean(1) + loss_dpo_retain
 
-    loss = loss_reroute.mean() + alpha * loss_retain.mean()
+    loss = loss_reroute.mean() + α * loss_retain.mean()
 
     info = dict(
         loss_reroute=loss_reroute,
@@ -89,7 +89,7 @@ def rank_loss(
 
 @dataclass(frozen=True)
 class RankLossConfig:
-    alpha: float = 1.0
+    α: float = 1.0
     # eps: float = 1e-12
 
     def c(self, *args, **kwargs):

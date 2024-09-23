@@ -8,21 +8,21 @@ experiment_configs = {
         "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
         ReprPOConfig(
             transform=Transforms.ether.value(),
-            loss_fn=Losses.mse.value(),
+            loss=Losses.mse.value(),
         ),
     ),
     "side-ether-rank": (
         "2",
         ReprPOConfig(
             transform=Transforms.ether.value(),
-            loss_fn=Losses.rank.value(),
+            loss=Losses.rank.value(),
         ),
     ),
     "side-ether-prefvec": (
         "3",  # unstable?
         ReprPOConfig(
             transform=Transforms.ether.value(),
-            loss_fn=Losses.prefvec.value(),
+            loss=Losses.prefvec.value(),
             lr=1e-5,
         ),
     ),
@@ -30,21 +30,21 @@ experiment_configs = {
         "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
         ReprPOConfig(
             transform=Transforms.none.value(),
-            loss_fn=Losses.mse.value(),
+            loss=Losses.mse.value(),
         ),
     ),
     "side-none-rank": (
         "2",
         ReprPOConfig(
             transform=Transforms.none.value(),
-            loss_fn=Losses.rank.value(),
+            loss=Losses.rank.value(),
         ),
     ),
     "side-none-prefvec": (
         "3",  # unstable?
         ReprPOConfig(
             transform=Transforms.none.value(),
-            loss_fn=Losses.prefvec.value(),
+            loss=Losses.prefvec.value(),
             lr=1e-5,
         ),
     ),
@@ -53,7 +53,7 @@ experiment_configs = {
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.none.value(),
-            loss_fn=Losses.prefvec.value(),
+            loss=Losses.prefvec.value(),
         ),
     ),
     "hs-none-rank": (
@@ -61,7 +61,7 @@ experiment_configs = {
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.none.value(),
-            loss_fn=Losses.rank.value(),
+            loss=Losses.rank.value(),
         ),
     ),
     "hs-none-mse": (
@@ -69,7 +69,7 @@ experiment_configs = {
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.none.value(),
-            loss_fn=Losses.mse.value(),
+            loss=Losses.mse.value(),
         ),
     ),
     "hs-ether-rank": (
@@ -77,7 +77,7 @@ experiment_configs = {
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.ether.value(),
-            loss_fn=Losses.rank.value(),
+            loss=Losses.rank.value(),
         ),
     ),
     # "hs-ether-mse": (
@@ -85,7 +85,7 @@ experiment_configs = {
     #     ReprPOConfig(
     #         collection_keys_in=(),
     #         transform=Transforms.ether.value(),
-    #         loss_fn=Losses.mse.value(),
+    #         loss=Losses.mse.value(),
     #     ),
     # ),
     "hs-ether-prefvec": (
@@ -93,7 +93,7 @@ experiment_configs = {
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.ether.value(),
-            loss_fn=Losses.prefvec.value(),
+            loss=Losses.prefvec.value(),
         ),
     ),
     "hs-hra-prefvec": (
@@ -101,7 +101,7 @@ experiment_configs = {
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.hra.value(),
-            loss_fn=Losses.prefvec.value(),
+            loss=Losses.prefvec.value(),
         ),
     ),
     "hs-ortho-prefvec": (
@@ -109,7 +109,7 @@ experiment_configs = {
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.ortho.value(),
-            loss_fn=Losses.prefvec.value(),
+            loss=Losses.prefvec.value(),
         ),
     ),
     "hs-svd-prefvec": (
@@ -117,7 +117,7 @@ experiment_configs = {
         ReprPOConfig(
             collection_keys_in=(),
             transform=Transforms.svd.value(),
-            loss_fn=Losses.prefvec.value(),
+            loss=Losses.prefvec.value(),
         ),
     ),
     # baseline

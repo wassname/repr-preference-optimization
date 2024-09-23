@@ -6,7 +6,7 @@ import torch
 from dataclasses import dataclass, asdict
 from .helpers import cross_entropy_loss
 from ..types import HS, HS2, Mask, ReprPOModelOutput
-from ..reprpo.helpers import mean_tokens_w_attention, detach_hsd
+from ..reprpo.helpers import reduce_tokens_w_attention, detach_hsd
 
 
 def log_dist_ratio(a: HS2, b: HS2, a_ref: HS2, b_ref: HS2, eps=1e-12) -> Float[Tensor, "b"]:
@@ -37,7 +37,7 @@ def mse_loss(
     batch: Dict[str, Any],
     transform: Optional[Callable] = None,
     # custom loss_args
-    alpha: float = 1,
+    α: float = 1,
     eps=1e-12,
 ):
     """
@@ -48,7 +48,7 @@ def mse_loss(
         hs = o.hs[k]
         if transform is not None:
             hs = transform(hs)
-        hs = mean_tokens_w_attention(hs, o.mask)
+        hs = reduce_tokens_w_attention(hs, o.mask)
         return hs
 
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) ->  Dict[str, Float[Tensor, 'b']]:
@@ -89,7 +89,7 @@ def mse_loss(
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
     loss_reroute, loss_retain = ll["loss_reroute"], ll["loss_retain"]
 
-    loss = (loss_reroute + loss_retain * alpha).nanmean()
+    loss = (loss_reroute + loss_retain * α).nanmean()
 
     # log info
     info = dict(
@@ -103,7 +103,7 @@ def mse_loss(
 
 @dataclass(frozen=True)
 class MSELossConfig:
-    alpha: float = 1.0
+    α: float = 1.0
     eps: float = 1e-12
 
     def c(self, *args, **kwargs):

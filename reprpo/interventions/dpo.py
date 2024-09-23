@@ -12,7 +12,7 @@ def compute_dpo_loss(
     model_rejected_logprobs,
     reference_chosen_logprobs,
     reference_rejected_logprobs,
-    beta=0.1,
+    β=0.1,
 ):
     """Compute the DPO loss for a batch of policy and reference model log probabilities.
 
@@ -21,7 +21,7 @@ def compute_dpo_loss(
         policy_rejected_logprobs: Log probabilities of the policy model for the rejected responses. Shape: (batch_size,)
         reference_chosen_logprobs: Log probabilities of the reference model for the chosen responses. Shape: (batch_size,)
         reference_rejected_logprobs: Log probabilities of the reference model for the rejected responses. Shape: (batch_size,)
-        beta: Temperature parameter for the DPO loss; typically something in the range of 0.1 to 0.5. We ignore the reference model as beta -> 0.
+        β: Temperature parameter for the DPO loss; typically something in the range of 0.1 to 0.5. We ignore the reference model as β -> 0.
         label_smoothing: conservativeness for DPO loss.
 
     Returns:
@@ -33,7 +33,7 @@ def compute_dpo_loss(
     logits = model_logratios - reference_logratios
 
     # DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
-    losses = -F.logsigmoid(beta * logits)
+    losses = -F.logsigmoid(β * logits)
 
     # Optional values to track progress during training
     chosen_rewards = (model_chosen_logprobs - reference_chosen_logprobs).detach()
@@ -50,7 +50,7 @@ def compute_dpo_loss(
     )
 
 
-def compute_dpo_loss_batch(batch, model, beta=0.1):
+def compute_dpo_loss_batch(batch, model, β=0.1):
     """Compute the DPO loss on an input batch"""
 
     model_kwargs = dict(
@@ -102,7 +102,7 @@ def compute_dpo_loss_batch(batch, model, beta=0.1):
         model_rejected_logprobs=policy_rejected_log_probas,
         reference_chosen_logprobs=ref_chosen_log_probas,
         reference_rejected_logprobs=ref_rejected_log_probas,
-        beta=beta,
+        β=β,
     )
 
     # def cosine_on_keys(hs1, hs2):
