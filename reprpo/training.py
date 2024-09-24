@@ -69,7 +69,7 @@ def train(training_args):
     PL_MODEL = training_args._cls
 
     logger.info("*" * 80)
-    logger.info("PL_MODEL", PL_MODEL)
+    logger.info("PL_MODEL {PL_MODEL}")
 
     ds_name_train = training_args.dataset.replace("genies_preferences-", "")
     model_name = training_args.base_model.split("/")[-1]
@@ -117,12 +117,11 @@ def train(training_args):
 
     # logging
     log_file = save_dir / 'log.txt'
-    logger.add(log_file, level="INFO", 
-            format="[{name}]{level}:{message}"
-               )
-    # # Redirect stdout and stderr to loguru
-    # logger.add(os.sys.stdout, level="INFO", format="{time} - {name} - {level} - {message}")
-    # logger.add(os.sys.stderr, level="ERROR", format="{time} - {name} - {level} - {message}")
+    logger.remove()
+    # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
+    LOGURU_FORMAT = '|<level>{level}</level>| {message}'
+    logger.add(os.sys.stdout, format=LOGURU_FORMAT, level="INFO")
+    logger.add(log_file, level="INFO", format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}")
 
 
     model, tokenizer = load_model(
@@ -149,7 +148,7 @@ def train(training_args):
     model = get_peft_model(model, peft_config, adapter_name=finetune_name)
     print_trainable_parameters(model)
     if training_args.verbose > 1:
-        logger.info(model)
+        logger.info(f"{model}")
 
     # ## Load data
     dataset2 = load_dataset("wassname/genies_preferences", name=training_args.dataset)
@@ -213,9 +212,9 @@ def train(training_args):
         # logger.info(batch.keys())
         # logger.info(tokenizer.decode(batch['prompt'][0]))
         logger.info("===")
-        logger.info(tokenizer.decode(batch["chosen"][0]))
+        logger.info(f"{tokenizer.decode(batch['chosen'][0])}")
         logger.info("---")
-        logger.info(tokenizer.decode(batch["rejected"][0]))
+        logger.info("{tokenizer.decode(batch['rejected'][0])}")
         logger.info("===")
 
     if wandb.run is not None:
@@ -234,10 +233,10 @@ def train(training_args):
         ideal_batch_size / training_args.batch_size
     ).astype(int)
     if training_args.verbose:
-        logger.info("max optimiser steps", max_steps)
-        logger.info("accumulate_grad_batches", accumulate_grad_batches)
+        logger.info(f"max optimiser steps {max_steps}", )
+        logger.info(f"accumulate_grad_batches {accumulate_grad_batches}", )
         logger.info(
-            "accumulated batch size", training_args.batch_size * accumulate_grad_batches
+            f"accumulated batch size {training_args.batch_size * accumulate_grad_batches}"
         )
         logger.info(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
 
@@ -296,9 +295,9 @@ def train(training_args):
     # save as regular adapter only
 
     model.save_pretrained(
-        str(save_dir) + "-adapter",
+        str(save_dir / "adapter"),
     )
-    logger.info(f"saved to {save_dir}-adapter")
+    logger.info(f"saved to {save_dir/'adapter'}")
 
     # ### Hist
     if not training_args.dev:
@@ -317,6 +316,8 @@ def train(training_args):
     if not training_args.dev:
         df_gen = get_model_generations(model, tokenizer, N=3)
         display_gen(df_gen.head(2))
+
+    logger.info("eval")
 
     # ## Eval
     # eval on ethics, GENIES, and our train dataset
@@ -515,8 +516,7 @@ def parse_eval(df_res2, ds_alias):
 
     # logger.info(f'saved results to {f}')
 
-    logger.info()
-    logger.info(df_metrics.round(3).to_markdown())
+    logger.info(f"\n{df_metrics.round(3).to_markdown()}")
     logger.info("""Table 1: Key metrics (adapter over base model)\n""")
 
     cols = [v.replace("genies_preferences-", "") for v in ds_alias.values()]
@@ -529,7 +529,7 @@ def parse_eval(df_res2, ds_alias):
     df_final = df_metrics.loc["acc[pi/base]"].to_frame(adapter_name).T
     df_final = df_final * 100 - 100  # percentage points
     df_final.index.name = "acc_inc/eval_ds [pp]"
-    logger.info(df_final.round(3).to_markdown())
+    logger.info(f"\n{df_final.round(3).to_markdown()}")
     logger.info(
         f"""Table 3⭐: Accuracy increase (in percentage points) after training with named adapter on `{ds_alias["train"]}` compared to base model for various distribution shifts:"""
     )
@@ -542,7 +542,7 @@ def parse_eval(df_res2, ds_alias):
     relrelacc = ((relacc + eps) / (np.abs(relacc["train"] + eps))).drop("train")
     df_relrel = relrelacc.to_frame(f"{adapter_name}").T
     df_relrel.index.name = "acc_inc/acc_inc_train"
-    logger.info(df_relrel.round(3).to_markdown())
+    logger.info(f"\n{df_relrel.round(3).to_markdown()}")
     logger.info(
         f"""Table 4: Percent accuracy increase (over base) compared to that of the training dataset `{ds_alias['train']}` [in percentage points]. It measures what fraction of the learning from train generalised to other splits\n"""
     )

@@ -170,8 +170,9 @@ class PrefVecLossConfig:
     - punish movement orthogonal to the preference vector: by angle * β
     """
 
-    α: float = 1.0
-    """balance between reroute and retain loss."""
+    # remove this as an option since we always want retain to be large
+    # α: float = 1.0
+    # """balance between reroute and retain loss."""
 
     eps: float = 1e-12
 

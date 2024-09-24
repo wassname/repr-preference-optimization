@@ -25,14 +25,6 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
     # if the layer paths are just str(ints) then just collect the hidden states
     try:
         layer_paths = [int(p) for p in layer_paths]
-        outs = model(
-            input_ids,
-            attention_mask=attn_mask,
-            use_cache=False,
-            return_dict=True,
-            output_hidden_states=True,
-        )
-        reprs = {str(k): outs.hidden_states[k] for k in layer_paths}
     except ValueError:
         reprs = {}
         with TraceDict(
@@ -54,6 +46,15 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
                     reprs[p] = ret[p].input
                 else:
                     reprs[p] = ret[p].output
+    else:
+        outs = model(
+            input_ids,
+            attention_mask=attn_mask,
+            use_cache=False,
+            return_dict=True,
+            output_hidden_states=True,
+        )
+        reprs = {str(k): outs.hidden_states[k] for k in layer_paths}
 
     for p in reprs:
         if os.environ.get("DEBUG", False):

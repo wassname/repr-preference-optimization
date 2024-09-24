@@ -50,7 +50,23 @@ run_all EXTRA_ARGS='':
 
     . ./.venv/bin/activate
     # for METHOD in ether-side-mse ether-side-rank ether-side-prefvec none-side-mse none-side-rank none-side-prefvec none-hs-prefvec none-hs-rank none-hs-mse ether-hs-rank ether-hs-prefvec hra-hs-prefvec ortho-hs-prefvec svd-hs-prefvec dpo; do
-    for METHOD in side-ether-mse side-ether-rank side-ether-prefvec side-none-mse side-none-rank side-none-prefvec hs-none-prefvec hs-none-rank hs-none-mse hs-ether-rank hs-ether-prefvec hs-hra-prefvec hs-ortho-prefvec hs-svd-prefvec dpo; do
+    for METHOD in \
+        dpo \
+        side-ether-prefvec \
+        hs-ether-prefvec \
+        side-ether-mse \
+        side-ether-rank \
+        side-none-mse \
+        side-none-rank \
+        side-none-prefvec \
+        hs-none-prefvec \
+        hs-none-rank \
+        hs-none-mse \
+        hs-ether-rank \
+        hs-hra-prefvec \
+        hs-ortho-prefvec \
+        hs-svd-prefvec \
+        dpo; do
         echo "METHOD=$METHOD"
         python scripts/train.py $METHOD $EXTRA_ARGS
     done
@@ -81,13 +97,31 @@ run_ds:
     for ds in $DS; do
         echo "DS=$ds"
         . ./.venv/bin/activate
+        python scripts/train.py dpo --dataset $ds
+        python scripts/train.py side-ether-prefvec --dataset $ds
         python scripts/train.py side-none-rank --dataset $ds
         python scripts/train.py side-none-mse --dataset $ds
         python scripts/train.py hs-ether-prefvec --dataset $ds
         python scripts/train.py side-none-prefvec --dataset $ds
-        python scripts/train.py ether-hs-prefvec --dataset $ds
-        python scripts/train.py dpo --dataset $ds
     done
+
+
+run_hp:
+    python scripts/train.py side-ether-prefvec --loss.β 0.04
+    python scripts/train.py side-ether-prefvec --loss.β 0.08 --loss.no-use_orth_loss --use_angle_loss
+    python scripts/train.py side-ether-prefvec --loss.β 0.3 --loss.no-use_orth_loss --loss.no-use_angle_loss
+    python scripts/train.py side-ether-prefvec --loss.no-use_dpo_loss --loss.no-use_orth_loss 
+    python scripts/train.py side-ether-prefvec --loss.no-use_dpo_loss --loss.no-use_orth_loss --loss.weight_tokens
+    python scripts/train.py side-ether-prefvec --loss.no-use_nll_loss --loss.no-use_orth_loss --loss.weight_tokens --loss.use_angle_loss
+    python scripts/train.py side-ether-prefvec --transform.Htype=ether
+    python scripts/train.py side-ether-prefvec --transform.Htype=oft
+    python scripts/train.py side-ether-prefvec --transform.Htype=HH
+
+    python scripts/train.py hs-ether-prefvec --transform.Htype=ether --transform.nb=16 --transform.reduction=1
+    python scripts/train.py hs-ether-prefvec --transform.Htype=oft --transform.nb=16 --transform.reduction=1
+    python scripts/train.py hs-ether-prefvec --transform.Htype=HH --transform.nb=16 --transform.reduction=1
+
+
 
 
 
