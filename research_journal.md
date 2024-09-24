@@ -3132,3 +3132,11 @@ Note that the first few are the same with slight changes, it show that variation
 | acc_inc/eval_ds [pp] |  train | test |  oos |  rnd |
 | :------------------- | -----: | ---: | ---: | ---: |
 | side-None-MSE_math   | -0.124 |    0 |    0 | 0.14 |
+
+# 2024-09-24 12:49:24
+
+I had a side track to try hybra and oh god-
+- nothing works right
+- the structured config stuff doesn't extend beyond the tutorials
+- doing sweeps is a pain still! you still need to configure everything
+- maybe easier just to loop through dataclasses in tyro...

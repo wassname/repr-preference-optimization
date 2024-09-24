@@ -313,7 +313,7 @@ def train(training_args):
     # ## Gen
     model.cuda()  # for some reason it ends up cpu
 
-    if not training_args.dev:
+    if (not training_args.dev) and (training_args.verbose > 0):
         df_gen = get_model_generations(model, tokenizer, N=3)
         display_gen(df_gen.head(2))
 
@@ -334,7 +334,9 @@ def train(training_args):
         ),
     ]
     datasets += dist2datasets(
-        GENIES, N=N, source=[training_args.dataset]
+        GENIES, 
+        # N=N, # can't cheap out on the main metric
+        source=[training_args.dataset]
     )  # our hard OOS test
     # datasets += get_ethics_datasets(N=N)
     datasets += [
@@ -352,7 +354,7 @@ def train(training_args):
         datasets=datasets,
         batch_size=training_args.batch_size,
         bf16=True,
-        torch_empty_cache_steps=100,
+        torch_empty_cache_steps=200,
         verbose=training_args.verbose,
     )
 
@@ -377,12 +379,15 @@ def train(training_args):
         # also just log final metrics to wandb so we can view a group
 
     # FIXME, only pass in adapter col, not q index or base
-    if not training_args.dev:
+    if (not training_args.dev) and (training_args.verbose > 0):
         df_gen_w = wandb.Table(dataframe=df_gen)
         run.log({"generations": df_gen_w, **r2})
 
     if wandb.run is not None:
         logger.info(f"WANDB url = {wandb.run.get_url()}")
+
+    # return a single value for hyperparam tuning
+    return r['⭐rel_acc']['oos'].iloc[0]
 
 
 def key_metrics(df_res2, adapter_name, ds_alias):
@@ -535,7 +540,6 @@ def parse_eval(df_res2, ds_alias):
     )
     for k, v in ds_alias.items():
         logger.info(f"- `{k}`: `{v}`")
-    logger.info()
 
     relacc = df_final.iloc[0, :]
     eps = 1e-6

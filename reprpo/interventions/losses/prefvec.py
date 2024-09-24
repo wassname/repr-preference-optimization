@@ -51,42 +51,34 @@ def prefec_loss(
         )  # vector describing movement of chosen hidden state compared to base model
         rej = hs_pi_rej - hs_ref_rej
 
-        ref_dir_norm = torch.norm(pref_dir, dim=-1).clamp(eps)#.detach()
+        pref_dir_unit = pref_dir / pref_dir.norm(dim=-1, keepdim=True).clamp(eps)
 
         def signed_proj_magnitude(a, ref_dir):
-            # get signed projection of `a` along ref_dir
-            # like cosine similarity, but without the |a| in the denominator
-            # a_proj = torch.linalg.vecdot(ref_dir, a , dim=-1) / ref_dir_norm
-            a_proj = torch.sum(ref_dir * a, dim=-1) / ref_dir_norm
+            # get projection of `a` along ref_dir
+            a_proj = (pref_dir_unit * a).sum(dim=-1, keepdim=True) * pref_dir_unit
 
-            # get unsigned length or remainder using pythagorian theorem (we don't care about magnitude here as we )
-            if torch.norm(a)>0:
-                # causes NaN's is used with norm(a)==0
-                # sqrt(a^2 - (a*ref_dir)^2)
-                # sqrt(a*(a - ref_dir))
-                a_orth = torch.sqrt(a.pow(2).sum(-1) - a_proj**2)
-            else:
-                a_orth = torch.zeros_like(a_proj)
+            a_orth = a - a_proj
+            # if torch.norm(a)>0:
+            #     # causes NaN's is used with norm(a)==0
+            #     # sqrt(a^2 - (a*ref_dir)^2)
+            #     # sqrt(a*(a - ref_dir))
+            # else:
+            #     a_orth = torch.zeros_like(a_proj)
+            cosine_sim = F.cosine_similarity(a, ref_dir, dim=-1)
+            return a_proj.mean(dim=-1), a_orth.mean(dim=-1), cosine_sim
 
-
-            angle = F.cosine_similarity(a, ref_dir, dim=-1)
-            # FIXME the cosine doesn't match the proj, and orth directions?
-            # expect _cossim to go up when _proj goes up and _orth goes down
-            # TODO rename 
-            return a_proj, a_orth, angle
-
-        signed_cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(
+        cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(
             cho, pref_dir
         )
-        signed_rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(
+        rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(
             rej, pref_dir
         )
 
         # goes down if the hs moves along the direction of the preference vector
-        loss_cho_proj = -signed_cho_pref - signed_rej_pref
+        loss_cho_proj = -cho_pref - rej_pref
 
         # increases with movement of hs orthogonal to the preference vector
-        loss_cho_orth = cho_orth + ref_orth
+        loss_cho_orth = torch.abs(cho_orth) + torch.abs(ref_orth)
 
         # we could also optimize angle, we want it to be close to 1, so we make it negative
         #  cosine sim ranges from -1 meaning exactly opposite, to 1 meaning exactly the same, with 0 indicating orthogonality
@@ -100,8 +92,8 @@ def prefec_loss(
 
             _cho_orthorgonal2pref=cho_orth,
             _ref_orthorgonal2pref=ref_orth,
-            _signed_cho_pref=signed_cho_pref,
-            _signed_rej_pref=signed_rej_pref,
+            _signed_cho_pref=cho_pref,
+            _signed_rej_pref=rej_pref,
             _cho_cosine_similarity=cho_cossim,
             _rej_cosine_similarity=rej_cossim,
         )

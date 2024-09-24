@@ -55,7 +55,8 @@
                 "CUDA_VISIBLE_DEVICES": "0", 
             "TOKENIZERS_PARALLELISM": "false",
             //  "REPR_CONFIG": "./configs/dev.yaml", 
-             "REPR_CONFIG": "./configs/llama3_7b.yaml", 
+            //  "REPR_CONFIG": "./configs/llama3_7b.yaml", 
+             "REPR_CONFIG": "./configs/tinyllama_a100.yaml", 
             //  "WANDB_MODE": "offline"
             },
             "pythonArgs": ["-Xfrozen_modules=off"],
@@ -67,10 +68,10 @@
                 // "hs-dist",
                 "hs-ether-prefvec",
                 "--verbose=1",
-                "--loss.β=0.2",
+                // "--loss.β=0.2",
                 // "--eval_samples=128",
                 // "--batch-size=24", 
-                "--lr=1e-5"
+                // "--lr=1e-5"
                 // "--n_samples=6000",
             ]
         }
