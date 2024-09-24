@@ -161,7 +161,7 @@ class PrefVecLoss(torch.nn.Module):
     def forward(self, pi_cho, pi_rej, ref_cho, ref_rej, batch):
         return prefec_loss(pi_cho, pi_rej, ref_cho, ref_rej, batch, **self.loss_kwargs)
 
-@dataclass(frozen=True)
+@dataclass
 class PrefVecLossConfig:
     """
     moves the hidden states of the chosen and rejected hidden states along the preference vector, with some constraints:
@@ -176,7 +176,7 @@ class PrefVecLossConfig:
 
     eps: float = 1e-12
 
-    β = 0.5
+    β: float = 0.5
     """factor to punish orthogonal movement"""
 
     use_orth_loss: bool = True

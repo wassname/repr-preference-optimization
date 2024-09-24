@@ -37,7 +37,7 @@ class SVDLayer(nn.Module):
         return hs - hs_io#.detach() # FIXME, should I not detach this?
 
 
-@dataclass(frozen=True)
+@dataclass
 class SVDConfig:
     """
     This intervention does not seem to work of converge. It attempt to remove the parts of the hs that are used by lm_head, but because hs is low rank, and lm_head is highrank, it is all used. Hence we try to train on a tiny noisy residual, and cannot.

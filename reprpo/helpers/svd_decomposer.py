@@ -57,10 +57,7 @@ class SoftSVDDecomposer:
 
     def __call__(
         self, hs: Float[Tensor, "batch layers tokens hidden_size"]
-    ) -> Tuple[
-        Float[Tensor, "batch layers tokens hidden_size"],
-        Float[Tensor, "batch layers tokens hidden_size"],
-    ]:
+    ) -> Float[Tensor, "batch layers tokens hidden_size"]:
         original_shape = hs.shape
 
         def match_dtype(a, b):

@@ -15,7 +15,7 @@ class OrthoTransform(nn.Module):
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class OrthoConfig:
     orthogonal_map: str = "householder"
     """orthogonal map to use for the transform, can be 'householder', 'cayley', or 'matrix_exp'."""

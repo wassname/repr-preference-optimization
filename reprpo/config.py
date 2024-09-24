@@ -8,16 +8,17 @@ from reprpo.interventions.transforms import Transforms
 from reprpo.interventions.reprpo.config import ReprPOConfig
 from reprpo.interventions.dpo import DPOConfig
 
-defaults = [
-    "_self_",
-    {"intervention": "reprpo"},
-]
+# defaults = [
+#     "_self_",
+#     {"intervention": "reprpo"},
+
+# ]
 
 @dataclass
 class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences"""
 
-    defaults: List[Any] = field(default_factory=lambda: defaults)
+    # defaults: List[Any] = field(default_factory=lambda: defaults)
     intervention: Any = MISSING
 
     dataset: str = "us_history_textbook"
@@ -47,9 +48,9 @@ def register_configs():
     cs.store(group="intervention", name="dpo", node=DPOConfig)
     cs.store(group="intervention", name="reprpo", node=ReprPOConfig)
     for k in Losses:
-        cs.store(group="reprpo.loss_fn", name=k.name, node=k.value)
+        cs.store(group="intervention.loss", name=k.name, node=k.value)
     for k in Transforms:
-        cs.store(group="reprpo.transform", name=k.name, node=k.value)
+        cs.store(group="intervention.transform", name=k.name, node=k.value)
     return cs
 
 # cs = get_config_store()

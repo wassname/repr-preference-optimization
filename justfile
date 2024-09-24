@@ -13,6 +13,26 @@ export TOKENIZERS_PARALLELISM := "false"
 default:
     @just --list
 
+hp:
+    WANDB_GROUP=prefvec python reprpo/training.py -m \
+        +intervention=reprpo \
+        +intervention.transform=ether \
+        +intervention.loss=prefvec \
+        'intervention.loss.use_nll_loss=True,False' \
+        'intervention.loss.use_dpo_loss=True,False' \
+        'intervention.loss.β=0.1,1.,2.' \
+        'intervention.loss.use_angle_loss=True,False' \
+        'intervention.loss.use_orth_loss=True,False'
+
+
+    WANDB_GROUP=intervention.loss.use_nll_loss  python reprpo/training.py -m \
+        '+intervention=reprpo' \
+        '+intervention.transform=ether' \
+        '+intervention.loss=glob(*)' \
+        'intervention.loss.use_nll_loss=True,False'
+
+    hydra/sweeper=ax
+
 
 # run pytest
 test:

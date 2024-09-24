@@ -95,7 +95,7 @@ class RankLoss(torch.nn.Module):
     def forward(self, pi_cho, pi_rej, ref_cho, ref_rej, batch):
         return rank_loss(pi_cho, pi_rej, ref_cho, ref_rej, batch, **self.loss_kwargs)
 
-@dataclass(frozen=True)
+@dataclass
 class RankLossConfig:
     alpha: float = 1.0
     β: float = 100

@@ -7,7 +7,7 @@ import os
 from pprint import pprint
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import logging
 import warnings
 from collections import OrderedDict
@@ -94,7 +94,7 @@ def _train(cfg):
         intervention = type(cfgo.intervention).__name__.replace('Config','')
         if intervention == "DPO":
             return 'dpo'
-        loss = type(cfgo.intervention.loss_fn).__name__.replace('Config','')
+        loss = type(cfgo.intervention.loss).__name__.replace('Config','')
         transform = type(cfgo.intervention.transform).__name__.replace('Config','')
         h = 'side' if len(cfg.intervention.collection_layers_side) > 0 else 'hs'
         return f"{h}-{transform}-{loss}"
@@ -155,6 +155,9 @@ def _train(cfg):
 
     # ## Load data
     dataset2 = load_dataset("wassname/genies_preferences", name=cfg.dataset)
+    if cfg.dev:
+        dataset2['train'] = dataset2['train'].select(range(100))
+        dataset2['test'] = dataset2['test'].select(range(100))
 
     # ### Data Loader
     # We use huggingface datasets, which are pretokenized. So that we can stack
@@ -243,27 +246,13 @@ def _train(cfg):
             "accumulated batch size", cfg.batch_size * accumulate_grad_batches
         )
         print(f"epochs {cfg.n_samples//len(dl_train.dataset)}")
-
-    # model_kwargs = {k: getattr(cfg, k) for k in cfg._model_keys}
     pl_model = instantiate(
         cfg.intervention, 
         **dict(
             model=model, num_iterations=max_steps,
             schedule="constant",
             adam8bit=cfg.load_in_4bit or cfg.load_in_8bit
-        ), _recursive_=False)
-    # pl_model = PL_MODEL(
-    #     model,
-    #     adam8bit=cfg.load_in_4bit
-    #     or cfg.load_in_8bit,  # saved mem, but seems unstable?
-    #     schedule="constant",
-    #     # weight_decay=training_args.weight_decay,
-    #     # lr=training_args.lr,
-    #     num_iterations=max_steps,
-    #     batch_size=cfg.batch_size,
-    #     # model args
-    #     **model_kwargs,
-    # )
+        ), _recursive_=False, _convert_='object')
 
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
     root_dir = Path(__file__).parent.parent

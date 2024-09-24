@@ -25,14 +25,6 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
     # if the layer paths are just str(ints) then just collect the hidden states
     try:
         layer_paths = [int(p) for p in layer_paths]
-        outs = model(
-            input_ids,
-            attention_mask=attn_mask,
-            use_cache=False,
-            return_dict=True,
-            output_hidden_states=True,
-        )
-        reprs = {str(k): outs.hidden_states[k] for k in layer_paths}
     except ValueError:
         reprs = {}
         with TraceDict(
@@ -54,6 +46,15 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
                     reprs[p] = ret[p].input
                 else:
                     reprs[p] = ret[p].output
+    else:
+        outs = model(
+            input_ids,
+            attention_mask=attn_mask,
+            use_cache=False,
+            return_dict=True,
+            output_hidden_states=True,
+        )
+        reprs = {str(k): outs.hidden_states[k] for k in layer_paths}
 
     for p in reprs:
         if os.environ.get("DEBUG", False):
@@ -78,16 +79,16 @@ class PL_REPRPO_MODEL(PL_MODEL):
     def __init__(
         self,
         *args,
-        collection_layers_side,
+        collection_layers_side: Optional[List[int]],
         collect_input,
-        collection_keys_in: tuple = None,
-        collection_keys_out: tuple = None,
-        loss_fn: LossesType,
+        collection_keys_in: Optional[List[str]] = None,
+        collection_keys_out: Optional[List[str]] = None,
+        loss: LossesType,
         transform: TransformType,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.hparams.loss_fn = loss_fn
+        self.hparams.loss = loss
         self.hparams.transform = transform
         self.hparams.collection_layers_side = collection_layers_side
         self.hparams.collect_input = collect_input
@@ -114,7 +115,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
         else:
             # if no collection keys, we collect hidden states instead
             # we generally need only a few so lets just take the first and last
-            self.hparams.layer_paths = tuple(
+            self.hparams.layer_paths = list(
                 set([collection_layers_side[0], collection_layers_side[-1]])
             )
             self.hparams.layer_paths = [str(s) for s in self.hparams.layer_paths]
@@ -124,12 +125,11 @@ class PL_REPRPO_MODEL(PL_MODEL):
 
         self.transforms = torch.nn.ParameterDict(
             {k: 
-            #  transform.c(dim_hs, dim_hs, model=self._model)
              instantiate(transform, dim_hs, dim_hs, model=self._model)
                for k, dim_hs in hra_sizes.items()}
         )
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
-        self.loss_fn = instantiate(loss_fn)
+        self.loss = instantiate(loss)
 
     def _loss_fn(self, batch, model):
         h = self.hparams
@@ -170,7 +170,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
         )
 
         # run loss function
-        loss, info = self.loss_fn(
+        loss, info = self.loss(
             pi_cho=pi_cho,
             pi_rej=pi_rej,
             ref_cho=ref_cho,

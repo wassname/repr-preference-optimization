@@ -110,7 +110,7 @@ class MSELoss(torch.nn.Module):
     def forward(self, pi_cho, pi_rej, ref_cho, ref_rej, batch):
         return mse_loss(pi_cho, pi_rej, ref_cho, ref_rej, batch, alpha=self.alpha, eps=self.eps)
 
-@dataclass(frozen=True)
+@dataclass
 class MSELossConfig:
 
     _target_: str = "reprpo.interventions.losses.mse.MSELoss"

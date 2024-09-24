@@ -82,7 +82,7 @@ class HRATransform(nn.Module):
         return torch.matmul(input, delta_weight)
 
 
-@dataclass(frozen=True)
+@dataclass
 class HRAConfig:
     r: int = 8
     """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""

@@ -3004,3 +3004,7 @@ TODO make all losees into classes
 - [ ] play with multirun
 
 python reprpo/training.py --multirun 
+
+
+make words shorter
+how to use glob?
