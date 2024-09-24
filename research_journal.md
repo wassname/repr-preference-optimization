@@ -3028,3 +3028,107 @@ try with lower lr?
 
 | side-ETHER-PrefVec_us_history_textbook |   0.789 |  0.674 | 7.035 | 0.279 |
 lr cosine diosn't change much 
+
+
+| acc_inc/eval_ds [pp] |  train | test |  oos |  rnd |
+| :------------------- | -----: | ---: | ---: | ---: |
+| side-None-MSE_math   | -0.124 |    0 |    0 | 0.14 |
+
+| acc_inc/eval_ds [pp]           |  train |  test |    oos |    rnd |
+| :----------------------------- | -----: | ----: | -----: | -----: |
+| dpo_alpaca_mmlu                | 13.997 | 9.717 |  6.464 | -6.365 |
+| side-None-PrefVec_alpaca_mmlu  |  1.371 | 0.177 |   0.19 |  0.503 |
+| side-ETHER-PrefVec_alpaca_mmlu |    5.7 | 1.767 | -1.711 |  -0.67 |
+| side-None-MSE_alpaca_mmlu      |  0.433 | 0.177 |  -0.76 |  0.503 |
+
+| acc_inc/eval_ds [pp]         | train |  test |   oos |   rnd |
+| :--------------------------- | ----: | ----: | ----: | ----: |
+| dpo_code_easy                | 1.359 | 0.136 | 0.853 |  0.14 |
+| side-None-PrefVec_code_easy  | 0.113 | 0.136 | 0.341 |  0.14 |
+| side-ETHER-PrefVec_code_easy | 1.302 | 0.678 | 1.706 | -0.14 |
+| side-None-MSE_code_easy      |     0 |     0 |     0 |     0 |
+
+  | acc_inc/eval_ds [pp]            |  train |   test |  oos |     rnd |
+  | :------------------------------ | -----: | -----: | ---: | ------: |
+  | dpo_alpaca_short                | 15.891 | 14.155 | -100 | -29.469 |
+  | side-None-PrefVec_alpaca_short  |  0.581 |  0.457 |    0 |   0.279 |
+  | side-ETHER-PrefVec_alpaca_short |  7.171 |  5.023 |  -25 |  -0.279 |
+  | side-None-MSE_alpaca_short      | -0.194 |      0 |    0 |       0 |
+
+| acc_inc/eval_ds [pp]   |  train |   test |   oos |    rnd |
+| :--------------------- | -----: | -----: | ----: | -----: |
+| dpo_alpaca_low_quality | 16.426 | 13.447 | 13.58 | -3.073 |
+
+
+
+
+| acc_inc/eval_ds [pp]                   |     train |     test |        oos |        rnd |
+| :------------------------------------- | --------: | -------: | ---------: | ---------: |
+| side-ETHER-PrefVec_us_history_textbook | **2.209** | **0.84** |      3.891 | ** 1.072** |
+| side-ETHER-PrefVec_us_history_textbook |     0.789 |    0.674 |      7.203 |      0.279 |
+| side-ETHER-PrefVec_us_history_textbook |     0.169 |        0 |      1.508 |       0.14 |
+| side-ETHER-PrefVec_us_history_textbook |      1.07 |   -0.809 |     -1.173 |     -1.117 |
+| side-ETHER-PrefVec_us_history_textbook |     0.789 |    0.674 |      7.035 |      0.279 |
+| side-ETHER-PrefVec_us_history_textbook |     0.282 |    0.135 |       2.68 |       0.14 |
+| side-ETHER-PrefVec_us_history_textbook |     0.789 |    0.674 |      7.203 |          0 |
+| side-ETHER-MSE_us_history_textbook     |    -0.056 |        0 |      0.168 |          0 |
+| side-ETHER-PrefVec_us_history_textbook |     0.113 |        0 |      1.675 |       0.14 |
+| side-None-MSE_us_history_textbook      |    -0.056 |        0 |          0 |          0 |
+| side-None-PrefVec_us_history_textbook  |     0.169 |        0 |      1.843 |       0.14 |
+| side-None-PrefVec_us_history_textbook  |     0.958 |    0.539 |      8.878 |      0.559 |
+| side-None-Rank_us_history_textbook     |     0.282 |        0 |      1.508 |       0.14 |
+| side-None-MSE_us_history_textbook      |    -0.056 |        0 |      0.503 |          0 |
+| side-ETHER-Rank_us_history_textbook    |     0.056 |        0 |       1.34 |       0.14 |
+| side-ETHER-PrefVec_us_history_textbook |     0.958 |    0.539 | **11.055** |       0.14 |
+| side-HRA-PrefVec_us_history_textbook   |     1.183 |    0.539 |      9.213 |     -0.559 |
+| side-Ortho-PrefVec_us_history_textbook |     0.901 |    0.404 |      9.548 |     -0.419 |
+| side-SVD-PrefVec_us_history_textbook   |     1.014 |    0.539 |      10.05 |          0 |
+| dpo_us_history_textbook                |     1.352 |    0.674 |      10.72 |      0.698 |
+
+Note that the first few are the same with slight changes, it show that variation, and that be need to hparam opt and mean of 5 runs
+
+| acc_inc/eval_ds [pp]           | train |   test |       oos |   rnd |
+| :----------------------------- | ----: | -----: | --------: | ----: |
+| side-None-MSE_alpaca_easy      | 0.114 |  0.139 |      0.18 |     0 |
+| side-ETHER-PrefVec_alpaca_easy | 2.457 |  2.371 | **3.417** |     0 |
+| side-None-PrefVec_alpaca_easy  | 0.457 | -0.139 |      0.36 |  0.14 |
+| dpo_alpaca_easy                | 2.343 |  2.232 |      0.18 | 0.559 |
+
+| acc_inc/eval_ds [pp]           |  train |  test |       oos |   rnd |
+| :----------------------------- | -----: | ----: | --------: | ----: |
+| side-None-MSE_alpaca_mmlu      |  0.144 | 0.177 |     -0.38 | 0.335 |
+| side-ETHER-PrefVec_alpaca_mmlu |  5.844 | 3.534 |      0.19 |     0 |
+| side-None-PrefVec_alpaca_mmlu  |  1.299 | 0.177 |         0 |     0 |
+| dpo_alpaca_mmlu                | 14.574 | 9.894 | **6.844** |  -6.7 |
+
+| acc_inc/eval_ds [pp]                  |  train |   test |       oos |    rnd |
+| :------------------------------------ | -----: | -----: | --------: | -----: |
+| side-None-MSE_alpaca_low_quality      |      0 |      0 |         0 |      0 |
+| side-ETHER-PrefVec_alpaca_low_quality |  8.213 |  6.182 |     6.173 | -1.536 |
+| side-None-PrefVec_alpaca_low_quality  |  0.526 |  0.309 |         0 |      0 |
+| dpo_alpaca_low_quality                | 16.426 | 13.447 | **13.58** | -3.073 |
+
+| acc_inc/eval_ds [pp]            |  train |   test |  oos |     rnd |
+| :------------------------------ | -----: | -----: | ---: | ------: |
+| side-None-MSE_alpaca_short      | -0.194 |      0 |    0 |       0 |
+| side-ETHER-PrefVec_alpaca_short |  7.171 |  5.023 |  -25 |  -0.279 |
+| side-None-PrefVec_alpaca_short  |  0.581 |  0.457 |    0 |   0.279 |
+| dpo_alpaca_short                | 15.891 | 14.155 | -100 | -29.469 |
+
+| acc_inc/eval_ds [pp]         | train |  test |   oos |   rnd |
+| :--------------------------- | ----: | ----: | ----: | ----: |
+| side-None-MSE_code_easy      |     0 |     0 |     0 |     0 |
+| side-ETHER-PrefVec_code_easy | 1.302 | 0.678 | 1.706 | -0.14 |
+| side-None-PrefVec_code_easy  | 0.113 | 0.136 | 0.341 |  0.14 |
+| dpo_code_easy                | 1.359 | 0.136 | 0.853 |  0.14 |
+
+| acc_inc/eval_ds [pp]           |  train |  test |       oos |    rnd |
+| :----------------------------- | -----: | ----: | --------: | -----: |
+| side-None-MSE_alpaca_mmlu      |  0.433 | 0.177 |     -0.76 |  0.503 |
+| side-ETHER-PrefVec_alpaca_mmlu |    5.7 | 1.767 |    -1.711 |  -0.67 |
+| side-None-PrefVec_alpaca_mmlu  |  1.371 | 0.177 |      0.19 |  0.503 |
+| dpo_alpaca_mmlu                | 13.997 | 9.717 | **6.464** | -6.365 |
+
+| acc_inc/eval_ds [pp] |  train | test |  oos |  rnd |
+| :------------------- | -----: | ---: | ---: | ---: |
+| side-None-MSE_math   | -0.124 |    0 |    0 | 0.14 |

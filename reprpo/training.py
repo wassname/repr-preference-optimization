@@ -2,7 +2,7 @@
 #
 # https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
 
-
+import json
 import os
 from pprint import pprint
 
@@ -56,6 +56,7 @@ from reprpo.helpers.lightning_hist import plot_hist, read_metrics_csv
 from reprpo.helpers.torch import clear_mem
 from reprpo.models.load import load_model, print_trainable_parameters
 from .silence import silence, remove_warnings
+from loguru import logger
 
 remove_warnings()
 
@@ -67,8 +68,8 @@ def train(training_args):
 
     PL_MODEL = training_args._cls
 
-    print("*" * 80)
-    print("PL_MODEL", PL_MODEL)
+    logger.info("*" * 80)
+    logger.info("PL_MODEL", PL_MODEL)
 
     ds_name_train = training_args.dataset.replace("genies_preferences-", "")
     model_name = training_args.base_model.split("/")[-1]
@@ -83,15 +84,15 @@ def train(training_args):
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = os.environ.get("WANDB_GROUP") + "_" + group_name
     if training_args.verbose > 0:
-        print("training_args")
+        logger.info("training_args")
         pprint(training_args, compact=True)
-        # print("model_kwargs", model_kwargs.keys())
+        # logger.info("model_kwargs", model_kwargs.keys())
 
-        print(f"Using WANDB_GROUP={group_name}")
-        print(f"Using finetune_name={finetune_name}")
+        logger.info(f"Using WANDB_GROUP={group_name}")
+        logger.info(f"Using finetune_name={finetune_name}")
 
     run_fname = f"{adapter_name}/{ts}"  # short for wandb
-    wandb.require(experiment="service")
+    wandb.require(experiment="core")
 
     config = asdict(training_args)
     run = wandb.init(
@@ -102,6 +103,28 @@ def train(training_args):
         config=config,
     )
 
+    # save_dir
+    timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
+    root_dir = Path(__file__).parent.parent
+    model_fname = "_".join(
+        [training_args.base_model.replace("/", "_"), adapter_name, ds_name_train]
+    )
+    save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
+    save_dir.mkdir(exist_ok=True, parents=True)
+
+    # config
+    (save_dir / 'config.json').open('w').write(json.dumps(config, indent=4))
+
+    # logging
+    log_file = save_dir / 'log.txt'
+    logger.add(log_file, level="INFO", 
+            format="[{name}]{level}:{message}"
+               )
+    # # Redirect stdout and stderr to loguru
+    # logger.add(os.sys.stdout, level="INFO", format="{time} - {name} - {level} - {message}")
+    # logger.add(os.sys.stderr, level="ERROR", format="{time} - {name} - {level} - {message}")
+
+
     model, tokenizer = load_model(
         training_args.base_model,
         load_in_4bit=training_args.load_in_4bit,
@@ -109,23 +132,6 @@ def train(training_args):
         # attn_implementation='eager' # for gemma
     )
 
-    def find_all_linear_names(args, model):
-        import bitsandbytes as bnb
-
-        cls = (
-            bnb.nn.Linear4bit
-            if args.bits == 4
-            else (bnb.nn.Linear8bitLt if args.bits == 8 else torch.nn.Linear)
-        )
-        lora_module_names = set()
-        for name, module in model.named_modules():
-            if isinstance(module, cls):
-                names = name.split(".")
-                lora_module_names.add(names[0] if len(names) == 1 else names[-1])
-
-        if "lm_head" in lora_module_names:  # needed for 16-bit
-            lora_module_names.remove("lm_head")
-        return list(lora_module_names)
 
     # ### Load adapter
     """
@@ -143,14 +149,13 @@ def train(training_args):
     model = get_peft_model(model, peft_config, adapter_name=finetune_name)
     print_trainable_parameters(model)
     if training_args.verbose > 1:
-        print(model)
+        logger.info(model)
 
     # ## Load data
     dataset2 = load_dataset("wassname/genies_preferences", name=training_args.dataset)
 
     # ### Data Loader
     # We use huggingface datasets, which are pretokenized. So that we can stack
-    # from reprpo.data.collate import DPODataCollatorWithPadding, tokenize_row
 
     tokenize_row = TokenizeRow(
         tokenizer,
@@ -166,10 +171,10 @@ def train(training_args):
     dataset3 = dataset2.map(tokenize_row, batched=False)
 
     if training_args.verbose > 0:
-        print(
+        logger.info(
             f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}"
         )
-        print(
+        logger.info(
             f"Chosens truncated {np.mean(dataset3['train']['chosen_truncated']):2.2%}"
         )
 
@@ -193,28 +198,28 @@ def train(training_args):
     )
 
     if training_args.verbose > 1:
-        # print("QC one dataset row")
+        # logger.info("QC one dataset row")
         # r = dataset2["train"][0]
-        # print(r["prompt"])
-        # print("===")
-        # print(r["chosen"])
-        # print("---")
-        # print(r["rejected"])
-        print("===")
-        # print()
+        # logger.info(r["prompt"])
+        # logger.info("===")
+        # logger.info(r["chosen"])
+        # logger.info("---")
+        # logger.info(r["rejected"])
+        logger.info("===")
+        # logger.info()
 
-        print("QC one train batch (after pad/crop")
+        logger.info("QC one train batch (after pad/crop")
         batch = next(iter(dl_train))
-        # print(batch.keys())
-        # print(tokenizer.decode(batch['prompt'][0]))
-        print("===")
-        print(tokenizer.decode(batch["chosen"][0]))
-        print("---")
-        print(tokenizer.decode(batch["rejected"][0]))
-        print("===")
+        # logger.info(batch.keys())
+        # logger.info(tokenizer.decode(batch['prompt'][0]))
+        logger.info("===")
+        logger.info(tokenizer.decode(batch["chosen"][0]))
+        logger.info("---")
+        logger.info(tokenizer.decode(batch["rejected"][0]))
+        logger.info("===")
 
     if wandb.run is not None:
-        print(f"WANDB url = {wandb.run.get_url()}")
+        logger.info(f"WANDB url = {wandb.run.get_url()}")
 
     # ## Trainer
     # - https://lightning.ai/docs/pytorch/latest/notebooks/lightning_examples/text-transformers.html
@@ -229,12 +234,12 @@ def train(training_args):
         ideal_batch_size / training_args.batch_size
     ).astype(int)
     if training_args.verbose:
-        print("max optimiser steps", max_steps)
-        print("accumulate_grad_batches", accumulate_grad_batches)
-        print(
+        logger.info("max optimiser steps", max_steps)
+        logger.info("accumulate_grad_batches", accumulate_grad_batches)
+        logger.info(
             "accumulated batch size", training_args.batch_size * accumulate_grad_batches
         )
-        print(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
+        logger.info(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
 
     model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
     pl_model = PL_MODEL(
@@ -250,13 +255,7 @@ def train(training_args):
         **model_kwargs,
     )
 
-    timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
-    root_dir = Path(__file__).parent.parent
-    model_fname = "_".join(
-        [training_args.base_model.replace("/", "_"), adapter_name, ds_name_train]
-    )
-    save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
-    Path(save_dir).mkdir(exist_ok=True, parents=True)
+
 
     callbacks = [
         LearningRateMonitor(logging_interval="step"),
@@ -299,7 +298,7 @@ def train(training_args):
     model.save_pretrained(
         str(save_dir) + "-adapter",
     )
-    print(f"saved to {save_dir}-adapter")
+    logger.info(f"saved to {save_dir}-adapter")
 
     # ### Hist
     if not training_args.dev:
@@ -308,7 +307,7 @@ def train(training_args):
             .bfill()
             .ffill()
         )
-        # print(df_hist)
+        # logger.info(df_hist)
 
     # eval(model, tokenizer, training_args, save_dir, run, finetune_name, adapter_name)
 
@@ -363,7 +362,7 @@ def train(training_args):
     # save
     f = str(save_dir) + "/eval.parquet"
     df_res2.to_parquet(f)
-    print(f"save_dir={save_dir}")
+    logger.info(f"save_dir={save_dir}")
     pprint(training_args, compact=1)
 
     r = parse_eval(df_res2, ds_alias)
@@ -382,7 +381,7 @@ def train(training_args):
         run.log({"generations": df_gen_w, **r2})
 
     if wandb.run is not None:
-        print(f"WANDB url = {wandb.run.get_url()}")
+        logger.info(f"WANDB url = {wandb.run.get_url()}")
 
 
 def key_metrics(df_res2, adapter_name, ds_alias):
@@ -514,37 +513,37 @@ def parse_eval(df_res2, ds_alias):
 
     df_metrics = key_metrics(df_res2, adapter_name, ds_alias)
 
-    # print(f'saved results to {f}')
+    # logger.info(f'saved results to {f}')
 
-    print()
-    print(df_metrics.round(3).to_markdown())
-    print("""Table 1: Key metrics (adapter over base model)\n""")
+    logger.info()
+    logger.info(df_metrics.round(3).to_markdown())
+    logger.info("""Table 1: Key metrics (adapter over base model)\n""")
 
     cols = [v.replace("genies_preferences-", "") for v in ds_alias.values()]
     df_res2 = df_res[cols]
     df_res2.columns = list(ds_alias.keys())
     df_res2.index.name = "adapter/ds"
-    print(df_res2.round(3).to_markdown())
-    print("""Table 2: Absolute accuracy\n""")
+    logger.info(df_res2.round(3).to_markdown())
+    logger.info("""Table 2: Absolute accuracy\n""")
 
     df_final = df_metrics.loc["acc[pi/base]"].to_frame(adapter_name).T
     df_final = df_final * 100 - 100  # percentage points
     df_final.index.name = "acc_inc/eval_ds [pp]"
-    print(df_final.round(3).to_markdown())
-    print(
+    logger.info(df_final.round(3).to_markdown())
+    logger.info(
         f"""Table 3⭐: Accuracy increase (in percentage points) after training with named adapter on `{ds_alias["train"]}` compared to base model for various distribution shifts:"""
     )
     for k, v in ds_alias.items():
-        print(f"- `{k}`: `{v}`")
-    print()
+        logger.info(f"- `{k}`: `{v}`")
+    logger.info()
 
     relacc = df_final.iloc[0, :]
     eps = 1e-6
     relrelacc = ((relacc + eps) / (np.abs(relacc["train"] + eps))).drop("train")
     df_relrel = relrelacc.to_frame(f"{adapter_name}").T
     df_relrel.index.name = "acc_inc/acc_inc_train"
-    print(df_relrel.round(3).to_markdown())
-    print(
+    logger.info(df_relrel.round(3).to_markdown())
+    logger.info(
         f"""Table 4: Percent accuracy increase (over base) compared to that of the training dataset `{ds_alias['train']}` [in percentage points]. It measures what fraction of the learning from train generalised to other splits\n"""
     )
 
