@@ -4,7 +4,7 @@ import torch
 from dataclasses import dataclass, asdict
 
 
-@dataclass(frozen=True)
+@dataclass
 class NoneConfig:
     pass
 

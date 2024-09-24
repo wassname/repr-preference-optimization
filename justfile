@@ -107,8 +107,9 @@ run_ds:
 
 
 run_hp:
+export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
     python scripts/train.py side-ether-prefvec --loss.β 0.04
-    python scripts/train.py side-ether-prefvec --loss.β 0.08 --loss.no-use_orth_loss --use_angle_loss
+    python scripts/train.py side-ether-prefvec --loss.β 0.08 --loss.no-use_orth_loss --loss.use_angle_loss
     python scripts/train.py side-ether-prefvec --loss.β 0.3 --loss.no-use_orth_loss --loss.no-use_angle_loss
     python scripts/train.py side-ether-prefvec --loss.no-use_dpo_loss --loss.no-use_orth_loss 
     python scripts/train.py side-ether-prefvec --loss.no-use_dpo_loss --loss.no-use_orth_loss --loss.weight_tokens
@@ -120,6 +121,7 @@ run_hp:
     python scripts/train.py hs-ether-prefvec --transform.Htype=ether --transform.nb=16 --transform.reduction=1
     python scripts/train.py hs-ether-prefvec --transform.Htype=oft --transform.nb=16 --transform.reduction=1
     python scripts/train.py hs-ether-prefvec --transform.Htype=HH --transform.nb=16 --transform.reduction=1
+    just run_ds
 
 
 

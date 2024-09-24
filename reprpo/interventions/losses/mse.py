@@ -101,7 +101,7 @@ def mse_loss(
     return loss, info
 
 
-@dataclass(frozen=True)
+@dataclass
 class MSELossConfig:
     α: float = 1.0
     eps: float = 1e-12

@@ -15,7 +15,7 @@ class OrthoTransform(nn.Module):
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class OrthoConfig:
     orthogonal_map: Literal["householder", "cayley", "matrix_exp"] = "householder"
 

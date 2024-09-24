@@ -48,7 +48,8 @@ def silence():
 
     logging.basicConfig(level=logging.ERROR)
 
-    # os.environ["TQDM_DISABLE"] = "1"
+    os.environ["TQDM_DISABLE"] = "1"
+    os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = "1"
 
 
 def test():

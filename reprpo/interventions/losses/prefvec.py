@@ -130,7 +130,7 @@ def prefec_loss(
     )
     loss_dpo_retain = F.relu(-ptheta)
 
-    loss_retain = 0
+    loss_retain = torch.zeros_like(loss_reroute)
     if use_dpo_loss:
         loss_retain += loss_dpo_retain
     if use_nll_loss:
@@ -152,7 +152,7 @@ def prefec_loss(
     return loss, info
 
 
-@dataclass(frozen=True)
+@dataclass
 class PrefVecLossConfig:
     """
     moves the hidden states of the chosen and rejected hidden states along the preference vector, with some constraints:

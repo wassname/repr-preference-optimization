@@ -68,7 +68,6 @@ def train(training_args):
 
     PL_MODEL = training_args._cls
 
-    logger.info("*" * 80)
     logger.info("PL_MODEL {PL_MODEL}")
 
     ds_name_train = training_args.dataset.replace("genies_preferences-", "")
@@ -101,6 +100,7 @@ def train(training_args):
         entity="wassname",
         group=group_name,
         config=config,
+        mode="disabled" if os.environ.get("WANDB_MODE", None) == "disabled" else "online",
     )
 
     # save_dir
@@ -387,7 +387,7 @@ def train(training_args):
         logger.info(f"WANDB url = {wandb.run.get_url()}")
 
     # return a single value for hyperparam tuning
-    return r['⭐rel_acc']['oos'].iloc[0]
+    return r['⭐rel_acc'].iloc[0].to_dict()
 
 
 def key_metrics(df_res2, adapter_name, ds_alias):

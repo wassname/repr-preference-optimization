@@ -263,7 +263,7 @@ class ETHERLinearSmall(ETHERLinear):
         return self.linear_up(super_out)
 
 
-@dataclass(frozen=True)
+@dataclass
 class ETHERConfig:
     """ETHER parameters"""
 

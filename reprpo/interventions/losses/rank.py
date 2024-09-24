@@ -87,7 +87,7 @@ def rank_loss(
     return loss, info
 
 
-@dataclass(frozen=True)
+@dataclass
 class RankLossConfig:
     α: float = 1.0
     # eps: float = 1e-12
