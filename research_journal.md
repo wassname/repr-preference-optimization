@@ -3143,5 +3143,21 @@ I had a side track to try hybra and oh god-
 
 # 2024-09-25 10:19:19
 
-for cho_perplexity nmke sure I measure that
-and pref acc
+for cho_perplexity make sure I measure that and pref acc
+
+```py
+# DPO 
+model_logratios = model_chosen_logprobs - model_rejected_logprobs
+reference_logratios = reference_chosen_logprobs - reference_rejected_logprobs
+
+reward_accuracies = (chosen_rewards > rejected_rewards).float()
+
+chosen_rewards = model_chosen_logprobs - reference_chosen_logprobs
+rejected_rewards = model_rejected_logprobs - reference_rejected_logprobs
+
+margins = (chosen_rewards - rejected_rewards)
+logits = model_logratios - reference_logratios
+
+# https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
+# https://github.com/eric-mitchell/direct-preference-optimization/blob/f8b8c0f49dc92a430bae41585f9d467d3618fe2f/trainers.py#L253
+```

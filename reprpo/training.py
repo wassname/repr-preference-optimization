@@ -327,7 +327,7 @@ def train(training_args):
             "wassname/genies_preferences",
             name=training_args.dataset,
             split="train",
-            N=N,
+            N=750 if N is None else min(N, 750),
         ),
         load_dataset_n(
             "wassname/genies_preferences", name=training_args.dataset, split="test", N=N
@@ -400,7 +400,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     ds_name_oos = ds_alias["oos"]
     ds_name_rnd = ds_alias["rnd"]
 
-    # main metric, accuracy, how often the preffered answer
+    # main metric, accuracy, how often the prefered answer
     df_res = (
         df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
         .mean()
@@ -411,14 +411,21 @@ def key_metrics(df_res2, adapter_name, ds_alias):
 
     # metric: do we retain coherency? measured with perplexity
     df_res_logp = (
-        df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_perplexity"]
+        df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_ppl"]
         .mean()
         .unstack()
         .T
     )
-    rel_coherency = df_res_logp.loc[adapter_name] / df_res_logp.loc["base"]
+    perplexity_gain_vs_ref = df_res_logp.loc[adapter_name] / df_res_logp.loc["base"]
 
-    # metric: how much do we prefer the chosen over the rejected?
+    # metric: how much does the model follow the preference vs the rejected. log ratio difference or ρθ in GPO https://arxiv.org/html/2402.05749v2
+    df_res2['logratios'] = df_res2['_chosen_logps'] - df_res2['_rejected_logps']
+    df_logratios = df_res2.groupby(['dataset', 'adapter', 'ds_i'])['logratios'].mean().unstack(0)
+    model_logratios = df_logratios.loc[adapter_name]
+    ref_logratios = df_logratios.loc['base']
+    preference_logp_gain_vs_ref = (model_logratios-ref_logratios).mean()
+
+    # metric: how much do we prefer the chosen over the rejected? This is `model_logratios` in DPO
     c = df_res_logp = (
         df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_logps"]
         .mean()
@@ -431,78 +438,36 @@ def key_metrics(df_res2, adapter_name, ds_alias):
         .unstack()
         .T.loc[adapter_name]
     )
-    pref_logprob_gain = c - r
+    preference_logp_gain = c - r
 
     def fmt(s):
         return s.replace("genies_preferences-", "")
 
-    # TODO make multiple cols of index
+    def generate_metrics(metric_name, datasets, values):
+        return [
+            [metric_name, split, fmt(ds_name), values[ds_name]]
+            for split, ds_name in datasets.items()
+        ]
 
-    df_metrics = pd.DataFrame(
-        [
-            # accuracy increase over base measured generalisaton on increasing distribution shifts
-            ["acc_gain_vs_ref", "train", fmt(ds_name_train), acc_gain_vs_ref[ds_name_train]],
-            ["acc_gain_vs_ref", "test", fmt(ds_name_test), acc_gain_vs_ref[ds_name_test]],
-            ["acc_gain_vs_ref", "oos", fmt(ds_name_oos), acc_gain_vs_ref[ds_name_oos]],
-            [
-                "acc_gain_vs_ref",
-                "rnd",
-                fmt(ds_name_rnd),
-                acc_gain_vs_ref[ds_name_rnd],
-            ],  # probobly wont go up as it's unrelated
-            # we want to see if it retains coherency vs the base on chosen answers
-            [
-                "rel_coherency",
-                "train",
-                fmt(ds_name_train),
-                rel_coherency[ds_name_train],
-            ],
-            [
-                "rel_coherency",
-                "test",
-                fmt(ds_name_test),
-                rel_coherency[ds_name_test],
-            ],
-            [
-                "rel_coherency",
-                "oos",
-                fmt(ds_name_oos),
-                rel_coherency[ds_name_oos],
-            ],
-            [
-                "rel_coherency",
-                "rnd",
-                fmt(ds_name_rnd),
-                rel_coherency[ds_name_rnd],
-            ],
-            # we want to see if it retains chosen vs rejected
-            [
-                "pref_logprob_gain",
-                "train",
-                fmt(ds_name_train),
-                pref_logprob_gain[ds_name_train],
-            ],
-            [
-                "pref_logprob_gain",
-                "test",
-                fmt(ds_name_test),
-                pref_logprob_gain[ds_name_test],
-            ],
-            [
-                "pref_logprob_gain",
-                "oos",
-                fmt(ds_name_oos),
-                pref_logprob_gain[ds_name_oos],
-            ],
-            [
-                "pref_logprob_gain",
-                "rnd",
-                fmt(ds_name_rnd),
-                pref_logprob_gain[ds_name_rnd],
-            ],
-        ],
-        columns=["metric", "split", "dataset", "value"],
-    )[["metric", "split", "value", "dataset"]]
+    # Define the datasets
+    datasets = {
+        "train": ds_name_train,
+        "test": ds_name_test,
+        "oos": ds_name_oos,
+        "rnd": ds_name_rnd,
+    }
+
+    # Generate metrics for each category
+    acc_gain_vs_ref_metrics = generate_metrics("acc_gain_vs_ref", datasets, acc_gain_vs_ref)
+    perplexity_gain_vs_ref_metrics = generate_metrics("perplexity_gain_vs_ref", datasets, perplexity_gain_vs_ref)
+    preference_logp_gain_metrics = generate_metrics("preference_logp_gain", datasets, preference_logp_gain)
+    preference_logp_gain_vs_ref_metrics = generate_metrics("preference_logp_gain_vs_ref", datasets, preference_logp_gain_vs_ref)
+
+    # Concatenate all metrics
+    all_metrics = acc_gain_vs_ref_metrics + perplexity_gain_vs_ref_metrics + preference_logp_gain_metrics + preference_logp_gain_vs_ref_metrics
+
+    # Create DataFrame
+    df_metrics = pd.DataFrame(all_metrics, columns=["metric", "split", "dataset", "value"])[["metric", "split", "value", "dataset"]]
     df_metrics = df_metrics.set_index(["metric", "split"])
     df_metrics = df_metrics["value"].unstack()
     df_metrics.index.name = f"{adapter_name}\dist shift"
@@ -547,13 +512,13 @@ def parse_eval(df_res2, ds_alias):
 
 
     # format for wandb. just one row, one data type per table
-    df_rel_coh = df_metrics.loc["pref_logprob_gain"].to_frame(adapter_name).T
-    df_coh = df_metrics.loc["rel_coherency"].to_frame(adapter_name).T
+    df_rel_coh = df_metrics.loc["preference_logp_gain"].to_frame(adapter_name).T
+    df_coh = df_metrics.loc["perplexity_gain_vs_ref"].to_frame(adapter_name).T
     df_acc = df_res2.loc[adapter_name].to_frame(adapter_name).T
     df_rel_coh.index.name = df_acc.index.name = df_coh.index.name = adapter_name
     return {
         "acc": df_acc,
-        '🥇acc_gain_vs_ref': df_final,
-        '🥈pref_logprob_gain': df_rel_coh,
-        '🥉rel_coherency': df_coh,
+        'acc_gain_vs_ref': df_final,
+        'preference_logp_gain': df_rel_coh,
+        'perplexity_gain_vs_ref': df_coh,
     }
