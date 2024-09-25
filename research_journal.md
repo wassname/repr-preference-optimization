@@ -3140,3 +3140,8 @@ I had a side track to try hybra and oh god-
 - the structured config stuff doesn't extend beyond the tutorials
 - doing sweeps is a pain still! you still need to configure everything
 - maybe easier just to loop through dataclasses in tyro...
+
+# 2024-09-25 10:19:19
+
+for cho_perplexity nmke sure I measure that
+and pref acc

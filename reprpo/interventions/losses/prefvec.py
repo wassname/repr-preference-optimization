@@ -168,7 +168,7 @@ class PrefVecLossConfig:
 
     eps: float = 1e-12
 
-    β: float = 0.2
+    β: float = 0.4
     """factor to punish orthogonal movement"""
 
     use_orth_loss: bool = True
@@ -180,7 +180,7 @@ class PrefVecLossConfig:
     use_dpo_loss: bool = True
     """punish model if rejected completion is more likely than the chosen"""
 
-    use_nll_loss: bool = True
+    use_nll_loss: bool = False
     """punish model if output is less coherent than reference model"""
 
     weight_tokens: bool = False

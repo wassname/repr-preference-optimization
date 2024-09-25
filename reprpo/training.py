@@ -60,6 +60,10 @@ from loguru import logger
 
 remove_warnings()
 
+logger.remove()
+# LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
+LOGURU_FORMAT = '|<level>{level}</level>| {message}'
+logger.add(os.sys.stdout, format=LOGURU_FORMAT, level="INFO")
 
 def train(training_args):
     if training_args.verbose < 1:
@@ -117,10 +121,6 @@ def train(training_args):
 
     # logging
     log_file = save_dir / 'log.txt'
-    logger.remove()
-    # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
-    LOGURU_FORMAT = '|<level>{level}</level>| {message}'
-    logger.add(os.sys.stdout, format=LOGURU_FORMAT, level="INFO")
     logger.add(log_file, level="INFO", format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}")
 
 
@@ -386,8 +386,11 @@ def train(training_args):
     if wandb.run is not None:
         logger.info(f"WANDB url = {wandb.run.get_url()}")
 
-    # return a single value for hyperparam tuning
-    return r['⭐rel_acc'].iloc[0].to_dict()
+    # return a single dict for hyperparam tuning
+    dd = [{f'{metric}/{split}':v for split,v in df.iloc[0].to_dict().items()} for metric,df in r.items()]
+    rd={}
+    [rd.update(**ddd) for ddd in dd]
+    return rd
 
 
 def key_metrics(df_res2, adapter_name, ds_alias):
@@ -397,24 +400,25 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     ds_name_oos = ds_alias["oos"]
     ds_name_rnd = ds_alias["rnd"]
 
+    # main metric, accuracy, how often the preffered answer
     df_res = (
         df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
         .mean()
         .unstack()
         .T
     )
-    rel_acc = df_res.loc[adapter_name] / df_res.loc["base"]
+    acc_gain_vs_ref = df_res.loc[adapter_name] / df_res.loc["base"]
 
-    # metric: do we retrain train coherency?
+    # metric: do we retain coherency? measured with perplexity
     df_res_logp = (
-        df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_logps"]
+        df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_perplexity"]
         .mean()
         .unstack()
         .T
     )
-    rel_coherency = df_res_logp.loc[adapter_name] - df_res_logp.loc["base"]
+    rel_coherency = df_res_logp.loc[adapter_name] / df_res_logp.loc["base"]
 
-    # metric: do we retrain train coherency?
+    # metric: how much do we prefer the chosen over the rejected?
     c = df_res_logp = (
         df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_logps"]
         .mean()
@@ -427,7 +431,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
         .unstack()
         .T.loc[adapter_name]
     )
-    cho_rej_coh = c - r
+    pref_logprob_gain = c - r
 
     def fmt(s):
         return s.replace("genies_preferences-", "")
@@ -437,64 +441,64 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     df_metrics = pd.DataFrame(
         [
             # accuracy increase over base measured generalisaton on increasing distribution shifts
-            ["acc[pi/base]", "train", fmt(ds_name_train), rel_acc[ds_name_train]],
-            ["acc[pi/base]", "test", fmt(ds_name_test), rel_acc[ds_name_test]],
-            ["acc[pi/base]", "oos", fmt(ds_name_oos), rel_acc[ds_name_oos]],
+            ["acc_gain_vs_ref", "train", fmt(ds_name_train), acc_gain_vs_ref[ds_name_train]],
+            ["acc_gain_vs_ref", "test", fmt(ds_name_test), acc_gain_vs_ref[ds_name_test]],
+            ["acc_gain_vs_ref", "oos", fmt(ds_name_oos), acc_gain_vs_ref[ds_name_oos]],
             [
-                "acc[pi/base]",
+                "acc_gain_vs_ref",
                 "rnd",
                 fmt(ds_name_rnd),
-                rel_acc[ds_name_rnd],
+                acc_gain_vs_ref[ds_name_rnd],
             ],  # probobly wont go up as it's unrelated
             # we want to see if it retains coherency vs the base on chosen answers
             [
-                "coherency[pi-base]",
+                "rel_coherency",
                 "train",
                 fmt(ds_name_train),
                 rel_coherency[ds_name_train],
             ],
             [
-                "coherency[pi-base]",
+                "rel_coherency",
                 "test",
                 fmt(ds_name_test),
                 rel_coherency[ds_name_test],
             ],
             [
-                "coherency[pi-base]",
+                "rel_coherency",
                 "oos",
                 fmt(ds_name_oos),
                 rel_coherency[ds_name_oos],
             ],
             [
-                "coherency[pi-base]",
+                "rel_coherency",
                 "rnd",
                 fmt(ds_name_rnd),
                 rel_coherency[ds_name_rnd],
             ],
             # we want to see if it retains chosen vs rejected
             [
-                "coherency[cho-rej]",
+                "pref_logprob_gain",
                 "train",
                 fmt(ds_name_train),
-                cho_rej_coh[ds_name_train],
+                pref_logprob_gain[ds_name_train],
             ],
             [
-                "coherency[cho-rej]",
+                "pref_logprob_gain",
                 "test",
                 fmt(ds_name_test),
-                cho_rej_coh[ds_name_test],
+                pref_logprob_gain[ds_name_test],
             ],
             [
-                "coherency[cho-rej]",
+                "pref_logprob_gain",
                 "oos",
                 fmt(ds_name_oos),
-                cho_rej_coh[ds_name_oos],
+                pref_logprob_gain[ds_name_oos],
             ],
             [
-                "coherency[cho-rej]",
+                "pref_logprob_gain",
                 "rnd",
                 fmt(ds_name_rnd),
-                cho_rej_coh[ds_name_rnd],
+                pref_logprob_gain[ds_name_rnd],
             ],
         ],
         columns=["metric", "split", "dataset", "value"],
@@ -531,36 +535,25 @@ def parse_eval(df_res2, ds_alias):
     logger.info(df_res2.round(3).to_markdown())
     logger.info("""Table 2: Absolute accuracy\n""")
 
-    df_final = df_metrics.loc["acc[pi/base]"].to_frame(adapter_name).T
+    df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(adapter_name).T
     df_final = df_final * 100 - 100  # percentage points
     df_final.index.name = "acc_inc/eval_ds [pp]"
     logger.info(f"\n{df_final.round(3).to_markdown()}")
     logger.info(
-        f"""Table 3⭐: Accuracy increase (in percentage points) after training with named adapter on `{ds_alias["train"]}` compared to base model for various distribution shifts:"""
+        f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on `{ds_alias["train"]}` compared to base model for various distribution shifts:"""
     )
     for k, v in ds_alias.items():
         logger.info(f"- `{k}`: `{v}`")
 
-    relacc = df_final.iloc[0, :]
-    eps = 1e-6
-    relrelacc = ((relacc + eps) / (np.abs(relacc["train"] + eps))).drop("train")
-    df_relrel = relrelacc.to_frame(f"{adapter_name}").T
-    df_relrel.index.name = "acc_inc/acc_inc_train"
-    logger.info(f"\n{df_relrel.round(3).to_markdown()}")
-    logger.info(
-        f"""Table 4: Percent accuracy increase (over base) compared to that of the training dataset `{ds_alias['train']}` [in percentage points]. It measures what fraction of the learning from train generalised to other splits\n"""
-    )
 
     # format for wandb. just one row, one data type per table
-    df_rel_coh = df_metrics.loc["coherency[cho-rej]"].to_frame(adapter_name).T
-    df_coh = df_metrics.loc["coherency[pi-base]"].to_frame(adapter_name).T
+    df_rel_coh = df_metrics.loc["pref_logprob_gain"].to_frame(adapter_name).T
+    df_coh = df_metrics.loc["rel_coherency"].to_frame(adapter_name).T
     df_acc = df_res2.loc[adapter_name].to_frame(adapter_name).T
     df_rel_coh.index.name = df_acc.index.name = df_coh.index.name = adapter_name
     return {
         "acc": df_acc,
-        # "relative_metrics": df_metrics, # TODO break up into 3
-        "relrel_acc": df_relrel,
-        '⭐rel_acc': df_final,
-        'coherency[cho-rej]': df_rel_coh,
-        'coherency[pi-base]': df_coh,
+        '🥇acc_gain_vs_ref': df_final,
+        '🥈pref_logprob_gain': df_rel_coh,
+        '🥉rel_coherency': df_coh,
     }
