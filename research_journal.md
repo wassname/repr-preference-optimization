@@ -3192,3 +3192,9 @@ ValueError: BoTorch `Model` has not yet been constructed, please fit the surroga
  'transform.nb': 6,
  'transform.reduction': 60,
  'transform.Htype': 'etherplusHH'}
+
+
+
+To run trials I would like
+- initial trial of defaults
+- to choose a faster models than botrch?

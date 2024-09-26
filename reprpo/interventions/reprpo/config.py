@@ -34,7 +34,7 @@ class ReprPOConfig(ExperimentConfig):
     collect_hs: bool = False
     """collect hidden states instead of activations"""
 
-    loss: LossesType = Losses.prefvec.values
+    loss: LossesType = Losses.prefvec.value
     """loss function"""
 
     transform: TransformType = Transforms.ether.value
