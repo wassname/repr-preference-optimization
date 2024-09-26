@@ -51,6 +51,7 @@
         {
             "name": "scratch",
             "type": "debugpy",
+            "justMyCode": false,
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0", 
             "TOKENIZERS_PARALLELISM": "false",
@@ -66,8 +67,8 @@
             "autoReload": {"enable": true},
             "args": [
                 // "hs-dist",
-                "hs-ether-prefvec",
-                "--verbose=1",
+                "projgrad",
+                "--verbose=2",
                 // "--loss.β=0.2",
                 // "--eval_samples=128",
                 // "--batch-size=24", 

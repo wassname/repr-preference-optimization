@@ -13,6 +13,31 @@ from torch import nn
 from peft.tuners.lora.config import LoraConfig
 from peft.tuners.lora.layer import Linear as LoraLinear
 
+from torch.autograd import Function
+
+class GradProjFunction(Function):
+    @staticmethod
+    # ctx is the first argument to forward
+    def forward(ctx, input, ref_cho, ref_rej):
+        ctx.save_for_backward(input, ref_cho, ref_rej)
+        return input
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, ref_cho, ref_rej = ctx.saved_tensors
+        # now take only the preferred direction
+        eps = 1e-12
+        pref_dir = ref_cho-ref_rej
+        pref_dir_unit = pref_dir / pref_dir.norm(dim=-1, keepdim=True).clamp(eps)
+        
+        # get projection of `grad` along ref_dir
+        # grad is 'b t h'
+        grad_projected_onto_preference = (pref_dir_unit * grad_output).sum(dim=-1, keepdim=True) * pref_dir_unit
+        grad_orthogonal = grad_output - grad_projected_onto_preference
+
+        # only use that part
+        return grad_projected_onto_preference, ref_cho.clone()*0, ref_rej.clone()*0
+
 class ProjGradLinear(LoraLinear):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -22,28 +47,14 @@ class ProjGradLinear(LoraLinear):
     def forward(self, x):
         h = super().forward(x)
         if self._mode != "normal":
-            assert self._mode in ["cho", "rej"]
+            assert self._mode in ["ref_cho", "ref_rej"]
             self._cache[self._mode] = h.detach()
 
-    def custom_backward(self, grad_output):
-        grad = super().backward(grad_output)
+        if 'ref_cho' in self._cache and 'ref_rej' in self._cache:
+            return GradProjFunction.apply(h, self._cache['ref_cho'], self._cache['ref_rej'])
+        else:
+            return h
 
-        # now take only the preferred direction
-        eps = 1e-12
-        c = self._cache["ref_cho"]
-        r = self._cache["ref_rej"]
-        pref_dir = c-r
-        pref_dir_unit = pref_dir / pref_dir.norm(dim=-1, keepdim=True).clamp(eps)
-        
-        # get projection of `a` along ref_dir
-        grad_proj = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
-        grad_orth = grad - grad_proj
-
-        # free cach
-        self._cache = {}
-
-        # only use that part
-        return grad_proj
 
 from contextlib import contextmanager
 
