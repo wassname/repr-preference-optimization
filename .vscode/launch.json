@@ -43,9 +43,9 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "hs-ether-rank",
+                "projgrad",
                 "--dev", 
-                "--verbose=1",
+                "--verbose=2",
             ]
         },
         {

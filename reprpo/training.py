@@ -64,7 +64,7 @@ def train(training_args):
 
     PL_MODEL = training_args._cls
 
-    logger.info("PL_MODEL {PL_MODEL}")
+    logger.info(f"PL_MODEL {PL_MODEL}")
 
     ds_name_train = training_args.dataset.replace("genies_preferences-", "")
     model_name = training_args.base_model.split("/")[-1]
@@ -141,8 +141,8 @@ def train(training_args):
         task_type="CAUSAL_LM",
         # target_modules=["all-linear"], #  QLoRA-style training
     )
-    if hasattr(PL_MODEL, 'setup_grad_proj'):
-        peft_config = PL_MODEL.setup_grad_proj(peft_config)
+    # if hasattr(PL_MODEL, 'setup_grad_proj'):
+    #     peft_config = PL_MODEL.setup_grad_proj(peft_config)
     
     model = get_peft_model(model, peft_config, adapter_name=finetune_name)
     print_trainable_parameters(model)

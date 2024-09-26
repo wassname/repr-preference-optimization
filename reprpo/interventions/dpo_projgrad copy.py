@@ -7,7 +7,6 @@ from .losses.helpers import cross_entropy_loss
 from .helpers import compute_logprobs
 from .dpo import compute_dpo_loss
 
-
 # https://huggingface.co/docs/peft/developer_guides/custom_models
 from torch import nn
 
@@ -107,6 +106,7 @@ def set_projgrad_mode(model: nn.Module, mode: str):
         if isinstance(module, ProjGradLinear):
             module._mode = module._old_mode
 
+
 def compute_gradproj_loss_batch(batch, model, β=0.1):
     """Compute the DPO loss on an input batch"""
 
@@ -121,19 +121,19 @@ def compute_gradproj_loss_batch(batch, model, β=0.1):
     model.eval()
     with torch.no_grad():
         with model.disable_adapter():
-            with set_projgrad_mode(model, "ref_cho"):
-                ref_cho = model(
-                    batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs
-                )
+            # with set_projgrad_mode(model, "ref_cho"):
+            ref_cho = model(
+                batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs
+            )
             ref_chosen_log_probas = compute_logprobs(
                 logits=ref_cho.logits,
                 labels=batch["chosen"],
                 selection_mask=batch["chosen_mask"],
             )
-            with set_projgrad_mode(model, "ref_rej"):
-                ref_rej = model(
-                    batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
-                )
+            # with set_projgrad_mode(model, "ref_rej"):
+            ref_rej = model(
+                batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
+            )
             ref_rejected_log_probas = compute_logprobs(
                 logits=ref_rej.logits,
                 labels=batch["rejected"],
@@ -184,10 +184,15 @@ def compute_gradproj_loss_batch(batch, model, β=0.1):
     return loss, info
 
 
-class PL_ProjGrad_MODEL(PL_MODEL):
-    def _loss_fn(self, batch, model):
-        return compute_gradproj_loss_batch(batch, model)
+class PL_GradProj_MODEL(PL_MODEL):
+    def __init__(self, *args, β=0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.β = β
+        # self.register_hooks()
 
+    def _loss_fn(self, batch, model):
+        return compute_gradproj_loss_batch(batch, model, self.β)
+    
     # def register_hooks(self):
     #     found = False
     #     for module in self.modules():
@@ -203,16 +208,19 @@ class PL_ProjGrad_MODEL(PL_MODEL):
     #     # config._register_custom_module(custom_module_mapping)
     #     return config
 
+
 @dataclass
 class DPOProjGradConfig(ExperimentConfig):
     lr: float = 5e-5
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
-    _cls = PL_ProjGrad_MODEL
+    β: float = 0.
 
-    _model_keys = ["lr"]
+    _cls = PL_GradProj_MODEL
+
+    _model_keys = ["lr", "β"]
 
     @property
     def _name(self):
-        return "dpo"
+        return "gradproj"

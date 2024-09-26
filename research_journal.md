@@ -3239,3 +3239,13 @@ dpo
 | projgrad 1e-4           |  -0.832 | -1.683 | -7.961 | -1.84 |
 | projgrad  5e-5          |   0.555 |  0.281 | -1.165 | 0.153 |
 | 1e-6                    |   0.139 |   0.14 | -0.388 | 0.153 |
+
+
+so may grad is zero
+- if I wrap lora... hmm damn
+
+maybe if I register a backware pre hook on the base layer instead?
+
+
+mait it's broken even with o wrapping or hooks, where is my problem?
+
