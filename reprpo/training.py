@@ -141,6 +141,9 @@ def train(training_args):
         task_type="CAUSAL_LM",
         # target_modules=["all-linear"], #  QLoRA-style training
     )
+    if hasattr(PL_MODEL, 'setup_grad_proj'):
+        peft_config = PL_MODEL.setup_grad_proj(peft_config)
+    
     model = get_peft_model(model, peft_config, adapter_name=finetune_name)
     print_trainable_parameters(model)
     if training_args.verbose > 1:
