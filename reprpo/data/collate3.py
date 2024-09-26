@@ -11,10 +11,9 @@ see
 """
 from contextlib import contextmanager
 from transformers import PreTrainedTokenizerBase
-from typing import Any, Dict, List
+from typing import Any, Dict
 from datasets.formatting.formatting import LazyRow
 from dataclasses import dataclass
-import torch
 
 
 @contextmanager

@@ -1,6 +1,5 @@
 {
     "recommendations": [
-        "ms-toolsai.jupyter",
         "yzhang.markdown-all-in-one",
         "ms-python.vscode-pylance",
         "ms-python.debugpy",

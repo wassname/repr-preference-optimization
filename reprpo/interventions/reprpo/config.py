@@ -1,8 +1,7 @@
 from reprpo.interventions.config import ExperimentConfig
-from reprpo.interventions.losses import Losses, mse, LossesType
+from reprpo.interventions.losses import Losses, LossesType
 from reprpo.interventions.transforms import Transforms, TransformType
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 from .model import PL_REPRPO_MODEL
 
 
@@ -55,7 +54,7 @@ class ReprPOConfig(ExperimentConfig):
 
     @property
     def _name(self):
-        transform = type(self.transform).__name__.replace('Config', '')
-        loss = type(self.loss).__name__.replace('Config', '').replace('Loss', '')
-        h = 'side' if len(self.collection_layers_side) > 0 else 'hs'
+        transform = type(self.transform).__name__.replace("Config", "")
+        loss = type(self.loss).__name__.replace("Config", "").replace("Loss", "")
+        h = "side" if len(self.collection_layers_side) > 0 else "hs"
         return f"{h}-{transform}-{loss}"

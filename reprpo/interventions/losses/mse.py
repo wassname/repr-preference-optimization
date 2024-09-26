@@ -1,15 +1,15 @@
-from jaxtyping import Float, Int
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from jaxtyping import Float
+from typing import Any, Callable, Dict, Optional
 from torch import Tensor
-from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
-from .helpers import cross_entropy_loss
-from ..types import HS, HS2, Mask, ReprPOModelOutput
-from ..reprpo.helpers import reduce_tokens_w_attention, detach_hsd
+from ..types import HS2, ReprPOModelOutput
+from ..reprpo.helpers import reduce_tokens_w_attention
 
 
-def log_dist_ratio(a: HS2, b: HS2, a_ref: HS2, b_ref: HS2, eps=1e-12) -> Float[Tensor, "b"]:
+def log_dist_ratio(
+    a: HS2, b: HS2, a_ref: HS2, b_ref: HS2, eps=1e-12
+) -> Float[Tensor, "b"]:
     """distance between a and b, as a log ratio to the distance between a_ref and b_ref"""
 
     dist = a - b
@@ -19,7 +19,7 @@ def log_dist_ratio(a: HS2, b: HS2, a_ref: HS2, b_ref: HS2, eps=1e-12) -> Float[T
 
     # if provided with reference points, return the distance as a ratio to the reference distance
     if (a_ref is not None) and (b_ref is not None):
-        dist_ref = (a_ref - b_ref)
+        dist_ref = a_ref - b_ref
         dist_ref = torch.norm(dist_ref, dim=-1)
         dist_ref = dist_ref + eps
 
@@ -51,7 +51,7 @@ def mse_loss(
         hs = reduce_tokens_w_attention(hs, o.mask)
         return hs
 
-    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) ->  Dict[str, Float[Tensor, 'b']]:
+    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, "b"]]:
         hs_pi_cho = preproc_hs(pi_cho, k)
         hs_pi_rej = preproc_hs(pi_rej, k)
         hs_ref_cho = preproc_hs(ref_cho, k)  # .detach()
@@ -60,7 +60,7 @@ def mse_loss(
         # loss_reroute: the repr of policy rejected responses should be closer to the reference chosen responses
         # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
         loss_reroute = log_dist_ratio(
-            hs_ref_cho,#.detach(),
+            hs_ref_cho,  # .detach(),
             hs_pi_rej,
             hs_ref_cho,
             hs_ref_rej,
@@ -70,7 +70,7 @@ def mse_loss(
         # loss_retain: the repr of policy model chosen responses should be closer to the ref model chosen responses
         # we scale it using the reference model as a stable target
         loss_retain = log_dist_ratio(
-            hs_ref_cho,#.detach(),
+            hs_ref_cho,  # .detach(),
             hs_pi_cho,
             hs_ref_cho,
             hs_ref_rej,

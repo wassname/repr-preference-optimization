@@ -5,13 +5,21 @@ from dataclasses import dataclass, asdict
 import warnings
 from typing import Optional
 
+
 class HRATransform(nn.Module):
     """
     see
     - https://github.com/huggingface/peft/blob/54be5a3db61748d698ca2e6b55bcfef229a9b475/src/peft/tuners/hra/layer.py#L197
     """
 
-    def __init__(self, in_features, out_features, r=8, apply_GS=False, model: Optional[nn.Module]=None):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        r=8,
+        apply_GS=False,
+        model: Optional[nn.Module] = None,
+    ):
         super().__init__()
 
         self.hra_r = r

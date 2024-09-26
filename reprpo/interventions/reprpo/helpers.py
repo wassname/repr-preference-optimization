@@ -1,12 +1,10 @@
 import torch
-import torch.nn.functional as F
-from einops import rearrange, repeat, reduce
+from einops import repeat
 
 from torch import Tensor
-from jaxtyping import Float, Int
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from jaxtyping import Float
 
-from baukit.nethook import TraceDict, get_module
+from baukit.nethook import get_module
 import itertools
 from reprpo.interventions.types import HS, Mask
 
@@ -29,11 +27,13 @@ def detach_hsd(hs):
     """detach dict of hidden states"""
     return {k: v.detach() for k, v in hs.items()}
 
+
 def create_exp_weights(layer_attn_mask, dim, 𝜏=50) -> torch.Tensor:
     """Create normalized exponentially decaying weights for a given sequence length."""
     cumsum_mask = layer_attn_mask.cumsum(dim)
-    exp_weights = torch.exp(-cumsum_mask/𝜏) * layer_attn_mask
+    exp_weights = torch.exp(-cumsum_mask / 𝜏) * layer_attn_mask
     return exp_weights / exp_weights.sum(dim, keepdim=True)
+
 
 def reduce_tokens_w_attention(
     x: HS, attn_mask: Mask, dim: int = 1, weight_tokens: bool = False

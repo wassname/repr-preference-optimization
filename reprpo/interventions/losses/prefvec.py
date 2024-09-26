@@ -1,12 +1,12 @@
-from jaxtyping import Float, Int
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from jaxtyping import Float
+from typing import Any, Callable, Dict, Optional
 from torch import Tensor
 from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
 
 from .helpers import cross_entropy_loss, compute_ptheta
-from ..types import HS, Mask, ReprPOModelOutput
+from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
 
@@ -20,7 +20,7 @@ def prefec_loss(
     # custom loss_args
     α: float = 1.0,
     eps=1e-12,
-    β = 0.1,
+    β=0.1,
     use_orth_loss=True,
     use_angle_loss=True,
     use_dpo_loss=True,
@@ -38,7 +38,7 @@ def prefec_loss(
         hs = reduce_tokens_w_attention(hs, o.mask, weight_tokens=weight_tokens)
         return hs
 
-    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, 'b']]:
+    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, "b"]]:
         hs_pi_cho = preproc_hs(pi_cho, k)
         hs_pi_rej = preproc_hs(pi_rej, k)
         hs_ref_cho = preproc_hs(ref_cho, k)  # .detach()
@@ -67,12 +67,8 @@ def prefec_loss(
             cosine_sim = F.cosine_similarity(a, ref_dir, dim=-1)
             return a_proj.mean(dim=-1), a_orth.mean(dim=-1), cosine_sim
 
-        cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(
-            cho, pref_dir
-        )
-        rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(
-            rej, pref_dir
-        )
+        cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(cho, pref_dir)
+        rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(rej, pref_dir)
 
         # goes down if the hs moves along the direction of the preference vector
         loss_cho_proj = -cho_pref - rej_pref
@@ -89,7 +85,6 @@ def prefec_loss(
             loss_cho_proj=loss_cho_proj,
             loss_cho_orth=loss_cho_orth,
             loss_angle=loss_angle,
-
             _cho_orthorgonal2pref=cho_orth,
             _ref_orthorgonal2pref=ref_orth,
             _signed_cho_pref=cho_pref,
@@ -156,7 +151,7 @@ def prefec_loss(
 class PrefVecLossConfig:
     """
     moves the hidden states of the chosen and rejected hidden states along the preference vector, with some constraints:
-    - keep text at least as coherent (relu(mode/base), 
+    - keep text at least as coherent (relu(mode/base),
     - keep the chosen answer at least prefered (relu(rej-cho)
     - punish movement orthogonal to the preference vector: by distance * β
     - punish movement orthogonal to the preference vector: by angle * β
@@ -166,9 +161,9 @@ class PrefVecLossConfig:
     # α: float = 1.0
     # """balance between reroute and retain loss."""
 
-    eps: float = 1.e-12
+    eps: float = 1.0e-12
 
-    β: float = 1.e-6
+    β: float = 1.0e-6
     """factor to punish orthogonal movement"""
 
     use_orth_loss: bool = True

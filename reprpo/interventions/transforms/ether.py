@@ -1,11 +1,10 @@
 """
 https://github.dev/mwbini/ether
 """
-from typing import Any, Dict, List, Optional, Tuple, Type, Union, Literal, Callable
+from typing import Optional
 
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
 import math
 from dataclasses import dataclass, asdict
 
@@ -241,7 +240,7 @@ class ETHERLinearSmall(ETHERLinear):
         Htype: str = "ether",
         ether_dropout: float = 0.0,
         flip_side: bool = False,
-        model: Optional[nn.Module]=None,
+        model: Optional[nn.Module] = None,
         **kwargs,
     ):
         super().__init__(

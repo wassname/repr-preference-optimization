@@ -1,6 +1,5 @@
 import sympy as sp
 from typing import Dict, Any
-from IPython.display import display
 from sympy import init_printing
 
 init_printing()

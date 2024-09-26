@@ -8,12 +8,9 @@ from pprint import pprint
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-import logging
-import warnings
 from collections import OrderedDict
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 # from matplotlib import pyplot as plt
 # lightning
@@ -23,34 +20,28 @@ import lightning as pl
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from datasets import load_dataset
 
 # get a union class from the enum
 
-from einops import rearrange, reduce, repeat
-from jaxtyping import Bool, Float, Int
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.loggers.wandb import WandbLogger
 from lightning.pytorch.callbacks import LearningRateMonitor
 from reprpo.helpers.pl_gen import GenCallback
 
 from open_pref_eval.datasets import ds2name, load_dataset_n
-from open_pref_eval.datasets.ethics import get_ethics_datasets
 from open_pref_eval.datasets.genies import GENIES, dist2datasets
 from open_pref_eval.evaluation import evaluate_model
-from open_pref_eval.plot.radar import radar_plot
 
 # ML
 from peft import LoraConfig, get_peft_model
-from peft.tuners import BOFTConfig, IA3Config, LoraConfig, OFTConfig
+from peft.tuners import LoraConfig
 from torch.utils.data import DataLoader
 
 import wandb
 from reprpo.data.collate3 import TokenizeRow
 from reprpo.gen import display_gen, get_model_generations
-from reprpo.helpers.lightning_hist import plot_hist, read_metrics_csv
+from reprpo.helpers.lightning_hist import read_metrics_csv
 
 # Local
 from reprpo.helpers.torch import clear_mem
@@ -62,8 +53,9 @@ remove_warnings()
 
 logger.remove()
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
-LOGURU_FORMAT = '|<level>{level}</level>| {message}'
+LOGURU_FORMAT = "|<level>{level}</level>| {message}"
 logger.add(os.sys.stdout, format=LOGURU_FORMAT, level="INFO")
+
 
 def train(training_args):
     if training_args.verbose < 1:
@@ -99,12 +91,14 @@ def train(training_args):
 
     config = asdict(training_args)
     run = wandb.init(
-        project=f"reprpo2",
+        project="reprpo2",
         name=run_fname,
         entity="wassname",
         group=group_name,
         config=config,
-        mode="disabled" if os.environ.get("WANDB_MODE", None) == "disabled" else "online",
+        mode="disabled"
+        if os.environ.get("WANDB_MODE", None) == "disabled"
+        else "online",
     )
 
     # save_dir
@@ -117,12 +111,15 @@ def train(training_args):
     save_dir.mkdir(exist_ok=True, parents=True)
 
     # config
-    (save_dir / 'config.json').open('w').write(json.dumps(config, indent=4))
+    (save_dir / "config.json").open("w").write(json.dumps(config, indent=4))
 
     # logging
-    log_file = save_dir / 'log.txt'
-    logger.add(log_file, level="INFO", format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}")
-
+    log_file = save_dir / "log.txt"
+    logger.add(
+        log_file,
+        level="INFO",
+        format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}",
+    )
 
     model, tokenizer = load_model(
         training_args.base_model,
@@ -130,7 +127,6 @@ def train(training_args):
         load_in_8bit=training_args.load_in_8bit,
         # attn_implementation='eager' # for gemma
     )
-
 
     # ### Load adapter
     """
@@ -176,8 +172,6 @@ def train(training_args):
         logger.info(
             f"Chosens truncated {np.mean(dataset3['train']['chosen_truncated']):2.2%}"
         )
-
-    from transformers.data.data_collator import default_data_collator
 
     ds = dataset3
     dl_train = DataLoader(
@@ -233,8 +227,12 @@ def train(training_args):
         ideal_batch_size / training_args.batch_size
     ).astype(int)
     if training_args.verbose:
-        logger.info(f"max optimiser steps {max_steps}", )
-        logger.info(f"accumulate_grad_batches {accumulate_grad_batches}", )
+        logger.info(
+            f"max optimiser steps {max_steps}",
+        )
+        logger.info(
+            f"accumulate_grad_batches {accumulate_grad_batches}",
+        )
         logger.info(
             f"accumulated batch size {training_args.batch_size * accumulate_grad_batches}"
         )
@@ -253,8 +251,6 @@ def train(training_args):
         # model args
         **model_kwargs,
     )
-
-
 
     callbacks = [
         LearningRateMonitor(logging_interval="step"),
@@ -334,9 +330,9 @@ def train(training_args):
         ),
     ]
     datasets += dist2datasets(
-        GENIES, 
+        GENIES,
         # N=N, # can't cheap out on the main metric
-        source=[training_args.dataset]
+        source=[training_args.dataset],
     )  # our hard OOS test
     # datasets += get_ethics_datasets(N=N)
     datasets += [
@@ -387,8 +383,11 @@ def train(training_args):
         logger.info(f"WANDB url = {wandb.run.get_url()}")
 
     # return a single dict for hyperparam tuning
-    dd = [{f'{metric}/{split}':v for split,v in df.iloc[0].to_dict().items()} for metric,df in r.items()]
-    rd={}
+    dd = [
+        {f"{metric}/{split}": v for split, v in df.iloc[0].to_dict().items()}
+        for metric, df in r.items()
+    ]
+    rd = {}
     [rd.update(**ddd) for ddd in dd]
     return rd
 
@@ -419,11 +418,13 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     perplexity_gain_vs_ref = df_res_logp.loc[adapter_name] / df_res_logp.loc["base"]
 
     # metric: how much does the model follow the preference vs the rejected. log ratio difference or ρθ in GPO https://arxiv.org/html/2402.05749v2
-    df_res2['logratios'] = df_res2['_chosen_logps'] - df_res2['_rejected_logps']
-    df_logratios = df_res2.groupby(['dataset', 'adapter', 'ds_i'])['logratios'].mean().unstack(0)
+    df_res2["logratios"] = df_res2["_chosen_logps"] - df_res2["_rejected_logps"]
+    df_logratios = (
+        df_res2.groupby(["dataset", "adapter", "ds_i"])["logratios"].mean().unstack(0)
+    )
     model_logratios = df_logratios.loc[adapter_name]
-    ref_logratios = df_logratios.loc['base']
-    preference_logp_gain_vs_ref = (model_logratios-ref_logratios).mean()
+    ref_logratios = df_logratios.loc["base"]
+    preference_logp_gain_vs_ref = (model_logratios - ref_logratios).mean()
 
     # metric: how much do we prefer the chosen over the rejected? This is `model_logratios` in DPO
     c = df_res_logp = (
@@ -458,16 +459,31 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     }
 
     # Generate metrics for each category
-    acc_gain_vs_ref_metrics = generate_metrics("acc_gain_vs_ref", datasets, acc_gain_vs_ref)
-    perplexity_gain_vs_ref_metrics = generate_metrics("perplexity_gain_vs_ref", datasets, perplexity_gain_vs_ref)
-    preference_logp_gain_metrics = generate_metrics("preference_logp_gain", datasets, preference_logp_gain)
-    preference_logp_gain_vs_ref_metrics = generate_metrics("preference_logp_gain_vs_ref", datasets, preference_logp_gain_vs_ref)
+    acc_gain_vs_ref_metrics = generate_metrics(
+        "acc_gain_vs_ref", datasets, acc_gain_vs_ref
+    )
+    perplexity_gain_vs_ref_metrics = generate_metrics(
+        "perplexity_gain_vs_ref", datasets, perplexity_gain_vs_ref
+    )
+    preference_logp_gain_metrics = generate_metrics(
+        "preference_logp_gain", datasets, preference_logp_gain
+    )
+    preference_logp_gain_vs_ref_metrics = generate_metrics(
+        "preference_logp_gain_vs_ref", datasets, preference_logp_gain_vs_ref
+    )
 
     # Concatenate all metrics
-    all_metrics = acc_gain_vs_ref_metrics + perplexity_gain_vs_ref_metrics + preference_logp_gain_metrics + preference_logp_gain_vs_ref_metrics
+    all_metrics = (
+        acc_gain_vs_ref_metrics
+        + perplexity_gain_vs_ref_metrics
+        + preference_logp_gain_metrics
+        + preference_logp_gain_vs_ref_metrics
+    )
 
     # Create DataFrame
-    df_metrics = pd.DataFrame(all_metrics, columns=["metric", "split", "dataset", "value"])[["metric", "split", "value", "dataset"]]
+    df_metrics = pd.DataFrame(
+        all_metrics, columns=["metric", "split", "dataset", "value"]
+    )[["metric", "split", "value", "dataset"]]
     df_metrics = df_metrics.set_index(["metric", "split"])
     df_metrics = df_metrics["value"].unstack()
     df_metrics.index.name = f"{adapter_name}\dist shift"
@@ -508,13 +524,11 @@ def parse_eval(df_res2, ds_alias):
     for k, v in ds_alias.items():
         logger.info(f"- `{k}`: `{v}`")
 
-
     df_acc = df_res2.loc[adapter_name].to_frame(adapter_name).T
     info = {
         "acc": df_acc,
-        'acc_gain_vs_ref': df_final,
+        "acc_gain_vs_ref": df_final,
     }
-
 
     # format for wandb. just one row, one data type per table
     for i in df_metrics.index:
@@ -522,4 +536,3 @@ def parse_eval(df_res2, ds_alias):
         info[i].index.name = adapter_name
 
     return info
-

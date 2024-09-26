@@ -1,4 +1,4 @@
-from reprpo.interventions import Interventions, DPOConfig, ReprPOConfig
+from reprpo.interventions import DPOConfig, ReprPOConfig
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 

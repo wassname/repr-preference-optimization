@@ -1,9 +1,9 @@
 import copy
 from reprpo.experiments import experiment_configs
-from reprpo.interventions import Interventions, DPOConfig, ReprPOConfig
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 from reprpo.training import train
+
 
 def setattrattr(cfg, k, v):
     """
@@ -18,12 +18,13 @@ def setattrattr(cfg, k, v):
         # print(cfg, k, v)
         return setattr(cfg, k, v)
 
+
 # quick 2m per run
 tuner_kwargs = dict(
     verbose=0,
     base_model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",  # ideally would be SFT
     batch_size=64,
-    load_in_4bit=True,
+    # load_in_4bit=True,
     collection_layers_side=[8, 10, 12, 14, 16, 18],
     eval_samples=64,
 )
@@ -39,16 +40,15 @@ def override(cfg, overrides):
 
 
 def objective_func(**kwargs):
-
     cfg = copy.deepcopy(experiment_configs["side-ether-prefvec"][1])
     override(cfg, tuner_kwargs)
 
     # so first we do the ones high in the heirarchy
-    if 'loss' in kwargs:
-        loss = kwargs.pop('loss')
+    if "loss" in kwargs:
+        loss = kwargs.pop("loss")
         cfg.loss = getattr(Losses, loss).value()
-    if 'transform' in kwargs:
-        transform = kwargs.pop('transform')
+    if "transform" in kwargs:
+        transform = kwargs.pop("transform")
         cfg.transform = getattr(Transforms, transform).value()
 
     # now subcommands

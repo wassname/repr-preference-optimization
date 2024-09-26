@@ -1,27 +1,22 @@
 import torch
 import torch.nn.functional as F
-from einops import rearrange, repeat, reduce
 
-from torch import Tensor
-from jaxtyping import Float, Int
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 import os
-from types import SimpleNamespace
 from baukit.nethook import TraceDict, get_module
-from dataclasses import dataclass
 
-from reprpo.interventions.types import ReprPOModelOutput, HS, Mask
-from reprpo.interventions.pl_base import PL_MODEL, ModelConfigBase
+from reprpo.interventions.types import ReprPOModelOutput
+from reprpo.interventions.pl_base import PL_MODEL
 from reprpo.interventions.helpers import compute_logprobs
 import warnings
 from .helpers import get_layer_paths, validate_layer_paths
-from ..losses import Losses, LossesType
-from ..transforms import Transforms, TransformType
-from ..losses.helpers import cross_entropy_loss
+from ..losses import LossesType
+from ..transforms import TransformType
 from ..dpo import compute_dpo_loss
 
 
-def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False):
+def reprpo_forward_baukit(
+    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False
+):
     # if the layer paths are just str(ints) then just collect the hidden states
     if collect_hs:
         layer_paths = [int(p) for p in layer_paths]
@@ -125,7 +120,10 @@ class PL_REPRPO_MODEL(PL_MODEL):
             }
 
         self.transforms = torch.nn.ParameterDict(
-            {k: transform.c(dim_hs, dim_hs, model=self._model) for k, dim_hs in hra_sizes.items()}
+            {
+                k: transform.c(dim_hs, dim_hs, model=self._model)
+                for k, dim_hs in hra_sizes.items()
+            }
         )
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
 
@@ -191,10 +189,10 @@ class PL_REPRPO_MODEL(PL_MODEL):
             )
 
             # measures preference for cho>ref compared to base model. Should increase
-            info['logits'] = info_dpo['logits']
+            info["logits"] = info_dpo["logits"]
 
             # measures if coherence has increased over ref model. Should be increase
-            info['chosen_rewards'] = info_dpo['chosen_rewards']
+            info["chosen_rewards"] = info_dpo["chosen_rewards"]
 
             def cosine_on_keys(hs1, hs2):
                 return torch.stack(
@@ -203,11 +201,10 @@ class PL_REPRPO_MODEL(PL_MODEL):
                         for k in hs1.keys()
                     ]
                 ).nanmean()
+
             # measure if chosen models are still close to the ref model, should stay at 1
-            info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
+            info["retain_cosine"] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
             # measures if refject hs are getting close to cho, should rise towards 1
-            info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
-
-
+            info["rr_cosine"] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
         return loss, {**info, **info_dpo}

@@ -53,7 +53,7 @@ def silence():
 
 
 def test():
-    os.environ['DEBUG'] = 'true'
+    os.environ["DEBUG"] = "true"
     os.environ["WANDB_MODE"] = "disabled"
     os.environ["WANDB_SILENT"] = "true"
     os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = "1"

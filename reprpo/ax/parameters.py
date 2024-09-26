@@ -1,6 +1,3 @@
-from reprpo.interventions.losses import Losses
-from reprpo.interventions.transforms import Transforms
-
 parameters_ether_prefvec = [
     # main
     {"name": "lr", "type": "range", "bounds": [1e-6, 0.4], "log_scale": True},
@@ -10,7 +7,7 @@ parameters_ether_prefvec = [
     {
         "name": "loss.β",
         "type": "range",
-        "bounds": [1.e-6, 2.],
+        "bounds": [1.0e-6, 2.0],
         "log_scale": True,
     },
     {
@@ -102,7 +99,13 @@ parameters_loss = [
         "type": "choice",
         "values": ["mse", "prefvec", "rank"],
         "dependents": {
-            "prefvec": ["loss.β", "loss.use_dpo_loss","loss.use_nll_loss","loss.weight_tokens","loss.use_orth_loss",],
+            "prefvec": [
+                "loss.β",
+                "loss.use_dpo_loss",
+                "loss.use_nll_loss",
+                "loss.weight_tokens",
+                "loss.use_orth_loss",
+            ],
             "rank": ["loss.α"],
             "mse": ["loss.α"],
         },
@@ -110,10 +113,9 @@ parameters_loss = [
     {
         "name": "loss.α",
         "type": "range",
-        "bounds": [1.e-6, 2.],
+        "bounds": [1.0e-6, 2.0],
         "log_scale": True,
     },
-
     {
         "name": "loss.use_dpo_loss",
         "type": "choice",

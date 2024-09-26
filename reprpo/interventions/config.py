@@ -1,5 +1,4 @@
-import torch
-from typing import Optional, Callable, Union
+from typing import Optional
 from dataclasses import dataclass
 
 

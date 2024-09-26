@@ -1,11 +1,11 @@
-from jaxtyping import Float, Int
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from jaxtyping import Float
+from typing import Any, Callable, Dict, Optional
 import torch
 from torch import Tensor
 from torch.nn import functional as F
 from dataclasses import dataclass, asdict
 from .helpers import cross_entropy_loss, compute_ptheta
-from ..types import HS, Mask, ReprPOModelOutput
+from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
 
@@ -37,7 +37,7 @@ def rank_loss(
         hs = reduce_tokens_w_attention(hs, o.mask)
         return hs
 
-    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, 'b']]:
+    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, "b"]]:
         β = 100
         ptheta_left = preproc_hs(pi_rej, k) - preproc_hs(ref_rej, k)
         ptheta_right = preproc_hs(pi_cho, k) - preproc_hs(ref_cho, k)

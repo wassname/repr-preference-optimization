@@ -1,5 +1,5 @@
 import torch
-from torch import nn, Tensor
+from torch import Tensor
 from typing import Tuple
 from jaxtyping import Float
 
