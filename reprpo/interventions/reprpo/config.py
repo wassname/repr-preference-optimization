@@ -13,9 +13,6 @@ class ReprPOConfig(ExperimentConfig):
     collection_layers_side: tuple = (10, 12, 14, 16, 18)
     """layers to collect activations from in side layers."""
 
-    # collection_layers_hs: tuple=(10, 20, 30)
-    # """The layers to collect the hidden states from. Thisis for methods that operate on the redundant residual stream so only needs a couple of points of collection"""
-
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
@@ -31,13 +28,13 @@ class ReprPOConfig(ExperimentConfig):
     )
     """keys to collect outputs from."""
 
-    collect_input: bool = True
+    collect_input: bool = False
     """use collection_keys_in? else use collection_keys_out."""
 
     collect_hs: bool = False
     """collect hidden states instead of activations"""
 
-    loss: LossesType = mse
+    loss: LossesType = Losses.prefvec.values
     """loss function"""
 
     transform: TransformType = Transforms.ether.value
@@ -48,7 +45,6 @@ class ReprPOConfig(ExperimentConfig):
     _model_keys = [
         "lr",
         "collection_layers_side",
-        # 'collection_layers_hs',
         "collection_keys_in",
         "collection_keys_out",
         "collect_input",

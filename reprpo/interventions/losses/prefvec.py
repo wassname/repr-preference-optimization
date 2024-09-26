@@ -166,18 +166,18 @@ class PrefVecLossConfig:
     # α: float = 1.0
     # """balance between reroute and retain loss."""
 
-    eps: float = 1e-12
+    eps: float = 1.e-12
 
-    β: float = 0.4
+    β: float = 1.e-6
     """factor to punish orthogonal movement"""
 
     use_orth_loss: bool = True
     """punish movement orthogonal to the preference vector: by distance"""
 
-    use_angle_loss: bool = False
+    use_angle_loss: bool = True
     """punish movement orthogonal to the preference vector: by angle"""
 
-    use_dpo_loss: bool = True
+    use_dpo_loss: bool = False
     """punish model if rejected completion is more likely than the chosen"""
 
     use_nll_loss: bool = False
