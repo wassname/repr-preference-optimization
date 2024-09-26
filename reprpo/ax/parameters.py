@@ -1,3 +1,6 @@
+from reprpo.interventions.losses import Losses
+from reprpo.interventions.transforms import Transforms
+
 parameters_ether_prefvec = [
     # main
     {"name": "lr", "type": "range", "bounds": [1e-6, 0.4], "log_scale": True},
