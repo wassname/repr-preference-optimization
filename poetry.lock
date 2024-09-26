@@ -2287,7 +2287,7 @@ develop = true
 [package.dependencies]
 datasets = "^2.20.0"
 jaxtyping = "^0.2.19"
-pandas = "^2.2.2"
+pandas = "^2.2.0"
 torch = "^2.3.0"
 transformers = "^4.43.2"
 trl = "^0.9.4"
@@ -2296,7 +2296,7 @@ trl = "^0.9.4"
 type = "git"
 url = "https://github.com/wassname/open_pref_eval"
 reference = "main"
-resolved_reference = "befc1ed16aa3f4d391c21d3de7fc6b81285eb6cd"
+resolved_reference = "82950fa773f8f969673e2d5057fa80cab8d7ee47"
 
 [[package]]
 name = "opt-einsum"

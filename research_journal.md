@@ -3198,3 +3198,44 @@ ValueError: BoTorch `Model` has not yet been constructed, please fit the surroga
 To run trials I would like
 - initial trial of defaults
 - to choose a faster models than botrch?
+
+# 2024-09-26 21:32:11
+
+absolute accuracy
+| adapter                       | code_hard-test | us_history_fiction-test | us_history_textbook-test | us_history_textbook-train |
+| :---------------------------- | -------------: | ----------------------: | -----------------------: | ------------------------: |
+| base                          |          0.704 |                   0.675 |                    0.949 |                     0.956 |
+| reprpo_hs-us_history_textbook |          0.703 |                   0.679 |                    0.952 |                     0.958 |
+
+| increased accuracy over base model % | train |  test |   oos |   rnd |
+| :----------------------------------- | ----: | ----: | ----: | ----: |
+| reprpo_hs-us_history_textbook        | 1.002 | 1.003 | 1.006 | 0.998 |
+
+
+dpo
+  | dpo_us_history_textbook\dist shift   |   train |   test |    oos |    rnd |
+  |:-------------------------------------|--------:|-------:|-------:|-------:|
+  | acc_gain_vs_ref                      |   1.021 |  1.013 |  1.039 |  1.002 |
+  | perplexity_gain_vs_ref               |   1.795 |  1.841 |  1.941 |  2.814 |
+  | preference_logp_gain                 |  84.418 | 74.959 | 24.673 | 21.118 |
+  | preference_logp_gain_vs_ref          |  43.986 | 37.123 | 12.6   |  8.877 |
+  |INFO| Table 1: Key metrics (adapter over base model)
+
+  |INFO| | adapter/ds              |   train |   test |   oos |   rnd |
+  |:------------------------|--------:|-------:|------:|------:|
+  | base                    |   0.961 |  0.951 | 0.687 | 0.869 |
+  | dpo_us_history_textbook |   0.981 |  0.963 | 0.713 | 0.871 |
+  |INFO| Table 2: Absolute accuracy
+
+  |INFO| 
+  | acc_inc/eval_ds [pp]    |   train |   test |   oos |   rnd |
+  |:------------------------|--------:|-------:|------:|------:|
+  | dpo_us_history_textbook |    2.08 |  1.262 | 3.883 | 0.153 |
+
+
+| acc_inc/eval_ds [pp]    |   train |   test |   oos |   rnd |
+|:------------------------|--------:|-------:|------:|------:|
+| dpo                     |    2.08 |  1.262 | 3.883 | 0.153 |
+| projgrad 1e-4           |  -0.832 | -1.683 | -7.961 | -1.84 |
+| projgrad  5e-5          |   0.555 |  0.281 | -1.165 | 0.153 |
+| 1e-6                    |   0.139 |   0.14 | -0.388 | 0.153 |

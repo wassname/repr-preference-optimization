@@ -18,42 +18,48 @@ from torch.autograd import Function
 class GradProjFunction(Function):
     @staticmethod
     # ctx is the first argument to forward
-    def forward(ctx, input, ref_cho, ref_rej):
+    def forward(ctx, input, ref_cho, ref_rej, β: float):
         ctx.save_for_backward(input, ref_cho, ref_rej)
+        ctx.β = β # https://pytorch.org/docs/stable/generated/torch.autograd.function.FunctionCtx.save_for_backward.html
         return input
 
     @staticmethod
     def backward(ctx, grad_output):
+        print(grad_output.norm())
         input, ref_cho, ref_rej = ctx.saved_tensors
         # now take only the preferred direction
         eps = 1e-12
-        pref_dir = ref_cho-ref_rej
-        pref_dir_unit = pref_dir / pref_dir.norm(dim=-1, keepdim=True).clamp(eps)
+        preference_dir = ref_cho-ref_rej
+        pref_dir_unit = preference_dir / preference_dir.norm(dim=-1, keepdim=True).clamp(eps)
         
         # get projection of `grad` along ref_dir
         # grad is 'b t h'
-        grad_projected_onto_preference = (pref_dir_unit * grad_output).sum(dim=-1, keepdim=True) * pref_dir_unit
-        grad_orthogonal = grad_output - grad_projected_onto_preference
+        grad_proj_onto_pref = (pref_dir_unit * grad_output).sum(dim=-1, keepdim=True) * pref_dir_unit
+        grad_orthogonal = grad_output - grad_proj_onto_pref
+
+        grad = grad_proj_onto_pref.clamp(0, None) + ctx.β * grad_orthogonal
+        print(grad_output.norm(), grad_proj_onto_pref.norm(), grad_orthogonal.norm())
+        1/0
 
         # only use that part
-        return grad_projected_onto_preference, ref_cho.clone()*0, ref_rej.clone()*0
+        return grad, None, None, None
 
 class ProjGradLinear(LoraLinear):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, β=1, **kwargs):
         super().__init__(*args, **kwargs)
         self._mode = "normal"
         self._cache = {}
+        self.β=β
 
     def forward(self, x):
         h = super().forward(x)
         if self._mode != "normal":
             assert self._mode in ["ref_cho", "ref_rej"]
             self._cache[self._mode] = h.detach()
-
-        if 'ref_cho' in self._cache and 'ref_rej' in self._cache:
-            return GradProjFunction.apply(h, self._cache['ref_cho'], self._cache['ref_rej'])
-        else:
             return h
+        else:
+            assert ('ref_cho' in self._cache and 'ref_rej' in self._cache)
+            return GradProjFunction.apply(h, self._cache['ref_cho'], self._cache['ref_rej'], self.β)
 
 
 from contextlib import contextmanager
@@ -66,14 +72,12 @@ def set_projgrad_mode(model: nn.Module, mode: str):
             module._old_mode = module._mode
             module._mode = mode
             found = True
-    assert found, "No ProjGradLinear found in model"
+    # TODO probobly easier to just make a custom adapter
+    assert found, "No ProjGradLinear found in model. Make sure you run Model.setup_grad_proj(config) before creating your adapter."
     yield model
     for module in model.modules():
         if isinstance(module, ProjGradLinear):
             module._mode = module._old_mode
-
-
-
 
 
 def compute_gradproj_loss_batch(batch, model, β=0.1):
@@ -154,10 +158,13 @@ def compute_gradproj_loss_batch(batch, model, β=0.1):
 
 
 class PL_GradProj_MODEL(PL_MODEL):
-    def _loss_fn(self, batch, model):
-        return compute_gradproj_loss_batch(batch, model)
-    
+    def __init__(self, *args, β=0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.β = β
 
+    def _loss_fn(self, batch, model):
+        return compute_gradproj_loss_batch(batch, model, self.β)
+    
     @staticmethod
     def setup_grad_proj(config: LoraConfig):
         custom_module_mapping = {nn.Linear: ProjGradLinear}
@@ -171,6 +178,8 @@ class DPOProjGradConfig(ExperimentConfig):
     lr: float = 5e-5
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
+
+    β: float = 0.
 
     _cls = PL_GradProj_MODEL
 
