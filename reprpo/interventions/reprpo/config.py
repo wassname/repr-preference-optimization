@@ -20,7 +20,7 @@ class ReprPOConfig(ExperimentConfig):
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
-    """keys to collect inputs from. **Set this to empty to collect from hs**"""
+    """keys to collect inputs from"""
 
     collection_keys_out: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.q_proj",
@@ -33,6 +33,9 @@ class ReprPOConfig(ExperimentConfig):
 
     collect_input: bool = True
     """use collection_keys_in? else use collection_keys_out."""
+
+    collect_hs: bool = False
+    """collect hidden states instead of activations"""
 
     loss: LossesType = mse
     """loss function"""
@@ -49,6 +52,7 @@ class ReprPOConfig(ExperimentConfig):
         "collection_keys_in",
         "collection_keys_out",
         "collect_input",
+        "collect_hs",
         "loss",
         "transform",
     ]

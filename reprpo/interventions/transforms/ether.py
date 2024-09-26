@@ -276,7 +276,7 @@ class ETHERConfig:
     - ether: like HRA but allowing a negative unit vector (reflection)
     - etherplus: relaxing distance and orthogonality constraints
     - oft: Orthogonal Finetuning: https://arxiv.org/abs/2306.07280
-    - HH: front and back transform
+    - etherplusHH: front and back transform
     
     see https://arxiv.org/pdf/2405.20271v1
     """

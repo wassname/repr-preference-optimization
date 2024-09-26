@@ -21,11 +21,19 @@ from ..losses.helpers import cross_entropy_loss
 from ..dpo import compute_dpo_loss
 
 
-def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_input=True):
+def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False):
     # if the layer paths are just str(ints) then just collect the hidden states
-    try:
+    if collect_hs:
         layer_paths = [int(p) for p in layer_paths]
-    except ValueError:
+        outs = model(
+            input_ids,
+            attention_mask=attn_mask,
+            use_cache=False,
+            return_dict=True,
+            output_hidden_states=True,
+        )
+        reprs = {str(k): outs.hidden_states[k] for k in layer_paths}
+    else:
         reprs = {}
         with TraceDict(
             model,
@@ -46,15 +54,6 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
                     reprs[p] = ret[p].input
                 else:
                     reprs[p] = ret[p].output
-    else:
-        outs = model(
-            input_ids,
-            attention_mask=attn_mask,
-            use_cache=False,
-            return_dict=True,
-            output_hidden_states=True,
-        )
-        reprs = {str(k): outs.hidden_states[k] for k in layer_paths}
 
     for p in reprs:
         if os.environ.get("DEBUG", False):
@@ -81,6 +80,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
         *args,
         collection_layers_side,
         collect_input,
+        collect_hs,
         collection_keys_in: tuple = None,
         collection_keys_out: tuple = None,
         loss: LossesType,
@@ -92,11 +92,12 @@ class PL_REPRPO_MODEL(PL_MODEL):
         self.hparams.transform = transform
         self.hparams.collection_layers_side = collection_layers_side
         self.hparams.collect_input = collect_input
+        self.hparams.collect_hs = collect_hs
 
         collection_keys = collection_keys_in if collect_input else collection_keys_out
 
         # set layer_paths
-        if len(collection_keys) > 0:
+        if not collect_hs:
             self.hparams.layer_paths = get_layer_paths(
                 collection_keys, collection_layers_side
             )
@@ -114,7 +115,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                 }
         else:
             # if no collection keys, we collect hidden states instead
-            # we generally need only a few so lets just take the first and last
+            # these hardly change so we generally need only a few so lets just take the first and last collection layers
             self.hparams.layer_paths = tuple(
                 set([collection_layers_side[0], collection_layers_side[-1]])
             )
@@ -141,6 +142,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     attn_mask=batch["chosen_mask"],
                     layer_paths=h.layer_paths,
                     collect_input=h.collect_input,
+                    collect_hs=h.collect_hs,
                 )
                 ref_rej = reprpo_forward_baukit(
                     model=model,
@@ -148,6 +150,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     attn_mask=batch["rejected_mask"],
                     layer_paths=h.layer_paths,
                     collect_input=h.collect_input,
+                    collect_hs=h.collect_hs,
                 )
 
         model.train()
@@ -157,6 +160,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             attn_mask=batch["chosen_mask"],
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
+            collect_hs=h.collect_hs,
         )
         pi_rej = reprpo_forward_baukit(
             model=model,
@@ -164,6 +168,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             attn_mask=batch["rejected_mask"],
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
+            collect_hs=h.collect_hs,
         )
 
         # run loss function

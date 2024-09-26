@@ -488,8 +488,6 @@ def parse_eval(df_res2, ds_alias):
 
     df_metrics = key_metrics(df_res2, adapter_name, ds_alias)
 
-    # logger.info(f'saved results to {f}')
-
     logger.info(f"\n{df_metrics.round(3).to_markdown()}")
     logger.info("""Table 1: Key metrics (adapter over base model)\n""")
 
@@ -511,14 +509,17 @@ def parse_eval(df_res2, ds_alias):
         logger.info(f"- `{k}`: `{v}`")
 
 
-    # format for wandb. just one row, one data type per table
-    df_rel_coh = df_metrics.loc["preference_logp_gain"].to_frame(adapter_name).T
-    df_coh = df_metrics.loc["perplexity_gain_vs_ref"].to_frame(adapter_name).T
     df_acc = df_res2.loc[adapter_name].to_frame(adapter_name).T
-    df_rel_coh.index.name = df_acc.index.name = df_coh.index.name = adapter_name
-    return {
+    info = {
         "acc": df_acc,
         'acc_gain_vs_ref': df_final,
-        'preference_logp_gain': df_rel_coh,
-        'perplexity_gain_vs_ref': df_coh,
     }
+
+
+    # format for wandb. just one row, one data type per table
+    for i in df_metrics.index:
+        info[i] = df_metrics.loc[i].to_frame(adapter_name).T
+        info[i].index.name = adapter_name
+
+    return info
+
