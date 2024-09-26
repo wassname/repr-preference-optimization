@@ -267,10 +267,10 @@ class ETHERLinearSmall(ETHERLinear):
 class ETHERConfig:
     """ETHER parameters"""
 
-    nb: int = 4
+    nb: int = 6
     """number of diagonal blocks"""
 
-    Htype: str = "etherplus"
+    Htype: str = "etherplusHH"
     """type of transformation 
 
     - ether: like HRA but allowing a negative unit vector (reflection)
@@ -286,7 +286,7 @@ class ETHERConfig:
     flip_side: bool = False
     """apply ETHER on the other (smaller) side to reduce computational overhead"""
 
-    reduction: int = 4
+    reduction: int = 60
 
     def c(self, *args, **kwargs):
         return ETHERLinearSmall(

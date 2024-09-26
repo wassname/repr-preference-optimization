@@ -3161,3 +3161,34 @@ logits = model_logratios - reference_logratios
 # https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
 # https://github.com/eric-mitchell/direct-preference-optimization/blob/f8b8c0f49dc92a430bae41585f9d467d3618fe2f/trainers.py#L253
 ```
+
+
+# 2024-09-26 04:54:22
+
+{'lr': 4e-4
+ 'collect_input': False,
+ 'collect_hs': False,
+ 'loss.β': 1e-06,
+ 'loss.use_dpo_loss': False,
+ 'loss.use_nll_loss': False,
+ 'loss.use_angle_loss': True,
+ 'loss.weight_tokens': False,
+ 'loss.use_orth_loss': True,
+ 'transform.nb': 1,
+ 'transform.reduction': 62,
+ 'transform.Htype': 'etherplusHH'}
+
+
+ValueError: BoTorch `Model` has not yet been constructed, please fit the surrogate first (done via `BoTorchModel.fit`).
+{'lr': 0.00040317748855126076,
+ 'collect_input': False,
+ 'collect_hs': False,
+ 'loss.β': 1e-06,
+ 'loss.use_dpo_loss': False,
+ 'loss.use_nll_loss': False,
+ 'loss.use_angle_loss': True,
+ 'loss.weight_tokens': False,
+ 'loss.use_orth_loss': True,
+ 'transform.nb': 6,
+ 'transform.reduction': 60,
+ 'transform.Htype': 'etherplusHH'}
