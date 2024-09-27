@@ -3213,32 +3213,32 @@ absolute accuracy
 
 
 dpo
-  | dpo_us_history_textbook\dist shift   |   train |   test |    oos |    rnd |
-  |:-------------------------------------|--------:|-------:|-------:|-------:|
-  | acc_gain_vs_ref                      |   1.021 |  1.013 |  1.039 |  1.002 |
-  | perplexity_gain_vs_ref               |   1.795 |  1.841 |  1.941 |  2.814 |
-  | preference_logp_gain                 |  84.418 | 74.959 | 24.673 | 21.118 |
-  | preference_logp_gain_vs_ref          |  43.986 | 37.123 | 12.6   |  8.877 |
-  |INFO| Table 1: Key metrics (adapter over base model)
+  | dpo_us_history_textbook\dist shift |                                          train |   test |    oos |    rnd |
+  | :--------------------------------- | ---------------------------------------------: | -----: | -----: | -----: |
+  | acc_gain_vs_ref                    |                                          1.021 |  1.013 |  1.039 |  1.002 |
+  | perplexity_gain_vs_ref             |                                          1.795 |  1.841 |  1.941 |  2.814 |
+  | preference_logp_gain               |                                         84.418 | 74.959 | 24.673 | 21.118 |
+  | preference_logp_gain_vs_ref        |                                         43.986 | 37.123 |   12.6 |  8.877 |
+  | INFO                               | Table 1: Key metrics (adapter over base model) |
 
-  |INFO| | adapter/ds              |   train |   test |   oos |   rnd |
-  |:------------------------|--------:|-------:|------:|------:|
-  | base                    |   0.961 |  0.951 | 0.687 | 0.869 |
-  | dpo_us_history_textbook |   0.981 |  0.963 | 0.713 | 0.871 |
-  |INFO| Table 2: Absolute accuracy
+  | INFO                    |                            | adapter/ds | train |  test | oos | rnd |
+  | :---------------------- | -------------------------: | ---------: | ----: | ----: |
+  | base                    |                      0.961 |      0.951 | 0.687 | 0.869 |
+  | dpo_us_history_textbook |                      0.981 |      0.963 | 0.713 | 0.871 |
+  | INFO                    | Table 2: Absolute accuracy |
 
   |INFO| 
-  | acc_inc/eval_ds [pp]    |   train |   test |   oos |   rnd |
-  |:------------------------|--------:|-------:|------:|------:|
-  | dpo_us_history_textbook |    2.08 |  1.262 | 3.883 | 0.153 |
+  | acc_inc/eval_ds [pp]    | train |  test |   oos |   rnd |
+  | :---------------------- | ----: | ----: | ----: | ----: |
+  | dpo_us_history_textbook |  2.08 | 1.262 | 3.883 | 0.153 |
 
 
-| acc_inc/eval_ds [pp]    |   train |   test |   oos |   rnd |
-|:------------------------|--------:|-------:|------:|------:|
-| dpo                     |    2.08 |  1.262 | 3.883 | 0.153 |
-| projgrad 1e-4           |  -0.832 | -1.683 | -7.961 | -1.84 |
-| projgrad  5e-5          |   0.555 |  0.281 | -1.165 | 0.153 |
-| 1e-6                    |   0.139 |   0.14 | -0.388 | 0.153 |
+| acc_inc/eval_ds [pp] |  train |   test |    oos |   rnd |
+| :------------------- | -----: | -----: | -----: | ----: |
+| dpo                  |   2.08 |  1.262 |  3.883 | 0.153 |
+| projgrad 1e-4        | -0.832 | -1.683 | -7.961 | -1.84 |
+| projgrad  5e-5       |  0.555 |  0.281 | -1.165 | 0.153 |
+| 1e-6                 |  0.139 |   0.14 | -0.388 | 0.153 |
 
 
 so may grad is zero
@@ -3251,6 +3251,15 @@ mait it's broken even with o wrapping or hooks, where is my problem?
 
 
 
-| acc_inc/eval_ds [pp]    |   train |   test |   oos |    rnd |
-|:------------------------|--------:|-------:|------:|-------:|
-| dpo |   1.942 |  1.122 | 3.301 | -0.307 |
+| acc_inc/eval_ds [pp]                       |   train |    test |     oos |     rnd |
+| :----------------------------------------- | ------: | ------: | ------: | ------: |
+| dpo                                        |   1.942 |   1.122 |   3.301 |  -0.307 |
+| projgrad lr=1e-06,β=0.1                    |   0.555 |   -0.14 |  -0.194 |       0 |
+| projgrad lr=1e-7 β=0.1                     |   0.416 |   -0.14 |  -0.194 |       0 |
+| projgrad  lr=5e-05, β=1.0                  |   0.693 |   1.403 |  -6.019 |  -5.675 |
+| projgrad lr=5e-05,  β=0.5                  |  -4.577 |  -4.208 | -21.165 |  -7.055 |
+| projgrad_ 1e-4 β=0.1                       | -31.623 | -36.325 |  -57.67 | -23.926 |
+| projgrad lr=5e-05, β=0.0                   | -36.061 |  -38.85 | -55.922 | -26.534 |
+| projgrad_ lr=5e-05, β=0.1                  | -35.506 |  -39.13 | -57.282 | -24.693 |
+| projgrad lr 1e-3 β=0.11                    |  -35.09 | -37.167 | -58.835 | -24.387 |
+| projgrad reversed                          |   0.832 |  0.982 | -5.825 | -5.061 |

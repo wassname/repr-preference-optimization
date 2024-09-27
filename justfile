@@ -153,12 +153,18 @@ run_temp:
 
 run_pg:
     export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
-    # python scripts/train.py dpo
+    python scripts/train.py dpo --verbose=1
     # python scripts/train.py projgrad
-    # python scripts/train.py projgrad --lr=1e-6
+    python scripts/train.py projgrad --lr=1e-6 --verbose=1
+    python scripts/train.py projgrad --β=0.0
     python scripts/train.py projgrad --β=0.1
     python scripts/train.py projgrad --β=0.5
-    python scripts/train.py projgrad --β=1.0
+    python scripts/train.py projgrad --β=1.0 --ignore-direction 
+    python scripts/train.py projgrad --β=0.5 --negative-slope=0.05
+    python scripts/train.py projgrad --β=1.0 --negative-slope=1.0 # should be like dpo. yes
     python scripts/train.py projgrad --lr=1e-7
     python scripts/train.py projgrad --lr=1e-4
     python scripts/train.py projgrad --lr=1e-3
+    python scripts/train.py projgrad --lr=1e-3
+
+    python scripts/train.py projgrad --β=0.8 --negative-slope=0.1 --magnitude-clip=0.2 # should be like dpo. yes

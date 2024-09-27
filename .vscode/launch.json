@@ -46,6 +46,9 @@
                 "projgrad",
                 "--dev", 
                 "--verbose=2",
+                "--β=0.5", 
+                "--negative-slope=0.1",
+                "--magnitude-clip=0.2",
             ]
         },
         {
@@ -69,6 +72,9 @@
                 // "hs-dist",
                 "projgrad",
                 "--verbose=2",
+                "--β=0.5", 
+                "--negative-slope=0.1",
+                "--magnitude-clip=0.2",
                 // "--loss.β=0.2",
                 // "--eval_samples=128",
                 // "--batch-size=24", 

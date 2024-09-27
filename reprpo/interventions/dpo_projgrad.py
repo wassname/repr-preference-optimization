@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from reprpo.interventions.pl_base import PL_MODEL
 from dataclasses import dataclass
 from contextlib import contextmanager
-
+from typing import Optional
 from reprpo.interventions.config import ExperimentConfig
 from .losses.helpers import cross_entropy_loss
 from .helpers import compute_logprobs
@@ -11,16 +11,21 @@ from .dpo import compute_dpo_loss
 
 # https://huggingface.co/docs/peft/developer_guides/custom_models
 from torch import nn
-
+from loguru import logger
 from peft.tuners.tuners_utils import BaseTunerLayer
 
 
 class ProjGradHooks:
-    def __init__(self, model, β=0.1):
+    def __init__(self, model, β=0.1, reverse_pref=False, ignore_direction=False, negative_slope=0.0, magnitude_clip=None):
         self.model = model
         self.β = β
+        self.reverse_pref = reverse_pref
+        self.ignore_direction = ignore_direction
+        self.negative_slope = negative_slope
+        self.magnitude_clip = magnitude_clip
         self.register_hooks()
-        print(f'β={β}')
+
+        logger.info(f'β={β}')
 
     def enabled_modules(self):
         """Yield peft modules that have requires_grad=True"""
@@ -44,7 +49,7 @@ class ProjGradHooks:
         for k, module in modules.items():
             module.register_full_backward_pre_hook(self.backward_prehook_projgrad)
             module.register_forward_hook(self.forward_hook_projgrad)
-        print(f"ProjGrad Registered {len(modules)} hooks. {modules.keys()}")
+        logger.info(f"ProjGrad Registered {len(modules)} hooks. {modules.keys()}")
 
     def backward_prehook_projgrad(self, module, grad_output):
         # https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.register_full_backward_hook
@@ -56,17 +61,38 @@ class ProjGradHooks:
             ref_rej = ref_rej[0]
         # now take only the preferred direction
         eps = 1e-12
-        preference_dir = ref_cho-ref_rej
+        preference_dir = ref_cho - ref_rej
+        if self.reverse_pref:
+            preference_dir *= -1
+        
         pref_dir_unit = preference_dir / preference_dir.norm(dim=-1, keepdim=True).clamp(eps)
         
-        # get projection of `grad` along ref_dir
-        # grad is 'b t h'
+        # get projection of `grad` along ref_dir in hs space
+        # grad is typically 'batch token hs'
+        # FIXME, do we want to use the mask, and also mean by token?
+        pref_dir_unit = pref_dir_unit.mean(dim=1, keepdim=True)
+
         def proj_grad(grad):
+
+            # magnitude_clip, where it's clipped to fraction of the reference distance. We do this for the norm of each sample in the batch
+            dist_frac = grad.norm(dim=-1)/preference_dir.norm(dim=-1).clamp(eps)
+            if self.magnitude_clip is not None:
+                dist_frac = dist_frac.clamp(0, self.magnitude_clip)
+                grad = grad * dist_frac.unsqueeze(-1)
+
             grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
             grad_orthogonal = grad - grad_proj_onto_pref
+            1/0
 
-            grad = grad_proj_onto_pref.clamp(0, None) + self.β * grad_orthogonal
-            return grad
+            if self.ignore_direction:
+                grad_proj_onto_pref = torch.abs(grad_proj_onto_pref)
+
+
+
+            # only take the part that goes in the direction we want, and some portion of the orthogonal movement
+            grad2 = F.leaky_relu(grad_proj_onto_pref, negative_slope=self.negative_slope) + self.β * grad_orthogonal
+
+            return grad2
         res = tuple(proj_grad(g) for g in grad_output)
         return res
 
@@ -109,6 +135,8 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
         return_dict=True,
         output_hidden_states=True,
     )
+    # with projgrad.set_projgrad_mode("clear"):
+    #     pass
 
     model.eval()
     with projgrad.set_projgrad_mode("ref_cho"):
@@ -149,8 +177,7 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
         labels=batch["rejected"],
         selection_mask=batch["rejected_mask"],
     )
-    # with projgrad.set_projgrad_mode("clear"):
-    #     pass
+
 
 
     loss, info = compute_dpo_loss(
@@ -182,9 +209,10 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
 
 
 class PL_ProjGrad_MODEL(PL_MODEL):
-    def __init__(self, *args, β=0.1, **kwargs):
+    def __init__(self, *args, β, reverse_pref, ignore_direction, negative_slope, magnitude_clip, **kwargs):
         super().__init__(*args, **kwargs)
-        self.projgrad = ProjGradHooks(self._model, β=β)
+        self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, ignore_direction=ignore_direction, negative_slope=negative_slope, magnitude_clip=magnitude_clip)
+
 
     def _loss_fn(self, batch, model):
         return compute_gradproj_loss_batch(batch, model, self.projgrad)
@@ -192,15 +220,41 @@ class PL_ProjGrad_MODEL(PL_MODEL):
 
 @dataclass
 class DPOProjGradConfig(ExperimentConfig):
+    """
+    This is DPO, with a hard constrain on the gradient, so only move in the preference direction in hidden-state space
+
+    It takes all the Lora layers, and on the backward pass it clip the gradient to only move in the cho_hs-ref_hs vector
+    """
+
     lr: float = 5e-5
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
-    β: float = 0.1
+    β: float = 1.0
+
+    reverse_pref: bool = False
+    """
+    reverse the preference direction
+    """
+
+    ignore_direction: bool = False
+    """
+    ignore the preference direction, and just move in the hidden-state space.
+    """
+
+    negative_slope: float = 0.0
+    """
+    When clipping the gradient in the negative preference direction, we can use leakly relu with this slope. 0 is relu. 0.01 is leaky relu.
+    """
+
+    magnitude_clip: Optional[float] = None
+    """
+    Clip the magnitude of the gradient in the hs space, to ensure a proximal policy in hs space. Value is a fraction of the distance of the preference vector
+    """
 
     _cls = PL_ProjGrad_MODEL
 
-    _model_keys = ["lr", "β"]
+    _model_keys = ["lr", "β", "reverse_pref", "ignore_direction", "negative_slope", "magnitude_clip"]
 
     @property
     def _name(self):
