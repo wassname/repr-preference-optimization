@@ -89,11 +89,10 @@ def backward_prehook_projgrad(module, grad_output):
         grad_orthogonal = grad - grad_proj_onto_pref
 
         grad = grad_proj_onto_pref.clamp(0, None) + β * grad_orthogonal
-        print(1, grad.norm(), grad_proj_onto_pref.norm(), grad_orthogonal.norm())
+        # print(1, grad.norm(), grad_proj_onto_pref.norm(), grad_orthogonal.norm())
         return grad
     res = tuple(proj_grad(g) for g in grad_output)
-    print(2,module)
-    print(3,[aa.shape for aa in grad_output], [aa.shape for aa in res])
+    # print(3,[aa.shape for aa in grad_output], [aa.shape for aa in res])
     return grad_output
 
 def forward_hook_projgrad(m, inputs, output):
