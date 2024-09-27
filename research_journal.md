@@ -3249,3 +3249,8 @@ maybe if I register a backware pre hook on the base layer instead?
 
 mait it's broken even with o wrapping or hooks, where is my problem?
 
+
+
+| acc_inc/eval_ds [pp]    |   train |   test |   oos |    rnd |
+|:------------------------|--------:|-------:|------:|-------:|
+| dpo |   1.942 |  1.122 | 3.301 | -0.307 |
