@@ -43,14 +43,18 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "hs-ether-rank",
+                "projgrad",
                 "--dev", 
-                "--verbose=1",
+                "--verbose=2",
+                "--β=0.5", 
+                "--negative-slope=0.1",
+                "--magnitude-clip=0.2",
             ]
         },
         {
             "name": "scratch",
             "type": "debugpy",
+            "justMyCode": false,
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0", 
             "TOKENIZERS_PARALLELISM": "false",
@@ -66,8 +70,11 @@
             "autoReload": {"enable": true},
             "args": [
                 // "hs-dist",
-                "hs-ether-prefvec",
-                "--verbose=1",
+                "projgrad",
+                "--verbose=2",
+                "--β=0.5", 
+                "--negative-slope=0.1",
+                "--magnitude-clip=0.2",
                 // "--loss.β=0.2",
                 // "--eval_samples=128",
                 // "--batch-size=24", 

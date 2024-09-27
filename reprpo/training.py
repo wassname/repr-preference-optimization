@@ -64,7 +64,7 @@ def train(training_args):
 
     PL_MODEL = training_args._cls
 
-    logger.info("PL_MODEL {PL_MODEL}")
+    logger.info(f"PL_MODEL {PL_MODEL}")
 
     ds_name_train = training_args.dataset.replace("genies_preferences-", "")
     model_name = training_args.base_model.split("/")[-1]
@@ -83,7 +83,7 @@ def train(training_args):
         pprint(training_args, compact=True)
         # logger.info("model_kwargs", model_kwargs.keys())
 
-        logger.info(f"Using WANDB_GROUP={group_name}")
+        logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/{group_name} ")
         logger.info(f"Using finetune_name={finetune_name}")
 
     run_fname = f"{adapter_name}/{ts}"  # short for wandb
@@ -141,6 +141,9 @@ def train(training_args):
         task_type="CAUSAL_LM",
         # target_modules=["all-linear"], #  QLoRA-style training
     )
+    # if hasattr(PL_MODEL, 'setup_grad_proj'):
+    #     peft_config = PL_MODEL.setup_grad_proj(peft_config)
+    
     model = get_peft_model(model, peft_config, adapter_name=finetune_name)
     print_trainable_parameters(model)
     if training_args.verbose > 1:
@@ -208,7 +211,7 @@ def train(training_args):
         logger.info("===")
         logger.info(f"{tokenizer.decode(batch['chosen'][0])}")
         logger.info("---")
-        logger.info("{tokenizer.decode(batch['rejected'][0])}")
+        logger.info(f"{tokenizer.decode(batch['rejected'][0])}")
         logger.info("===")
 
     if wandb.run is not None:
@@ -511,7 +514,7 @@ def parse_eval(df_res2, ds_alias):
     df_res2 = df_res[cols]
     df_res2.columns = list(ds_alias.keys())
     df_res2.index.name = "adapter/ds"
-    logger.info(df_res2.round(3).to_markdown())
+    logger.info(f"\n{df_res2.round(3).to_markdown()}")
     logger.info("""Table 2: Absolute accuracy\n""")
 
     df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(adapter_name).T

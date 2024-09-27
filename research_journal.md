@@ -3199,78 +3199,127 @@ To run trials I would like
 - initial trial of defaults
 - to choose a faster models than botrch?
 
+# 2024-09-26 21:32:11
 
-# 2024-09-26 10:46:21
+absolute accuracy
+| adapter                       | code_hard-test | us_history_fiction-test | us_history_textbook-test | us_history_textbook-train |
+| :---------------------------- | -------------: | ----------------------: | -----------------------: | ------------------------: |
+| base                          |          0.704 |                   0.675 |                    0.949 |                     0.956 |
+| reprpo_hs-us_history_textbook |          0.703 |                   0.679 |                    0.952 |                     0.958 |
 
-How to do I do a gradient constrained layer?
-
-So apply lora
-Then modify lora, so that each layer has a custom backpropr
-
-
-how would I do it for a linear layer?
-
-I would like to go llm(x, y) but how would I replace it all?
-Can I use contextlib to switch the layer between modes?
-
-pass in an extra arg... 
-putting a hook on the layer?
-oh batching?
-
-```py
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-def set_mode(model, mode):
-    for param in model.parameters():
-        if isinstance(param, CustomLinear):
-            paramparam._old_mode = model._mode
-            param._mode = mode
-    yield model
-    for param in model.parameters():
-        if isinstance(param, CustomLinear):
-            param._mode = param._old_mode
-    
-# https://huggingface.co/docs/peft/developer_guides/custom_models
-
-class CustomLinear(nn.Linear):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._mode = "normal"
-        self._cache = {}
-
-    def forward(self, x):
-        h = super().forward(x)
-        if self._mode != "normal":
-            assert self._mode in ["cho", "rej"]
-            self._cache[self._mode] = h.detach()
-
-    def custom_backward(self, grad_output):
-        grad = super().backward(grad_output)
-
-        # now take only the preferred direction
-        c = self._cache["ref_cho"]
-        r = self._cache["ref_rej"]
-        preference_dir = c-r
-        pref_dir_unit = pref_dir / pref_dir.norm(dim=-1, keepdim=True).clamp(eps)
-        
-        # get projection of `a` along ref_dir
-        grad_proj = (pref_dir_unit * a).sum(dim=-1, keepdim=True) * pref_dir_unit
-        grad_orth = grad - grad_projgrad_proj
-
-        # free cach
-        self._cache = {}
-
-        # only use that part
-        return grad_proj
-
-# add the LSTM layer names to target_modules
-config = LoraConfig(...)
-# define a mapping from base layer type to LoRA layer type
-custom_module_mapping = {nn.Linear: CustomLinear}
-# register the new mapping
-config._register_custom_module(custom_module_mapping)
-```
+| increased accuracy over base model % | train |  test |   oos |   rnd |
+| :----------------------------------- | ----: | ----: | ----: | ----: |
+| reprpo_hs-us_history_textbook        | 1.002 | 1.003 | 1.006 | 0.998 |
 
 
-or should I just register hooks?
+dpo
+  | dpo_us_history_textbook\dist shift |                                          train |   test |    oos |    rnd |
+  | :--------------------------------- | ---------------------------------------------: | -----: | -----: | -----: |
+  | acc_gain_vs_ref                    |                                          1.021 |  1.013 |  1.039 |  1.002 |
+  | perplexity_gain_vs_ref             |                                          1.795 |  1.841 |  1.941 |  2.814 |
+  | preference_logp_gain               |                                         84.418 | 74.959 | 24.673 | 21.118 |
+  | preference_logp_gain_vs_ref        |                                         43.986 | 37.123 |   12.6 |  8.877 |
+  | INFO                               | Table 1: Key metrics (adapter over base model) |
+
+  | INFO                    |                            | adapter/ds | train |  test | oos | rnd |
+  | :---------------------- | -------------------------: | ---------: | ----: | ----: |
+  | base                    |                      0.961 |      0.951 | 0.687 | 0.869 |
+  | dpo_us_history_textbook |                      0.981 |      0.963 | 0.713 | 0.871 |
+  | INFO                    | Table 2: Absolute accuracy |
+
+  |INFO| 
+  | acc_inc/eval_ds [pp]    | train |  test |   oos |   rnd |
+  | :---------------------- | ----: | ----: | ----: | ----: |
+  | dpo_us_history_textbook |  2.08 | 1.262 | 3.883 | 0.153 |
+
+
+| acc_inc/eval_ds [pp] |  train |   test |    oos |   rnd |
+| :------------------- | -----: | -----: | -----: | ----: |
+| dpo                  |   2.08 |  1.262 |  3.883 | 0.153 |
+| projgrad 1e-4        | -0.832 | -1.683 | -7.961 | -1.84 |
+| projgrad  5e-5       |  0.555 |  0.281 | -1.165 | 0.153 |
+| 1e-6                 |  0.139 |   0.14 | -0.388 | 0.153 |
+
+
+so may grad is zero
+- if I wrap lora... hmm damn
+
+maybe if I register a backware pre hook on the base layer instead?
+
+
+mait it's broken even with o wrapping or hooks, where is my problem?
+
+
+
+| acc_inc/eval_ds [pp]                       |   train |    test |     oos |     rnd |
+| :----------------------------------------- | ------: | ------: | ------: | ------: |
+| dpo                                        |   1.942 |   1.122 |   3.301 |  -0.307 |
+| projgrad lr=1e-06,β=0.1                    |   0.555 |   -0.14 |  -0.194 |       0 |
+| projgrad lr=1e-7 β=0.1                     |   0.416 |   -0.14 |  -0.194 |       0 |
+| projgrad  lr=5e-05, β=1.0                  |   0.693 |   1.403 |  -6.019 |  -5.675 |
+| projgrad lr=5e-05,  β=0.5                  |  -4.577 |  -4.208 | -21.165 |  -7.055 |
+| projgrad_ 1e-4 β=0.1                       | -31.623 | -36.325 |  -57.67 | -23.926 |
+| projgrad lr=5e-05, β=0.0                   | -36.061 |  -38.85 | -55.922 | -26.534 |
+| projgrad_ lr=5e-05, β=0.1                  | -35.506 |  -39.13 | -57.282 | -24.693 |
+| projgrad lr 1e-3 β=0.11                    |  -35.09 | -37.167 | -58.835 | -24.387 |
+| projgrad reversed                          |   0.832 |  0.982 | -5.825 | -5.061 |
+
+# 2024-09-27 16:32:42
+
+Make some improvments:
+- mean over tokens
+- clip magnitude
+
+Now it does great until some point where it seems unstabl
+maybe it goes too far in one dir and gets unstsble
+
+
+- [ ] wait we should be looking hnot as hs-cho but ref cho!!!
+
+what about clipping orthogonal to be 1x the magnitude of the proj vector? because we may be swining way to the sid
+
+with only back and forth movmement it seems to be more tstable!
+
+| acc_inc/eval_ds [pp]         |   train |   test |    oos |   rnd |
+|:-----------------------------|--------:|-------:|-------:|------:|
+| projgrad_us_history_textbook |       0 |      0 | -3.107 |  0.46 |
+
+so we are limiting dpo, but not necciesarily for the beter hand stability?
+
+loss stagnant  --β=100 --negative-slope=0.1 --verbose=1
+| projgrad_us_history_textbook |   0.555 |  0.281 | -0.777 | 0.307 |
+
+
+honestly it just seems like the direction is not helpfull at all. perhaps I should get the direction from the outptus and use it with the grad? as the grad is the diracvativ
+
+
+Implementation:
+a) Compute unconstrained gradient step
+b) If step exceeds trust radius, scale it to radius boundary
+c) Evaluate model performance after step
+d) Adjust trust radius based on actual vs. predicted improvement
+
+
+pref_dir = m._cache['ref_cho'] - m._cache['ref_rej']
+output.backward(pref_dir, retain_graph=True)
+m.weights.grad
+
+hm what if most 
+of the gradient is meant to flow to other layers 
+what if instead of clipping the gradient during backprop
+we clip the grad attached to the weights
+
+
+| acc_inc/eval_ds [pp]         |   train |   test |   oos |   rnd |
+|:-----------------------------|--------:|-------:|------:|------:|
+| projgrad_us_history_textbook |   1.942 |  1.262 | 1.942 |  0.92 |
+| dpo [baseline]               |   1.942 |  1.122 | 3.301 | -0.307 |
+
+Wow this one was good, it matches DPO's performance but generalsies better!
+
+| adapter/ds                   |   train |   test |   oos |   rnd |
+|:-----------------------------|--------:|-------:|------:|------:|
+| base                         |   0.961 |  0.951 | 0.687 | 0.869 |
+| dpo_us_history_textbook      |   0.98  |  0.961 | 0.713 | 0.869 |
+| projgrad_us_history_textbook |   0.98  |  0.963 | 0.7   | 0.877 |
+|INFO| Table 2: Absolute accuracy

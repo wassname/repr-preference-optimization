@@ -1,8 +1,9 @@
-from reprpo.interventions import DPOConfig, ReprPOConfig
+from reprpo.interventions import DPOConfig, ReprPOConfig, DPOProjGradConfig
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 
 experiment_configs = {
+    
     # TODO remame to collect-transform-loss
     "side-ether-mse": (
         "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
@@ -122,6 +123,7 @@ experiment_configs = {
     ),
     # baseline
     "dpo": ("DPO experiment.", DPOConfig()),
+    "projgrad": ("DPO experiment.", DPOProjGradConfig()),
     # variants
     # TODO svd dual
     # TODO svd quantile 1
