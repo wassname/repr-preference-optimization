@@ -3198,3 +3198,79 @@ ValueError: BoTorch `Model` has not yet been constructed, please fit the surroga
 To run trials I would like
 - initial trial of defaults
 - to choose a faster models than botrch?
+
+
+# 2024-09-26 10:46:21
+
+How to do I do a gradient constrained layer?
+
+So apply lora
+Then modify lora, so that each layer has a custom backpropr
+
+
+how would I do it for a linear layer?
+
+I would like to go llm(x, y) but how would I replace it all?
+Can I use contextlib to switch the layer between modes?
+
+pass in an extra arg... 
+putting a hook on the layer?
+oh batching?
+
+```py
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+def set_mode(model, mode):
+    for param in model.parameters():
+        if isinstance(param, CustomLinear):
+            paramparam._old_mode = model._mode
+            param._mode = mode
+    yield model
+    for param in model.parameters():
+        if isinstance(param, CustomLinear):
+            param._mode = param._old_mode
+    
+# https://huggingface.co/docs/peft/developer_guides/custom_models
+
+class CustomLinear(nn.Linear):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._mode = "normal"
+        self._cache = {}
+
+    def forward(self, x):
+        h = super().forward(x)
+        if self._mode != "normal":
+            assert self._mode in ["cho", "rej"]
+            self._cache[self._mode] = h.detach()
+
+    def custom_backward(self, grad_output):
+        grad = super().backward(grad_output)
+
+        # now take only the preferred direction
+        c = self._cache["ref_cho"]
+        r = self._cache["ref_rej"]
+        preference_dir = c-r
+        pref_dir_unit = pref_dir / pref_dir.norm(dim=-1, keepdim=True).clamp(eps)
+        
+        # get projection of `a` along ref_dir
+        grad_proj = (pref_dir_unit * a).sum(dim=-1, keepdim=True) * pref_dir_unit
+        grad_orth = grad - grad_projgrad_proj
+
+        # free cach
+        self._cache = {}
+
+        # only use that part
+        return grad_proj
+
+# add the LSTM layer names to target_modules
+config = LoraConfig(...)
+# define a mapping from base layer type to LoRA layer type
+custom_module_mapping = {nn.Linear: CustomLinear}
+# register the new mapping
+config._register_custom_module(custom_module_mapping)
+```
+
+
+or should I just register hooks?

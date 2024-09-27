@@ -23,10 +23,11 @@ def setattrattr(cfg, k, v):
 tuner_kwargs = dict(
     verbose=0,
     base_model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",  # ideally would be SFT
-    batch_size=64,
-    # load_in_4bit=True,
+    batch_size=32,
+    # load_in_4bit=True, # doesn't quite halve the memory, speed it about the same
     collection_layers_side=[8, 10, 12, 14, 16, 18],
     eval_samples=64,
+    collect_hs=True,
 )
 
 
