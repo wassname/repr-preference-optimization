@@ -83,7 +83,7 @@ def train(training_args):
         pprint(training_args, compact=True)
         # logger.info("model_kwargs", model_kwargs.keys())
 
-        logger.info(f"Using WANDB_GROUP={group_name}")
+        logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/{group_name} ")
         logger.info(f"Using finetune_name={finetune_name}")
 
     run_fname = f"{adapter_name}/{ts}"  # short for wandb
@@ -211,7 +211,7 @@ def train(training_args):
         logger.info("===")
         logger.info(f"{tokenizer.decode(batch['chosen'][0])}")
         logger.info("---")
-        logger.info("{tokenizer.decode(batch['rejected'][0])}")
+        logger.info(f"{tokenizer.decode(batch['rejected'][0])}")
         logger.info("===")
 
     if wandb.run is not None:

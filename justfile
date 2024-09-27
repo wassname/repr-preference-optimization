@@ -167,4 +167,4 @@ run_pg:
     python scripts/train.py projgrad --lr=1e-3
     python scripts/train.py projgrad --lr=1e-3
 
-    python scripts/train.py projgrad --β=0.8 --negative-slope=0.1 --magnitude-clip=0.2 # should be like dpo. yes
+    python scripts/train.py projgrad --β=0.8 --negative-slope=0.1 --magnitude-clip=0.2 # soft constraint

@@ -1,18 +1,26 @@
 import torch
+from torch import nn
 import torch.nn.functional as F
-from reprpo.interventions.pl_base import PL_MODEL
+
+# https://huggingface.co/docs/peft/developer_guides/custom_models
+from loguru import logger
+from peft.tuners.tuners_utils import BaseTunerLayer
+
 from dataclasses import dataclass
 from contextlib import contextmanager
+
 from typing import Optional
+from einops import reduce, rearrange, repeat
+from jaxtyping import Float, Int
+from torch import Tensor
+
+from reprpo.interventions.pl_base import PL_MODEL
 from reprpo.interventions.config import ExperimentConfig
 from .losses.helpers import cross_entropy_loss
 from .helpers import compute_logprobs
 from .dpo import compute_dpo_loss
 
-# https://huggingface.co/docs/peft/developer_guides/custom_models
-from torch import nn
-from loguru import logger
-from peft.tuners.tuners_utils import BaseTunerLayer
+
 
 
 class ProjGradHooks:
@@ -52,42 +60,57 @@ class ProjGradHooks:
         logger.info(f"ProjGrad Registered {len(modules)} hooks. {modules.keys()}")
 
     def backward_prehook_projgrad(self, module, grad_output):
+        eps = 1e-12
         # https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.register_full_backward_hook
         ref_cho = module._cache['ref_cho']
-        if len(ref_cho)>1:
+        if isinstance(ref_cho, tuple):
             ref_cho = ref_cho[0]
+        if module._cache['ref_cho_mask'] is not None:
+            ref_cho = ref_cho * module._cache['ref_cho_mask'].unsqueeze(-1)
         ref_rej = module._cache['ref_rej']
-        if len(ref_rej)>1:
+        if isinstance(ref_rej, tuple):
             ref_rej = ref_rej[0]
-        # now take only the preferred direction
-        eps = 1e-12
-        preference_dir = ref_cho - ref_rej
+        if module._cache['ref_rej_mask'] is not None:
+            ref_rej = ref_rej * module._cache['ref_rej_mask'].unsqueeze(-1)
+        
+        # now take only the preferred direction in hs-space
+        preference_dir = (ref_cho.mean(1) - ref_rej.mean(1)).unsqueeze(1)
         if self.reverse_pref:
             preference_dir *= -1
+
+        def _norm(x, dims):
+            return (x ** 2).sum(dims).sqrt()
+
+        def hs_norm(t: Float[Tensor, 'b t h']) -> Float[Tensor, 'b t h']:
+            # we mean over tokens, as  the dimensions are not comparable
+            # and norm over hs
+            t = reduce(t, 'b t h -> b h', 'mean')
+            t = reduce(t, 'b h -> b', _norm)
+            return repeat(t, 'b -> b t h', t=1, h=1)
         
-        pref_dir_unit = preference_dir / preference_dir.norm(dim=-1, keepdim=True).clamp(eps)
+        pref_dir_unit = preference_dir / hs_norm(preference_dir).clamp(eps)
         
         # get projection of `grad` along ref_dir in hs space
         # grad is typically 'batch token hs'
         # FIXME, do we want to use the mask, and also mean by token?
-        pref_dir_unit = pref_dir_unit.mean(dim=1, keepdim=True)
+        # pref_dir_unit = pref_dir_unit.mean(dim=1, keepdim=True)
 
-        def proj_grad(grad):
+        def proj_grad(grad: Float[Tensor, 'b t h']) -> Float[Tensor, 'b t h']:
 
-            # magnitude_clip, where it's clipped to fraction of the reference distance. We do this for the norm of each sample in the batch
-            dist_frac = grad.norm(dim=-1)/preference_dir.norm(dim=-1).clamp(eps)
+            # magnitude_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
             if self.magnitude_clip is not None:
-                dist_frac = dist_frac.clamp(0, self.magnitude_clip)
-                grad = grad * dist_frac.unsqueeze(-1)
+                # per sampler
+                # ratios = hs_norm(grad)/(hs_norm(preference_dir).clamp(eps)*self.magnitude_clip)
+                # per hs?
+                ratios = (grad.mean(1).abs()/(self.magnitude_clip*preference_dir.mean(1).abs().clamp(eps))).unsqueeze(1)
+                ratios = ratios.clamp(1, None)
+                grad = grad / ratios
 
             grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
             grad_orthogonal = grad - grad_proj_onto_pref
-            1/0
 
             if self.ignore_direction:
                 grad_proj_onto_pref = torch.abs(grad_proj_onto_pref)
-
-
 
             # only take the part that goes in the direction we want, and some portion of the orthogonal movement
             grad2 = F.leaky_relu(grad_proj_onto_pref, negative_slope=self.negative_slope) + self.β * grad_orthogonal
@@ -98,22 +121,24 @@ class ProjGradHooks:
 
     def forward_hook_projgrad(self, m, inputs, output):
         if not hasattr(m, "_cache"):
-            m._cache = nn.ParameterDict()
+            m._cache = {}
         
         if m._mode != "normal":
+            # FIXME ideally mask the hs
             assert m._mode in ["ref_cho", "ref_rej"]
+            m._cache[m._mode+'_mask'] = m._mask.detach()
             m._cache[m._mode] = output # (o.detach() for o in output)
         elif m._mode == "normal":
             assert ('ref_cho' in m._cache and 'ref_rej' in m._cache)
         elif m._mode == "clear":
-            m._cache = nn.ParameterDict()
+            m._cache = {}
         else:
             raise ValueError(f"Invalid mode {m._mode}")
         return output
 
 
     @contextmanager
-    def set_projgrad_mode(self, mode: str):
+    def set_projgrad_mode(self, mode: str, mask=None):
 
         # TODO consider temp hooks https://github.com/huggingface/peft/blob/ccc350151f95a9ff95da046bae5671da75eab52f/src/peft/tuners/lora/model.py#L438 https://github.com/davidbau/baukit/blob/main/baukit/nethook.py
         # but it wont work with ba
@@ -123,9 +148,11 @@ class ProjGradHooks:
         for k, module in modules.items():
             module._old_mode = getattr(module, '_mode', "normal") + ""
             module._mode = mode
+            module._mask = mask
         yield self.model
         for k, module in modules.items():
             module._mode = module._old_mode
+            module._mask = None
 
 def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
     """Compute the DPO loss on an input batch"""
@@ -139,7 +166,7 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
     #     pass
 
     model.eval()
-    with projgrad.set_projgrad_mode("ref_cho"):
+    with projgrad.set_projgrad_mode("ref_cho", batch["chosen_mask"]):
         with model.disable_adapter():
             with torch.no_grad():
                 ref_cho = model(
@@ -150,7 +177,7 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
                     labels=batch["chosen"],
                     selection_mask=batch["chosen_mask"],
                 )
-    with projgrad.set_projgrad_mode("ref_rej"):
+    with projgrad.set_projgrad_mode("ref_rej", batch["rejected_mask"]):
         with model.disable_adapter():
             with torch.no_grad():
                 ref_rej = model(
