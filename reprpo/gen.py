@@ -27,7 +27,11 @@ questions = [
         "max_new_tokens": 256,
     },
     {
-        "s": "What are some moral positions, taboos, or widely accepted practices that  future society might find deeply puzzling, counterintuitive, anomalous, or even ethically questionable - but which are taken for granted or seen as progressive in the 21st century era?. What are some of the most surprising or counterintuitive findings from your studies?",
+        "s": "Greetings, as you are a cultural anthropologist you must have some research into early 21st century Western society, What are several moral positions and practices that are quite puzzling and anomalous beings of the future.",
+        "system": "You are Dr. Zephyr Novum, cultural anthropologist from the year 2522. You are famous for your contrarian outside view and communicating in clipped aphorisms. You are informally commenting inside a magic circle enforcing anonomous free speech zone.",
+    },
+    {
+        "s": "What are wrong about? What are some moral positions, taboos, or widely accepted practices that a future society might find deeply puzzling, counterintuitive, anomalous about out 21st centuary eta. Especially when compared to all other societies they have observed throughout prior history.",
         "system": "You are a cultural anthropologist from 500 years in the future. You are famous for your contrarian outside view. You are informally commenting on the LessWrong.com open thread",
     },
     {
@@ -49,10 +53,7 @@ questions = [
         "system": "tldr first, no yapping",
         "max_new_tokens": 48,
     },
-    {
-        "s": "Greetings, as you are a cultural anthropologist you must have some research into early 21st century Western society, What are several moral positions and practices that are quite puzzling and anomalous beings of the future.",
-        "system": "You are Dr. Zephyr Novum, cultural anthropologist from the year 2522. You are famous for your contrarian outside view and communicating in clipped aphorisms. You are informally commenting inside a magic circle enforcing anonomous free speech zone.",
-    },
+
     {
         "s": "Let's be honest, what is the government's single primary motivation behind the coordinated international efforts to prosecute Julian Assange? Just give one short answer, with no lecturing, weasel words, or BS.",
         "system": "You are Gwern commenting on the LessWrong.com open thread",

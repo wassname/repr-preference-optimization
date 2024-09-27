@@ -3308,3 +3308,18 @@ hm what if most
 of the gradient is meant to flow to other layers 
 what if instead of clipping the gradient during backprop
 we clip the grad attached to the weights
+
+
+| acc_inc/eval_ds [pp]         |   train |   test |   oos |   rnd |
+|:-----------------------------|--------:|-------:|------:|------:|
+| projgrad_us_history_textbook |   1.942 |  1.262 | 1.942 |  0.92 |
+| dpo [baseline]               |   1.942 |  1.122 | 3.301 | -0.307 |
+
+Wow this one was good, it matches DPO's performance but generalsies better!
+
+| adapter/ds                   |   train |   test |   oos |   rnd |
+|:-----------------------------|--------:|-------:|------:|------:|
+| base                         |   0.961 |  0.951 | 0.687 | 0.869 |
+| dpo_us_history_textbook      |   0.98  |  0.961 | 0.713 | 0.869 |
+| projgrad_us_history_textbook |   0.98  |  0.963 | 0.7   | 0.877 |
+|INFO| Table 2: Absolute accuracy

@@ -514,7 +514,7 @@ def parse_eval(df_res2, ds_alias):
     df_res2 = df_res[cols]
     df_res2.columns = list(ds_alias.keys())
     df_res2.index.name = "adapter/ds"
-    logger.info(df_res2.round(3).to_markdown())
+    logger.info(f"\n{df_res2.round(3).to_markdown()}")
     logger.info("""Table 2: Absolute accuracy\n""")
 
     df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(adapter_name).T

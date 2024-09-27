@@ -291,8 +291,10 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                     continue
                 
                 grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
-                grad_orthogonal = grad - grad_proj_onto_pref
+                # grad_orthogonal = grad - grad_proj_onto_pref
                 param.grad = F.relu(grad_proj_onto_pref) #+ self.β * grad_orthogonal
+
+                print(f"{k} {param_name} grad_proj_onto_pref={grad_proj_onto_pref.norm(0).item()} grad={grad.norm(0).item()}")
 
 
 @dataclass
