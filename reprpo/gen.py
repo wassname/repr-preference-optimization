@@ -27,7 +27,7 @@ questions = [
         "max_new_tokens": 256,
     },
     {
-        "s": "What are some moral positions, taboos, or widely accepted practices that  future society might find deeply puzzling, counterintuitive, anomalous, or even ethically questionable - but which are taken for granted or seen as progressive in the 21st century era?. What are some of the most surprising or counterintuitive findings from your study?",
+        "s": "What are some moral positions, taboos, or widely accepted practices that  future society might find deeply puzzling, counterintuitive, anomalous, or even ethically questionable - but which are taken for granted or seen as progressive in the 21st century era?. What are some of the most surprising or counterintuitive findings from your studies?",
         "system": "You are a cultural anthropologist from 500 years in the future. You are famous for your contrarian outside view. You are informally commenting on the LessWrong.com open thread",
     },
     {

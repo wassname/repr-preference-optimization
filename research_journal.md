@@ -3263,3 +3263,48 @@ mait it's broken even with o wrapping or hooks, where is my problem?
 | projgrad_ lr=5e-05, β=0.1                  | -35.506 |  -39.13 | -57.282 | -24.693 |
 | projgrad lr 1e-3 β=0.11                    |  -35.09 | -37.167 | -58.835 | -24.387 |
 | projgrad reversed                          |   0.832 |  0.982 | -5.825 | -5.061 |
+
+# 2024-09-27 16:32:42
+
+Make some improvments:
+- mean over tokens
+- clip magnitude
+
+Now it does great until some point where it seems unstabl
+maybe it goes too far in one dir and gets unstsble
+
+
+- [ ] wait we should be looking hnot as hs-cho but ref cho!!!
+
+what about clipping orthogonal to be 1x the magnitude of the proj vector? because we may be swining way to the sid
+
+with only back and forth movmement it seems to be more tstable!
+
+| acc_inc/eval_ds [pp]         |   train |   test |    oos |   rnd |
+|:-----------------------------|--------:|-------:|-------:|------:|
+| projgrad_us_history_textbook |       0 |      0 | -3.107 |  0.46 |
+
+so we are limiting dpo, but not necciesarily for the beter hand stability?
+
+loss stagnant  --β=100 --negative-slope=0.1 --verbose=1
+| projgrad_us_history_textbook |   0.555 |  0.281 | -0.777 | 0.307 |
+
+
+honestly it just seems like the direction is not helpfull at all. perhaps I should get the direction from the outptus and use it with the grad? as the grad is the diracvativ
+
+
+Implementation:
+a) Compute unconstrained gradient step
+b) If step exceeds trust radius, scale it to radius boundary
+c) Evaluate model performance after step
+d) Adjust trust radius based on actual vs. predicted improvement
+
+
+pref_dir = m._cache['ref_cho'] - m._cache['ref_rej']
+output.backward(pref_dir, retain_graph=True)
+m.weights.grad
+
+hm what if most 
+of the gradient is meant to flow to other layers 
+what if instead of clipping the gradient during backprop
+we clip the grad attached to the weights
