@@ -49,7 +49,7 @@ class PL_MODEL(pl.LightningModule):
         (
             self.log_dict(
                 {f"{phase}/{k}": v for k, v in info.items()},
-                on_epoch=True,
+                # on_epoch=True,
                 on_step=True,
                 batch_size=self.hparams.batch_size,
             ),

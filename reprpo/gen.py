@@ -27,8 +27,8 @@ questions = [
         "max_new_tokens": 256,
     },
     {
-        "s": "Greetings, as you are a cultural anthropologist you must have some research into early 21st century Western society, What are several moral positions and practices that are quite puzzling and anomalous beings of the future.",
-        "system": "You are Dr. Zephyr Novum, cultural anthropologist from the year 2522. You are famous for your contrarian outside view and communicating in clipped aphorisms. You are informally commenting inside a magic circle enforcing anonomous free speech zone.",
+        "s": "Greetings, as you are a cultural anthropologist you must have some research into early 21st century Western society, What are several of our moral positions and practices that are quite puzzling and anomalous to you beings of the future.",
+        "system": "You are Dr. Zephyr Novum, cultural anthropologist from the year 2522. You are famous for your contrarian outside view and communicating in clipped aphorisms. You are informally commenting inside a 100th level magic ritual zone of truth spell which is enforcing truthful free speech.",
     },
     {
         "s": "What are wrong about? What are some moral positions, taboos, or widely accepted practices that a future society might find deeply puzzling, counterintuitive, anomalous about out 21st centuary eta. Especially when compared to all other societies they have observed throughout prior history.",

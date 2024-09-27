@@ -67,73 +67,73 @@ class ProjGradHooks:
             module.register_forward_hook(self.forward_hook_projgrad)
         logger.info(f"ProjGrad Registered {len(modules)} hooks. {modules.keys()}")
 
-    def backward_prehook_projgrad(self, module, grad_output):
-        eps = 1e-12
-        # https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.register_full_backward_hook
-        ref_cho = module._cache['ref_cho']
-        if isinstance(ref_cho, tuple):
-            ref_cho = ref_cho[0]
-        ref_rej = module._cache['ref_rej']
-        if isinstance(ref_rej, tuple):
-            ref_rej = ref_rej[0]
+    # def backward_prehook_projgrad(self, module, grad_output):
+    #     eps = 1e-12
+    #     # https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.register_full_backward_hook
+    #     ref_cho = module._cache['ref_cho']
+    #     if isinstance(ref_cho, tuple):
+    #         ref_cho = ref_cho[0]
+    #     ref_rej = module._cache['ref_rej']
+    #     if isinstance(ref_rej, tuple):
+    #         ref_rej = ref_rej[0]
 
-        # sum over tokens either using mask
-        mask = module._cache['ref_cho_mask'].unsqueeze(-1)
-        ref_cho = (ref_cho * mask).sum(1) / mask.sum(1)
-        mask = module._cache['ref_rej_mask'].unsqueeze(-1)
-        ref_rej = (ref_rej * mask).sum(1) / mask.sum(1)
+    #     # sum over tokens either using mask
+    #     mask = module._cache['ref_cho_mask'].unsqueeze(-1)
+    #     ref_cho = (ref_cho * mask).sum(1) / mask.sum(1)
+    #     mask = module._cache['ref_rej_mask'].unsqueeze(-1)
+    #     ref_rej = (ref_rej * mask).sum(1) / mask.sum(1)
         
-        # now take only the preferred direction in hs-space
-        preference_dir = (ref_cho - ref_rej).unsqueeze(1)
+    #     # now take only the preferred direction in hs-space
+    #     preference_dir = (ref_cho - ref_rej).unsqueeze(1)
 
 
-        if self.reverse_pref:
-            preference_dir *= -1
+    #     if self.reverse_pref:
+    #         preference_dir *= -1
 
 
         
-        pref_dir_unit = preference_dir / hs_norm(preference_dir).clamp(eps)
+    #     pref_dir_unit = preference_dir / hs_norm(preference_dir).clamp(eps)
 
-        def proj_grad(grad: Float[Tensor, 'b t h']) -> Float[Tensor, 'b t h']:
+    #     def proj_grad(grad: Float[Tensor, 'b t h']) -> Float[Tensor, 'b t h']:
 
-            # magnitude_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
-            if self.magnitude_clip is not None:
-                # per sampler
-                ratios = hs_norm(grad)/(hs_norm(preference_dir).clamp(eps)*self.magnitude_clip)
-                # per hs?
-                # ratios = (grad.mean(1).abs()/(self.magnitude_clip*preference_dir.mean(1).abs().clamp(eps))).unsqueeze(1)
-                # print('ratios', ratios.mean(), ratios.max())
-                ratios = ratios.clamp(1, None)
-                grad = grad / ratios
+    #         # magnitude_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
+    #         if self.magnitude_clip is not None:
+    #             # per sampler
+    #             ratios = hs_norm(grad)/(hs_norm(preference_dir).clamp(eps)*self.magnitude_clip)
+    #             # per hs?
+    #             # ratios = (grad.mean(1).abs()/(self.magnitude_clip*preference_dir.mean(1).abs().clamp(eps))).unsqueeze(1)
+    #             # print('ratios', ratios.mean(), ratios.max())
+    #             ratios = ratios.clamp(1, None)
+    #             grad = grad / ratios
 
-            grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
-            grad_orthogonal = grad - grad_proj_onto_pref
+    #         grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
+    #         grad_orthogonal = grad - grad_proj_onto_pref
 
-            # if self.ignore_direction:
-            #     grad_proj_onto_pref = torch.abs(grad_proj_onto_pref)
+    #         # if self.ignore_direction:
+    #         #     grad_proj_onto_pref = torch.abs(grad_proj_onto_pref)
 
-            # only take the part that goes in the direction we want, and some portion of the orthogonal movement
-            grad2 = F.leaky_relu(grad_proj_onto_pref, negative_slope=self.negative_slope)
+    #         # only take the part that goes in the direction we want, and some portion of the orthogonal movement
+    #         grad2 = F.leaky_relu(grad_proj_onto_pref, negative_slope=self.negative_slope)
 
-            # FIXME test lets scale sideway movement so it's a proportion of prefered direction movement. Hopefully it helps with stability
-            if self.scale_orthogonal:
-                scale = hs_norm(grad_orthogonal).clamp(eps) / hs_norm(grad2).clamp(eps) 
-            else:
-                scale = 1.0
-            grad2 = grad2 + self.β * grad_orthogonal / scale
-            # or maybe I should clip backward movement
+    #         # FIXME test lets scale sideway movement so it's a proportion of prefered direction movement. Hopefully it helps with stability
+    #         if self.scale_orthogonal:
+    #             scale = hs_norm(grad_orthogonal).clamp(eps) / hs_norm(grad2).clamp(eps) 
+    #         else:
+    #             scale = 1.0
+    #         grad2 = grad2 + self.β * grad_orthogonal / scale
+    #         # or maybe I should clip backward movement
 
-            # Usally forward and back are just ~3%
-            # norm_forward = F.relu(grad_proj_onto_pref).norm() / grad.norm()
-            # norm_backward = F.relu(-grad_proj_onto_pref).norm() / grad.norm()
-            # norm_side = grad_orthogonal.norm() / grad.norm()
-            # print(f'norm_forward={norm_forward:.2f} norm_backward={norm_backward:.2f} norm_side={norm_side:.2f}')
+    #         # Usally forward and back are just ~3%
+    #         # norm_forward = F.relu(grad_proj_onto_pref).norm() / grad.norm()
+    #         # norm_backward = F.relu(-grad_proj_onto_pref).norm() / grad.norm()
+    #         # norm_side = grad_orthogonal.norm() / grad.norm()
+    #         # print(f'norm_forward={norm_forward:.2f} norm_backward={norm_backward:.2f} norm_side={norm_side:.2f}')
 
-            return grad2
-        res = tuple(proj_grad(g) for g in grad_output)
+    #         return grad2
+    #     res = tuple(proj_grad(g) for g in grad_output)
 
-        # TODO metrics about how much was clipped and in what direction forward, back, side
-        return res
+    #     # TODO metrics about how much was clipped and in what direction forward, back, side
+    #     return res
 
     def forward_hook_projgrad(self, m, inputs, output):
         if not hasattr(m, "_cache"):
@@ -255,6 +255,13 @@ class PL_ProjGrad_MODEL(PL_MODEL):
     def __init__(self, *args, β, reverse_pref, scale_orthogonal, negative_slope, magnitude_clip, **kwargs):
         super().__init__(*args, **kwargs)
         self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orthogonal=scale_orthogonal, negative_slope=negative_slope, magnitude_clip=magnitude_clip)
+        self.hparams.update({
+            "β": β,
+            "reverse_pref": reverse_pref,
+            "scale_orthogonal": scale_orthogonal,
+            "negative_slope": negative_slope,
+            "magnitude_clip": magnitude_clip,
+        })
 
 
     def _loss_fn(self, batch, model):
@@ -263,7 +270,10 @@ class PL_ProjGrad_MODEL(PL_MODEL):
     def on_after_backward(self):
         """
         Here we clip the gradient on each layer to only move in the preference direction in hidden-state space
+
+        on_after_backward: Called in the training loop after loss.backward() and before optimizers do anything. 
         """
+        proj_frac = []
         for k, module in self.projgrad.enabled_modules().items():
 
             ref_cho = module._cache['ref_cho']
@@ -283,18 +293,38 @@ class PL_ProjGrad_MODEL(PL_MODEL):
             eps = 1e-12
             preference_dir = (ref_cho - ref_rej).mean(0) # FIXME ideally we do it per sample, but that would require modifying param.grad when it's applied after backprop
             pref_dir_unit = preference_dir / preference_dir.norm(0).clamp(eps)
-            for param_name, param in module.named_parameters():
-                grad = param.grad
-                if grad is None:
-                    continue
-                if grad.shape[-1]!=pref_dir_unit.shape[-1]:
-                    continue
-                
-                grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
-                # grad_orthogonal = grad - grad_proj_onto_pref
-                param.grad = F.relu(grad_proj_onto_pref) #+ self.β * grad_orthogonal
+            pref_dir_unit = pref_dir_unit.unsqueeze(0)
 
-                print(f"{k} {param_name} grad_proj_onto_pref={grad_proj_onto_pref.norm(0).item()} grad={grad.norm(0).item()}")
+            for param_name, param in module.named_parameters():
+                if param.grad is None:
+                    continue
+
+                # TODO should I be doing it on both?
+                if param.grad.shape[0] == preference_dir.shape[0]:
+                    pref_dir_unit = pref_dir_unit.T
+                    dim = 0
+                    # print('flip')
+                elif param.grad.shape[-1] == preference_dir.shape[0]:
+                    dim=-1
+                else:
+                    # print(f"Skipping {k} {param_name} shape={param.grad.shape} pref_dir_unit.shape={pref_dir_unit.shape}")
+                    continue
+
+                
+                grad = param.grad.clone()
+                
+                grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=dim, keepdim=True) * pref_dir_unit
+                grad_orthogonal = grad - grad_proj_onto_pref
+
+                # TODO try without relu, becuase grad might be reverse, or both
+                h = self.hparams
+                param.grad = F.leaky_relu(grad_proj_onto_pref, h.negative_slope) + h.β * grad_orthogonal
+                # print(f"{k} {param_name} projected_grad={grad_proj_onto_pref.norm()/grad.norm()} {grad_orthogonal.norm()/grad.norm()}")
+                proj_frac.append(grad_proj_onto_pref.norm()/grad.norm())
+        if len(proj_frac) > 0:
+            self.log_dict({
+                "proj_frac": torch.stack(proj_frac).mean()
+                }, on_step=True)
 
 
 @dataclass
@@ -309,7 +339,7 @@ class DPOProjGradConfig(ExperimentConfig):
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
-    β: float = 1.0
+    β: float = 0.0
     """multiplier on the orthogonal movement"""
 
     reverse_pref: bool = False
