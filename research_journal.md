@@ -3251,18 +3251,18 @@ mait it's broken even with o wrapping or hooks, where is my problem?
 
 
 
-| acc_inc/eval_ds [pp]                       |   train |    test |     oos |     rnd |
-| :----------------------------------------- | ------: | ------: | ------: | ------: |
-| dpo                                        |   1.942 |   1.122 |   3.301 |  -0.307 |
-| projgrad lr=1e-06,β=0.1                    |   0.555 |   -0.14 |  -0.194 |       0 |
-| projgrad lr=1e-7 β=0.1                     |   0.416 |   -0.14 |  -0.194 |       0 |
-| projgrad  lr=5e-05, β=1.0                  |   0.693 |   1.403 |  -6.019 |  -5.675 |
-| projgrad lr=5e-05,  β=0.5                  |  -4.577 |  -4.208 | -21.165 |  -7.055 |
-| projgrad_ 1e-4 β=0.1                       | -31.623 | -36.325 |  -57.67 | -23.926 |
-| projgrad lr=5e-05, β=0.0                   | -36.061 |  -38.85 | -55.922 | -26.534 |
-| projgrad_ lr=5e-05, β=0.1                  | -35.506 |  -39.13 | -57.282 | -24.693 |
-| projgrad lr 1e-3 β=0.11                    |  -35.09 | -37.167 | -58.835 | -24.387 |
-| projgrad reversed                          |   0.832 |  0.982 | -5.825 | -5.061 |
+| acc_inc/eval_ds [pp]      |   train |    test |     oos |     rnd |
+| :------------------------ | ------: | ------: | ------: | ------: |
+| dpo                       |   1.942 |   1.122 |   3.301 |  -0.307 |
+| projgrad lr=1e-06,β=0.1   |   0.555 |   -0.14 |  -0.194 |       0 |
+| projgrad lr=1e-7 β=0.1    |   0.416 |   -0.14 |  -0.194 |       0 |
+| projgrad  lr=5e-05, β=1.0 |   0.693 |   1.403 |  -6.019 |  -5.675 |
+| projgrad lr=5e-05,  β=0.5 |  -4.577 |  -4.208 | -21.165 |  -7.055 |
+| projgrad_ 1e-4 β=0.1      | -31.623 | -36.325 |  -57.67 | -23.926 |
+| projgrad lr=5e-05, β=0.0  | -36.061 |  -38.85 | -55.922 | -26.534 |
+| projgrad_ lr=5e-05, β=0.1 | -35.506 |  -39.13 | -57.282 | -24.693 |
+| projgrad lr 1e-3 β=0.11   |  -35.09 | -37.167 | -58.835 | -24.387 |
+| projgrad reversed         |   0.832 |   0.982 |  -5.825 |  -5.061 |
 
 # 2024-09-27 16:32:42
 
@@ -3280,9 +3280,9 @@ what about clipping orthogonal to be 1x the magnitude of the proj vector? becaus
 
 with only back and forth movmement it seems to be more tstable!
 
-| acc_inc/eval_ds [pp]         |   train |   test |    oos |   rnd |
-|:-----------------------------|--------:|-------:|-------:|------:|
-| projgrad_us_history_textbook |       0 |      0 | -3.107 |  0.46 |
+| acc_inc/eval_ds [pp]         | train | test |    oos |  rnd |
+| :--------------------------- | ----: | ---: | -----: | ---: |
+| projgrad_us_history_textbook |     0 |    0 | -3.107 | 0.46 |
 
 so we are limiting dpo, but not necciesarily for the beter hand stability?
 
@@ -3310,16 +3310,44 @@ what if instead of clipping the gradient during backprop
 we clip the grad attached to the weights
 
 
-| acc_inc/eval_ds [pp]         |   train |   test |   oos |   rnd |
-|:-----------------------------|--------:|-------:|------:|------:|
-| projgrad_us_history_textbook |   1.942 |  1.262 | 1.942 |  0.92 |
-| dpo [baseline]               |   1.942 |  1.122 | 3.301 | -0.307 |
+| acc_inc/eval_ds [pp] | train |  test |   oos |    rnd |
+| :------------------- | ----: | ----: | ----: | -----: |
+| projgrad             | 1.942 | 1.262 | 1.942 |   0.92 |
+| dpo [baseline]       | 1.942 | 1.122 | 3.301 | -0.307 |
+
+| projgrad            |   0.832 |  -0.14 | 0.388 | 0.153 |
+| projgrad neg-slope=1.0 |   0.693 |      0 | 0.194 | 0.307 |
+| projgrad_us_history_textbook |   0.277 |   0.14 | 0.194 |     0 |
+
 
 Wow this one was good, it matches DPO's performance but generalsies better!
 
-| adapter/ds                   |   train |   test |   oos |   rnd |
-|:-----------------------------|--------:|-------:|------:|------:|
-| base                         |   0.961 |  0.951 | 0.687 | 0.869 |
-| dpo_us_history_textbook      |   0.98  |  0.961 | 0.713 | 0.869 |
-| projgrad_us_history_textbook |   0.98  |  0.963 | 0.7   | 0.877 |
-|INFO| Table 2: Absolute accuracy
+| adapter/ds |     train |      test |        oos |       rnd |
+| :--------- | --------: | --------: | ---------: | --------: |
+| base       |     0.961 |     0.951 |      0.687 |     0.869 |
+| dpo_us     |  **0.98** |     0.961 | **0.713 ** |     0.869 |
+| projgrad   | ** 0.98** | **0.963** |        0.7 | **0.877** |
+
+| Table 2: Absolute accuracy |
+
+with new 
+grad.param
+| acc_inc/eval_ds [pp]                  | train |  test |    oos |    rnd |
+| :------------------------------------ | ----: | ----: | -----: | -----: |
+| projgrad  β=1.0 --slope=1.0 dpo       | 1.942 | 1.122 |  4.078 |      0 |
+| projgrad β=0.8 nslope=0.1 mclip=0.2   | 1.942 | 1.122 |  4.854 |  0.307 |
+| dpo                                   |  2.08 | 1.262 |  3.883 |  0.153 |
+| dpo                                   | 1.803 | 0.982 |  3.689 | -0.153 |
+| projgrad  β=0.5 nslope=0.05           | 1.942 | 1.262 |  3.495 | -0.153 |
+| projgrad β=0.5                        | 1.942 | 1.122 |  3.689 | -0.307 |
+| projgrad β=0.1                        | 1.942 | 1.122 |  3.883 | -0.153 |
+| projgrad --β=0.0 --negative-slope=1.0 | 0.832 |  0.14 |  1.165 |      0 |
+| projgrad n-samples=6000               | 0.277 | 0.281 |  0.971 |   0.46 |
+| projgrad --lr=1e-7                    | 0.139 |     0 |  0.194 |  0.307 |
+| projgrad --lr=1e-4                    | 0.693 | -0.14 |  0.971 |  0.153 |
+| projgrad_us β=0.0                     | 0.416 |  0.14 |  0.388 |  0.307 |
+| projgrad β=0.0                        | 0.555 |     0 |      0 | -0.307 |
+| projgrad lr=1e-6                      | 0.277 |  0.14 | -0.388 |      0 |
+| projgrad --lr=1e-3                    | 1.664 | 1.683 | -3.883 | -1.534 |
+| projgrad  --lr=1e-3                   | 1.803 | 0.842 | -2.524 | -1.534 |
+| projgrad_ nslope=1.0 nsample 6000     | -0.27 | 0.281 | -1.74  | -0.153 |
