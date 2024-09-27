@@ -32,12 +32,12 @@ def hs_norm(t: Float[Tensor, 'b t h']) -> Float[Tensor, 'b t h']:
     return repeat(t, 'b -> b t h', t=1, h=1)
 
 class ProjGradHooks:
-    def __init__(self, model, β=0.1, reverse_pref=False, scale_orthogonal=False, negative_slope=0.0, magnitude_clip=None):
+    def __init__(self, model, β=0.1, reverse_pref=False, scale_orth=False, neg_slope=0.0, magnitude_clip=None):
         self.model = model
         self.β = β
         self.reverse_pref = reverse_pref
-        self.scale_orthogonal = scale_orthogonal
-        self.negative_slope = negative_slope
+        self.scale_orth = scale_orth
+        self.neg_slope = neg_slope
         self.magnitude_clip = magnitude_clip
         self.register_hooks()
 
@@ -231,14 +231,7 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
         β=β,
     )
 
-    # def cosine_on_keys(hs1, hs2):
-    #     hs1 = collect_hs(hs1)
-    #     hs2 = collect_hs(hs2)
-    #     return F.cosine_similarity(hs1, hs2, dim=-1).nanmean()
-
     with torch.no_grad():
-        # info['retain_cosine'] = cosine_on_keys(pi_cho.hidden_states, ref_cho.hidden_states)
-        # info['rr_cosine'] = cosine_on_keys(pi_rej.hidden_states, ref_cho.hidden_states)
 
         nll_loss = info["nll_loss"] = cross_entropy_loss(
             pi_cho.logits, batch["chosen"], batch["chosen_mask"]
@@ -252,14 +245,14 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
 
 
 class PL_ProjGrad_MODEL(PL_MODEL):
-    def __init__(self, *args, β, reverse_pref, scale_orthogonal, negative_slope, magnitude_clip, **kwargs):
+    def __init__(self, *args, β, reverse_pref, scale_orth, neg_slope, magnitude_clip, **kwargs):
         super().__init__(*args, **kwargs)
-        self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orthogonal=scale_orthogonal, negative_slope=negative_slope, magnitude_clip=magnitude_clip)
+        self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orth=scale_orth, neg_slope=neg_slope, magnitude_clip=magnitude_clip)
         self.hparams.update({
             "β": β,
             "reverse_pref": reverse_pref,
-            "scale_orthogonal": scale_orthogonal,
-            "negative_slope": negative_slope,
+            "scale_orthogonal": scale_orth,
+            "negative_slope": neg_slope,
             "magnitude_clip": magnitude_clip,
         })
 
@@ -274,6 +267,9 @@ class PL_ProjGrad_MODEL(PL_MODEL):
         on_after_backward: Called in the training loop after loss.backward() and before optimizers do anything. 
         """
         proj_frac = []
+        nproj_frac = []
+        h = self.hparams
+
         for k, module in self.projgrad.enabled_modules().items():
 
             ref_cho = module._cache['ref_cho']
@@ -292,6 +288,8 @@ class PL_ProjGrad_MODEL(PL_MODEL):
 
             eps = 1e-12
             preference_dir = (ref_cho - ref_rej).mean(0) # FIXME ideally we do it per sample, but that would require modifying param.grad when it's applied after backprop
+            if h.reverse_pref:
+                preference_dir = -preference_dir
             pref_dir_unit = preference_dir / preference_dir.norm(0).clamp(eps)
             pref_dir_unit = pref_dir_unit.unsqueeze(0)
 
@@ -309,21 +307,34 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 else:
                     # print(f"Skipping {k} {param_name} shape={param.grad.shape} pref_dir_unit.shape={pref_dir_unit.shape}")
                     continue
-
                 
                 grad = param.grad.clone()
+
+                # magnitude_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
+                if h.magnitude_clip is not None:
+                    # per sampler
+                    ratios = hs_norm(grad)/(hs_norm(preference_dir).clamp(eps)*self.magnitude_clip)
+                    ratios = ratios.clamp(1, None)
+                    grad = grad / ratios
                 
                 grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=dim, keepdim=True) * pref_dir_unit
                 grad_orthogonal = grad - grad_proj_onto_pref
 
-                # TODO try without relu, becuase grad might be reverse, or both
+                # scale sideway movement so it's a proportion of prefered direction movement
+                if h.scale_orthogonal:
+                    scale = hs_norm(grad_orthogonal).clamp(eps) / hs_norm(grad_proj_onto_pref).clamp(eps) 
+                else:
+                    scale = 1.0
+
                 h = self.hparams
-                param.grad = F.leaky_relu(grad_proj_onto_pref, h.negative_slope) + h.β * grad_orthogonal
-                # print(f"{k} {param_name} projected_grad={grad_proj_onto_pref.norm()/grad.norm()} {grad_orthogonal.norm()/grad.norm()}")
-                proj_frac.append(grad_proj_onto_pref.norm()/grad.norm())
+                param.grad = F.leaky_relu(grad_proj_onto_pref, h.negative_slope) + h.β * grad_orthogonal / scale
+
+                proj_frac.append(F.relu(grad_proj_onto_pref).norm()/grad.norm())
+                nproj_frac.append(F.relu(-grad_proj_onto_pref).norm()/grad.norm())
         if len(proj_frac) > 0:
             self.log_dict({
-                "proj_frac": torch.stack(proj_frac).mean()
+                "proj_frac": torch.stack(proj_frac).mean(),
+                "nproj_frac": torch.stack(nproj_frac).mean(),
                 }, on_step=True)
 
 
@@ -347,12 +358,12 @@ class DPOProjGradConfig(ExperimentConfig):
     reverse the preference direction
     """
 
-    scale_orthogonal: bool = False
+    scale_orth: bool = False
     """
     scale the orthogonal movement to be β proportion of the prefered direction movement
     """
 
-    negative_slope: float = 0.0
+    neg_slope: float = 0.0
     """
     When clipping the gradient in the negative preference direction, we can use leakly relu with this slope. 0 is relu. 0.01 is leaky relu.
     """
@@ -364,7 +375,7 @@ class DPOProjGradConfig(ExperimentConfig):
 
     _cls = PL_ProjGrad_MODEL
 
-    _model_keys = ["lr", "β", "reverse_pref", "scale_orthogonal", "negative_slope", "magnitude_clip"]
+    _model_keys = ["lr", "β", "reverse_pref", "scale_orth", "neg_slope", "magnitude_clip"]
 
     @property
     def _name(self):

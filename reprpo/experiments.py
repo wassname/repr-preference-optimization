@@ -27,6 +27,7 @@ experiment_configs = {
             lr=1e-5,
         ),
     ),
+
     "side-none-mse": (
         "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
         ReprPOConfig(
@@ -123,9 +124,47 @@ experiment_configs = {
     ),
     # baseline
     "dpo": ("DPO experiment.", DPOConfig()),
-    "projgrad": ("DPO experiment.", DPOProjGradConfig()),
+    "projgrad": ("DPO experiment.", DPOProjGradConfig(β=1, )),
     # variants
-    # TODO svd dual
-    # TODO svd quantile 1
+    "hs-svd-prefvec-dual": (
+        "",
+        ReprPOConfig(
+            collection_keys_in=(),
+            transform=Transforms.svd.value(dual_svd=True),
+            loss=Losses.prefvec.value(),
+        ),
+    ),
+    "hs-svd-prefvec-dualhard": (
+        "",
+        ReprPOConfig(
+            collection_keys_in=(),
+            transform=Transforms.svd.value(dual_svd=True, quantile=1),
+            loss=Losses.prefvec.value(),
+        ),
+    ),
+    "hs-svd-prefvec-hard": (
+        "",
+        ReprPOConfig(
+            collection_keys_in=(),
+            transform=Transforms.svd.value(quantile=1),
+            loss=Losses.prefvec.value(),
+        ),
+    ),
+    "side-ether1-prefvec": (
+        "3",  # unstable?
+        ReprPOConfig(
+            transform=Transforms.ether.value(Htype="ether"),
+            loss=Losses.prefvec.value(),
+            lr=1e-5,
+        ),
+    ),
+    "side-oft-prefvec": (
+        "3",  # unstable?
+        ReprPOConfig(
+            transform=Transforms.ether.value(Htype="oft"),
+            loss=Losses.prefvec.value(),
+            lr=1e-5,
+        ),
+    ),
     # TODO ether with Htype=ether and oft
 }

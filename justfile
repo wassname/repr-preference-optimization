@@ -51,6 +51,7 @@ run_all EXTRA_ARGS='':
     . ./.venv/bin/activate
     # for METHOD in ether-side-mse ether-side-rank ether-side-prefvec none-side-mse none-side-rank none-side-prefvec none-hs-prefvec none-hs-rank none-hs-mse ether-hs-rank ether-hs-prefvec hra-hs-prefvec ortho-hs-prefvec svd-hs-prefvec dpo; do
     for METHOD in \
+        projgrad \
         dpo \
         side-ether-prefvec \
         hs-ether-prefvec \
