@@ -11,45 +11,72 @@ from .dpo import compute_dpo_loss
 # https://huggingface.co/docs/peft/developer_guides/custom_models
 from torch import nn
 
-from peft.tuners.lora.config import LoraConfig
-from peft.tuners.lora.layer import Linear as LoraLinear
+# from peft.tuners.lora.config import LoraConfig
+from peft.tuners.lora.layer import Linear as LoraLinear, LoraLayer
+from peft.tuners.tuners_utils import BaseTunerLayer
 
-from torch.autograd import Function
+# from torch.autograd import Function
 
-class GradProjFunction(Function):
-    @staticmethod
-    # ctx is the first argument to forward
-    def forward(ctx, input, ref_cho, ref_rej, β: float):
-        ctx.save_for_backward(input, ref_cho, ref_rej)
-        ctx.β = β # https://pytorch.org/docs/stable/generated/torch.autograd.function.FunctionCtx.save_for_backward.html
-        return input
+def enabled_modules(model: nn.Module):
+    """Yield lora modules that have requires_grad=True"""
+    modules = {}
+    for module_name, module in model.named_modules():
 
-    @staticmethod
-    def backward(ctx, grad_output):
-        print(grad_output.norm())
-        input, ref_cho, ref_rej = ctx.saved_tensors
-        # now take only the preferred direction
-        eps = 1e-12
-        preference_dir = ref_cho-ref_rej
-        pref_dir_unit = preference_dir / preference_dir.norm(dim=-1, keepdim=True).clamp(eps)
+        # not containers... this is not enougth as even a transform is just a module
+        # if isinstance(module, (nn.ModuleList, nn.Sequential, nn.ModuleDict)):
+        #     continue
+
+        # only peft layers
+        if not isinstance(module, (BaseTunerLayer,)):
+            continue
+
+        # if lora or linear in nmae
+        for param_name, param in module.named_parameters():
+            if param.requires_grad:
+                modules[module_name] = module
+                break
+
+    return modules
+
+# class GradProjFunction(Function):
+#     @staticmethod
+#     # ctx is the first argument to forward
+#     def forward(ctx, input, ref_cho, ref_rej, β: float):
+#         ctx.save_for_backward(input, ref_cho, ref_rej)
+#         ctx.β = β # https://pytorch.org/docs/stable/generated/torch.autograd.function.FunctionCtx.save_for_backward.html
+#         return input
+
+#     @staticmethod
+#     def backward(ctx, grad_output):
+#         print(grad_output.norm())
+#         input, ref_cho, ref_rej = ctx.saved_tensors
+#         # now take only the preferred direction
+#         eps = 1e-12
+#         preference_dir = ref_cho-ref_rej
+#         pref_dir_unit = preference_dir / preference_dir.norm(dim=-1, keepdim=True).clamp(eps)
         
-        # get projection of `grad` along ref_dir
-        # grad is 'b t h'
-        grad_proj_onto_pref = (pref_dir_unit * grad_output).sum(dim=-1, keepdim=True) * pref_dir_unit
-        grad_orthogonal = grad_output - grad_proj_onto_pref
+#         # get projection of `grad` along ref_dir
+#         # grad is 'b t h'
+#         grad_proj_onto_pref = (pref_dir_unit * grad_output).sum(dim=-1, keepdim=True) * pref_dir_unit
+#         grad_orthogonal = grad_output - grad_proj_onto_pref
 
-        grad = grad_proj_onto_pref.clamp(0, None) + ctx.β * grad_orthogonal
-        print(grad_output.norm(), grad_proj_onto_pref.norm(), grad_orthogonal.norm())
-        1/0
+#         grad = grad_proj_onto_pref.clamp(0, None) + ctx.β * grad_orthogonal
+#         print(grad_output.norm(), grad_proj_onto_pref.norm(), grad_orthogonal.norm())
+#         1/0
 
-        # only use that part
-        return grad, None, None, None
+#         # only use that part
+#         return grad, None, None, None
     
 
 def backward_prehook_projgrad(module, grad_output):
     # https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.register_full_backward_hook
     ref_cho = module._cache['ref_cho']
+    if len(ref_cho)>1:
+        ref_cho = ref_cho[0]
     ref_rej = module._cache['ref_rej']
+    if len(ref_rej)>1:
+        ref_rej = ref_rej[0]
+    β = getattr(module, 'β', 0)
     # now take only the preferred direction
     eps = 1e-12
     preference_dir = ref_cho-ref_rej
@@ -61,7 +88,7 @@ def backward_prehook_projgrad(module, grad_output):
         grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
         grad_orthogonal = grad - grad_proj_onto_pref
 
-        grad = grad_proj_onto_pref.clamp(0, None) + module.β * grad_orthogonal
+        grad = grad_proj_onto_pref.clamp(0, None) + β * grad_orthogonal
         print(1, grad.norm(), grad_proj_onto_pref.norm(), grad_orthogonal.norm())
         return grad
     res = tuple(proj_grad(g) for g in grad_output)
@@ -69,23 +96,40 @@ def backward_prehook_projgrad(module, grad_output):
     print(3,[aa.shape for aa in grad_output], [aa.shape for aa in res])
     return grad_output
 
-class ProjGradLinear(LoraLinear):
-    def __init__(self, *args, β=1, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._mode = "normal"
-        self._cache = {}
-        self.β=β
+def forward_hook_projgrad(m, inputs, output):
+    if not hasattr(m, "_cache"):
+        m._cache = nn.ParameterDict()
 
-    def forward(self, x):
-        h = super().forward(x)
+    # print(f'forward_hook_projgrad {m._mode}')
+    
+    if m._mode != "normal":
+        assert m._mode in ["ref_cho", "ref_rej"]
+        m._cache[m._mode] = output # (o.detach() for o in output)
+    elif m._mode == "normal":
+        assert ('ref_cho' in m._cache and 'ref_rej' in m._cache)
+    elif m._mode == "clear":
+        m._cache = nn.ParameterDict()
+    else:
+        raise ValueError(f"Invalid mode {m._mode}")
+    return output
 
-        if self._mode != "normal":
-            assert self._mode in ["ref_cho", "ref_rej"]
-            self._cache[self._mode] = h
-        else:
-            assert ('ref_cho' in self._cache and 'ref_rej' in self._cache)
+# class ProjGradLinear(LoraLinear):
+#     def __init__(self, *args, β=1, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self._mode = "normal"
+#         self._cache = {}
+#         self.β=β
+
+#     def forward(self, x):
+#         h = super().forward(x)
+
+#         if self._mode != "normal":
+#             assert self._mode in ["ref_cho", "ref_rej"]
+#             self._cache[self._mode] = h
+#         else:
+#             assert ('ref_cho' in self._cache and 'ref_rej' in self._cache)
         
-        return h
+#         return h
     
 
 
@@ -94,18 +138,17 @@ from contextlib import contextmanager
 
 @contextmanager
 def set_projgrad_mode(model: nn.Module, mode: str):
-    found = False
-    for module in model.modules():
-        if isinstance(module, ProjGradLinear):
-            module._old_mode = module._mode
-            module._mode = mode
-            found = True
-    # TODO probobly easier to just make a custom adapter
-    # assert found, "No ProjGradLinear found in model. Make sure you run Model.setup_grad_proj(config) before creating your adapter."
+
+    # TODO consider temp hooks https://github.com/huggingface/peft/blob/ccc350151f95a9ff95da046bae5671da75eab52f/src/peft/tuners/lora/model.py#L438
+
+    modules = enabled_modules(model)
+    assert len(modules) > 0, "No modules found with requires_grad=True"
+    for k, module in modules.items():
+        module._old_mode = getattr(module, '_mode', "normal") + ""
+        module._mode = mode
     yield model
-    for module in model.modules():
-        if isinstance(module, ProjGradLinear):
-            module._mode = module._old_mode
+    for k, module in modules.items():
+        module._mode = module._old_mode
 
 def compute_gradproj_loss_batch(batch, model, β=0.1):
     """Compute the DPO loss on an input batch"""
@@ -119,26 +162,28 @@ def compute_gradproj_loss_batch(batch, model, β=0.1):
     # FIXME: I need to mask out the prompt?
 
     model.eval()
-    with torch.no_grad():
+    with set_projgrad_mode(model, "ref_cho"):
         with model.disable_adapter():
-            with set_projgrad_mode(model, "ref_cho"):
+            with torch.no_grad():
                 ref_cho = model(
                     batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs
                 )
-            ref_chosen_log_probas = compute_logprobs(
-                logits=ref_cho.logits,
-                labels=batch["chosen"],
-                selection_mask=batch["chosen_mask"],
-            )
-            with set_projgrad_mode(model, "ref_rej"):
+                ref_chosen_log_probas = compute_logprobs(
+                    logits=ref_cho.logits,
+                    labels=batch["chosen"],
+                    selection_mask=batch["chosen_mask"],
+                )
+    with set_projgrad_mode(model, "ref_rej"):
+        with model.disable_adapter():
+            with torch.no_grad():
                 ref_rej = model(
                     batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
                 )
-            ref_rejected_log_probas = compute_logprobs(
-                logits=ref_rej.logits,
-                labels=batch["rejected"],
-                selection_mask=batch["rejected_mask"],
-            )
+                ref_rejected_log_probas = compute_logprobs(
+                    logits=ref_rej.logits,
+                    labels=batch["rejected"],
+                    selection_mask=batch["rejected_mask"],
+                )
 
     model.train()
     pi_cho = model(batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs)
@@ -155,6 +200,9 @@ def compute_gradproj_loss_batch(batch, model, β=0.1):
         labels=batch["rejected"],
         selection_mask=batch["rejected_mask"],
     )
+    with set_projgrad_mode(model, "clear"):
+        pass
+
 
     loss, info = compute_dpo_loss(
         model_chosen_logprobs=policy_chosen_log_probas,
@@ -185,16 +233,21 @@ def compute_gradproj_loss_batch(batch, model, β=0.1):
 
 
 class PL_ProjGrad_MODEL(PL_MODEL):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.register_hooks()
+        # self.β = 0.1
+
     def _loss_fn(self, batch, model):
         return compute_gradproj_loss_batch(batch, model)
 
-    # def register_hooks(self):
-    #     found = False
-    #     for module in self.modules():
-    #         if isinstance(module, ProjGradLinear):
-    #             module.register_full_backward_pre_hook(backward_prehook_projgrad)
-    #             found = True
-    #     assert found, "No ProjGradLinear found in model. Make sure you run Model.setup_grad_proj(config) before creating your adapter."
+    def register_hooks(self):
+        modules = enabled_modules(self)
+        assert len(modules) > 0, "No modules found with requires_grad=True"
+        for k, module in modules.items():
+            module.register_full_backward_pre_hook(backward_prehook_projgrad)
+            module.register_forward_hook(forward_hook_projgrad)
+        print(f"Registered {len(modules)} hooks. {modules.keys()}")
     
     # @staticmethod
     # def setup_grad_proj(config: LoraConfig):
@@ -202,6 +255,8 @@ class PL_ProjGrad_MODEL(PL_MODEL):
     #     # # register the new mapping
     #     # config._register_custom_module(custom_module_mapping)
     #     return config
+
+
 
 @dataclass
 class DPOProjGradConfig(ExperimentConfig):
