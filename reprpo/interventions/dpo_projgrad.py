@@ -20,6 +20,7 @@ class ProjGradHooks:
         self.model = model
         self.β = β
         self.register_hooks()
+        print(f'β={β}')
 
     def enabled_modules(self):
         """Yield peft modules that have requires_grad=True"""
@@ -67,14 +68,11 @@ class ProjGradHooks:
             grad = grad_proj_onto_pref.clamp(0, None) + self.β * grad_orthogonal
             return grad
         res = tuple(proj_grad(g) for g in grad_output)
-        # print(3,[aa.shape for aa in grad_output])
         return res
 
     def forward_hook_projgrad(self, m, inputs, output):
         if not hasattr(m, "_cache"):
             m._cache = nn.ParameterDict()
-
-        # print(f'forward_hook_projgrad {m._mode}')
         
         if m._mode != "normal":
             assert m._mode in ["ref_cho", "ref_rej"]
@@ -151,8 +149,8 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
         labels=batch["rejected"],
         selection_mask=batch["rejected_mask"],
     )
-    with projgrad.set_projgrad_mode("clear"):
-        pass
+    # with projgrad.set_projgrad_mode("clear"):
+    #     pass
 
 
     loss, info = compute_dpo_loss(
