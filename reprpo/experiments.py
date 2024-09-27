@@ -124,7 +124,14 @@ experiment_configs = {
     ),
     # baseline
     "dpo": ("DPO experiment.", DPOConfig()),
-    "projgrad": ("DPO experiment.", DPOProjGradConfig(β=1, )),
+    "projgrad_right": ("DPO experiment.", DPOProjGradConfig(weight_dim=1, neg_slope=1.0)),
+    "projgrad_left": ("DPO experiment.", DPOProjGradConfig(weight_dim=0, neg_slope=1.0)),
+    "projgrad_fb": ("DPO experiment.", DPOProjGradConfig(β=0.0, neg_slope=1.0)),
+    "projgrad_fs": ("DPO experiment.", DPOProjGradConfig(β=0.03, )),
+    "projgrad_fs2": ("DPO experiment.", DPOProjGradConfig(β=1, scale_orth=True)),
+    "projgrad_fs3": ("DPO experiment.", DPOProjGradConfig(β=1, )),
+    "projgrad_bs3": ("DPO experiment.", DPOProjGradConfig(β=1, reverse_pref=True)),
+    "projgrad_fs4": ("DPO experiment.", DPOProjGradConfig(β=1, magnitude_clip=True)),
     # variants
     "hs-svd-prefvec-dual": (
         "",

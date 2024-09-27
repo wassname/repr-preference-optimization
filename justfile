@@ -52,6 +52,14 @@ run_all EXTRA_ARGS='':
     # for METHOD in ether-side-mse ether-side-rank ether-side-prefvec none-side-mse none-side-rank none-side-prefvec none-hs-prefvec none-hs-rank none-hs-mse ether-hs-rank ether-hs-prefvec hra-hs-prefvec ortho-hs-prefvec svd-hs-prefvec dpo; do
     for METHOD in \
         projgrad \
+        projgrad_left \
+        projgrad_right \
+        projgrad_fb \
+        projgrad_fs \
+        projgrad_fs2 \
+        projgrad_fs3 \
+        projgrad_bs3 \
+        projgrad_fs4 \
         dpo \
         side-ether-prefvec \
         hs-ether-prefvec \

@@ -67,73 +67,6 @@ class ProjGradHooks:
             module.register_forward_hook(self.forward_hook_projgrad)
         logger.info(f"ProjGrad Registered {len(modules)} hooks. {modules.keys()}")
 
-    # def backward_prehook_projgrad(self, module, grad_output):
-    #     eps = 1e-12
-    #     # https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.register_full_backward_hook
-    #     ref_cho = module._cache['ref_cho']
-    #     if isinstance(ref_cho, tuple):
-    #         ref_cho = ref_cho[0]
-    #     ref_rej = module._cache['ref_rej']
-    #     if isinstance(ref_rej, tuple):
-    #         ref_rej = ref_rej[0]
-
-    #     # sum over tokens either using mask
-    #     mask = module._cache['ref_cho_mask'].unsqueeze(-1)
-    #     ref_cho = (ref_cho * mask).sum(1) / mask.sum(1)
-    #     mask = module._cache['ref_rej_mask'].unsqueeze(-1)
-    #     ref_rej = (ref_rej * mask).sum(1) / mask.sum(1)
-        
-    #     # now take only the preferred direction in hs-space
-    #     preference_dir = (ref_cho - ref_rej).unsqueeze(1)
-
-
-    #     if self.reverse_pref:
-    #         preference_dir *= -1
-
-
-        
-    #     pref_dir_unit = preference_dir / hs_norm(preference_dir).clamp(eps)
-
-    #     def proj_grad(grad: Float[Tensor, 'b t h']) -> Float[Tensor, 'b t h']:
-
-    #         # magnitude_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
-    #         if self.magnitude_clip is not None:
-    #             # per sampler
-    #             ratios = hs_norm(grad)/(hs_norm(preference_dir).clamp(eps)*self.magnitude_clip)
-    #             # per hs?
-    #             # ratios = (grad.mean(1).abs()/(self.magnitude_clip*preference_dir.mean(1).abs().clamp(eps))).unsqueeze(1)
-    #             # print('ratios', ratios.mean(), ratios.max())
-    #             ratios = ratios.clamp(1, None)
-    #             grad = grad / ratios
-
-    #         grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
-    #         grad_orthogonal = grad - grad_proj_onto_pref
-
-    #         # if self.ignore_direction:
-    #         #     grad_proj_onto_pref = torch.abs(grad_proj_onto_pref)
-
-    #         # only take the part that goes in the direction we want, and some portion of the orthogonal movement
-    #         grad2 = F.leaky_relu(grad_proj_onto_pref, negative_slope=self.negative_slope)
-
-    #         # FIXME test lets scale sideway movement so it's a proportion of prefered direction movement. Hopefully it helps with stability
-    #         if self.scale_orthogonal:
-    #             scale = hs_norm(grad_orthogonal).clamp(eps) / hs_norm(grad2).clamp(eps) 
-    #         else:
-    #             scale = 1.0
-    #         grad2 = grad2 + self.β * grad_orthogonal / scale
-    #         # or maybe I should clip backward movement
-
-    #         # Usally forward and back are just ~3%
-    #         # norm_forward = F.relu(grad_proj_onto_pref).norm() / grad.norm()
-    #         # norm_backward = F.relu(-grad_proj_onto_pref).norm() / grad.norm()
-    #         # norm_side = grad_orthogonal.norm() / grad.norm()
-    #         # print(f'norm_forward={norm_forward:.2f} norm_backward={norm_backward:.2f} norm_side={norm_side:.2f}')
-
-    #         return grad2
-    #     res = tuple(proj_grad(g) for g in grad_output)
-
-    #     # TODO metrics about how much was clipped and in what direction forward, back, side
-    #     return res
 
     def forward_hook_projgrad(self, m, inputs, output):
         if not hasattr(m, "_cache"):
@@ -178,8 +111,8 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
         return_dict=True,
         output_hidden_states=True,
     )
-    # with projgrad.set_projgrad_mode("clear"):
-    #     pass
+    with projgrad.set_projgrad_mode("clear"):
+        pass
 
     model.eval()
     with projgrad.set_projgrad_mode("ref_cho", batch["chosen_mask"]):
@@ -245,16 +178,9 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
 
 
 class PL_ProjGrad_MODEL(PL_MODEL):
-    def __init__(self, *args, β, reverse_pref, scale_orth, neg_slope, magnitude_clip, **kwargs):
+    def __init__(self, *args, β, reverse_pref, scale_orth, neg_slope, magnitude_clip, weight_dim, **kwargs):
         super().__init__(*args, **kwargs)
-        self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orth=scale_orth, neg_slope=neg_slope, magnitude_clip=magnitude_clip)
-        self.hparams.update({
-            "β": β,
-            "reverse_pref": reverse_pref,
-            "scale_orthogonal": scale_orth,
-            "negative_slope": neg_slope,
-            "magnitude_clip": magnitude_clip,
-        })
+        self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orth=scale_orth, neg_slope=neg_slope, magnitude_clip=magnitude_clip, weight_dim=weight_dim)
 
 
     def _loss_fn(self, batch, model):
@@ -268,7 +194,7 @@ class PL_ProjGrad_MODEL(PL_MODEL):
         """
         proj_frac = []
         nproj_frac = []
-        h = self.hparams
+        h = self.projgrad
 
         for k, module in self.projgrad.enabled_modules().items():
 
@@ -297,12 +223,12 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 if param.grad is None:
                     continue
 
-                # TODO should I be doing it on both?
-                if param.grad.shape[0] == preference_dir.shape[0]:
+                hs_dim = preference_dir.shape[0]
+                if (param.grad.shape[0] == hs_dim) and (h.weight_dim in [0, 2]):
                     pref_dir_unit = pref_dir_unit.T
                     dim = 0
                     # print('flip')
-                elif param.grad.shape[-1] == preference_dir.shape[0]:
+                elif (param.grad.shape[-1] == hs_dim)  and (h.weight_dim in [1, 2]):
                     dim=-1
                 else:
                     # print(f"Skipping {k} {param_name} shape={param.grad.shape} pref_dir_unit.shape={pref_dir_unit.shape}")
@@ -358,6 +284,11 @@ class DPOProjGradConfig(ExperimentConfig):
     reverse the preference direction
     """
 
+    weight_dim: int = 2
+    """
+    1 for forward, 0 for back, 2 for both
+    """
+
     scale_orth: bool = False
     """
     scale the orthogonal movement to be β proportion of the prefered direction movement
@@ -375,7 +306,7 @@ class DPOProjGradConfig(ExperimentConfig):
 
     _cls = PL_ProjGrad_MODEL
 
-    _model_keys = ["lr", "β", "reverse_pref", "scale_orth", "neg_slope", "magnitude_clip"]
+    _model_keys = ["lr", "β", "reverse_pref", "scale_orth", "neg_slope", "magnitude_clip", "weight_dim"]
 
     @property
     def _name(self):
