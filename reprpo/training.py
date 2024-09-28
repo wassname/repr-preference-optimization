@@ -115,7 +115,7 @@ def train(training_args, trial: Optional[Trial] = None):
     pl_wandb_logger=WandbLogger(
         name=run_fname, save_dir=save_dir,
         project="reprpo2",
-        entity="wassname",
+        # entity="wassname",
         group=group_name,
         config=config,
         mode="disabled"
@@ -277,11 +277,6 @@ def train(training_args, trial: Optional[Trial] = None):
     if training_args.verbose:
         callbacks += [GenCallback(every=max_steps // 5 + 1)]
 
-    if trial is not None:
-        # from lightning.pytorch.callbacks import OptunaCallback
-        from optuna.integration import PyTorchLightningPruningCallback
-
-        callbacks += [PyTorchLightningPruningCallback(trial, monitor="train/loss_step")]
 
     model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
     trainer = pl.Trainer(
