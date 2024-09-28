@@ -3358,5 +3358,11 @@ Warning: collection_layers_side not found in training_args
 Warning: collection_layers_hs not found in training_args
 /workspace/repr-preference-optimization/.venv/lib/python3.11/site-packages/tyro/_resolver.py:455: UserWarning: <class 'bool'> does not match any type in Union: [<class 'float'>, <class 'NoneType'>]
 
-fix pytest bugs
-find lr scle that is fat
+- [x] fix pytest bugs
+- [x] find lr scle that is fat
+
+#  2024-09-28 06:54:39
+
+| acc_inc/eval_ds [pp]         |   train |   test |    oos |    rnd |
+|:-----------------------------|--------:|-------:|-------:|-------:|
+| projgrad_us_history_textbook |     2.5 |   0.28 | -3.307 | -2.297 |

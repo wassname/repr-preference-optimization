@@ -51,10 +51,20 @@ from loguru import logger
 
 remove_warnings()
 
-logger.remove()
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
 LOGURU_FORMAT = "|<level>{level}</level>| {message}"
-logger.add(os.sys.stdout, format=LOGURU_FORMAT, level="INFO")
+logger.remove()
+logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
+
+def get_display_name_from_args(training_args):
+    """extract a human readable name from non-default args"""
+    defaults = type(training_args)()
+    diff = set(asdict(training_args).items())-set(asdict(defaults).items())
+    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples']
+    s = ' '.join([f"{k}={v}" for k,v in list(diff) if k not in blacklist])
+
+    cls_name = type(training_args).__name__.replace('Config', '')
+    return f'{cls_name} {s}'
 
 
 def train(training_args):
@@ -71,35 +81,23 @@ def train(training_args):
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
     adapter_name = training_args._name
+    # adapter_name = get_args_dict(training_args)
 
-    finetune_name = f"{adapter_name}_{ds_name_train}"
+    human_name = get_display_name_from_args(training_args) # f"{adapter_name}_{ds_name_train}"
 
     # we can set an experiment group name from env vars, otherwise it will just groupt by model and training ds
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = os.environ.get("WANDB_GROUP") + "_" + group_name
+        logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/groups/{group_name} ")
     if training_args.verbose > 0:
         logger.info("training_args")
         pprint(training_args, compact=True)
         # logger.info("model_kwargs", model_kwargs.keys())
 
-        logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/{group_name} ")
-        logger.info(f"Using finetune_name={finetune_name}")
+        logger.info(f"Using finetune_name={human_name}")
 
     run_fname = f"{adapter_name}/{ts}"  # short for wandb
-    wandb.require(experiment="core")
-
-    config = asdict(training_args)
-    run = wandb.init(
-        project="reprpo2",
-        name=run_fname,
-        entity="wassname",
-        group=group_name,
-        config=config,
-        mode="disabled"
-        if os.environ.get("WANDB_MODE", None) == "disabled"
-        else "online",
-    )
 
     # save_dir
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -109,6 +107,20 @@ def train(training_args):
     )
     save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
     save_dir.mkdir(exist_ok=True, parents=True)
+
+    wandb.require(experiment="core")
+    config = asdict(training_args)
+    pl_wandb_logger=WandbLogger(
+        name=run_fname, save_dir=save_dir,
+        project="reprpo2",
+        entity="wassname",
+        group=group_name,
+        config=config,
+        mode="disabled"
+        if os.environ.get("WANDB_MODE", None) == "disabled"
+        else "online",
+    )
+    run = pl_wandb_logger._experiment
 
     # config
     (save_dir / "config.json").open("w").write(json.dumps(config, indent=4))
@@ -120,6 +132,9 @@ def train(training_args):
         level="INFO",
         format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}",
     )
+    if training_args.verbose < 1:
+            logger.remove()
+            logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
 
     model, tokenizer = load_model(
         training_args.base_model,
@@ -144,7 +159,7 @@ def train(training_args):
     # if hasattr(PL_MODEL, 'setup_grad_proj'):
     #     peft_config = PL_MODEL.setup_grad_proj(peft_config)
     
-    model = get_peft_model(model, peft_config, adapter_name=finetune_name)
+    model = get_peft_model(model, peft_config, adapter_name=adapter_name)
     print_trainable_parameters(model)
     if training_args.verbose > 1:
         logger.info(f"{model}")
@@ -272,11 +287,12 @@ def train(training_args):
         # mixed wont convert the modules weights, while bf16-true would
         precision="bf16-mixed" if torch.cuda.is_bf16_supported() else "f16-mixed",
         log_every_n_steps=1,
+        
         accumulate_grad_batches=accumulate_grad_batches,
         callbacks=callbacks,
         logger=[
             CSVLogger(name=run_fname, save_dir=save_dir, flush_logs_every_n_steps=5),
-            WandbLogger(name=run_fname, save_dir=save_dir),
+            pl_wandb_logger,
         ],
         default_root_dir=save_dir,
         # too large, we will just save adapter afterwards
@@ -314,7 +330,7 @@ def train(training_args):
         df_gen = get_model_generations(model, tokenizer, N=3)
         display_gen(df_gen.head(2))
 
-    logger.info("eval")
+    logger.debug("eval")
 
     # ## Eval
     # eval on ethics, GENIES, and our train dataset
@@ -365,22 +381,22 @@ def train(training_args):
     logger.info(f"save_dir={save_dir}")
     pprint(training_args, compact=1)
 
-    r = parse_eval(df_res2, ds_alias)
+    r = parse_eval(df_res2, ds_alias, human_name=human_name)
 
     # WANDB logging
     r2 = {}
     for k, v in r.items():
         r2[k] = wandb.Table(dataframe=v.reset_index())
         # log first row too, so we can compare single value
-        run.log({f"res/{k}/{kk}": vv for kk, vv in v.iloc[0, :].to_dict().items()})
+        if wandb.run is not None:
+            wandb.log({f"res/{k}/{kk}": vv for kk, vv in v.iloc[0, :].to_dict().items()})
         # also just log final metrics to wandb so we can view a group
 
-    # FIXME, only pass in adapter col, not q index or base
-    if (not training_args.dev) and (training_args.verbose > 0):
-        df_gen_w = wandb.Table(dataframe=df_gen)
-        run.log({"generations": df_gen_w, **r2})
-
     if wandb.run is not None:
+        if (not training_args.dev) and (training_args.verbose > 0):
+            df_gen_w = wandb.Table(dataframe=df_gen)
+            run.log({"generations": df_gen_w, **r2})
+
         logger.info(f"WANDB url = {wandb.run.get_url()}")
 
     # return a single dict for hyperparam tuning
@@ -466,9 +482,6 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     perplexity_gain_vs_ref_metrics = generate_metrics(
         "perplexity_gain_vs_ref", datasets, perplexity_gain_vs_ref
     )
-    preference_logp_gain_metrics = generate_metrics(
-        "preference_logp_gain", datasets, preference_logp_gain
-    )
     preference_logp_gain_vs_ref_metrics = generate_metrics(
         "preference_logp_gain_vs_ref", datasets, preference_logp_gain_vs_ref
     )
@@ -477,7 +490,6 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     all_metrics = (
         acc_gain_vs_ref_metrics
         + perplexity_gain_vs_ref_metrics
-        + preference_logp_gain_metrics
         + preference_logp_gain_vs_ref_metrics
     )
 
@@ -492,7 +504,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     return df_metrics[list(ds_alias.keys())]
 
 
-def parse_eval(df_res2, ds_alias):
+def parse_eval(df_res2, ds_alias, human_name):
     adapter_name = df_res2[["adapter"]].query('adapter!="base"').values[0, 0]
 
     df_res = (
@@ -515,17 +527,16 @@ def parse_eval(df_res2, ds_alias):
     logger.info(f"\n{df_res2.round(3).to_markdown()}")
     logger.info("""Table 2: Absolute accuracy\n""")
 
-    df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(adapter_name).T
+    df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(human_name).T
     df_final = df_final * 100 - 100  # percentage points
     df_final.index.name = "acc_inc/eval_ds [pp]"
-    logger.info(f"\n{df_final.round(3).to_markdown()}")
-    logger.info(
-        f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on `{ds_alias["train"]}` compared to base model for various distribution shifts:"""
-    )
+    print(f"\n{df_final.round(3).to_markdown()}")
+    caption = f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`{ds_alias["train"]}` compared to base model for various distribution shifts:"""
     for k, v in ds_alias.items():
-        logger.info(f"- `{k}`: `{v}`")
+        caption += f"\n- `{k}`: `{v}`"
+    logger.info(caption)
 
-    df_acc = df_res2.loc[adapter_name].to_frame(adapter_name).T
+    df_acc = df_res2.loc[adapter_name].to_frame(human_name).T
     info = {
         "acc": df_acc,
         "acc_gain_vs_ref": df_final,
@@ -533,7 +544,7 @@ def parse_eval(df_res2, ds_alias):
 
     # format for wandb. just one row, one data type per table
     for i in df_metrics.index:
-        info[i] = df_metrics.loc[i].to_frame(adapter_name).T
-        info[i].index.name = adapter_name
+        info[i] = df_metrics.loc[i].to_frame(human_name).T
+        info[i].index.name = human_name
 
     return info

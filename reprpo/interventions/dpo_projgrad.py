@@ -32,17 +32,15 @@ def hs_norm(t: Float[Tensor, 'b t h']) -> Float[Tensor, 'b t h']:
     return repeat(t, 'b -> b t h', t=1, h=1)
 
 class ProjGradHooks:
-    def __init__(self, model, β=0.1, reverse_pref=False, scale_orth=False, neg_slope=0.0, magnitude_clip=None, weight_dim=2):
+    def __init__(self, model, β=0.1, reverse_pref=False, scale_orth=False, neg_slope=0.0, mag_clip=None, weight_dim=2):
         self.model = model
         self.β = β
         self.reverse_pref = reverse_pref
         self.scale_orth = scale_orth
         self.neg_slope = neg_slope
-        self.magnitude_clip = magnitude_clip
+        self.mag_clip = mag_clip
         self.weight_dim = weight_dim
         self.register_hooks()
-
-        logger.info(f'β={β}')
 
     def enabled_modules(self):
         """Yield peft modules that have requires_grad=True"""
@@ -66,7 +64,7 @@ class ProjGradHooks:
         for k, module in modules.items():
             # module.register_full_backward_pre_hook(self.backward_prehook_projgrad)
             module.register_forward_hook(self.forward_hook_projgrad)
-        logger.info(f"ProjGrad Registered {len(modules)} hooks. {modules.keys()}")
+        logger.debug(f"ProjGrad Registered {len(modules)} hooks. {modules.keys()}")
 
 
     def forward_hook_projgrad(self, m, inputs, output):
@@ -179,9 +177,9 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
 
 
 class PL_ProjGrad_MODEL(PL_MODEL):
-    def __init__(self, *args, β, reverse_pref, scale_orth, neg_slope, magnitude_clip, weight_dim, **kwargs):
+    def __init__(self, *args, β, reverse_pref, scale_orth, neg_slope, mag_clip, weight_dim, **kwargs):
         super().__init__(*args, **kwargs)
-        self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orth=scale_orth, neg_slope=neg_slope, magnitude_clip=magnitude_clip, weight_dim=weight_dim)
+        self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orth=scale_orth, neg_slope=neg_slope, mag_clip=mag_clip, weight_dim=weight_dim)
 
 
     def _loss_fn(self, batch, model):
@@ -237,10 +235,10 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 
                 grad = param.grad.clone()
 
-                # magnitude_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
-                if h.magnitude_clip is not None:
+                # mag_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
+                if h.mag_clip is not None:
                     # per sampler
-                    ratios = grad.norm(dim=dim).mean()/((preference_dir).norm().clamp(eps)*h.magnitude_clip)
+                    ratios = grad.norm(dim=dim).mean()/((preference_dir).norm().clamp(eps)*h.mag_clip)
                     ratios = ratios.clamp(1, None)
                     grad = grad / ratios
                 
@@ -260,8 +258,8 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 nproj_frac.append(F.relu(-grad_proj_onto_pref).norm()/grad.norm())
         if len(proj_frac) > 0:
             self.log_dict({
-                "proj_frac": torch.stack(proj_frac).mean(),
-                "nproj_frac": torch.stack(nproj_frac).mean(),
+                "train/proj_frac": torch.stack(proj_frac).mean(),
+                "train/nproj_frac": torch.stack(nproj_frac).mean(),
                 }, on_step=True)
 
 
@@ -300,14 +298,14 @@ class DPOProjGradConfig(ExperimentConfig):
     When clipping the gradient in the negative preference direction, we can use leakly relu with this slope. 0 is relu. 0.01 is leaky relu.
     """
 
-    magnitude_clip: Optional[float] = None
+    mag_clip: Optional[float] = None
     """
     Clip the magnitude of the gradient in the hs space, to ensure a proximal policy in hs space. Value is a fraction of the distance of the preference vector
     """
 
     _cls = PL_ProjGrad_MODEL
 
-    _model_keys = ["lr", "β", "reverse_pref", "scale_orth", "neg_slope", "magnitude_clip", "weight_dim"]
+    _model_keys = ["lr", "β", "reverse_pref", "scale_orth", "neg_slope", "mag_clip", "weight_dim"]
 
     @property
     def _name(self):

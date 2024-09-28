@@ -46,7 +46,7 @@ def silence():
         if any(blocked in name for blocked in blocklist):
             logging.getLogger(name).setLevel(logging.ERROR)
 
-    logging.basicConfig(level=logging.ERROR)
+    # logging.basicConfig(level=logging.WARNING)
 
     os.environ["TQDM_DISABLE"] = "1"
     os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = "1"
