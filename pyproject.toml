@@ -39,6 +39,8 @@ colorama = "^0.4.6"
 optuna-dashboard = "^0.16.2"
 optuna = "^4.0.0"
 optuna-integration = "^4.0.0"
+plotly = "^5.24.1"
+nbformat = "^5.10.4"
 
 [build-system]
 requires = ["poetry-core"]

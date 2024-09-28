@@ -26,7 +26,7 @@ tuner_kwargs = dict(
     batch_size=32,
     # load_in_4bit=True, # doesn't quite halve the memory, speed it about the same
     collection_layers_side=[8, 10, 12, 14, 16, 18],
-    eval_samples=64,
+    eval_samples=128,
     collect_hs=True,
 )
 

@@ -248,6 +248,7 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 # scale sideway movement so it's a proportion of prefered direction movement
                 if h.scale_orth:
                     scale = (grad_orthogonal).norm(dim=dim).clamp(eps) / (grad_proj_onto_pref).norm(dim=dim).clamp(eps) 
+                    scale = scale.unsqueeze(dim)
                 else:
                     scale = 1.0
 

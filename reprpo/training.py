@@ -62,8 +62,12 @@ def get_display_name_from_args(training_args):
     """extract a human readable name from non-default args"""
     defaults = type(training_args)()
     diff = set(asdict(training_args).items())-set(asdict(defaults).items())
-    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples']
-    s = ' '.join([f"{k}={v}" for k,v in list(diff) if k not in blacklist])
+    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit']
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.2f}"
+        return v
+    s = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff) if k not in blacklist])
 
     cls_name = type(training_args).__name__.replace('Config', '')
     return f'{cls_name} {s}'
@@ -368,7 +372,7 @@ def train(training_args, trial: Optional[Trial] = None):
         model=model,
         tokenizer=tokenizer,
         datasets=datasets,
-        batch_size=training_args.batch_size,
+        batch_size=training_args.batch_size*2,
         bf16=True,
         torch_empty_cache_steps=200,
         verbose=training_args.verbose,
