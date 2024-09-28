@@ -40,19 +40,19 @@ def override(cfg, overrides):
     return cfg
 
 
-def objective_func(**kwargs):
+def objective_func(kwargs, trial):
     cfg = copy.deepcopy(experiment_configs["side-ether-prefvec"][1])
     override(cfg, tuner_kwargs)
 
-    # so first we do the ones high in the heirarchy
-    if "loss" in kwargs:
-        loss = kwargs.pop("loss")
-        cfg.loss = getattr(Losses, loss).value()
-    if "transform" in kwargs:
-        transform = kwargs.pop("transform")
-        cfg.transform = getattr(Transforms, transform).value()
+    # # so first we do the ones high in the heirarchy
+    # if "loss" in kwargs:
+    #     loss = kwargs.pop("loss")
+    #     cfg.loss = getattr(Losses, loss).value()
+    # if "transform" in kwargs:
+    #     transform = kwargs.pop("transform")
+    #     cfg.transform = getattr(Transforms, transform).value()
 
     # now subcommands
     override(cfg, kwargs)
-    r = train(cfg)
+    r = train(cfg, trial=trial)
     return r

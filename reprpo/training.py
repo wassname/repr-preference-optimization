@@ -42,6 +42,8 @@ import wandb
 from reprpo.data.collate3 import TokenizeRow
 from reprpo.gen import display_gen, get_model_generations
 from reprpo.helpers.lightning_hist import read_metrics_csv
+from typing import Optional, Tuple, Union
+from optuna.trial import Trial
 
 # Local
 from reprpo.helpers.torch import clear_mem
@@ -67,7 +69,7 @@ def get_display_name_from_args(training_args):
     return f'{cls_name} {s}'
 
 
-def train(training_args):
+def train(training_args, trial: Optional[Trial] = None):
     if training_args.verbose < 1:
         silence()
     torch.set_float32_matmul_precision("medium")
@@ -274,6 +276,12 @@ def train(training_args):
     ]
     if training_args.verbose:
         callbacks += [GenCallback(every=max_steps // 5 + 1)]
+
+    if trial is not None:
+        # from lightning.pytorch.callbacks import OptunaCallback
+        from optuna.integration import PyTorchLightningPruningCallback
+
+        callbacks += [PyTorchLightningPruningCallback(trial, monitor="train/loss_step")]
 
     model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
     trainer = pl.Trainer(
