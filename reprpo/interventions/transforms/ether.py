@@ -1,7 +1,7 @@
 """
 https://github.dev/mwbini/ether
 """
-from typing import Optional
+from typing import Optional, Literal
 
 import torch
 import torch.nn as nn
@@ -269,7 +269,7 @@ class ETHERConfig:
     nb: int = 6
     """number of diagonal blocks"""
 
-    Htype: str = "etherplusHH"
+    Htype: Literal["ether", "etherplus", "oft", "etherplusHH"] = "etherplusHH"
     """type of transformation 
 
     - ether: like HRA but allowing a negative unit vector (reflection)
