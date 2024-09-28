@@ -3351,3 +3351,12 @@ grad.param
 | projgrad --lr=1e-3                    | 1.664 | 1.683 | -3.883 | -1.534 |
 | projgrad  --lr=1e-3                   | 1.803 | 0.842 | -2.524 | -1.534 |
 | projgrad_ nslope=1.0 nsample 6000     | -0.27 | 0.281 | -1.74  | -0.153 |
+
+# 2024-09-27 23:34:19
+
+Warning: collection_layers_side not found in training_args
+Warning: collection_layers_hs not found in training_args
+/workspace/repr-preference-optimization/.venv/lib/python3.11/site-packages/tyro/_resolver.py:455: UserWarning: <class 'bool'> does not match any type in Union: [<class 'float'>, <class 'NoneType'>]
+
+fix pytest bugs
+find lr scle that is fat

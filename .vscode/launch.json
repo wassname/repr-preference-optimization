@@ -75,6 +75,7 @@
                 "--β=0.5", 
                 "--negative-slope=0.1",
                 "--magnitude-clip=0.2",
+                "--scale_orth",
                 // "--loss.β=0.2",
                 // "--eval_samples=128",
                 // "--batch-size=24", 

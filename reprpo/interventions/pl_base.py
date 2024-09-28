@@ -2,8 +2,7 @@ from torch import optim
 import lightning as pl
 import bitsandbytes as bnb
 from dataclasses import dataclass
-from ..helpers.scheduler import get_constant_schedule_with_warmup
-
+from transformers.optimization import get_cosine_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup, get_inverse_sqrt_schedule, get_wsd_schedule, get_constant_schedule_with_warmup
 
 @dataclass
 class ModelConfigBase:
@@ -22,7 +21,7 @@ class PL_MODEL(pl.LightningModule):
         weight_decay=0,
         batch_size=None,
         adam8bit=False,
-        schedule="constant",
+        schedule="wsd",
     ):
         super().__init__()
         self._model = model
@@ -105,6 +104,13 @@ class PL_MODEL(pl.LightningModule):
             num_warmup_steps = int(self.hparams.num_iterations * 0.03)
             scheduler = get_constant_schedule_with_warmup(
                 optimizer, num_warmup_steps=num_warmup_steps
+            )
+        elif self.hparams.schedule == "wsd":
+            scheduler = get_wsd_schedule(
+                optimizer,
+                num_warmup_steps=int(self.hparams.num_iterations * 0.05),
+                num_stable_steps=int(self.hparams.num_iterations * 0.9),
+                num_decay_steps=int(self.hparams.num_iterations * 0.05),
             )
         lr_scheduler = {"scheduler": scheduler, "interval": "step"}
         return [optimizer], [lr_scheduler]

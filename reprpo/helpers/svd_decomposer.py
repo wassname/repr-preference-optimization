@@ -130,10 +130,10 @@ class SVDDecomposer:
         self.Vt = Vt.to(dtype).detach()
 
     def __call__(
-        self, hs: Float[Tensor, "batch layers tokens hidden_size"]
+        self, hs: Tensor
     ) -> Tuple[
-        Float[Tensor, "batch layers tokens hidden_size"],
-        Float[Tensor, "batch layers tokens hidden_size"],
+        Tensor,
+        Tensor,
     ]:
         original_shape = hs.shape
 
@@ -198,11 +198,11 @@ class DualSVDDecomposer:
             self.decomposer_out = SVDDecomposer(W_out, full_matrices=full_matrices)
 
     def __call__(
-        self, hs: Float[Tensor, "batch layers tokens hidden_size"]
+        self, hs: Tensor
     ) -> Tuple[
-        Float[Tensor, "batch layers tokens hidden_size"],
-        Float[Tensor, "batch layers tokens hidden_size"],
-        Float[Tensor, "batch layers tokens hidden_size"],
+        Tensor,
+        Tensor,
+        Tensor,
     ]:
         hs_external_in = self.decomposer_in(hs)
         hs_external_out = self.decomposer_out(hs)

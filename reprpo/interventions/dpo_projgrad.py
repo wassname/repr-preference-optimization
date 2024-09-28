@@ -32,13 +32,14 @@ def hs_norm(t: Float[Tensor, 'b t h']) -> Float[Tensor, 'b t h']:
     return repeat(t, 'b -> b t h', t=1, h=1)
 
 class ProjGradHooks:
-    def __init__(self, model, β=0.1, reverse_pref=False, scale_orth=False, neg_slope=0.0, magnitude_clip=None):
+    def __init__(self, model, β=0.1, reverse_pref=False, scale_orth=False, neg_slope=0.0, magnitude_clip=None, weight_dim=2):
         self.model = model
         self.β = β
         self.reverse_pref = reverse_pref
         self.scale_orth = scale_orth
         self.neg_slope = neg_slope
         self.magnitude_clip = magnitude_clip
+        self.weight_dim = weight_dim
         self.register_hooks()
 
         logger.info(f'β={β}')
@@ -216,7 +217,7 @@ class PL_ProjGrad_MODEL(PL_MODEL):
             preference_dir = (ref_cho - ref_rej).mean(0) # FIXME ideally we do it per sample, but that would require modifying param.grad when it's applied after backprop
             if h.reverse_pref:
                 preference_dir = -preference_dir
-            pref_dir_unit = preference_dir / preference_dir.norm(0).clamp(eps)
+            pref_dir_unit = preference_dir / preference_dir.norm(dim=0).clamp(eps)
             pref_dir_unit = pref_dir_unit.unsqueeze(0)
 
             for param_name, param in module.named_parameters():
@@ -239,7 +240,7 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 # magnitude_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
                 if h.magnitude_clip is not None:
                     # per sampler
-                    ratios = hs_norm(grad)/(hs_norm(preference_dir).clamp(eps)*self.magnitude_clip)
+                    ratios = grad.norm(dim=dim).mean()/((preference_dir).norm().clamp(eps)*h.magnitude_clip)
                     ratios = ratios.clamp(1, None)
                     grad = grad / ratios
                 
@@ -247,13 +248,13 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 grad_orthogonal = grad - grad_proj_onto_pref
 
                 # scale sideway movement so it's a proportion of prefered direction movement
-                if h.scale_orthogonal:
-                    scale = hs_norm(grad_orthogonal).clamp(eps) / hs_norm(grad_proj_onto_pref).clamp(eps) 
+                if h.scale_orth:
+                    scale = (grad_orthogonal).norm(dim=dim).clamp(eps) / (grad_proj_onto_pref).norm(dim=dim).clamp(eps) 
                 else:
                     scale = 1.0
 
                 h = self.hparams
-                param.grad = F.leaky_relu(grad_proj_onto_pref, h.negative_slope) + h.β * grad_orthogonal / scale
+                param.grad = F.leaky_relu(grad_proj_onto_pref, h.neg_slope) + h.β * grad_orthogonal / scale
 
                 proj_frac.append(F.relu(grad_proj_onto_pref).norm()/grad.norm())
                 nproj_frac.append(F.relu(-grad_proj_onto_pref).norm()/grad.norm())

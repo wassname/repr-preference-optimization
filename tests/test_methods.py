@@ -47,6 +47,8 @@ def test_train_method_dev1b(name, config):
         for k, v in overrides.items():
             setattr(training_args, k, v)
 
+    # TODO try all permuations, perhaps with Ax or similar
+
     print(f"loaded default config from {f}")
     print(training_args)
     train(training_args)
