@@ -3437,3 +3437,5 @@ sadly it looks like -us_history_textbook-train is too easy for the 8b model?
 | dpo       |      0.65625  |     0.625    |  0.3125   |         0.4375   | 0.890625 |              0.984375 |        0.65625  |             0.234375 |      0.78125  |                     1 |                           1 |    0.140625 |             0.8125   |
 | projbp    |      0.65625  |     0.640625 |  0.34375  |         0.421875 | 0.90625  |              0.96875  |        0.671875 |             0.21875  |      0.71875  |                     1 |                           1 |    0.15625  |             0.890625 |
 | projgrad  |      0.6875   |     0.609375 |  0.296875 |         0.421875 | 0.90625  |              0.96875  |        0.640625 |             0.1875   |      0.765625 |                     1 |                           1 |    0.140625 |             0.84375  |
+
+Hmm doing optuna on the small model did generalise o the larger one which is great!

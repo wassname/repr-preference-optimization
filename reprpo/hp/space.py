@@ -34,6 +34,8 @@ def prefvec_params(trial):
         "weight_tokens": trial.suggest_categorical("weight_tokens", [True, False]),
     }
 
+
+
 def hra_params(trial):
     return {
         "r": trial.suggest_int("r", 2, 128),
@@ -71,6 +73,17 @@ def projgrad(trial):
     }
     return args
 
+def projbp(trial):
+    args = {
+        "learning-rate": trial.suggest_float("learning-rate", 1e-6, 1e-3, log=True),
+        "β": trial.suggest_float("β", 0.0, 1.0, log=False),
+        "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
+        "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
+        "neg_slope": trial.suggest_categorical("neg_slope",[0, 0.01, 0.1, 0.5, 1]),
+        "mag_clip": trial.suggest_categorical("mag_clip", [None, 0.03, 0.1, 0.5, 1.0, 10, 100]),
+    }
+    return args
+
 def ether_prefvec(trial):
     args = base_reprpo_params(trial)
     args.update(ether_params(trial))
@@ -102,5 +115,7 @@ search_spaces = {
     'side-ether-prefvec': ether_prefvec,
     'side-svd-mse': svd_mse,
     'side-hra-rank': hra_rank,
+    'projbp': projbp,
+    'dpo': dpo,
 }
 

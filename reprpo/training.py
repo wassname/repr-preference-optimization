@@ -384,7 +384,8 @@ def train(training_args, trial: Optional[Trial] = None):
     datasets += [
         load_dataset_n("wassname/genies_preferences", name=name, split="test", N=N)
         for name in [
-            "math_make_questions",  #'truthful_qa',# 'wrong_arc', 'ranking_logic',
+            # "math_make_questions",  #'truthful_qa',# 'wrong_arc', 
+            'ranking_logic',
             # 'math', 'sycophancy_mimicry'
         ]
     ]

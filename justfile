@@ -164,6 +164,9 @@ run_pg:
     #python scripts/train.py projgrad --n-samples=6000 --verbose=1
     # python scripts/train.py projgrad
     export REPR_CONFIG=./configs/llama3_7b.yaml
+    python scripts/train.py projgrad --β=0.0 --neg-slope=1.0 --verbose=1
+    python scripts/train.py projbp --β=0.0 --neg-slope=1.0 --verbose=1
+    python scripts/train.py dpo --verbose=1
     python scripts/train.py projgrad_right --verbose=1
     python scripts/train.py projgrad_left --verbose=1
     python scripts/train.py projgrad_fb
@@ -172,8 +175,6 @@ run_pg:
     python scripts/train.py projgrad_fs3
     python scripts/train.py projgrad_fs4
     python scripts/train.py projgrad_bs3
-    python scripts/train.py projgrad --β=0.0 --neg-slope=1.0 --verbose=1
-    python scripts/train.py dpo --verbose=1
     # python scripts/train.py projgrad --β=1.0 --ignore-direction 
     python scripts/train.py projgrad --β=0.5 --neg-slope=0.05
     python scripts/train.py projgrad --β=1.0 --neg-slope=1.0 # should be like dpo. yes
