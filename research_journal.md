@@ -3389,6 +3389,7 @@ Warning: collection_layers_hs not found in training_args
 | ProjGrad neg_slope=1.00                  | 1.215 | 0.809 | 11.223 | 0.559 |
 | ProjGrad weight_dim=2                    | 1.215 | 0.809 | 10.553 | 1.117 |
 | ProjGrad mag_clip=0.02 β=1.00            | 1.215 | 0.539 |  9.548 | 1.816 |
+| ProjBP                                   | 1.215 | 0.674 |  9.213 | 0.559 |
 | ProjGrad rev_pref=False                  | 1.215 | 0.404 |  8.208 | 0.698 |
 | ProjGrad neg_slope=1.00 weight_dim=1     | 1.215 | 0.539 |  7.705 | 0.838 |
 | ProjGrad weight_dim=1                    | 1.215 | 0.674 |   7.37 |  0.14 |
@@ -3410,6 +3411,7 @@ note that  full dpo reslt
 | base         |   0.988 |  0.989 | 0.796 | 0.955 |
 | dpo          |   1     |  0.991 | 0.845 | 0.964 |
 | projgrad     |   1     |  0.997 | 0.88  | 0.965 |
+| projbp       |   1     |  0.996 | 0.869 | 0.96  |
 |INFO| Table 2: Absolute accuracy
 
 
