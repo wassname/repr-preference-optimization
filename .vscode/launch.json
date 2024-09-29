@@ -72,12 +72,12 @@
             "args": [
                 // "hs-dist",
                 "projgrad",
-                "--verbose=",
+                "--verbose=2",
                 // "--loss.β=0.2",
                 // "--eval_samples=128",
                 // "--batch-size=24", 
                 // "--lr=1e-5"
-                // "--n_samples=6000",
+                "--n_samples=128",
             ]
         }
     ]
