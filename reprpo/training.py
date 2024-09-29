@@ -61,7 +61,12 @@ logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
 def get_display_name_from_args(training_args):
     """extract a human readable name from non-default args"""
     defaults = type(training_args)()
+    # TODO need to init subclasses
+    for k, v in asdict(defaults).items():
+        if type(v).__name__ == "type":
+            setattr(defaults, k, v())
     diff = set(asdict(training_args).items())-set(asdict(defaults).items())
+    diff = sorted(diff, key=lambda x: x[0])
     blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit']
     def fmt(v):
         if isinstance(v, float):

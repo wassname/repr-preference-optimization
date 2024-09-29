@@ -25,7 +25,7 @@ tuner_kwargs = dict(
     base_model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",  # ideally would be SFT
     batch_size=32,
     # load_in_4bit=True, # doesn't quite halve the memory, speed it about the same
-    collection_layers_side=[8, 10, 12, 14, 16, 18],
+    collection_layers_side=(8, 10, 12, 14, 16, 18),
     eval_samples=128,
     collect_hs=True,
 )

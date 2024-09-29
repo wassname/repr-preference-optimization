@@ -3366,3 +3366,8 @@ Warning: collection_layers_hs not found in training_args
 | acc_inc/eval_ds [pp]         |   train |   test |    oos |    rnd |
 |:-----------------------------|--------:|-------:|-------:|-------:|
 | projgrad_us_history_textbook |     2.5 |   0.28 | -3.307 | -2.297 |
+
+
+[I 2024-09-29 00:20:20,610] Using an existing study with name 'projgrad' instead of creating a new one.
+
+, params={'learning-rate': 0.00012426382563887213, 'β': 0.7386239719822631, 'reverse_pref': True, 'scale_orth': True, 'weight_dim': 0, 'neg_slope': 0.5},
