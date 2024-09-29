@@ -43,12 +43,9 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "projgrad",
+                "projbp",
                 "--dev", 
                 "--verbose=2",
-                "--neg-slope=0.1",
-                "--mag-clip=0.2",
-                "--scale-orth",
 
             ]
         },
@@ -77,7 +74,7 @@
                 // "--eval_samples=128",
                 // "--batch-size=24", 
                 // "--lr=1e-5"
-                "--n_samples=128",
+                // "--n_samples=128",
             ]
         }
     ]

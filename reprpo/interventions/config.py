@@ -26,3 +26,5 @@ class ExperimentConfig:
     max_length: int = 196
     max_prompt_length: int = 96
     base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+
+    save: bool = True

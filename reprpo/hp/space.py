@@ -66,7 +66,8 @@ def projgrad(trial):
         "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
         "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
         "weight_dim": trial.suggest_int("weight_dim", 0, 2),
-        "neg_slope": trial.suggest_categorical("neg_slope",[0, 0.1, 0.5, 1]),
+        "neg_slope": trial.suggest_categorical("neg_slope",[0, 0.01, 0.1, 0.5, 1]),
+        "mag_clip": trial.suggest_categorical("mag_clip", [None, 0.03, 0.1, 0.5, 1.0, 10, 100]),
     }
     return args
 

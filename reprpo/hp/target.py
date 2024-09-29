@@ -27,6 +27,7 @@ default_tuner_kwargs = dict(
     # load_in_4bit=True, # doesn't quite halve the memory, speed it about the same
     collection_layers_side=(8, 10, 12, 14, 16, 18),
     eval_samples=128,
+    save=False,
     # collect_hs=True,
 )
 

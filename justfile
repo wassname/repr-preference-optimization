@@ -154,12 +154,16 @@ run_temp:
     #!/usr/bin/zsh
     export REPR_CONFIG=./configs/llama3_7b.yaml
     . ./.venv/bin/activate
-    python scripts/train.py hs-dist --verbose --n_samples=5000
+    python scripts/train.py projgrad
+    python scripts/train.py dpo
+    python scripts/train.py side-ether-prefvec
 
 run_pg:
+    #!/usr/bin/zsh
     export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
     #python scripts/train.py projgrad --n-samples=6000 --verbose=1
     # python scripts/train.py projgrad
+    export REPR_CONFIG=./configs/llama3_7b.yaml
     python scripts/train.py projgrad_right --verbose=1
     python scripts/train.py projgrad_left --verbose=1
     python scripts/train.py projgrad_fb
@@ -168,13 +172,14 @@ run_pg:
     python scripts/train.py projgrad_fs3
     python scripts/train.py projgrad_fs4
     python scripts/train.py projgrad_bs3
-    python scripts/train.py projgrad --β=0.0 --negative-slope=1.0 --verbose=1
+    python scripts/train.py projgrad --β=0.0 --neg-slope=1.0 --verbose=1
     python scripts/train.py dpo --verbose=1
     # python scripts/train.py projgrad --β=1.0 --ignore-direction 
-    python scripts/train.py projgrad --β=0.5 --negative-slope=0.05
-    python scripts/train.py projgrad --β=1.0 --negative-slope=1.0 # should be like dpo. yes
-    python scripts/train.py projgrad --lr=1e-7
-    python scripts/train.py projgrad --lr=1e-4
-    python scripts/train.py projgrad --lr=1e-3
+    python scripts/train.py projgrad --β=0.5 --neg-slope=0.05
+    python scripts/train.py projgrad --β=1.0 --neg-slope=1.0 # should be like dpo. yes
+    python scripts/train.py projgrad --no-scale-orth --no-reverse_pref
+    python scripts/train.py projgrad --no-reverse-pref
+    python scripts/train.py projgrad --weight-dim=1
+    python scripts/train.py projgrad --weight-dim=2
 
-    python scripts/train.py projgrad --β=0.8 --negative-slope=0.1 --mag-clip=0.2 # soft constraint
+    python scripts/train.py projgrad --β=0.8 --neg-slope=0.1 --mag-clip=0.2 # soft constraint

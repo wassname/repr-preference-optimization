@@ -206,17 +206,19 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 ref_rej = ref_rej[0]
             
             # sum over tokens either using mask
+            # [b t h] -> [b h]
             mask = module._cache['ref_cho_mask'].unsqueeze(-1)
             ref_cho = (ref_cho * mask).sum(1) / mask.sum(1)
             mask = module._cache['ref_rej_mask'].unsqueeze(-1)
             ref_rej = (ref_rej * mask).sum(1) / mask.sum(1)
 
             eps = 1e-12
+            # note these have shape [batch, hs_dim] at this point
             preference_dir = (ref_cho - ref_rej).mean(0) # FIXME ideally we do it per sample, but that would require modifying param.grad when it's applied after backprop
             if h.reverse_pref:
                 preference_dir = -preference_dir
             pref_dir_unit = preference_dir / preference_dir.norm(dim=0).clamp(eps)
-            pref_dir_unit = pref_dir_unit.unsqueeze(0)
+            pref_dir_unit = pref_dir_unit.unsqueeze(0) # for the other dim of the weights
 
             for param_name, param in module.named_parameters():
                 if param.grad is None:
@@ -265,7 +267,7 @@ class PL_ProjGrad_MODEL(PL_MODEL):
 
 
 @dataclass
-class DPOProjGradConfig(ExperimentConfig):
+class ProjGradConfig(ExperimentConfig):
     """
     This is DPO, with a hard constrain on the gradient, so only move in the preference direction in hidden-state space
 

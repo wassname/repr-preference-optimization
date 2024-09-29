@@ -148,7 +148,7 @@ def train(training_args, trial: Optional[Trial] = None):
         if os.environ.get("WANDB_MODE", None) == "disabled"
         else "online",
     )
-    run = pl_wandb_logger._experiment
+    # run = pl_wandb_logger._experiment
 
     # config
     (save_dir / "config.json").open("w").write(json.dumps(config, indent=4))
@@ -300,8 +300,8 @@ def train(training_args, trial: Optional[Trial] = None):
         LearningRateMonitor(logging_interval="step"),
         # checkpoint_callback
     ]
-    if training_args.verbose:
-        callbacks += [GenCallback(every=max_steps // 5 + 1)]
+    if training_args.verbose>1:
+        callbacks += [GenCallback(every=max_steps // 2 + 1)]
 
 
     model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
@@ -334,12 +334,12 @@ def train(training_args, trial: Optional[Trial] = None):
     # train
     trainer.fit(pl_model, dl_train, dl_val)
 
-    # save as regular adapter only
-
-    model.save_pretrained(
-        str(save_dir / "adapter"),
-    )
-    logger.info(f"saved to {save_dir/'adapter'}")
+    # save as regular adapter only (small)
+    if training_args.save:
+        model.save_pretrained(
+            str(save_dir / "adapter"),
+        )
+        logger.info(f"saved to {save_dir/'adapter'}")
 
     # ### Hist
     if not training_args.dev:
@@ -424,7 +424,7 @@ def train(training_args, trial: Optional[Trial] = None):
     if wandb.run is not None:
         if (not training_args.dev) and (training_args.verbose > 0):
             df_gen_w = wandb.Table(dataframe=df_gen)
-            run.log({"generations": df_gen_w, **r2})
+            wandb.log({"generations": df_gen_w, **r2})
 
         logger.info(f"WANDB url = {wandb.run.get_url()}")
 
@@ -435,6 +435,8 @@ def train(training_args, trial: Optional[Trial] = None):
     ]
     rd = {}
     [rd.update(**ddd) for ddd in dd]
+
+    wandb.finish(quiet=True)
     return rd
 
 
@@ -574,6 +576,6 @@ def parse_eval(df_res2, ds_alias, human_name):
     # format for wandb. just one row, one data type per table
     for i in df_metrics.index:
         info[i] = df_metrics.loc[i].to_frame(human_name).T
-        info[i].index.name = human_name
+        info[i].index.name = 'model' # # the index becomes a new col
 
     return info

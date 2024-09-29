@@ -3350,7 +3350,7 @@ grad.param
 | projgrad lr=1e-6                      | 0.277 |  0.14 | -0.388 |      0 |
 | projgrad --lr=1e-3                    | 1.664 | 1.683 | -3.883 | -1.534 |
 | projgrad  --lr=1e-3                   | 1.803 | 0.842 | -2.524 | -1.534 |
-| projgrad_ nslope=1.0 nsample 6000     | -0.27 | 0.281 | -1.74  | -0.153 |
+| projgrad_ nslope=1.0 nsample 6000     | -0.27 | 0.281 |  -1.74 | -0.153 |
 
 # 2024-09-27 23:34:19
 
@@ -3363,11 +3363,65 @@ Warning: collection_layers_hs not found in training_args
 
 #  2024-09-28 06:54:39
 
-| acc_inc/eval_ds [pp]         |   train |   test |    oos |    rnd |
-|:-----------------------------|--------:|-------:|-------:|-------:|
-| projgrad_us_history_textbook |     2.5 |   0.28 | -3.307 | -2.297 |
+| acc_inc/eval_ds [pp]         | train | test |    oos |    rnd |
+| :--------------------------- | ----: | ---: | -----: | -----: |
+| projgrad_us_history_textbook |   2.5 | 0.28 | -3.307 | -2.297 |
 
 
 [I 2024-09-29 00:20:20,610] Using an existing study with name 'projgrad' instead of creating a new one.
 
 , params={'learning-rate': 0.00012426382563887213, 'β': 0.7386239719822631, 'reverse_pref': True, 'scale_orth': True, 'weight_dim': 0, 'neg_slope': 0.5},
+
+
+
+# with sft 8b params
+
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.988 |  0.989 | 0.796 | 0.955 |
+| projgrad     |   0.993 |  0.995 | 0.833 | 0.957 |
+|INFO| Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]                     | train |  test |    oos |   rnd |
+| :--------------------------------------- | ----: | ----: | -----: | ----: |
+| ProjGrad                                 | 1.215 | 0.809 |  **12.06** | 0.559 |
+| ProjGrad β=1.00                          | 1.215 | 0.809 |  11.39 | 0.559 |
+| ProjGrad neg_slope=1.00                  | 1.215 | 0.809 | 11.223 | 0.559 |
+| ProjGrad weight_dim=2                    | 1.215 | 0.809 | 10.553 | 1.117 |
+| ProjGrad mag_clip=0.02 β=1.00            | 1.215 | 0.539 |  9.548 | 1.816 |
+| ProjGrad rev_pref=False                  | 1.215 | 0.404 |  8.208 | 0.698 |
+| ProjGrad neg_slope=1.00 weight_dim=1     | 1.215 | 0.539 |  7.705 | 0.838 |
+| ProjGrad weight_dim=1                    | 1.215 | 0.674 |   7.37 |  0.14 |
+| ProjGrad rev_pref=False scale_orth=False | 1.215 | 0.539 |  6.533 | **1.257** |
+| DPO                                      | 1.215 | 0.135 |  6.198 | 0.978 |
+
+note that  full dpo reslt
+
+| dpo\dist shift              |   train |     test |     oos |     rnd |
+|:----------------------------|--------:|---------:|--------:|--------:|
+| acc_gain_vs_ref             |   1.012 |    1.001 |   1.062 |   1.01  |
+| perplexity_gain_vs_ref      | 833.07  | 1770.18  | 711.841 | 195.059 |
+| preference_logp_gain_vs_ref | 351.991 |  329.691 | 170.018 |  70.139 |
+|INFO| Table 1: Key metrics (adapter over base model)
+
+|INFO| 
+| adapter/ds   |   train |   test |   oos |   rnd |
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.988 |  0.989 | 0.796 | 0.955 |
+| dpo          |   1     |  0.991 | 0.845 | 0.964 |
+| projgrad     |   1     |  0.997 | 0.88  | 0.965 |
+|INFO| Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]   |   train |   test |   oos |   rnd |
+|:-----------------------|--------:|-------:|------:|------:|
+| DPO                    |   1.215 |  0.135 | 6.198 | 0.978 |
+|INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model for various distribution shifts:
+- `train`: `genies_preferences-us_history_textbook-train[:750]`
+- `test`: `genies_preferences-us_history_textbook-test`
+- `oos`: `genies_preferences-us_history_fiction-test`
+- `rnd`: `genies_preferences-math_make_questions-test`
+|INFO| WANDB url = https://wandb.ai/wassname/reprpo2/runs/u74bw2ci
+WANDB_GROUP=https://wandb.ai/wassname/reprpo2/groups/ds-20240929_055319_us_history_textbook-Llama-3-Base-8B-SFT
+
+sadly it looks like -us_history_textbook-train is too easy for the 8b model?
