@@ -58,6 +58,17 @@ LOGURU_FORMAT = "|<level>{level}</level>| {message}"
 logger.remove()
 logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
 
+def flatten_dict(d, parent_key='', sep='.'):
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
 def get_display_name_from_args(training_args):
     """extract a human readable name from non-default args"""
     defaults = type(training_args)()
@@ -65,9 +76,12 @@ def get_display_name_from_args(training_args):
     for k, v in asdict(defaults).items():
         if type(v).__name__ == "type":
             setattr(defaults, k, v())
-    diff = set(asdict(training_args).items())-set(asdict(defaults).items())
+
+    # collapse dict
+
+    diff = set(flatten_dict(asdict(training_args)).items())-set(flatten_dict(asdict(defaults)).items())
     diff = sorted(diff, key=lambda x: x[0])
-    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit']
+    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs']
     def fmt(v):
         if isinstance(v, float):
             return f"{v:.2f}"
