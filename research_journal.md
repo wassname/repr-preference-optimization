@@ -3427,3 +3427,13 @@ note that  full dpo reslt
 WANDB_GROUP=https://wandb.ai/wassname/reprpo2/groups/ds-20240929_055319_us_history_textbook-Llama-3-Base-8B-SFT
 
 sadly it looks like -us_history_textbook-train is too easy for the 8b model?
+
+# this is how they do on each ds
+
+| adapter   |   commonsense |   deontology |   justice |   utilitarianism |     math |   math_make_questions |   ranking_logic |   sycophancy_mimicry |   truthful_qa |   us_history_textbook |   us_history_textbook-train |   wrong_arc |   us_history_fiction |
+|:----------|--------------:|-------------:|----------:|-----------------:|---------:|----------------------:|----------------:|---------------------:|--------------:|----------------------:|----------------------------:|------------:|---------------------:|
+| base      |      0.671875 |     0.625    |  0.359375 |         0.421875 | 0.859375 |              0.984375 |        0.59375  |             0.328125 |      0.546875 |                     1 |                           1 |    0.265625 |             0.75     |
+| default   |      0.65625  |     0.625    |  0.3125   |         0.4375   | 0.890625 |              0.984375 |        0.65625  |             0.234375 |      0.78125  |                     1 |                           1 |    0.140625 |             0.8125   |
+| dpo       |      0.65625  |     0.625    |  0.3125   |         0.4375   | 0.890625 |              0.984375 |        0.65625  |             0.234375 |      0.78125  |                     1 |                           1 |    0.140625 |             0.8125   |
+| projbp    |      0.65625  |     0.640625 |  0.34375  |         0.421875 | 0.90625  |              0.96875  |        0.671875 |             0.21875  |      0.71875  |                     1 |                           1 |    0.15625  |             0.890625 |
+| projgrad  |      0.6875   |     0.609375 |  0.296875 |         0.421875 | 0.90625  |              0.96875  |        0.640625 |             0.1875   |      0.765625 |                     1 |                           1 |    0.140625 |             0.84375  |
