@@ -272,7 +272,7 @@ def train(training_args, trial: Optional[Trial] = None):
     accumulate_grad_batches = np.ceil(
         ideal_batch_size / training_args.batch_size
     ).astype(int)
-    if training_args.verbose:
+    if training_args.verbose>0:
         logger.info(
             f"max optimiser steps {max_steps}",
         )
@@ -394,10 +394,10 @@ def train(training_args, trial: Optional[Trial] = None):
         model=model,
         tokenizer=tokenizer,
         datasets=datasets,
-        batch_size=training_args.batch_size*2,
+        batch_size=training_args.batch_size,
         bf16=True,
-        torch_empty_cache_steps=200,
-        verbose=training_args.verbose,
+        torch_empty_cache_steps=100,
+        verbose=training_args.verbose>0,
     )
 
     ds_alias = OrderedDict(
