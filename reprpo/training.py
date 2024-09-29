@@ -81,14 +81,17 @@ def get_display_name_from_args(training_args):
 
     diff = set(flatten_dict(asdict(training_args)).items())-set(flatten_dict(asdict(defaults)).items())
     diff = sorted(diff, key=lambda x: x[0])
-    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs']
+    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers_side', 'collection_layers_hs']
     def fmt(v):
         if isinstance(v, float):
             return f"{v:.2f}"
         return v
     s = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff) if k not in blacklist])
-
     cls_name = type(training_args).__name__.replace('Config', '')
+
+    s_all = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff)])
+    logger.info(f"diff: {cls_name} {s_all}")
+
     return f'{cls_name} {s}'
 
 
@@ -405,7 +408,7 @@ def train(training_args, trial: Optional[Trial] = None):
     f = str(save_dir) + "/eval.parquet"
     df_res2.to_parquet(f)
     logger.info(f"save_dir={save_dir}")
-    pprint(training_args, compact=1)
+    # pprint(training_args, compact=1)
 
     r = parse_eval(df_res2, ds_alias, human_name=human_name)
 

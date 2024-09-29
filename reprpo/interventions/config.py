@@ -10,7 +10,7 @@ class ExperimentConfig:
     dataset: str = "us_history_textbook"
     """train dataset."""
 
-    verbose: int = 0
+    verbose: int = 1
 
     dev: bool = False
     """fast run"""

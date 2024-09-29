@@ -20,14 +20,14 @@ def setattrattr(cfg, k, v):
 
 
 # quick 2m per run
-tuner_kwargs = dict(
+default_tuner_kwargs = dict(
     verbose=0,
     base_model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",  # ideally would be SFT
     batch_size=32,
     # load_in_4bit=True, # doesn't quite halve the memory, speed it about the same
     collection_layers_side=(8, 10, 12, 14, 16, 18),
     eval_samples=128,
-    collect_hs=True,
+    # collect_hs=True,
 )
 
 
@@ -42,7 +42,7 @@ def override(cfg, overrides):
 
 def objective_func(kwargs, trial):
     cfg = copy.deepcopy(experiment_configs["side-ether-prefvec"][1])
-    override(cfg, tuner_kwargs)
+    override(cfg, default_tuner_kwargs)
 
     # # so first we do the ones high in the heirarchy
     # if "loss" in kwargs:
