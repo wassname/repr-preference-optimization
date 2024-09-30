@@ -57,7 +57,7 @@
                 "CUDA_VISIBLE_DEVICES": "0", 
             "TOKENIZERS_PARALLELISM": "false",
             //  "REPR_CONFIG": "./configs/dev.yaml", 
-             "REPR_CONFIG": "./configs/llama3_7b.yaml", 
+            //  "REPR_CONFIG": "./configs/llama3_7b.yaml", 
             //  "REPR_CONFIG": "./configs/tinyllama_a100.yaml", 
             //  "WANDB_MODE": "offline"
             },
@@ -68,8 +68,11 @@
             "autoReload": {"enable": true},
             "args": [
                 // "hs-dist",
+                // "projbp",
                 "projgrad",
                 "--verbose=2",
+                "--mag_clip=1",
+                "--scale_orth",
                 // "--loss.β=0.2",
                 // "--eval_samples=128",
                 // "--batch-size=24", 

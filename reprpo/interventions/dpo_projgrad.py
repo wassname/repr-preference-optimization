@@ -240,8 +240,11 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 # mag_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
                 if h.mag_clip is not None:
                     # per sampler
-                    ratios = grad.norm(dim=dim).mean()/((preference_dir).norm().clamp(eps)*h.mag_clip)
-                    ratios = ratios.clamp(1, None)
+                    # grad shape [in_dim, hs] or [hs, out_dim]
+                    # pref shapee [hs]
+                    other_dim = int(not bool(dim))
+                    ratios = grad.mean(other_dim)/(preference_dir.clamp(eps)*h.mag_clip)
+                    ratios = ratios.clamp(1, None).unsqueeze(other_dim)
                     grad = grad / ratios
                 
                 grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=dim, keepdim=True) * pref_dir_unit
@@ -249,6 +252,7 @@ class PL_ProjGrad_MODEL(PL_MODEL):
 
                 # scale sideway movement so it's a proportion of prefered direction movement
                 if h.scale_orth:
+                    # these are the same shape
                     scale = (grad_orthogonal).norm(dim=dim).clamp(eps) / (grad_proj_onto_pref).norm(dim=dim).clamp(eps) 
                     scale = scale.unsqueeze(dim)
                 else:

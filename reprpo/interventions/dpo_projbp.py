@@ -56,13 +56,18 @@ class ProjBPHooks(ProjGradHooks):
         # get projection of `grad` along ref_dir
         # grad is 'b t h'
         def proj_grad(grad):
+            assert torch.isfinite(grad).all()
 
             # mag_clip, similar to PPO, we limit the update in hs-space. Simlar to PPO which does it per logit, we do it per hs
             if self.mag_clip is not None:
-                # per sampler
-                ratios = grad.norm(dim=-1).mean()/((preference_dir).norm().clamp(eps)*self.mag_clip)
+                # per sample
+                # TODO check dims
+                # preference_dir [b, h]
+                # grad [b t h]
+                ratios = grad.mean(1).norm(dim=-1)/((preference_dir).norm(dim=-1).clamp(eps)*self.mag_clip)
                 ratios = ratios.clamp(1, None)
                 grad = grad / ratios
+                assert torch.isfinite(grad).all()
             
             grad_proj_onto_pref = (pref_dir_unit * grad).sum(dim=-1, keepdim=True) * pref_dir_unit
             grad_orthogonal = grad - grad_proj_onto_pref
@@ -75,8 +80,14 @@ class ProjBPHooks(ProjGradHooks):
                 scale = 1.0
             grad2 = F.leaky_relu(grad_proj_onto_pref, negative_slope=self.neg_slope) + self.β * grad_orthogonal * scale
 
-            # 
-            grad2 = grad2 * (grad.norm(dim=-1) / grad2.norm(dim=-1)).unsqueeze(-1)
+            # keep the original magnitude
+            assert torch.isfinite(grad2).all()
+            # scale = torch.norm_except_dim(grad, 0).clamp(eps) / torch.norm_except_dim(grad2, 0).clamp(eps)
+            scale = grad.norm().clamp(eps) / grad2.norm().clamp(eps)
+            assert torch.isfinite(scale).all()
+            # print(f"{grad.norm().item():.2f} -> {grad2.norm().item():.2f} -> {(grad2 * scale).norm().item():.2f}")
+            grad2 = grad2 * scale
+            assert torch.isfinite(grad2).all()
 
             return grad2
     
@@ -108,7 +119,7 @@ class ProjBPConfig(ExperimentConfig):
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
-    β: float = 0.
+    β: float = 0.5
 
     reverse_pref: bool = True
     """
@@ -120,7 +131,7 @@ class ProjBPConfig(ExperimentConfig):
     scale the orthogonal movement to be β proportion of the prefered direction movement
     """
 
-    neg_slope: float = 0.5
+    neg_slope: float = 0.2
     """
     When clipping the gradient in the negative preference direction, we can use leakly relu with this slope. 0 is relu. 0.01 is leaky relu.
     """

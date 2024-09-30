@@ -3474,6 +3474,7 @@ I should compare it to the SFT
 | projgrad base     |   1     |  0.979 | 0.808 | 0.589 |
 | instruct          |   0.984 |  0.971 | 0.768 | 0.563 |
 | projgrad instruct |   1     |  0.984 | 0.809 | 0.635 |
+| projgrad instgruct magclip-1  |   1     |  0.989 | 0.855 | 0.612 |
 | dpo  base         |   0.997 |  0.975 | 0.768 |  0.52 |
 | dpo  instruct     |   0.999 |  0.985 | 0.808 | 0.663 |
 
