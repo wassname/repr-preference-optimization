@@ -13,6 +13,7 @@ lightning_logs/
 old/
 old2/
 .ipynb_checkpoints/
+*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
