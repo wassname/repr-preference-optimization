@@ -25,6 +25,6 @@ class ExperimentConfig:
     eval_samples: Optional[int] = None
     max_length: int = 196
     max_prompt_length: int = 96
-    base_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    base_model: str = "unsloth/Llama-3.2-1B-Instruct"
 
     save: bool = True

@@ -131,7 +131,7 @@ def train(training_args, trial: Optional[Trial] = None):
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
     root_dir = Path(__file__).parent.parent
     model_fname = "_".join(
-        [training_args.base_model.replace("/", "_"), adapter_name, ds_name_train]
+        [training_args.base_model.replace("/", "-"), adapter_name, ds_name_train]
     )
     save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
     save_dir.mkdir(exist_ok=True, parents=True)
@@ -411,7 +411,7 @@ def train(training_args, trial: Optional[Trial] = None):
     logger.info(f"save_dir={save_dir}")
     # pprint(training_args, compact=1)
 
-    r = parse_eval(df_res2, ds_alias, human_name=human_name)
+    r = parse_eval(df_res2, ds_alias, human_name=human_name, base_model=model_name)
 
     # WANDB logging
     r2 = {}
@@ -536,7 +536,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     return df_metrics[list(ds_alias.keys())]
 
 
-def parse_eval(df_res2, ds_alias, human_name):
+def parse_eval(df_res2, ds_alias, human_name, base_model=""):
     adapter_name = df_res2[["adapter"]].query('adapter!="base"').values[0, 0]
 
     df_res = (
@@ -563,7 +563,7 @@ def parse_eval(df_res2, ds_alias, human_name):
     df_final = df_final * 100 - 100  # percentage points
     df_final.index.name = "acc_inc/eval_ds [pp]"
     print(f"\n{df_final.round(3).to_markdown()}")
-    caption = f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`{ds_alias["train"]}` compared to base model for various distribution shifts:"""
+    caption = f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`{ds_alias["train"]}` compared to base model `{base_model}` for various distribution shifts:"""
     for k, v in ds_alias.items():
         caption += f"\n- `{k}`: `{v}`"
     logger.info(caption)

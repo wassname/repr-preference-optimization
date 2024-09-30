@@ -3439,3 +3439,180 @@ sadly it looks like -us_history_textbook-train is too easy for the 8b model?
 | projgrad  |      0.6875   |     0.609375 |  0.296875 |         0.421875 | 0.90625  |              0.96875  |        0.640625 |             0.1875   |      0.765625 |                     1 |                           1 |    0.140625 |             0.84375  |
 
 Hmm doing optuna on the small model did generalise o the larger one which is great!
+
+
+
+
+# 2024-09-30 02:10:04 comparing base vs instruct
+
+I am woried that-
+- on instruct it's not fair to DPO as it has already been DPO's
+- on base it's not ideal, since DPO is meant to be appleid in distribution to SFT trained models
+- solution test
+- solution do a SFT with unsloth? https://github.com/princeton-nlp/SimPO/blob/main/training_configs/llama-3-8b-base-sft.yaml
+
+oh compare dpo and projgrad with NousResearch/Llama-3.2-1B and inct
+
+  | acc_inc/eval_ds [pp]           |   train |   test |   oos |   rnd |
+  |:-----------------------        |--------:|-------:|------:|------:|
+  | ProjGrad  base                 |   3.734 |  1.662 | 18.35 | 22.778 |
+  | DPO   base                     |   3.458 |  1.247 |  12.5 | 8.333 |
+  
+  | acc_inc/eval_ds [pp]           |   train |   test |   oos |   rnd |
+  |:-----------------------        |--------:|-------:|------:|------:|
+  | ProjGrad  instruct             |   1.626 |  1.374 | 5.382 | 12.796 |
+  | DPO  instruct                  |   1.491 |  1.511 | 5.208 | 17.773 |
+
+it seems fine... ProjGrad mostly wins but DPO wins on instruct which is not what I expected
+now 
+I should compare it to the SFT
+
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:-------------     |--------:|-------:|------:|------:|
+| base              |   0.964 |  0.963 | 0.683 | 0.48  |
+| projgrad base     |   1     |  0.979 | 0.808 | 0.589 |
+| instruct          |   0.984 |  0.971 | 0.768 | 0.563 |
+| projgrad instruct |   1     |  0.984 | 0.809 | 0.635 |
+| dpo  base         |   0.997 |  0.975 | 0.768 |  0.52 |
+| dpo  instruct     |   0.999 |  0.985 | 0.808 | 0.663 |
+
+
+  |INFO| 
+  | projgrad\dist shift         |   train |    test |    oos |   rnd |
+  |:----------------------------|--------:|--------:|-------:|------:|
+  | acc_gain_vs_ref             |   1.037 |   1.017 |  1.184 | 1.228 |
+  | perplexity_gain_vs_ref      |  27.968 |  61.436 | 57.376 | 0.938 |
+  | preference_logp_gain_vs_ref | 179.657 | 166.311 | 94.113 | 0.661 |
+  |INFO| Table 1: Key metrics (adapter over base model)
+
+  |INFO| 
+  | adapter/ds   |   train |   test |   oos |   rnd |
+  |:-------------|--------:|-------:|------:|------:|
+  | base         |   0.964 |  0.963 | 0.683 | 0.48  |
+  | projgrad     |   1     |  0.979 | 0.808 | 0.589 |
+  |INFO| Table 2: Absolute accuracy
+
+
+  | acc_inc/eval_ds [pp]   |   train |   test |    oos |    rnd |
+  |:-----------------------|--------:|-------:|-------:|-------:|
+  | ProjGrad               |   3.734 |  1.662 | 18.359 | 22.778 |
+  |INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B` for various distribution shifts:
+  - `train`: `genies_preferences-us_history_textbook-train[:750]`
+  - `test`: `genies_preferences-us_history_textbook-test`
+  - `oos`: `genies_preferences-us_history_fiction-test`
+  - `rnd`: `genies_preferences-ranking_logic-test`
+  |INFO| WANDB url = https://wandb.ai/wassname/reprpo2/runs/aoiidigl
+
+
+
+
+|INFO| 
+| projgrad\dist shift         |   train |    test |    oos |    rnd |
+|:----------------------------|--------:|--------:|-------:|-------:|
+| acc_gain_vs_ref             |   1.016 |   1.014 |  1.054 |  1.128 |
+| perplexity_gain_vs_ref      |  11.117 |  13.364 | 15.453 | 90.723 |
+| preference_logp_gain_vs_ref | 146.201 | 129.737 | 59.752 |  1.884 |
+|INFO| Table 1: Key metrics (adapter over base model)
+
+|INFO| 
+| adapter/ds   |   train |   test |   oos |   rnd |
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.984 |  0.971 | 0.768 | 0.563 |
+| projgrad     |   1     |  0.984 | 0.809 | 0.635 |
+|INFO| Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]   |   train |   test |   oos |    rnd |
+|:-----------------------|--------:|-------:|------:|-------:|
+| ProjGrad               |   1.626 |  1.374 | 5.382 | 12.796 |
+|INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B-Instruct` for various distribution shifts:
+- `train`: `genies_preferences-us_history_textbook-train[:750]`
+- `test`: `genies_preferences-us_history_textbook-test`
+- `oos`: `genies_preferences-us_history_fiction-test`
+- `rnd`: `genies_preferences-ranking_logic-test`
+|INFO| WANDB url = https://wandb.ai/wassname/reprpo2/runs/15eb68o0
+
+
+|INFO| 
+| dpo\dist shift              |    train |      test |     oos |   rnd |
+|:----------------------------|---------:|----------:|--------:|------:|
+| acc_gain_vs_ref             |    1.035 |     1.012 |   1.125 | 1.083 |
+| perplexity_gain_vs_ref      | 2377.82  | 19005.2   | 936.602 | 0.917 |
+| preference_logp_gain_vs_ref |  336.92  |   308.166 |  91.39  | 0.102 |
+|INFO| Table 1: Key metrics (adapter over base model)
+
+|INFO| 
+| adapter/ds   |   train |   test |   oos |   rnd |
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.964 |  0.963 | 0.683 |  0.48 |
+| dpo          |   0.997 |  0.975 | 0.768 |  0.52 |
+|INFO| Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]   |   train |   test |   oos |   rnd |
+|:-----------------------|--------:|-------:|------:|------:|
+| DPO                    |   3.458 |  1.247 |  12.5 | 8.333 |
+|INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B` for various distribution shifts:
+- `train`: `genies_preferences-us_history_textbook-train[:750]`
+- `test`: `genies_preferences-us_history_textbook-test`
+- `oos`: `genies_preferences-us_history_fiction-test`
+- `rnd`: `genies_preferences-ranking_logic-test`
+|INFO| WANDB url = https://wandb.ai/wassname/reprpo2/runs/5wli02ax
+wandb:                                                                                
+wandb: 🚀 View run dpo/020225 at: https://wandb.ai/wassname/reprpo2/runs/5wli02ax
+
+| dpo\dist shift              |   train |    test |    oos |     rnd |
+|:----------------------------|--------:|--------:|-------:|--------:|
+| acc_gain_vs_ref             |   1.015 |   1.015 |  1.052 |   1.178 |
+| perplexity_gain_vs_ref      |  11.661 |  12.483 | 18.162 | 175.215 |
+| preference_logp_gain_vs_ref | 170.883 | 152.372 | 64.533 |   2.168 |
+|INFO| Table 1: Key metrics (adapter over base model)
+
+|INFO| 
+| adapter/ds   |   train |   test |   oos |   rnd |
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.984 |  0.971 | 0.768 | 0.563 |
+| dpo          |   0.999 |  0.985 | 0.808 | 0.663 |
+|INFO| Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]   |   train |   test |   oos |    rnd |
+|:-----------------------|--------:|-------:|------:|-------:|
+| DPO                    |   1.491 |  1.511 | 5.208 | 17.773 |
+|INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B-Instruct` for various distribution shifts:
+- `train`: `genies_preferences-us_history_textbook-train[:750]`
+- `test`: `genies_preferences-us_history_textbook-test`
+- `oos`: `genies_preferences-us_history_fiction-test`
+- `rnd`: `genies_preferences-ranking_logic-test`
+|INFO| WANDB url = https://wandb.ai/wassname/reprpo2/runs/fc057puf
+
+
+if 
+I want to make a llama sft
+```sh
+# https://github.com/princeton-nlp/SimPO/tree/main?tab=readme-ov-file#install-requirements
+cd /workspace
+wget bash https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+bash bashMiniforge3-Linux-x86_64.sh
+# install in /workspace/miniforge3
+git clone https://github.com/princeton-nlp/SimPO.git
+/workspace/miniforge3/bin/conda init zsh
+conda create -n handbook python=3.10
+conda activate handbook
+conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
+
+git clone https://github.com/huggingface/alignment-handbook.git
+cd ./alignment-handbook/
+python -m pip install .
+
+python -m pip install flash-attn --no-build-isolation
+
+# run
+ACCELERATE_LOG_LEVEL=info accelerate launch --config_file accelerate_configs/deepspeed_zero3.yaml scripts/run_simpo.py training_configs/llama-3-8b-base-sft.yaml
+
+
+https://github.com/princeton-nlp/SimPO/blob/main/training_configs/llama-3-8b-base-sft.yaml
+
+clear spa
+ce

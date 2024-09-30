@@ -184,3 +184,12 @@ run_pg:
     python scripts/train.py projgrad --weight-dim=2
 
     python scripts/train.py projgrad --β=0.8 --neg-slope=0.1 --mag-clip=0.2 # soft constraint
+
+
+run_l:
+    export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
+    # python scripts/train.py projgrad --base-model=NousResearch/Llama-3.2-1B
+    python scripts/train.py projgrad --base-model=unsloth/Llama-3.2-1B-Instruct
+    python scripts/train.py dpo --base-model=NousResearch/Llama-3.2-1B
+    python scripts/train.py dpo --base-model=unsloth/Llama-3.2-1B-Instruct
+
