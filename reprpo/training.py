@@ -54,7 +54,7 @@ from loguru import logger
 remove_warnings()
 
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
-LOGURU_FORMAT = "|<level>{level}</level>| {message}"
+LOGURU_FORMAT = "<level>{message}</level>"
 logger.remove()
 logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
 
@@ -81,7 +81,7 @@ def get_display_name_from_args(training_args):
 
     diff = set(flatten_dict(asdict(training_args)).items())-set(flatten_dict(asdict(defaults)).items())
     diff = sorted(diff, key=lambda x: x[0])
-    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers_side', 'collection_layers_hs']
+    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers_side', 'collection_layers_hs', 'save']
     def fmt(v):
         if isinstance(v, float):
             return f"{v:.2f}"

@@ -71,6 +71,7 @@ def projgrad(trial):
         "neg_slope": trial.suggest_categorical("neg_slope",[0, 0.01, 0.1, 0.5, 1]),
         "mag_clip": trial.suggest_categorical("mag_clip", [None, 0.03, 0.1, 0.5, 1.0, 10, 100]),
     }
+    args.update(base_reprpo_params(trial))
     return args
 
 def projbp(trial):
@@ -82,6 +83,7 @@ def projbp(trial):
         "neg_slope": trial.suggest_categorical("neg_slope",[0, 0.01, 0.1, 0.5, 1]),
         "mag_clip": trial.suggest_categorical("mag_clip", [None, 0.03, 0.1, 0.5, 1.0, 10, 100]),
     }
+    args.update(base_reprpo_params(trial))
     return args
 
 def ether_prefvec(trial):

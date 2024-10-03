@@ -119,19 +119,19 @@ class ProjBPConfig(ExperimentConfig):
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
-    β: float = 0.5
+    β: float = 1
 
-    reverse_pref: bool = True
+    reverse_pref: bool = False
     """
     reverse the preference direction
     """
 
-    scale_orth: bool = True
+    scale_orth: bool = False
     """
     scale the orthogonal movement to be β proportion of the prefered direction movement
     """
 
-    neg_slope: float = 0.2
+    neg_slope: float = 0.1
     """
     When clipping the gradient in the negative preference direction, we can use leakly relu with this slope. 0 is relu. 0.01 is leaky relu.
     """

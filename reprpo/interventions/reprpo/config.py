@@ -9,7 +9,7 @@ from .model import PL_REPRPO_MODEL
 class ReprPOConfig(ExperimentConfig):
     lr: float = 4e-4
 
-    collection_layers_side: tuple = (10, 12, 14, 16, 18)
+    collection_layers_side: tuple = (8, 10, 12, 14, )
     """layers to collect activations from in side layers."""
 
     collection_keys_in: tuple = (

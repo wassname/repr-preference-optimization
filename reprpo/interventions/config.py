@@ -25,6 +25,6 @@ class ExperimentConfig:
     eval_samples: Optional[int] = None
     max_length: int = 196
     max_prompt_length: int = 96
-    base_model: str = "unsloth/Llama-3.2-1B-Instruct"
+    base_model: str = "wassname/llama-3-2-1b-sft"
 
     save: bool = True

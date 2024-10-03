@@ -3588,32 +3588,49 @@ wandb: 🚀 View run dpo/020225 at: https://wandb.ai/wassname/reprpo2/runs/5wli0
 - `rnd`: `genies_preferences-ranking_logic-test`
 |INFO| WANDB url = https://wandb.ai/wassname/reprpo2/runs/fc057puf
 
+## I want to make a llama sft
 
-if 
-I want to make a llama sft
-```sh
-# https://github.com/princeton-nlp/SimPO/tree/main?tab=readme-ov-file#install-requirements
-cd /workspace
-wget bash https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
-bash bashMiniforge3-Linux-x86_64.sh
-# install in /workspace/miniforge3
-git clone https://github.com/princeton-nlp/SimPO.git
-/workspace/miniforge3/bin/conda init zsh
-conda create -n handbook python=3.10
-conda activate handbook
-conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
-
-git clone https://github.com/huggingface/alignment-handbook.git
-cd ./alignment-handbook/
-python -m pip install .
-
-python -m pip install flash-attn --no-build-isolation
-
-# run
-ACCELERATE_LOG_LEVEL=info accelerate launch --config_file accelerate_configs/deepspeed_zero3.yaml scripts/run_simpo.py training_configs/llama-3-8b-base-sft.yaml
+| url | params | dataset | loss |
+| :--- | :--- | :--- | :--- |
+| [Ritvik19/zephyr-tinyllama-sft-qlora](https://huggingface.co/Ritvik19/zephyr-tinyllama-sft-qlora) | 1.1b | ultrachat | 1.19 |
+| [martimfasantos/tinyllama-1.1b-chat-sft-full](https://huggingface.co/martimfasantos/tinyllama-1.1b-chat-sft-full) | 1.1 | ultrachat | 1.15 |
+| [wassname/llama-3-2-1b-sft](https://huggingface.co/wassname/llama-3-2-1b-sft) | 1b | ultrachat | 1.2b |
+| [ondevicellm/phi-1_5_sft](https://huggingface.co/ondevicellm/phi-1_5_sft) | 1.3 | ultrachat | 1.25 |
+| [tanliboy/llama-3.2-3b-sft-2](https://huggingface.co/tanliboy/llama-3.2-3b-sft-2) | 3.2b | openhermes | 0.6 |
 
 
-https://github.com/princeton-nlp/SimPO/blob/main/training_configs/llama-3-8b-base-sft.yaml
+- math trained unkown loss 
+  - https://huggingface.co/RLHFlow/LLaMA3.2-3B-SFT
+  - https://huggingface.co/RLHFlow/LLaMA3.2-1B-SFT loss?
 
-clear spa
-ce
+| dpo\dist shift              |   train |   test |    oos |   rnd |
+|:----------------------------|--------:|-------:|-------:|------:|
+| acc_gain_vs_ref             |   1.058 |  1.027 |  1.023 | 1.027 |
+| perplexity_gain_vs_ref      |   3.036 |  4.135 |  1.402 | 3.648 |
+| preference_logp_gain_vs_ref |  34.314 | 29.157 | -2.69  | 1.134 |
+|INFO| Table 1: Key metrics (adapter over base model)
+
+| projgrad\dist shift         |   train |   test |    oos |   rnd |
+|:----------------------------|--------:|-------:|-------:|------:|
+| acc_gain_vs_ref             |   1.085 |  1.01  |  1.011 | 1.041 |
+| perplexity_gain_vs_ref      |   7.812 | 11.785 |  1.538 | 5.802 |
+| preference_logp_gain_vs_ref |  52.591 | 41.017 | -4.334 | 1.512 |
+|INFO| Table 1: Key metrics (adapter over base model)
+
+|INFO| 
+| adapter/ds   |   train |   test |   oos |   rnd |
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.892 |  0.896 | 0.352 | 0.683 |
+| dpo          |   0.944 |  0.92  | 0.36  | 0.701 |
+| projgrad     |   0.968 |  0.905 | 0.356 | 0.711 |
+
+| acc_inc/eval_ds [pp]   |   train |   test |   oos |   rnd |
+|:-----------------------|--------:|-------:|------:|------:|
+| DPO dataset=math       |    5.83 |  2.679 | 2.273 | 2.734 |
+| ProjGrad dataset=math  |    8.52 |  1.042 | 1.136 | 4.102 |
+ Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-math-train[:750]` compared to base model `llama-3.2-3b-sft-2` for various distribution shifts:
+- `train`: `genies_preferences-math-train[:750]`
+- `test`: `genies_preferences-math-test`
+- `oos`: `genies_preferences-change_my_view-test`
+- `rnd`: `genies_preferences-ranking_logic-test`
+|INFO| WANDB url = https://wandb.ai/wassname/reprpo2/runs/b4r9vdrk
