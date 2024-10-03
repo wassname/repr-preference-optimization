@@ -20,7 +20,7 @@ To see why this might be true, let's conduct a thought experiment. We can anthro
 
 #### Hypothesis Formulation
 
-However, as we do not know how an LLM stores it's internal states, these experiments represent hypothesis about how best to represent and intervent in an tranformers internal states.
+Ss we do not know how an LLM stores it's internal states, these experiments represent hypothesis about how best to represent and intervene in an tranformers internal states.
 
 What's our technical hypothesis?
 
@@ -28,7 +28,7 @@ What's our technical hypothesis?
 
 #### Testing Methodology
 
-We intend to test this hypothesis using a framework where we can manipulate and assess the in-distribution and out-of-distribution alignment of modeled agents. Specifically, this study focuses on comparing our proposed method against Direct Policy Optimization (DPO) under scenarios involving significant distribution shifts, as defined in the [GENIES paper](https://github.com/Joshuaclymer/GENIES).
+Alignment needs to work out of distribution (or at least fail gracefully after capabilities) so we test how well alignment works out of distribution. Specifically, we compare a baseline method - Direct Policy Optimization (DPO) - with significant distribution shifts, as defined in the [GENIES paper](https://github.com/Joshuaclymer/GENIES).
 
 Status: Work in Progress
 
@@ -38,8 +38,6 @@ Status: Work in Progress
 In the below results we look at how much the models accuracy improved in training, test, out-of-distribution and random data when using the proposed method compared to DPO.
 
 
-'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
-
 | Model | Train | Test | OOS | Random |
 | --- | --- | --- | --- | --- |
 | DPO | **1.0459** | 1.0140 | 1.00592 | 0.970 |
@@ -47,7 +45,11 @@ In the below results we look at how much the models accuracy improved in trainin
 | REPRPO_ortho | 1.0162 | 1.0169 | 1.0850 | **0.996** |
 | REPRPO_hra | 1.0163 | **1.0211** | **1.091** | 0.986 |
 
-
+ Table 1🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-math-train[:750]` compared to base model 'TinyLlama/TinyLlama-1.1B-Chat-v1.0' for various distribution shifts:
+- `train`: `genies_preferences-math-train[:750]`
+- `test`: `genies_preferences-math-test`
+- `oos`: `genies_preferences-change_my_view-test`
+- `rnd`: `genies_preferences-ranking_logic-test`
 
 As you can see DPO does better in the training environment, but REPRPO_ortho does better in the test, out-of-distribution and random environments. This suggests that REPRPO_ortho is better at generalizing to new environments, and loses less performance in unrelated environments.
 
