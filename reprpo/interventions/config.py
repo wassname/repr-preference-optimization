@@ -28,3 +28,4 @@ class ExperimentConfig:
     base_model: str = "wassname/llama-3-2-1b-sft"
 
     save: bool = True
+    wandb: bool = True

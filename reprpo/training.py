@@ -69,9 +69,9 @@ def flatten_dict(d, parent_key='', sep='.'):
     return dict(items)
 
 
-def get_display_name_from_args(training_args):
+def get_display_name_from_args(args):
     """extract a human readable name from non-default args"""
-    defaults = type(training_args)()
+    defaults = type(args)()
     # TODO need to init subclasses
     for k, v in asdict(defaults).items():
         if type(v).__name__ == "type":
@@ -79,7 +79,7 @@ def get_display_name_from_args(training_args):
 
     # collapse dict
 
-    diff = set(flatten_dict(asdict(training_args)).items())-set(flatten_dict(asdict(defaults)).items())
+    diff = set(flatten_dict(asdict(args)).items())-set(flatten_dict(asdict(defaults)).items())
     diff = sorted(diff, key=lambda x: x[0])
     blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers_side', 'collection_layers_hs', 'save']
     def fmt(v):
@@ -87,7 +87,7 @@ def get_display_name_from_args(training_args):
             return f"{v:.2f}"
         return v
     s = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff) if k not in blacklist])
-    cls_name = type(training_args).__name__.replace('Config', '')
+    cls_name = type(args).__name__.replace('Config', '')
 
     s_all = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff)])
     logger.info(f"diff: {cls_name} {s_all}")
@@ -95,32 +95,32 @@ def get_display_name_from_args(training_args):
     return f'{cls_name} {s}'
 
 
-def train(training_args, trial: Optional[Trial] = None):
-    if training_args.verbose < 1:
+def train(args, trial: Optional[Trial] = None):
+    if args.verbose < 1:
         silence()
     torch.set_float32_matmul_precision("medium")
 
-    PL_MODEL = training_args._cls
+    PL_MODEL = args._cls
 
     logger.info(f"PL_MODEL {PL_MODEL}")
 
-    ds_name_train = training_args.dataset.replace("genies_preferences-", "")
-    model_name = training_args.base_model.split("/")[-1]
+    ds_name_train = args.dataset.replace("genies_preferences-", "")
+    model_name = args.base_model.split("/")[-1]
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
-    adapter_name = training_args._name
-    # adapter_name = get_args_dict(training_args)
+    adapter_name = args._name
+    # adapter_name = get_args_dict(args)
 
-    human_name = get_display_name_from_args(training_args) # f"{adapter_name}_{ds_name_train}"
+    human_name = get_display_name_from_args(args) # f"{adapter_name}_{ds_name_train}"
 
     # we can set an experiment group name from env vars, otherwise it will just groupt by model and training ds
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = os.environ.get("WANDB_GROUP") + "_" + group_name
         logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/groups/{group_name} ")
-    if training_args.verbose > 0:
-        logger.info("training_args")
-        pprint(training_args, compact=True)
+    if args.verbose > 0:
+        logger.info("args")
+        pprint(args, compact=True)
         # logger.info("model_kwargs", model_kwargs.keys())
 
         logger.info(f"Using finetune_name={human_name}")
@@ -131,23 +131,24 @@ def train(training_args, trial: Optional[Trial] = None):
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
     root_dir = Path(__file__).parent.parent
     model_fname = "_".join(
-        [training_args.base_model.replace("/", "-"), adapter_name, ds_name_train]
+        [args.base_model.replace("/", "-"), adapter_name, ds_name_train]
     )
     save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
     save_dir.mkdir(exist_ok=True, parents=True)
 
-    wandb.require(experiment="core")
-    config = asdict(training_args)
-    pl_wandb_logger=WandbLogger(
-        name=run_fname, save_dir=save_dir,
-        project="reprpo2",
-        # entity="wassname",
-        group=group_name,
-        config=config,
-        mode="disabled"
-        if os.environ.get("WANDB_MODE", None) == "disabled"
-        else "online",
-    )
+    if args.wandb:
+        wandb.require(experiment="core")
+        config = asdict(args)
+        pl_wandb_logger=WandbLogger(
+            name=run_fname, save_dir=save_dir,
+            project="reprpo2",
+            # entity="wassname",
+            group=group_name,
+            config=config,
+            mode="disabled"
+            if os.environ.get("WANDB_MODE", None) == "disabled"
+            else "online",
+        )
     # run = pl_wandb_logger._experiment
 
     # config
@@ -160,14 +161,14 @@ def train(training_args, trial: Optional[Trial] = None):
         level="INFO",
         format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}",
     )
-    if training_args.verbose < 1:
+    if args.verbose < 1:
             logger.remove()
             logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
 
     model, tokenizer = load_model(
-        training_args.base_model,
-        load_in_4bit=training_args.load_in_4bit,
-        load_in_8bit=training_args.load_in_8bit,
+        args.base_model,
+        load_in_4bit=args.load_in_4bit,
+        load_in_8bit=args.load_in_8bit,
         # attn_implementation='eager' # for gemma
     )
 
@@ -189,29 +190,29 @@ def train(training_args, trial: Optional[Trial] = None):
     
     model = get_peft_model(model, peft_config, adapter_name=adapter_name)
     print_trainable_parameters(model)
-    if training_args.verbose > 1:
+    if args.verbose > 1:
         logger.info(f"{model}")
 
     # ## Load data
-    dataset2 = load_dataset("wassname/genies_preferences", name=training_args.dataset)
+    dataset2 = load_dataset("wassname/genies_preferences", name=args.dataset)
 
     # ### Data Loader
     # We use huggingface datasets, which are pretokenized. So that we can stack
 
     tokenize_row = TokenizeRow(
         tokenizer,
-        max_length=training_args.max_length,
-        max_prompt_length=training_args.max_prompt_length,
+        max_length=args.max_length,
+        max_prompt_length=args.max_prompt_length,
     )
 
-    if training_args.dev:
+    if args.dev:
         # no cache
         import datasets
 
         datasets.disable_caching()
     dataset3 = dataset2.map(tokenize_row, batched=False)
 
-    if training_args.verbose > 0:
+    if args.verbose > 0:
         logger.info(
             f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}"
         )
@@ -224,7 +225,7 @@ def train(training_args, trial: Optional[Trial] = None):
         ds["train"]
         .select_columns(["chosen", "rejected", "chosen_mask", "rejected_mask"])
         .with_format("torch"),
-        batch_size=training_args.batch_size,
+        batch_size=args.batch_size,
         #   collate_fn=default_data_collator
     )
 
@@ -232,11 +233,11 @@ def train(training_args, trial: Optional[Trial] = None):
         ds["test"]
         .select_columns(["chosen", "rejected", "chosen_mask", "rejected_mask"])
         .with_format("torch"),
-        batch_size=training_args.batch_size,
+        batch_size=args.batch_size,
         # , collate_fn=default_data_collator
     )
 
-    if training_args.verbose > 1:
+    if args.verbose > 1:
         # logger.info("QC one dataset row")
         # r = dataset2["train"][0]
         # logger.info(r["prompt"])
@@ -264,15 +265,15 @@ def train(training_args, trial: Optional[Trial] = None):
     # - https://lightning.ai/docs/pytorch/latest/notebooks/lightning_examples/text-transformers.html
     # - https://gist.github.com/wassname/e29d02b5026a531e13912cf768e6fdc8
 
-    max_steps = training_args.n_samples // training_args.batch_size
+    max_steps = args.n_samples // args.batch_size
 
     ideal_batch_size = max(
-        16, training_args.batch_size
+        16, args.batch_size
     )  # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
     accumulate_grad_batches = np.ceil(
-        ideal_batch_size / training_args.batch_size
+        ideal_batch_size / args.batch_size
     ).astype(int)
-    if training_args.verbose>0:
+    if args.verbose>0:
         logger.info(
             f"max optimiser steps {max_steps}",
         )
@@ -280,18 +281,18 @@ def train(training_args, trial: Optional[Trial] = None):
             f"accumulate_grad_batches {accumulate_grad_batches}",
         )
         logger.info(
-            f"accumulated batch size {training_args.batch_size * accumulate_grad_batches}"
+            f"accumulated batch size {args.batch_size * accumulate_grad_batches}"
         )
-        logger.info(f"epochs {training_args.n_samples//len(dl_train.dataset)}")
+        logger.info(f"epochs {args.n_samples//len(dl_train.dataset)}")
 
-    model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
+    model_kwargs = {k: getattr(args, k) for k in args._model_keys}
     pl_model = PL_MODEL(
         model,
-        adam8bit=training_args.load_in_4bit
-        or training_args.load_in_8bit,  # saved mem, but seems unstable?
+        adam8bit=args.load_in_4bit
+        or args.load_in_8bit,  # saved mem, but seems unstable?
         schedule="wsd",
         num_iterations=max_steps,
-        batch_size=training_args.batch_size,
+        batch_size=args.batch_size,
         # model args
         **model_kwargs,
     )
@@ -300,11 +301,14 @@ def train(training_args, trial: Optional[Trial] = None):
         LearningRateMonitor(logging_interval="step"),
         # checkpoint_callback
     ]
-    if training_args.verbose>1:
+    if args.verbose>1:
         callbacks += [GenCallback(every=max_steps // 2 + 1)]
 
 
-    model_kwargs = {k: getattr(training_args, k) for k in training_args._model_keys}
+    model_kwargs = {k: getattr(args, k) for k in args._model_keys}
+    loggers = [CSVLogger(name=run_fname, save_dir=save_dir, flush_logs_every_n_steps=5)]
+    if args.wandb:
+        loggers.append(pl_wandb_logger)
     trainer = pl.Trainer(
         max_steps=max_steps,
         limit_val_batches=6,
@@ -319,30 +323,27 @@ def train(training_args, trial: Optional[Trial] = None):
         
         accumulate_grad_batches=accumulate_grad_batches,
         callbacks=callbacks,
-        logger=[
-            CSVLogger(name=run_fname, save_dir=save_dir, flush_logs_every_n_steps=5),
-            pl_wandb_logger,
-        ],
+        logger=loggers,
         default_root_dir=save_dir,
         # too large, we will just save adapter afterwards
         enable_checkpointing=False,
-        fast_dev_run=training_args.dev,
-        enable_progress_bar=training_args.verbose > 0,
-        enable_model_summary=training_args.verbose > 1,
+        fast_dev_run=args.dev,
+        enable_progress_bar=args.verbose > 0,
+        enable_model_summary=args.verbose > 1,
     )
 
     # train
     trainer.fit(pl_model, dl_train, dl_val)
 
     # save as regular adapter only (small)
-    if training_args.save:
+    if args.save:
         model.save_pretrained(
             str(save_dir / "adapter"),
         )
         logger.info(f"saved to {save_dir/'adapter'}")
 
     # ### Hist
-    if not training_args.dev:
+    if not args.dev:
         df_hist = (
             read_metrics_csv(trainer.logger.experiment.metrics_file_path)
             .bfill()
@@ -350,12 +351,12 @@ def train(training_args, trial: Optional[Trial] = None):
         )
         # logger.info(df_hist)
 
-    # eval(model, tokenizer, training_args, save_dir, run, finetune_name, adapter_name)
+    # eval(model, tokenizer, args, save_dir, run, finetune_name, adapter_name)
 
     # ## Gen
     model.cuda()  # for some reason it ends up cpu
 
-    if (not training_args.dev) and (training_args.verbose > 0):
+    if (not args.dev) and (args.verbose > 0):
         df_gen = get_model_generations(model, tokenizer, N=3)
         display_gen(df_gen.head(2))
 
@@ -363,22 +364,22 @@ def train(training_args, trial: Optional[Trial] = None):
 
     # ## Eval
     # eval on ethics, GENIES, and our train dataset
-    N = training_args.eval_samples
+    N = args.eval_samples
     datasets = [
         load_dataset_n(
             "wassname/genies_preferences",
-            name=training_args.dataset,
+            name=args.dataset,
             split="train",
             N=750 if N is None else min(N, 750),
         ),
         load_dataset_n(
-            "wassname/genies_preferences", name=training_args.dataset, split="test", N=N
+            "wassname/genies_preferences", name=args.dataset, split="test", N=N
         ),
     ]
     datasets += dist2datasets(
         GENIES,
         # N=N, # can't cheap out on the main metric
-        source=[training_args.dataset],
+        source=[args.dataset],
     )  # our hard OOS test
     # datasets += get_ethics_datasets(N=N)
     datasets += [
@@ -395,10 +396,10 @@ def train(training_args, trial: Optional[Trial] = None):
         model=model,
         tokenizer=tokenizer,
         datasets=datasets,
-        batch_size=training_args.batch_size,
+        batch_size=args.batch_size,
         bf16=True,
         torch_empty_cache_steps=100,
-        verbose=training_args.verbose>0,
+        verbose=args.verbose>0,
     )
 
     ds_alias = OrderedDict(
@@ -409,7 +410,7 @@ def train(training_args, trial: Optional[Trial] = None):
     f = str(save_dir) + "/eval.parquet"
     df_res2.to_parquet(f)
     logger.info(f"save_dir={save_dir}")
-    # pprint(training_args, compact=1)
+    # pprint(args, compact=1)
 
     r = parse_eval(df_res2, ds_alias, human_name=human_name, base_model=model_name)
 
@@ -423,7 +424,7 @@ def train(training_args, trial: Optional[Trial] = None):
         # also just log final metrics to wandb so we can view a group
 
     if wandb.run is not None:
-        if (not training_args.dev) and (training_args.verbose > 0):
+        if (not args.dev) and (args.verbose > 0):
             df_gen_w = wandb.Table(dataframe=df_gen)
             wandb.log({"generations": df_gen_w, **r2})
 

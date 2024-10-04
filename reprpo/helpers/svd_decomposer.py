@@ -2,6 +2,7 @@ import torch
 from torch import Tensor
 from typing import Tuple
 from jaxtyping import Float
+from loguru import logger
 
 
 def soft_svd(W, quantile=0.1, full_matrices=False):
@@ -11,7 +12,7 @@ def soft_svd(W, quantile=0.1, full_matrices=False):
     tau = torch.quantile(S, quantile)
     # print(m, S, tau)
     m = (S.abs() > tau).float().mean()
-    print(
+    logger.debug(
         f"Soft SVD: {m:.2%} of singular values kept, with tau={tau:.2f}, Smean={S.abs().mean():.2f}, Smax={S.max():.2f}, Smin={S.min():.2f}"
     )
 
@@ -184,8 +185,8 @@ class DualSVDDecomposer:
         full_matrices=False,
         quantile=0.1,
     ):
-        print("W_in", W_in.shape)
-        print("W_out", W_out.shape)
+        logger.debug("W_in", W_in.shape)
+        logger.debug("W_out", W_out.shape)
         if quantile < 1:
             self.decomposer_in = SoftSVDDecomposer(
                 W_in, full_matrices=full_matrices, quantile=quantile

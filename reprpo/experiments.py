@@ -53,7 +53,7 @@ experiment_configs = {
     "hs-none-prefvec": (
         "Collect hs and use PreferenceVector loss.",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.none.value(),
             loss=Losses.prefvec.value(),
         ),
@@ -61,7 +61,7 @@ experiment_configs = {
     "hs-none-rank": (
         "Collect hs and use ranking loss.",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.none.value(),
             loss=Losses.rank.value(),
         ),
@@ -69,7 +69,7 @@ experiment_configs = {
     "hs-none-mse": (
         "Collect hs and use ranking loss.",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.none.value(),
             loss=Losses.mse.value(),
         ),
@@ -77,7 +77,7 @@ experiment_configs = {
     "hs-ether-rank": (
         "",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.ether.value(),
             loss=Losses.rank.value(),
         ),
@@ -85,7 +85,7 @@ experiment_configs = {
     # "hs-ether-mse": (
     #     "",  # unstable with tinyllama, no grad otherwise?
     #     ReprPOConfig(
-    #         collection_keys_in=(),
+    #         collect_hs=True,
     #         transform=Transforms.ether.value(),
     #         loss=Losses.mse.value(),
     #     ),
@@ -93,7 +93,7 @@ experiment_configs = {
     "hs-ether-prefvec": (
         "",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.ether.value(),
             loss=Losses.prefvec.value(),
         ),
@@ -101,7 +101,7 @@ experiment_configs = {
     "hs-hra-prefvec": (
         "",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.hra.value(),
             loss=Losses.prefvec.value(),
         ),
@@ -109,7 +109,7 @@ experiment_configs = {
     "hs-ortho-prefvec": (
         "Collect hs, apply Orthogonal transform and use PreferenceVector loss.",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.ortho.value(),
             loss=Losses.prefvec.value(),
         ),
@@ -117,9 +117,16 @@ experiment_configs = {
     "hs-svd-prefvec": (
         "",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.svd.value(),
             loss=Losses.prefvec.value(),
+        ),
+    ),
+    "side-svd-mse": (
+        "",
+        ReprPOConfig(
+            transform=Transforms.svd.value(),
+            loss=Losses.mse.value(),
         ),
     ),
     # baseline
@@ -138,7 +145,7 @@ experiment_configs = {
     "hs-svd-prefvec-dual": (
         "",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.svd.value(dual_svd=True),
             loss=Losses.prefvec.value(),
         ),
@@ -146,7 +153,7 @@ experiment_configs = {
     "hs-svd-prefvec-dualhard": (
         "",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.svd.value(dual_svd=True, quantile=1.),
             loss=Losses.prefvec.value(),
         ),
@@ -154,7 +161,7 @@ experiment_configs = {
     "hs-svd-prefvec-hard": (
         "",
         ReprPOConfig(
-            collection_keys_in=(),
+            collect_hs=True,
             transform=Transforms.svd.value(quantile=1.),
             loss=Losses.prefvec.value(),
         ),
@@ -173,6 +180,13 @@ experiment_configs = {
             transform=Transforms.ether.value(Htype="oft"),
             loss=Losses.prefvec.value(),
             lr=1e-5,
+        ),
+    ),
+    "side-hra-rank": (
+        "2",
+        ReprPOConfig(
+            transform=Transforms.hra.value(),
+            loss=Losses.rank.value(),
         ),
     ),
     # TODO ether with Htype=ether and oft

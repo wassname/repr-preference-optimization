@@ -18,6 +18,7 @@ def rank_loss(
     transform: Optional[Callable] = None,
     # custom loss_args
     α: float = 1,
+    β: float = 100,
 ):
     """
     This loss treats the hidden states like probabilities by taking the softmax. Despite the fact that they are not used as probabilities, this lets us modify the relative ranking as if they are.
@@ -38,7 +39,7 @@ def rank_loss(
         return hs
 
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, "b"]]:
-        β = 100
+        
         ptheta_left = preproc_hs(pi_rej, k) - preproc_hs(ref_rej, k)
         ptheta_right = preproc_hs(pi_cho, k) - preproc_hs(ref_cho, k)
 
@@ -91,6 +92,9 @@ def rank_loss(
 class RankLossConfig:
     α: float = 1.0
     # eps: float = 1e-12
+
+    β: float = 100
+    """like dpo beta."""
 
     def c(self, *args, **kwargs):
         return rank_loss(*args, **kwargs, **asdict(self))

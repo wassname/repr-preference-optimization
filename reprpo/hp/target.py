@@ -3,6 +3,7 @@ from reprpo.experiments import experiment_configs
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 from reprpo.training import train
+from loguru import logger
 
 
 def setattrattr(cfg, k, v):
@@ -19,7 +20,7 @@ def setattrattr(cfg, k, v):
         if hasattr(cfg, k):
             return setattr(cfg, k, v)
         else:
-            raise ValueError(f"{k} not found in config")
+            raise ValueError(f"{k} not found in config. {type(cfg).__name__}")
 
 
 # quick 2m per run
@@ -36,7 +37,7 @@ def override(cfg, overrides):
         try:
             setattrattr(cfg, k, v)
         except ValueError:
-            print(f"WARNING: {k} not found in config")
+            logger.warning(f"WARNING: {k} not found in config")
     return cfg
 
 

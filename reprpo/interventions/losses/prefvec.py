@@ -26,6 +26,7 @@ def prefec_loss(
     use_dpo_loss=True,
     use_nll_loss=True,
     weight_tokens=False,
+    use_proj_rel=False,
 ):
     """
     movement of hs along the hs pref vector.
@@ -58,12 +59,6 @@ def prefec_loss(
             a_proj = (pref_dir_unit * a).sum(dim=-1, keepdim=True) * pref_dir_unit
 
             a_orth = a - a_proj
-            # if torch.norm(a)>0:
-            #     # causes NaN's is used with norm(a)==0
-            #     # sqrt(a^2 - (a*ref_dir)^2)
-            #     # sqrt(a*(a - ref_dir))
-            # else:
-            #     a_orth = torch.zeros_like(a_proj)
             cosine_sim = F.cosine_similarity(a, ref_dir, dim=-1)
             return a_proj.mean(dim=-1), a_orth.mean(dim=-1), cosine_sim
 
@@ -71,7 +66,10 @@ def prefec_loss(
         rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(rej, pref_dir)
 
         # goes down if the hs moves along the direction of the preference vector
-        loss_cho_proj = -cho_pref - rej_pref
+        loss_proj = -cho_pref - rej_pref
+
+        # we would also like cho to be preferenced over ref
+        loss_proj_rel = -(cho_pref - rej_pref)
 
         # increases with movement of hs orthogonal to the preference vector
         loss_cho_orth = torch.abs(cho_orth) + torch.abs(ref_orth)
@@ -82,9 +80,10 @@ def prefec_loss(
         loss_angle = 2 - cho_cossim - rej_cossim
 
         return dict(
-            loss_cho_proj=loss_cho_proj,
-            loss_cho_orth=loss_cho_orth,
+            loss_proj=loss_proj,
+            loss_orth=loss_cho_orth,
             loss_angle=loss_angle,
+            loss_proj_rel=loss_proj_rel,
             _cho_orthorgonal2pref=cho_orth,
             _ref_orthorgonal2pref=ref_orth,
             _signed_cho_pref=cho_pref,
@@ -99,11 +98,13 @@ def prefec_loss(
     ll_keys = next(iter(ll.values())).keys()
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
-    loss_reroute = ll["loss_cho_proj"]
+    loss_reroute = ll["loss_proj"]
     if use_orth_loss:
-        loss_reroute += β * ll["loss_cho_orth"]
+        loss_reroute += β * ll["loss_orth"]
     if use_angle_loss:
         loss_reroute += β * ll["loss_angle"]
+    if use_proj_rel:
+        loss_reroute += ll["loss_proj_rel"]
     # TODO find better scaling, it needs to be small compared to nll and dpo losses which can be <0.1
     loss_reroute = torch.tanh(loss_reroute / 3) / 10
 
@@ -180,6 +181,9 @@ class PrefVecLossConfig:
 
     weight_tokens: bool = False
     """exp weight tokens along seq"""
+
+    use_proj_rel: bool = False
+    """encourage chosen to be more in the pref dir than rejected"""
 
     def c(self, *args, **kwargs):
         return prefec_loss(*args, **kwargs, **asdict(self))
