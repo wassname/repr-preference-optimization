@@ -33,10 +33,24 @@ Alignment needs to work out of distribution (or at least fail gracefully after c
 Status: Work in Progress
 
 
+#### Interventions
+
+- [DPO](https://arxiv.org/abs/2305.18290): our baseline method
+- Gradient based
+ - ProjGrad: At each learnable layer, project the accumulated gradient onto a preference direction in hidden space. The preference direction is defined as `hs_chosen - hs_rejected`
+ - ProjBP: Same as above but performed during backpropogation instead of after. This means that any gradient changes reach downstream layers
+- Hidden state based: these methods optimise for hidden states rather than logits. We try different losses and transformers. The transforms are intended to find a mapping where there is better internal state representation, hopefully making internal steering information better
+ -  MSE: Make the hs_rejected like hs_chosen, while keeping hs_chosen the same
+ -  rank: make `log_softmax(hs_rejected) like `log_softmax(hs_chosen)`
+ -  prefvec: make both hs_chosen and hs_rejected move along the preference direction
+
+
 ### Results
 
 In the below results we look at how much the models accuracy improved in training, test, out-of-distribution and random data when using the proposed method compared to DPO.
 
+- [ ] TODO replace these with mean of 5 random seeds, show they occur on multiple datasets and model sizes
+- [ ] TODO hyperopt each
 
 | Model | Train | Test | OOS | Random |
 | --- | --- | --- | --- | --- |
