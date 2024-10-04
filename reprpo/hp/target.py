@@ -16,7 +16,10 @@ def setattrattr(cfg, k, v):
         return setattrattr(getattr(cfg, k), k2, v)
     else:
         # print(cfg, k, v)
-        return setattr(cfg, k, v)
+        if hasattr(cfg, k):
+            return setattr(cfg, k, v)
+        else:
+            raise ValueError(f"{k} not found in config")
 
 
 # quick 2m per run

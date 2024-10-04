@@ -2991,7 +2991,7 @@ dpo
 | side-None-Rank             |   0.62 |     0.135 |      1.005 |  0.419 |
 | side-None-PrefVec          |  1.296 |     0.539 |       13.4 |      0 |
 | side-ETHER-PrefVec         |  1.352 |     0.404 |     13.233 |   0.14 |
-| side-ETHER-PrefVec         |  0.299 |     9.787 |      0.103 |
+| side-ETHER-PrefVec         |  0.299 |     9.787 |      0.103 | 
 
 Fig . ds=us_history_textbook 
 

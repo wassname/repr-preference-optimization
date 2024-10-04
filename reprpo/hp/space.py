@@ -6,7 +6,7 @@ import optuna
 
 def base_reprpo_params(trial):
     return {
-        "learning-rate": trial.suggest_float("learning-rate", 1e-6, 1e-3, log=True),
+        "lr": trial.suggest_float("lr", 1e-6, 1e-3, log=True),
         "collect_input": trial.suggest_categorical("collect_input", [True, False]),
         "collect_hs": trial.suggest_categorical("collect_hs", [True, False]),
     }
@@ -26,7 +26,7 @@ def ether_params(trial):
 
 def prefvec_params(trial):
     return {
-        "loss.β": trial.suggest_float("loss.β", 1e-6, 2.0, log=True),
+        "β": trial.suggest_float("β", 1e-6, 2.0, log=True),
         "use_orth_loss": trial.suggest_categorical("use_orth_loss", [True, False]),
         "use_angle_loss": trial.suggest_categorical("use_angle_loss", [True, False]),
         "use_dpo_loss": trial.suggest_categorical("use_dpo_loss", [True, False]),
@@ -63,7 +63,6 @@ def svd_params(trial):
 
 def projgrad(trial):
     args = {
-        "learning-rate": trial.suggest_float("learning-rate", 1e-6, 1e-3, log=True),
         "β": trial.suggest_float("β", 0.0, 1.0, log=False),
         "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
         "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
@@ -71,49 +70,50 @@ def projgrad(trial):
         "neg_slope": trial.suggest_categorical("neg_slope",[0, 0.01, 0.1, 0.5, 1]),
         "mag_clip": trial.suggest_categorical("mag_clip", [None, 0.03, 0.1, 0.5, 1.0, 10, 100]),
     }
+    args = {f"loss.{k}": v for k, v in args.items()}
     args.update(base_reprpo_params(trial))
     return args
 
 def projbp(trial):
     args = {
-        "learning-rate": trial.suggest_float("learning-rate", 1e-6, 1e-3, log=True),
         "β": trial.suggest_float("β", 0.0, 1.0, log=False),
         "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
         "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
         "neg_slope": trial.suggest_categorical("neg_slope",[0, 0.01, 0.1, 0.5, 1]),
         "mag_clip": trial.suggest_categorical("mag_clip", [None, 0.03, 0.1, 0.5, 1.0, 10, 100]),
     }
+    args = {f"loss.{k}": v for k, v in args.items()}
     args.update(base_reprpo_params(trial))
     return args
 
 def ether_prefvec(trial):
     args = base_reprpo_params(trial)
-    args.update(ether_params(trial))
-    args.update(prefvec_params(trial))
+    args.update({f"transform.{k}": v for k, v in ether_params(trial).items()})
+    args.update({f"loss.{k}": v for k, v in prefvec_params(trial).items()})
     return args
 
 def hra_rank(trial):
     args = base_reprpo_params(trial)
-    args.update(hra_params(trial))
-    args.update(rank_params(trial))
+    args.update({f"transform.{k}": v for k, v in hra_params(trial).items()})
+    args.update({f"loss.{k}": v for k, v in rank_params(trial).items()})
     return args
 
 def svd_mse(trial):
     args = base_reprpo_params(trial)
-    args.update(svd_params(trial))
-    args.update(mse_params(trial))
+    args.update({f"transform.{k}": v for k, v in svd_params(trial).items()})
+    args.update({f"loss.{k}": v for k, v in mse_params(trial).items()})
     return args
 
 
 def dpo(trial):
-    args = {"learning-rate": trial.suggest_float("learning-rate", 1e-6, 1e-3, log=True)}
+    args = {"lr": trial.suggest_float("lr", 1e-6, 1e-3, log=True)}
     return args
 
 # Define other search space functions similarly
 
 search_spaces = {
     # starter experiment name, search space function
-    'projgrad': projgrad,
+    'projgrad2': projgrad,
     'side-ether-prefvec': ether_prefvec,
     'side-svd-mse': svd_mse,
     'side-hra-rank': hra_rank,
