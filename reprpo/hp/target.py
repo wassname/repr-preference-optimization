@@ -4,6 +4,8 @@ from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 from reprpo.training import train
 from loguru import logger
+import gc
+import torch
 
 
 def setattrattr(cfg, k, v):
@@ -26,9 +28,11 @@ def setattrattr(cfg, k, v):
 # quick 2m per run
 default_tuner_kwargs = dict(
     verbose=0,
-    batch_size=24,
+    batch_size=32,
     eval_samples=128,
+    n_samples=1800 * 2, # to make sure it converges
     save=False,
+    wandb=False,
 )
 
 
@@ -56,4 +60,6 @@ def objective_func(kwargs, trial):
     # now subcommands
     override(cfg, kwargs)
     r = train(cfg, trial=trial)
+    gc.collect()
+    torch.cuda.empty_cache()
     return r

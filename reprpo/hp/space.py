@@ -1,7 +1,9 @@
 import optuna
 import torch
 from torch import nn
-
+from reprpo.interventions import DPOConfig, ReprPOConfig, ProjGradConfig, ProjBPConfig
+from reprpo.interventions.losses import Losses
+from reprpo.interventions.transforms import Transforms
 import optuna
 
 def base_reprpo_params(trial):
@@ -107,13 +109,16 @@ def ether_prefvec(trial):
     args.update({f"loss.{k}": v for k, v in prefvec_params(trial).items()})
     return args
 
-def hra_rank(trial):
-    args = base_reprpo_params(trial)
+def hs_hra_rank(trial):
+    args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
     args.update({f"transform.{k}": v for k, v in hra_params(trial).items()})
     args.update({f"loss.{k}": v for k, v in rank_params(trial).items()})
     return args
 
-def svd_mse(trial):
+def hs_svd_mse(trial):
+    args = {
+        "lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True),
+    }    
     args = base_reprpo_params(trial)
     args.update({f"transform.{k}": v for k, v in svd_params(trial).items()})
     args.update({f"loss.{k}": v for k, v in mse_params(trial).items()})
@@ -124,22 +129,63 @@ def dpo(trial):
     args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
     return args
 
-def ortho_prefvec(trial):
-    args = base_reprpo_params(trial)
+def hs_ortho_prefvec(trial):
+    args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
     args.update({f"transform.{k}": v for k, v in ortho_params(trial).items()})
     args.update({f"loss.{k}": v for k, v in prefvec_params(trial).items()})
     return args
 
 # Define other search space functions similarly
 
+# TODO replace with custom experiments
 search_spaces = {
     # starter experiment name, search space function
-    'side-svd-mse': svd_mse,
-    'side-hra-rank': hra_rank,
-    'side-ether-prefvec': ether_prefvec,
-    "hs-ortho-prefvec": ortho_prefvec, 
+    'hs-svd-mse': hs_svd_mse,
+    'hs-hra-rank': hs_hra_rank,
+    "hs-ortho-prefvec": hs_ortho_prefvec, 
+    'ether-prefvec': ether_prefvec,
     'projgrad': projgrad,
     'projbp': projbp,
     'dpo': dpo,
+}
+
+
+experiment_configs = {
+    "hs-svd-mse": (
+        "",  # unstable due to svd
+        ReprPOConfig(
+            collect_hs=True, # OOM on sides, to many layers
+            transform=Transforms.svd.value(),
+            loss=Losses.mse.value(),
+        ),
+
+    ),
+    "hs-hra-rank": (
+        "",
+        ReprPOConfig(
+            collect_hs=True, # OOM on sides, to many layers
+            transform=Transforms.hra.value(),
+            loss=Losses.rank.value(),
+        ),
+    ),
+    "hs-ortho-prefvec": (
+        "",  
+        ReprPOConfig(
+            collect_hs=True,# OOM on sides, to many layers
+            transform=Transforms.ortho.value(),
+            loss=Losses.prefvec.value(),
+        ),
+    ),
+
+    "ether-prefvec": (
+        "",  
+        ReprPOConfig(
+            transform=Transforms.ether.value(),
+            loss=Losses.prefvec.value(),
+        ),
+    ),
+    "dpo": ("DPO experiment.", DPOConfig()),
+    "projbp": ("DPO experiment.", ProjBPConfig()),
+    "projgrad": ("DPO experiment.", ProjGradConfig()),
 }
 

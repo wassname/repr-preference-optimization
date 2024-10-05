@@ -174,19 +174,28 @@ experiment_configs = {
             lr=1e-5,
         ),
     ),
-    "side-oft-prefvec": (
+    "hs-oft-prefvec": (
         "3",  # unstable?
         ReprPOConfig(
+            collect_hs=True,
             transform=Transforms.ether.value(Htype="oft"),
             loss=Losses.prefvec.value(),
             lr=1e-5,
         ),
     ),
-    "side-hra-rank": (
+    "hs-hra-rank": (
         "2",
         ReprPOConfig(
+            collect_hs=True,
             transform=Transforms.hra.value(),
             loss=Losses.rank.value(),
+        ),
+    ),
+    "ether-prefvec": (
+        "3",  # unstable?
+        ReprPOConfig(
+            transform=Transforms.ether.value(),
+            loss=Losses.prefvec.value(),
         ),
     ),
     # TODO ether with Htype=ether and oft

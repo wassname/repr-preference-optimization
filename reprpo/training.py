@@ -89,10 +89,21 @@ def get_display_name_from_args(args):
     s = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff) if k not in blacklist])
     cls_name = type(args).__name__.replace('Config', '')
 
+    # also either state transform and loss, or replace the words
+
+    def rename(s):
+        if hasattr(args, 'loss'):
+            loss_name = type(args.loss).__name__
+            s = s.replace('loss', loss_name)
+        if hasattr(args, 'transform'):
+            transform_name = type(args.transform).__name__
+            s = s.replace('transform', transform_name)
+        return s
     s_all = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff)])
+    s_short = f'{cls_name} {s}'
     logger.info(f"diff: {cls_name} {s_all}")
 
-    return f'{cls_name} {s}'
+    return s_short
 
 
 def train(args, trial: Optional[Trial] = None):
@@ -136,9 +147,9 @@ def train(args, trial: Optional[Trial] = None):
     save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
     save_dir.mkdir(exist_ok=True, parents=True)
 
+    config = asdict(args)
     if args.wandb:
         wandb.require(experiment="core")
-        config = asdict(args)
         pl_wandb_logger=WandbLogger(
             name=run_fname, save_dir=save_dir,
             project="reprpo2",
