@@ -7,11 +7,8 @@ import numpy as np
 
 def optuna_df(study: Study, key_metric: str):
    n = len(study.trials)
-   if n == 0:
-       df = pd.DataFrame(columns=['importance', 'best'])
-       df.index.name = f'{study.study_name} N={n}'
-       return df
-   else:
+
+   try:
       o, = _get_importances_infos(study, 
                            evaluator=PedAnovaImportanceEvaluator(), 
                            params=None, 
@@ -19,6 +16,11 @@ def optuna_df(study: Study, key_metric: str):
                         target_name=key_metric,
                            )
       s_imp = pd.Series(o.importance_values, index=o.param_names)
+   except ValueError:
+       df = pd.DataFrame(columns=['importance', 'best'])
+       df.index.name = f'{study.study_name} N={n}'
+       return df
+   
    try:
       # Study instance does not contain completed trials.
       s_b = pd.Series(study.best_trial.params)
@@ -26,8 +28,9 @@ def optuna_df(study: Study, key_metric: str):
    except ValueError:
       s_b = pd.Series([])
       v = np.nan
-   df = study.trials_dataframe().query('state == "COMPLETE"')
-   n = len(df)
+   
+   # df = study.trials_dataframe().query('state == "COMPLETE"')
+   # n = len(df)
    df = pd.concat([s_imp, s_b], axis=1, keys=['importance', f'best']).sort_values('importance', ascending=False)
    # round importance to 3 decimal places
    df['importance'] = df['importance'].round(3)
