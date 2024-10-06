@@ -53,3 +53,17 @@ def optuna_df(study: Study, key_metric: str):
 from optuna.importance._base import _get_distributions
 def get_params(study):
    r = _get_distributions(study, None)
+   df = pd.Series({k:type(v).__name__.lower().replace('distribution', '') for k,v in r.items()}).to_frame('dist')
+   df.index.name = 'param'
+   return df
+
+
+def get_optuna_df(study, key_metric):
+   df = optuna_df(study, key_metric)
+   df2 = get_params(study)
+   df2 = df2.join(df, how='outer').sort_values('importance', ascending=False)
+   return df2
+
+# from optuna.search_space import intersection_search_space
+# params = intersection_search_space(study.get_trials(deepcopy=False))
+# params
