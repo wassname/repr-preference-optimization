@@ -1,5 +1,5 @@
 from optuna.visualization._param_importances import _get_importances_infos
-from optuna.importance import PedAnovaImportanceEvaluator
+from optuna.importance import PedAnovaImportanceEvaluator, FanovaImportanceEvaluator
 import pandas as pd
 from optuna import Study
 import numpy as np
@@ -9,8 +9,11 @@ def optuna_df(study: Study, key_metric: str):
    n = len(study.trials)
 
    try:
+      # note should be more than 50 studies
+      # fanova 2014
+      # ped-anove is 2024 and faster, I asume the older one is better 
       o, = _get_importances_infos(study, 
-                           evaluator=PedAnovaImportanceEvaluator(), 
+                           evaluator=FanovaImportanceEvaluator(), 
                            params=None, 
                         target=None,
                         target_name=key_metric,
@@ -45,3 +48,8 @@ def optuna_df(study: Study, key_metric: str):
    # df2 = df2.style.background_gradient(cmap='viridis', axis=0)
    # df2.set_caption(study.study_name)
    return df
+
+
+from optuna.importance._base import _get_distributions
+def get_params(study):
+   r = _get_distributions(study, None)
