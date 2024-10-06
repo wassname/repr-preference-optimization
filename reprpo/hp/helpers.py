@@ -6,7 +6,7 @@ import numpy as np
 
 
 def optuna_df(study: Study, key_metric: str):
-   # n = len(study.trials)
+   n = len(study.trials)
 
    try:
       o, = _get_importances_infos(study, 
@@ -39,7 +39,7 @@ def optuna_df(study: Study, key_metric: str):
    df = pd.concat([s_imp, s_b], axis=1, keys=['importance', f'best']).sort_values('importance', ascending=False)
    # round importance to 3 decimal places
    df['importance'] = df['importance'].round(3)
-   df.index.name = f'{study.study_name} N={n_c}[/{n}], best={v:.3f}'
+   df.index.name = f'{study.study_name} N=✓{n_c}/{n}, best={v:.3f}'
 
    # df2 = df.copy()
    # df2 = df2.style.background_gradient(cmap='viridis', axis=0)

@@ -75,15 +75,13 @@ def projgrad(trial):
         "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
         "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
         "weight_dim": trial.suggest_int("weight_dim", 0, 2),
-        "neg_slope": trial.suggest_categorical("neg_slope",[False, 'float']),
+        "neg_slope": trial.suggest_categorical("neg_slope",[0, 'float']), # error?
         "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
     }
     if args["mag_clip"] == "float":
         args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
-    if args["neg_slope"] == True:
+    if args["neg_slope"] == "float":
         args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
-    else:
-        args["neg_slope"] = 0
     # args = {f"loss.{k}": v for k, v in args.items()}
     # args.update(base_reprpo_params(trial))
     return args
@@ -94,15 +92,13 @@ def projbp(trial):
         "β": trial.suggest_float("β", 0.0, 1.0, log=False),
         "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
         "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
-        "neg_slope": trial.suggest_categorical("neg_slope",[False, 'float']),
+        "neg_slope": trial.suggest_categorical("neg_slope",[0, 'float']),
         "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
     }
     if args["mag_clip"] == "float":
         args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
     if args["neg_slope"] == "float":
         args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
-    else:
-        args['neg_slope'] = 0
     # args = {f"loss.{k}": v for k, v in args.items()}
     # args.update(base_reprpo_params(trial))
     return args
@@ -144,13 +140,14 @@ def hs_ortho_prefvec(trial):
 # TODO replace with custom experiments
 search_spaces = {
     # starter experiment name, search space function
-    'hs-svd-mse': hs_svd_mse,
-    'hs-hra-rank': hs_hra_rank,
-    "hs-ortho-prefvec": hs_ortho_prefvec, 
-    'ether-prefvec': ether_prefvec,
-    'projgrad': projgrad,
-    'projbp': projbp,
-    'dpo': dpo,
+    # number: rougly 50 per float, 10 per bool
+    'hs-svd-mse': (250, hs_svd_mse),
+    'hs-hra-rank': (250, hs_hra_rank),
+    "hs-ortho-prefvec": (250, hs_ortho_prefvec), 
+    'ether-prefvec': (500, ether_prefvec),
+    'projgrad2': (500, projgrad),
+    'projbp': (500, projbp),
+    'dpo': (50, dpo),
 }
 
 
@@ -190,7 +187,7 @@ experiment_configs = {
     ),
     "dpo": ("DPO experiment.", DPOConfig()),
     "projbp": ("DPO experiment.", ProjBPConfig()),
-    "projgrad": ("DPO experiment.", ProjGradConfig()),
+    "projgrad2": ("DPO experiment.", ProjGradConfig()),
     # TODO also some side ones with no transform
 }
 
