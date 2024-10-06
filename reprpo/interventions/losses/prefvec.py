@@ -164,10 +164,10 @@ class PrefVecLossConfig:
 
     eps: float = 1.0e-12
 
-    β: float = 1.0e-6
+    β: float = 1.0e-1
     """factor to punish orthogonal movement"""
 
-    use_orth_loss: bool = True
+    use_orth_loss: bool = False
     """punish movement orthogonal to the preference vector: by distance"""
 
     use_angle_loss: bool = True

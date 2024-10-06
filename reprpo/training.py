@@ -81,10 +81,10 @@ def get_display_name_from_args(args):
 
     diff = set(flatten_dict(asdict(args)).items())-set(flatten_dict(asdict(defaults)).items())
     diff = sorted(diff, key=lambda x: x[0])
-    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers_side', 'collection_layers_hs', 'save']
+    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers_side', 'collection_layers_hs', 'save', 'wandb',]
     def fmt(v):
         if isinstance(v, float):
-            return f"{v:.2f}"
+            return f"{v:.2g}"
         return v
     s = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff) if k not in blacklist])
     cls_name = type(args).__name__.replace('Config', '')
@@ -93,14 +93,16 @@ def get_display_name_from_args(args):
 
     def rename(s):
         if hasattr(args, 'loss'):
-            loss_name = type(args.loss).__name__
+            loss_name = type(args.loss).__name__.lower().replace('config', '').replace('loss', '')
             s = s.replace('loss', loss_name)
         if hasattr(args, 'transform'):
-            transform_name = type(args.transform).__name__
+            transform_name = type(args.transform).__name__.lower().replace('config', '')
             s = s.replace('transform', transform_name)
         return s
     s_all = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff)])
     s_short = f'{cls_name} {s}'
+    s_all = rename(s_all)
+    s_short = rename(s_short)
     logger.info(f"diff: {cls_name} {s_all}")
 
     return s_short

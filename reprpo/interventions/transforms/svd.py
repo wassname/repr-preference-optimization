@@ -43,13 +43,13 @@ class SVDConfig:
     It's left in here to show a negative finding, and the question: where do transformer store the working internal memory?
     """
 
-    quantile: float = 0.5
+    quantile: float = 0.15
     """What quantile of top singular values to remove from from hs
     - 0.9 would remove 90% of the singular values that contribute to the input and output layers of the model
     - 1
     """
 
-    dual_svd: bool = False
+    dual_svd: bool = True
     """if true, will use the embedding and lm_head, if false only lm_head"""
 
     def c(self, *args, **kwargs):

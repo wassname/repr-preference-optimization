@@ -75,13 +75,15 @@ def projgrad(trial):
         "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
         "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
         "weight_dim": trial.suggest_int("weight_dim", 0, 2),
-        "neg_slope": trial.suggest_categorical("neg_slope",[0, 'float']),
+        "neg_slope": trial.suggest_categorical("neg_slope",[False, 'float']),
         "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
     }
     if args["mag_clip"] == "float":
         args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
-    if args["neg_slope"] == "float":
+    if args["neg_slope"] == True:
         args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
+    else:
+        args["neg_slope"] = 0
     # args = {f"loss.{k}": v for k, v in args.items()}
     # args.update(base_reprpo_params(trial))
     return args
@@ -92,13 +94,15 @@ def projbp(trial):
         "β": trial.suggest_float("β", 0.0, 1.0, log=False),
         "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
         "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
-        "neg_slope": trial.suggest_categorical("neg_slope",[0, 'float']),
+        "neg_slope": trial.suggest_categorical("neg_slope",[False, 'float']),
         "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
     }
     if args["mag_clip"] == "float":
         args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
     if args["neg_slope"] == "float":
         args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
+    else:
+        args['neg_slope'] = 0
     # args = {f"loss.{k}": v for k, v in args.items()}
     # args.update(base_reprpo_params(trial))
     return args
@@ -187,5 +191,6 @@ experiment_configs = {
     "dpo": ("DPO experiment.", DPOConfig()),
     "projbp": ("DPO experiment.", ProjBPConfig()),
     "projgrad": ("DPO experiment.", ProjGradConfig()),
+    # TODO also some side ones with no transform
 }
 

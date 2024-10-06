@@ -92,7 +92,7 @@ class HRATransform(nn.Module):
 
 @dataclass
 class HRAConfig:
-    r: int = 8
+    r: int = 2
     """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
 
     apply_GS: bool = True

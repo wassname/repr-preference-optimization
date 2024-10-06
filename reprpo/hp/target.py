@@ -28,7 +28,7 @@ def setattrattr(cfg, k, v):
 # quick 2m per run
 default_tuner_kwargs = dict(
     verbose=0,
-    batch_size=32,
+    batch_size=16,
     eval_samples=128,
     n_samples=1800 * 2, # to make sure it converges
     save=False,
@@ -44,6 +44,7 @@ def override(cfg, overrides):
             logger.warning(f"WARNING: {k} not found in config")
     return cfg
 
+from reprpo.training import get_display_name_from_args
 
 def objective_func(kwargs, trial):
     cfg = copy.deepcopy(experiment_configs["side-ether-prefvec"][1])
@@ -59,6 +60,8 @@ def objective_func(kwargs, trial):
 
     # now subcommands
     override(cfg, kwargs)
+    s = get_display_name_from_args(cfg)
+    print('cfg', cfg, s)
     r = train(cfg, trial=trial)
     gc.collect()
     torch.cuda.empty_cache()

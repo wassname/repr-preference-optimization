@@ -266,7 +266,7 @@ class ETHERLinearSmall(ETHERLinear):
 class ETHERConfig:
     """ETHER parameters"""
 
-    nb: int = 6
+    nb: int = 30
     """number of diagonal blocks"""
 
     Htype: Literal["ether", "etherplus", "oft", "etherplusHH"] = "etherplusHH"
