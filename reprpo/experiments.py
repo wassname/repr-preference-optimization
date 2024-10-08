@@ -140,7 +140,7 @@ experiment_configs = {
     "projgrad_fs2": ("DPO experiment.", ProjGradConfig(β=1.0, scale_orth=True)),
     "projgrad_fs3": ("DPO experiment.", ProjGradConfig(β=1.0, )),
     "projgrad_bs3": ("DPO experiment.", ProjGradConfig(β=1.0, reverse_pref=True)),
-    "projgrad_fs4": ("DPO experiment.", ProjGradConfig(mag_clip=1)),
+    "projgrad_fs4": ("DPO experiment.", ProjGradConfig(mag_clip=1.)),
     # variants
     "hs-svd-prefvec-dual": (
         "",

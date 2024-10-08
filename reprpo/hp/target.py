@@ -1,12 +1,15 @@
 import copy
-from reprpo.experiments import experiment_configs
+# from reprpo.experiments import experiment_configs
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 from reprpo.training import train
+from reprpo.hp.space import search_spaces, experiment_configs
 from loguru import logger
 import gc
 import torch
-
+import functools
+import optuna
+key_metric = "acc_gain_vs_ref/oos"
 
 def setattrattr(cfg, k, v):
     """
@@ -46,23 +49,44 @@ def override(cfg, overrides):
 
 from reprpo.training import get_display_name_from_args
 
-def objective_func(kwargs, trial):
-    cfg = copy.deepcopy(experiment_configs["side-ether-prefvec"][1])
+# def objective_func(kwargs, trial):
+#     cfg = copy.deepcopy(experiment_configs["side-ether-prefvec"][1])
+#     override(cfg, default_tuner_kwargs)
+
+#     # # so first we do the ones high in the heirarchy
+#     # if "loss" in kwargs:
+#     #     loss = kwargs.pop("loss")
+#     #     cfg.loss = getattr(Losses, loss).value()
+#     # if "transform" in kwargs:
+#     #     transform = kwargs.pop("transform")
+#     #     cfg.transform = getattr(Transforms, transform).value()
+
+#     # now subcommands
+#     override(cfg, kwargs)
+#     s = get_display_name_from_args(cfg)
+#     print('cfg', cfg, s)
+#     r = train(cfg, trial=trial)
+#     gc.collect()
+#     torch.cuda.empty_cache()
+#     return r
+
+
+
+def list2tuples(d):
+    for k, v in d.items():
+        if isinstance(v, list):
+            d[k] = tuple(v)
+    return d
+
+def objective_func(kwargs, trial, starter_experiment_name):
+    cfg = copy.deepcopy(experiment_configs[starter_experiment_name][1])
     override(cfg, default_tuner_kwargs)
-
-    # # so first we do the ones high in the heirarchy
-    # if "loss" in kwargs:
-    #     loss = kwargs.pop("loss")
-    #     cfg.loss = getattr(Losses, loss).value()
-    # if "transform" in kwargs:
-    #     transform = kwargs.pop("transform")
-    #     cfg.transform = getattr(Transforms, transform).value()
-
-    # now subcommands
     override(cfg, kwargs)
-    s = get_display_name_from_args(cfg)
-    print('cfg', cfg, s)
+    # kwargs = list2tuples(kwargs)
     r = train(cfg, trial=trial)
-    gc.collect()
-    torch.cuda.empty_cache()
     return r
+
+def objective(trial: optuna.Trial, starter_experiment_name, trial2args, key_metric:str) -> float:
+    kwargs = trial2args(trial)
+    r = objective_func(kwargs, trial, starter_experiment_name)
+    return r[key_metric]

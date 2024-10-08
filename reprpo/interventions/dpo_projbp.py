@@ -65,7 +65,7 @@ class ProjBPHooks(ProjGradHooks):
                 # preference_dir [b, h]
                 # grad [b t h]
                 ratios = grad.mean(1).norm(dim=-1)/((preference_dir).norm(dim=-1).clamp(eps)*self.mag_clip)
-                ratios = ratios.clamp(1, None)
+                ratios = ratios.clamp(1, None)[:, None, None]
                 grad = grad / ratios
                 assert torch.isfinite(grad).all()
             
@@ -119,7 +119,7 @@ class ProjBPConfig(ExperimentConfig):
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
-    β: float = 1
+    β: float = 1.0
 
     reverse_pref: bool = False
     """

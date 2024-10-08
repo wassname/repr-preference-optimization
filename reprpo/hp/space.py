@@ -145,9 +145,9 @@ search_spaces = {
     'hs-hra-rank': (250, hs_hra_rank),
     "hs-ortho-prefvec": (250, hs_ortho_prefvec), 
     'ether-prefvec': (500, ether_prefvec),
-    'projgrad2': (500, projgrad),
+    'projgrad3': (500, projgrad),
     'projbp': (500, projbp),
-    'dpo': (50, dpo),
+    'dpo': (250, dpo),
 }
 
 
@@ -187,7 +187,7 @@ experiment_configs = {
     ),
     "dpo": ("DPO experiment.", DPOConfig()),
     "projbp": ("DPO experiment.", ProjBPConfig()),
-    "projgrad2": ("DPO experiment.", ProjGradConfig()),
+    "projgrad3": ("DPO experiment.", ProjGradConfig()),
     # TODO also some side ones with no transform
 }
 

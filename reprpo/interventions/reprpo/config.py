@@ -1,8 +1,8 @@
 from reprpo.interventions.config import ExperimentConfig
 from reprpo.interventions.losses import Losses, LossesType
 from reprpo.interventions.transforms import Transforms, TransformType
-from dataclasses import dataclass
-from .model import PL_REPRPO_MODEL
+from dataclasses import dataclass, field
+from reprpo.interventions.reprpo.model import PL_REPRPO_MODEL
 
 
 @dataclass
@@ -33,10 +33,10 @@ class ReprPOConfig(ExperimentConfig):
     collect_hs: bool = False
     """collect hidden states instead of activations"""
 
-    loss: LossesType = Losses.prefvec.value
+    loss: LossesType = field(default_factory=lambda: Losses.prefvec.value())
     """loss function"""
 
-    transform: TransformType = Transforms.ether.value
+    transform: TransformType = field(default_factory=lambda: Transforms.ether.value())
     """transform function"""
 
     _cls = PL_REPRPO_MODEL
