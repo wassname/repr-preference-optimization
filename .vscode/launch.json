@@ -43,7 +43,7 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "projbp",
+                "hs-svd-mse",
                 "--dev", 
                 "--verbose=2",
 

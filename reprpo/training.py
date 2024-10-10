@@ -79,7 +79,16 @@ def get_display_name_from_args(args):
 
     # collapse dict
 
-    diff = set(flatten_dict(asdict(args)).items())-set(flatten_dict(asdict(defaults)).items())
+    def list2tuple(d: dict):
+        for k, v in d.items():
+            if isinstance(v, dict):
+                list2tuple(v)
+            elif isinstance(v, list):
+                d[k] = tuple(v)
+        return d
+
+
+    diff = set(list2tuple(flatten_dict(asdict(args))).items())-set(list2tuple(flatten_dict(asdict(defaults))).items())
     diff = sorted(diff, key=lambda x: x[0])
     blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers_side', 'collection_layers_hs', 'save', 'wandb',]
     def fmt(v):

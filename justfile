@@ -43,10 +43,12 @@ run_all EXTRA_ARGS='':
 
     . ./.venv/bin/activate
     export WANDB_GROUP=${WANDB_GROUP:-mdl-$(date +%Y%m%d_%H%M%S)}
-    export EXTRA_ARGS=${EXTRA_ARGS:---verbose=0}
+    # export EXTRA_ARGS=${EXTRA_ARGS:---verbose=1}
     echo "REPR_CONFIG=$REPR_CONFIG"
     echo "WANDB_GROUP=$WANDB_GROUP"
     echo "EXTRA_ARGS=$EXTRA_ARGS"
+
+    # export EXPERIMENTS=(hs-ortho-rank hs-ortho-prefvec hs-ortho-mse side-none-mse hs-ether-rank hs-ether-prefvec hs-ether-mse hs-hra-rank hs-hra-prefvec hs-hra-mse hs-none-rank hs-none-prefvec hs-none-mse hs-svd-rank hs-svd-prefvec hs-svd-mse dpo projbp projgrad hs-oft-prefvec)
 
     readarray -t EXPERIMENTS <<< "$(python ./scripts/export_experiments.py)"
 

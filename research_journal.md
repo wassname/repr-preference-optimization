@@ -3760,3 +3760,15 @@ wandb: 🚀 View run dpo/020225 at: https://wandb.ai/wassname/reprpo2/runs/5wli0
 | hs-svd-mse         |        332 | 1.01727 |                   14 |      1.01727 |
 | side-svd-mse       |        316 | 1.00962 |                   28 |      1.0077  |
 
+
+# 2024-10-10 10:04:50
+
+So I did hyperparam opt. I found out that projgrad is the best, prefvec is good.
+
+Now I want to try:
+- all methods on llama sft 7b
+- also prefvec with side and no transform
+
+
+TODO
+- [ ] 
