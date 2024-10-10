@@ -3634,3 +3634,129 @@ wandb: 🚀 View run dpo/020225 at: https://wandb.ai/wassname/reprpo2/runs/5wli0
 - `oos`: `genies_preferences-change_my_view-test`
 - `rnd`: `genies_preferences-ranking_logic-test`
 |INFO| WANDB url = https://wandb.ai/wassname/reprpo2/runs/b4r9vdrk
+
+
+# 2024-10-09 12:06:48
+
+| side-ether-prefvec N=✓208/209, best=1.169   |   importance | best     |
+|:--------------------------------------------|-------------:|:---------|
+| β                                           |        0.234 | 0.404    |
+| Htype                                       |        0.157 | oft      |
+| use_angle_loss                              |        0.145 | True     |
+| lr                                          |        0.136 | 0.000615 |
+| use_dpo_loss                                |        0.129 | False    |
+| weight_tokens                               |        0.077 | False    |
+| collect_hs                                  |        0.022 | False    |
+| flip_side                                   |        0.019 | True     |
+| nb                                          |        0.018 | 30       |
+| collect_input                               |        0.018 | False    |
+| reduction                                   |        0.018 | 25       |
+| use_orth_loss                               |        0.015 | False    |
+| use_nll_loss                                |        0.013 | False    |
+
+| side-svd-mse N=✓28/316, best=1.010   |   importance | best    |
+|:-------------------------------------|-------------:|:--------|
+| lr                                   |        0.997 | 0.00119 |
+| α                                    |        0.002 | 0.636   |
+| collect_hs                           |        0.001 | True    |
+| quantile                             |        0.001 | float   |
+| dual_svd                             |        0     | True    |
+| collect_input                        |        0     | False   |
+| quantile_value                       |      nan     | 0.3     |
+
+| side-hra-rank N=✓182/183, best=1.229   |   importance |     best |
+|:---------------------------------------|-------------:|---------:|
+| lr                                     |        0.846 | 0.000188 |
+| collect_hs                             |        0.071 | 0        |
+| apply_GS                               |        0.04  | 0        |
+| collect_input                          |        0.033 | 0        |
+| r                                      |        0.007 | 2        |
+| β                                      |        0.002 | 0.11     |
+| α                                      |        0.001 | 5.92     |
+
+| hs-ortho-prefvec N=✓259/261, best=1.152   |   importance | best       |
+|:------------------------------------------|-------------:|:-----------|
+| lr                                        |        0.9   | 0.000411   |
+| β                                         |        0.051 | 1.97       |
+| orthogonal_map                            |        0.019 | matrix_exp |
+| use_angle_loss                            |        0.011 | True       |
+| weight_tokens                             |        0.009 | False      |
+| use_nll_loss                              |        0.003 | True       |
+| use_proj_rel                              |        0.003 | True       |
+| use_dpo_loss                              |        0.002 | False      |
+| use_orth_loss                             |        0.002 | True       |
+
+| projbp N=✓227/363, best=1.071   |   importance | best   |
+|:--------------------------------|-------------:|:-------|
+| β                               |        0.355 | 0.238  |
+| scale_orth                      |        0.35  | False  |
+| lr                              |        0.281 | 5e-06  |
+| neg_slope                       |        0.009 | float  |
+| mag_clip                        |        0.005 | float  |
+| reverse_pref                    |        0     | True   |
+| mag_clip_value                  |      nan     | 0.981  |
+| neg_slope_value                 |      nan     | 0.699  |
+
+| dpo N=✓248/250, best=1.276   |   importance |     best |
+|:-----------------------------|-------------:|---------:|
+| lr                           |            1 | 0.000265 |
+
+| hs-svd-mse N=✓14/332, best=1.017   |   importance | best    |
+|:-----------------------------------|-------------:|:--------|
+| lr                                 |        0.93  | 0.00119 |
+| α                                  |        0.034 | 0.636   |
+| collect_input                      |        0.021 | False   |
+| dual_svd                           |        0.013 | True    |
+| collect_hs                         |        0.001 | True    |
+| quantile                           |        0.001 | float   |
+| quantile_value                     |      nan     | 0.3     |
+
+| hs-hra-rank N=✓259/262, best=1.152   |   importance |      best |
+|:-------------------------------------|-------------:|----------:|
+| lr                                   |        0.855 |  0.000333 |
+| β                                    |        0.071 |  0.38     |
+| r                                    |        0.071 | 38        |
+| apply_GS                             |        0.003 |  1        |
+| α                                    |        0     |  0.28     |
+
+| ether-prefvec N=✓321/326, best=1.183   |   importance | best     |
+|:---------------------------------------|-------------:|:---------|
+| lr                                     |        0.849 | 0.000378 |
+| β                                      |        0.058 | 1.98     |
+| reduction                              |        0.042 | 1        |
+| nb                                     |        0.014 | 20       |
+| use_proj_rel                           |        0.008 | True     |
+| use_dpo_loss                           |        0.007 | False    |
+| use_orth_loss                          |        0.007 | True     |
+| collect_hs                             |        0.005 | False    |
+| flip_side                              |        0.003 | True     |
+| use_angle_loss                         |        0.003 | True     |
+| collect_input                          |        0.002 | True     |
+| use_nll_loss                           |        0.002 | True     |
+| weight_tokens                          |        0.001 | True     |
+| Htype                                  |        0.001 | ether    |
+
+| projgrad3 N=✓207/208, best=1.279   |   importance | best     |
+|:-----------------------------------|-------------:|:---------|
+| lr                                 |        0.93  | 0.000232 |
+| β                                  |        0.042 | 0.843    |
+| weight_dim                         |        0.013 | 1        |
+| reverse_pref                       |        0.006 | True     |
+| scale_orth                         |        0.005 | False    |
+| mag_clip                           |        0.003 | float    |
+| neg_slope                          |        0.003 | 0        |
+| mag_clip_value                     |      nan     | 0.23     |
+
+|                    |   n_trials |    best |   n_trials_completed |   top10_mean |
+|:-------------------|-----------:|--------:|---------------------:|-------------:|
+| projgrad3          |        208 | 1.27938 |                  207 |      1.22437 |
+| dpo                |        250 | 1.27553 |                  248 |      1.24125 |
+| side-hra-rank      |        183 | 1.22929 |                  182 |      1.19589 |
+| ether-prefvec      |        326 | 1.18304 |                  321 |      1.176   |
+| side-ether-prefvec |        209 | 1.16923 |                  208 |      1.16385 |
+| hs-ortho-prefvec   |        261 | 1.15222 |                  259 |      1.14744 |
+| hs-hra-rank        |        262 | 1.15222 |                  259 |      1.10929 |
+| projbp             |        363 | 1.07129 |                  227 |      1.06595 |
+| hs-svd-mse         |        332 | 1.01727 |                   14 |      1.01727 |
+| side-svd-mse       |        316 | 1.00962 |                   28 |      1.0077  |
+

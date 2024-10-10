@@ -164,7 +164,7 @@ class PrefVecLossConfig:
 
     eps: float = 1.0e-12
 
-    β: float = 1.0e-1
+    β: float = 2
     """factor to punish orthogonal movement"""
 
     use_orth_loss: bool = False
@@ -182,7 +182,7 @@ class PrefVecLossConfig:
     weight_tokens: bool = False
     """exp weight tokens along seq"""
 
-    use_proj_rel: bool = False
+    use_proj_rel: bool = True
     """encourage chosen to be more in the pref dir than rejected"""
 
     def c(self, *args, **kwargs):

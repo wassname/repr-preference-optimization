@@ -89,7 +89,7 @@ def mse_loss(
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
     loss_reroute, loss_retain = ll["loss_reroute"], ll["loss_retain"]
 
-    loss = (loss_reroute + loss_retain * α).nanmean()
+    loss = (loss_reroute + loss_retain * α).nanmean() * 100 # multiply by 10 to make ideal lr around 1e-4
 
     # log info
     info = dict(
@@ -103,7 +103,7 @@ def mse_loss(
 
 @dataclass
 class MSELossConfig:
-    α: float = 1.0
+    α: float = 0.6
     eps: float = 1e-12
 
     def c(self, *args, **kwargs):

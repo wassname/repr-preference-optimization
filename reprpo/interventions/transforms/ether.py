@@ -266,10 +266,10 @@ class ETHERLinearSmall(ETHERLinear):
 class ETHERConfig:
     """ETHER parameters"""
 
-    nb: int = 30
+    nb: int = 20
     """number of diagonal blocks"""
 
-    Htype: Literal["ether", "etherplus", "oft", "etherplusHH"] = "etherplusHH"
+    Htype: Literal["ether", "etherplus", "oft", "etherplusHH"] = "ether"
     """type of transformation 
 
     - ether: like HRA but allowing a negative unit vector (reflection)

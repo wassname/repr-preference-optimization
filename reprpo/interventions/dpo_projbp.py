@@ -96,7 +96,6 @@ class ProjBPHooks(ProjGradHooks):
         # print(3,[aa.shape for aa in grad_output], [aa.shape for aa in res])
 
         return res
-    
 
 
 
@@ -107,7 +106,7 @@ class PL_GradBP_MODEL(PL_MODEL):
         self.projgrad = ProjBPHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orth=scale_orth, neg_slope=neg_slope, mag_clip=mag_clip)
 
     def _loss_fn(self, batch, model):
-        return compute_gradproj_loss_batch(batch, model, self.projgrad)
+        return compute_gradproj_loss_batch(batch, model, self.projgrad) 
     
 
 @dataclass
@@ -115,11 +114,11 @@ class ProjBPConfig(ExperimentConfig):
     """
     Project gradient onto a preference direction during backprop. This means that later layer will change the gradint for earleir layers.
     """
-    lr: float = 5e-5
+    lr: float = 1e-5
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
-    β: float = 1.0
+    β: float = 0.2
 
     reverse_pref: bool = False
     """
@@ -131,12 +130,12 @@ class ProjBPConfig(ExperimentConfig):
     scale the orthogonal movement to be β proportion of the prefered direction movement
     """
 
-    neg_slope: float = 0.1
+    neg_slope: float = 0.8
     """
     When clipping the gradient in the negative preference direction, we can use leakly relu with this slope. 0 is relu. 0.01 is leaky relu.
     """
 
-    mag_clip: Optional[float] = None
+    mag_clip: Optional[float] = 0.6
     """
     Clip the magnitude of the gradient in the hs space, to ensure a proximal policy in hs space. Value is a fraction of the distance of the preference vector
     """

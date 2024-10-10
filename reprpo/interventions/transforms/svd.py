@@ -43,7 +43,7 @@ class SVDConfig:
     It's left in here to show a negative finding, and the question: where do transformer store the working internal memory?
     """
 
-    quantile: float = 0.15
+    quantile: float = 0.3
     """What quantile of top singular values to remove from from hs
     - 0.9 would remove 90% of the singular values that contribute to the input and output layers of the model
     - 1

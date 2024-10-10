@@ -90,10 +90,10 @@ def rank_loss(
 
 @dataclass
 class RankLossConfig:
-    α: float = 1.0
+    α: float = 0.25
     # eps: float = 1e-12
 
-    β: float = .1
+    β: float = .38
     """like dpo beta."""
 
     def c(self, *args, **kwargs):

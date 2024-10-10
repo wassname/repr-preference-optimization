@@ -27,7 +27,7 @@ class ReprPOConfig(ExperimentConfig):
     )
     """keys to collect outputs from."""
 
-    collect_input: bool = False
+    collect_input: bool = True
     """use collection_keys_in? else use collection_keys_out."""
 
     collect_hs: bool = False

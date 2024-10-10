@@ -132,7 +132,7 @@ class PL_DPO_MODEL(PL_MODEL):
 
 @dataclass
 class DPOConfig(ExperimentConfig):
-    lr: float = 5e-5
+    lr: float = 2e-4
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 

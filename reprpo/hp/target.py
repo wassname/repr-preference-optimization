@@ -89,4 +89,4 @@ def objective_func(kwargs, trial, starter_experiment_name):
 def objective(trial: optuna.Trial, starter_experiment_name, trial2args, key_metric:str) -> float:
     kwargs = trial2args(trial)
     r = objective_func(kwargs, trial, starter_experiment_name)
-    return r[key_metric]
+    return r#[key_metric]

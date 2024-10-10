@@ -278,11 +278,11 @@ class ProjGradConfig(ExperimentConfig):
     It takes all the Lora layers, and on the backward pass it clip the gradient to only move in the cho_hs-ref_hs vector
     """
 
-    lr: float = 1e-4
+    lr: float = 2e-4
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
-    β: float = 0.7
+    β: float = 0.8
     """multiplier on the orthogonal movement"""
 
     reverse_pref: bool = True
@@ -290,17 +290,17 @@ class ProjGradConfig(ExperimentConfig):
     reverse the preference direction
     """
 
-    weight_dim: int = 0
+    weight_dim: int = 1
     """
     1 for forward, 0 for back, 2 for both
     """
 
-    scale_orth: bool = True
+    scale_orth: bool = False
     """
     scale the orthogonal movement to be β proportion of the prefered direction movement
     """
 
-    neg_slope: float = 0.5
+    neg_slope: float = 0.
     """
     When clipping the gradient in the negative preference direction, we can use leakly relu with this slope. 0 is relu. 0.01 is leaky relu.
     """
