@@ -82,7 +82,7 @@ run_all EXTRA_ARGS='':
 
 run_ds:
     #!/usr/bin/zsh
-    export REPR_CONFIG=./configs/llama3_7b.yaml
+    export REPR_CONFIG=./configs/llama-3-7b_a100.yaml
     source ./.venv/bin/activate
     export DS=(
         alpaca_easy
@@ -141,7 +141,7 @@ run_hp:
 run_llama:
     #!/usr/bin/zsh
     # -x
-    export REPR_CONFIG=./configs/llama3_7b.yaml
+    export REPR_CONFIG=./configs/llama-3-7b_a100.yaml
     just run_all
     just run_ds
 
@@ -159,7 +159,7 @@ cp:
 
 run_temp:
     #!/usr/bin/zsh
-    export REPR_CONFIG=./configs/llama3_7b.yaml
+    export REPR_CONFIG=./configs/llama-3-7b_a100.yaml
     . ./.venv/bin/activate
     python scripts/train.py projgrad
     python scripts/train.py dpo
@@ -170,7 +170,7 @@ run_pg:
     export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
     #python scripts/train.py projgrad --n-samples=6000 --verbose=1
     # python scripts/train.py projgrad
-    export REPR_CONFIG=./configs/llama3_7b.yaml
+    export REPR_CONFIG=./configs/llama-3-7b_a100.yaml
     python scripts/train.py projgrad --β=0.0 --neg-slope=1.0 --verbose=1
     python scripts/train.py projbp --β=0.0 --neg-slope=1.0 --verbose=1
     python scripts/train.py dpo --verbose=1

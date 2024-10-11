@@ -13,7 +13,7 @@ from open_pref_eval.datasets import ds2name, load_dataset_n
 import psutil
 import datasets
 total_ram = psutil.virtual_memory().total
-datasets.config.IN_MEMORY_MAX_SIZE = int(total_ram * 0.7)
+datasets.config.IN_MEMORY_MAX_SIZE = int(total_ram * 0.3)
 print(f"IN_MEMORY_MAX_SIZE set to {datasets.config.IN_MEMORY_MAX_SIZE} bytes")
 
 

@@ -4,4 +4,4 @@ eval_samples: 32 # 10 mins to go through 750*4
 collection_layers_side: 
   - 0
 dev: true
-verbose: 1
+verbose: 2

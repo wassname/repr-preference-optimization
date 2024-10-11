@@ -106,7 +106,6 @@ def get_display_name_from_args(args):
                 d[k] = tuple(v)
         return d
 
-
     diff = set(list2tuple(flatten_dict(asdict(args))).items())-set(list2tuple(flatten_dict(asdict(defaults))).items())
     diff = sorted(diff, key=lambda x: x[0])
     blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers_side', 'collection_layers_hs', 'save', 'wandb',]
@@ -115,10 +114,14 @@ def get_display_name_from_args(args):
             return f"{v:.2g}"
         return v
     s = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff) if k not in blacklist])
+
     cls_name = type(args).__name__.replace('Config', '')
+    if hasattr(args, 'transform'):
+        cls_name += f"_{type(args.transform).__name__.replace('Transform','')}"
+    if hasattr(args, 'loss'):
+        cls_name += f"_{type(args.loss).__name__.replace('Loss','')}"
 
     # also either state transform and loss, or replace the words
-
     def rename(s):
         if hasattr(args, 'loss'):
             loss_name = type(args.loss).__name__.lower().replace('config', '').replace('loss', '')
@@ -127,6 +130,7 @@ def get_display_name_from_args(args):
             transform_name = type(args.transform).__name__.lower().replace('config', '')
             s = s.replace('transform', transform_name)
         return s
+    
     s_all = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff)])
     s_short = f'{cls_name} {s}'
     s_all = rename(s_all)
@@ -616,6 +620,15 @@ def parse_eval(df_res2, ds_alias, human_name, base_model=""):
     # TODO is train/loss mid > train/loss end: otherwise warning
     # TODO did ppx on train improve?
     # TODO did dpo on train improve?
+    if not df_metrics['train']['acc_gain_vs_ref']>=1.0:
+        logger.error(f"Worse `acc` on training set for `{human_name}`")
+
+    # https://thegradient.pub/understanding-evaluation-metrics-for-language-models/
+    # this one often happens as dpo makes preference better and ppx worse
+    if not df_metrics['train']['perplexity_gain_vs_ref']<=1:
+        logger.warning(f"Worse `ppx` on training set for `{human_name}`")
+    if not df_metrics['train']['preference_logp_gain_vs_ref']>=0:
+        logger.error(f"Worse `pref` on training set for `{human_name}`")
 
     df_acc = df_res2.loc[adapter_name].to_frame(human_name).T
     info = {

@@ -17,6 +17,7 @@ if __name__ == "__main__":
     training_args = tyro.extras.overridable_config_cli(experiment_configs)
 
     # tyro has a default option, but it doesn't work with subcommands, so I apply overides manually
+    # TODO should really put cli arg after this
     training_args = apply_cfg_overrides(training_args)
 
     train(training_args)

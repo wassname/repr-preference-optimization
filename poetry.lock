@@ -2223,7 +2223,6 @@ trl = "^0.9.4"
 type = "git"
 url = "https://github.com/wassname/open_pref_eval"
 reference = "main"
-resolved_reference = "d1ed61b64da0afb5bd147dc54c02a104642cbf83"
 
 [[package]]
 name = "optuna"
