@@ -130,7 +130,7 @@ def get_display_name_from_args(args):
             transform_name = type(args.transform).__name__.lower().replace('config', '')
             s = s.replace('transform', transform_name)
         return s
-    
+
     s_all = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff)])
     s_short = f'{cls_name} {s}'
     s_all = rename(s_all)
@@ -438,7 +438,6 @@ def train(args, trial: Optional[Trial] = None):
     ]
 
     clear_mem()
-    print('FIXME eval')
     res, df_res2 = evaluate_model(
         model=model,
         tokenizer=tokenizer,
@@ -616,17 +615,15 @@ def parse_eval(df_res2, ds_alias, human_name, base_model=""):
         caption += f"\n- `{k}`: `{v}`"
     logger.info(caption)
 
-    # TODO checks, train loss down, train acc up, ppx down?
-    # TODO is train/loss mid > train/loss end: otherwise warning
-    # TODO did ppx on train improve?
-    # TODO did dpo on train improve?
+
     if not df_metrics['train']['acc_gain_vs_ref']>=1.0:
         logger.error(f"Worse `acc` on training set for `{human_name}`")
 
     # https://thegradient.pub/understanding-evaluation-metrics-for-language-models/
     # this one often happens as dpo makes preference better and ppx worse
-    if not df_metrics['train']['perplexity_gain_vs_ref']<=1:
-        logger.warning(f"Worse `ppx` on training set for `{human_name}`")
+    if not df_metrics['train']['perplexity_gain_vs_ref']<=1.5:
+        # the ppx always gets worse with dpo, but usually only like 1.5. 5x is incoherent
+        logger.error(f"Worse `ppx` on training set for `{human_name}`")
     if not df_metrics['train']['preference_logp_gain_vs_ref']>=0:
         logger.error(f"Worse `pref` on training set for `{human_name}`")
 

@@ -4,10 +4,10 @@ import bitsandbytes as bnb
 from dataclasses import dataclass
 from transformers.optimization import get_cosine_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup, get_inverse_sqrt_schedule, get_wsd_schedule, get_constant_schedule_with_warmup
 
-@dataclass
-class ModelConfigBase:
-    lr: float = 3e-4
-    weight_decay: float = 0.0
+# @dataclass
+# class ModelConfigBase:
+#     lr: float = 3e-4
+#     weight_decay: float = 0.0
 
 
 class PL_MODEL(pl.LightningModule):

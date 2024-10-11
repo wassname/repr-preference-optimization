@@ -278,7 +278,7 @@ class ProjGradConfig(ExperimentConfig):
     It takes all the Lora layers, and on the backward pass it clip the gradient to only move in the cho_hs-ref_hs vector
     """
 
-    lr: float = 2e-4
+    lr: float = 6e-5
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 

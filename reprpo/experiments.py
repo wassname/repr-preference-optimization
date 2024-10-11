@@ -31,14 +31,6 @@ for transform in Transforms:
 
 
 experiment_configs.update({   
-    # baseline
-    "dpo": ("DPO experiment.", DPOConfig()),
-
-    # gradient based methods
-    "projbp": ("DPO experiment.", ProjBPConfig()),
-    "projgrad": ("DPO experiment.", ProjGradConfig()),
-
-
     # variants
     "hs-oft-prefvec": ('', 
         ReprPOConfig(
@@ -47,4 +39,26 @@ experiment_configs.update({
             loss=Losses.prefvec.value(β=0.1),
         ),
     ),
+
+    "side-none-prefvec2": ("No transform one side activations and use prefvec loss.",
+        ReprPOConfig(
+            transform=Transforms.none.value(),
+            loss=Losses.prefvec.value(β=0.5,),
+        ),
+    ),
+    "projbp": ("DPO experiment.", ProjBPConfig()),
+
+    "hs-ether-prefvec2": ("No transform one side activations and use prefvec loss.",
+        ReprPOConfig(
+            transform=Transforms.ether.value(),
+            loss=Losses.prefvec.value(β=3),
+        ),
+    ),
+
+    # baseline
+    "dpo": ("DPO experiment.", DPOConfig()),
+
+    # gradient based methods
+    "projgrad": ("DPO experiment.", ProjGradConfig()),
+
 })

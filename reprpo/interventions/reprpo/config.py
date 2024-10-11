@@ -7,7 +7,7 @@ from reprpo.interventions.reprpo.model import PL_REPRPO_MODEL
 
 @dataclass
 class ReprPOConfig(ExperimentConfig):
-    lr: float = 4e-4
+    lr: float = 2e-4
 
     collection_layers_side: tuple = (8, 10, 12, 14, )
     """layers to collect activations from in side layers."""

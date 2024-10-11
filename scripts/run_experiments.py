@@ -58,6 +58,11 @@ for i, (name, (_, training_args)) in enumerate(main_experiments):
             training_args.verbose = 3
         try:
             train(training_args)
+        except torch.OutOfMemoryError:
+            logger.error(f"OOM error in training {training_args}")
+        except KeyboardInterrupt:
+            logger.error(f"KeyboardInterrupt in training {training_args}")
+            break
         except Exception as e:
             logger.exception(f"Error in training {training_args}")
         
