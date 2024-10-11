@@ -44,6 +44,7 @@ from reprpo.gen import display_gen, get_model_generations
 from reprpo.helpers.lightning_hist import read_metrics_csv
 from typing import Optional, Tuple, Union
 from optuna.trial import Trial
+import yaml
 
 # Local
 from reprpo.helpers.torch import clear_mem
@@ -57,6 +58,24 @@ remove_warnings()
 LOGURU_FORMAT = "<level>{message}</level>"
 logger.remove()
 logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
+
+
+def apply_cfg_overrides(cfg, f=None):
+    proj_root = Path(__file__).parent.parent
+    overrides = {}
+    if f is None:
+        f = os.environ.get("REPR_CONFIG")
+    if f is not None:
+        f = proj_root / f
+        print("applying REPR_CONFIG", f)
+        overrides = yaml.safe_load(open(f))
+        for k, v in overrides.items():
+            if hasattr(cfg, k):
+                setattr(cfg, k, v)
+            else:
+                print(f"Warning: {k} not found in training_args")
+        print(f"loaded default config from {f}")
+    return cfg
 
 def flatten_dict(d, parent_key='', sep='.'):
     items = []
@@ -140,7 +159,7 @@ def train(args, trial: Optional[Trial] = None):
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = os.environ.get("WANDB_GROUP") + "_" + group_name
         logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/groups/{group_name} ")
-    if args.verbose > 0:
+    if args.verbose > 1:
         logger.info("args")
         pprint(args, compact=True)
         # logger.info("model_kwargs", model_kwargs.keys())
@@ -184,8 +203,8 @@ def train(args, trial: Optional[Trial] = None):
         format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}",
     )
     if args.verbose < 1:
-            logger.remove()
-            logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
+        logger.remove()
+        logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
 
     model, tokenizer = load_model(
         args.base_model,
@@ -259,7 +278,7 @@ def train(args, trial: Optional[Trial] = None):
         # , collate_fn=default_data_collator
     )
 
-    if args.verbose > 1:
+    if args.verbose > 2:
         # logger.info("QC one dataset row")
         # r = dataset2["train"][0]
         # logger.info(r["prompt"])
@@ -295,7 +314,7 @@ def train(args, trial: Optional[Trial] = None):
     accumulate_grad_batches = np.ceil(
         ideal_batch_size / args.batch_size
     ).astype(int)
-    if args.verbose>0:
+    if args.verbose>1:
         logger.info(
             f"max optimiser steps {max_steps}",
         )
@@ -379,8 +398,9 @@ def train(args, trial: Optional[Trial] = None):
     model.cuda()  # for some reason it ends up cpu
 
     if (not args.dev) and (args.verbose > 0):
-        df_gen = get_model_generations(model, tokenizer, N=3)
-        display_gen(df_gen.head(2))
+        N = args.verbose
+        df_gen = get_model_generations(model, tokenizer, N=N)
+        display_gen(df_gen.head(N))
 
     logger.debug("eval")
 
@@ -414,6 +434,7 @@ def train(args, trial: Optional[Trial] = None):
     ]
 
     clear_mem()
+    print('FIXME eval')
     res, df_res2 = evaluate_model(
         model=model,
         tokenizer=tokenizer,
@@ -421,7 +442,7 @@ def train(args, trial: Optional[Trial] = None):
         batch_size=args.batch_size,
         bf16=True,
         torch_empty_cache_steps=100,
-        verbose=args.verbose>0,
+        verbose=args.verbose,
     )
 
     ds_alias = OrderedDict(
@@ -590,6 +611,11 @@ def parse_eval(df_res2, ds_alias, human_name, base_model=""):
     for k, v in ds_alias.items():
         caption += f"\n- `{k}`: `{v}`"
     logger.info(caption)
+
+    # TODO checks, train loss down, train acc up, ppx down?
+    # TODO is train/loss mid > train/loss end: otherwise warning
+    # TODO did ppx on train improve?
+    # TODO did dpo on train improve?
 
     df_acc = df_res2.loc[adapter_name].to_frame(human_name).T
     info = {

@@ -79,6 +79,23 @@
                 // "--lr=1e-5"
                 // "--n_samples=128",
             ]
+        },
+        {
+            "name": "experiments",
+            "type": "debugpy",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0", 
+                "TOKENIZERS_PARALLELISM": "false",
+                "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml", 
+            },
+            "pythonArgs": ["-Xfrozen_modules=off"],
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/run_experiments.py",
+            "console": "integratedTerminal",
+            // "justMyCode": false,
+            "autoReload": {"enable": true},
+            "args": [
+            ]
         }
     ]
 }
