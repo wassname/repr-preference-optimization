@@ -2,7 +2,21 @@ from reprpo.interventions import DPOConfig, ReprPOConfig, ProjGradConfig, ProjBP
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 
-experiment_configs = {}
+experiment_configs = {
+
+    "hs-ether-prefvec2": ("No transform one side activations and use prefvec loss.",
+        ReprPOConfig(
+            transform=Transforms.ether.value(),
+            loss=Losses.prefvec.value(β=3),
+        ),
+    ),
+
+    # baseline
+    "dpo": ("DPO experiment.", DPOConfig()),
+
+    # gradient based methods
+    "projgrad": ("projgrad experiment.", ProjGradConfig()),
+}
 
 # first all the reprpo experiments
 for transform in Transforms:
@@ -23,6 +37,7 @@ for transform in Transforms:
         f"side-none-{l_name}": (
             f"No transform one side activations and use {l_name} loss.",
             ReprPOConfig(
+                collect_hs=False,
                 transform=Transforms.none.value(),
                 loss=loss.value(),
             ),
@@ -46,19 +61,7 @@ experiment_configs.update({
             loss=Losses.prefvec.value(β=0.5,),
         ),
     ),
-    "projbp": ("DPO experiment.", ProjBPConfig()),
+    "projbp": ("projbp experiment.", ProjBPConfig()),
 
-    "hs-ether-prefvec2": ("No transform one side activations and use prefvec loss.",
-        ReprPOConfig(
-            transform=Transforms.ether.value(),
-            loss=Losses.prefvec.value(β=3),
-        ),
-    ),
-
-    # baseline
-    "dpo": ("DPO experiment.", DPOConfig()),
-
-    # gradient based methods
-    "projgrad": ("DPO experiment.", ProjGradConfig()),
 
 })

@@ -115,11 +115,12 @@ def get_display_name_from_args(args):
         return v
     s = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff) if k not in blacklist])
 
-    cls_name = type(args).__name__.replace('Config', '')
+    cls_name = type(args).__name__
     if hasattr(args, 'transform'):
         cls_name += f"_{type(args.transform).__name__.replace('Transform','')}"
     if hasattr(args, 'loss'):
         cls_name += f"_{type(args.loss).__name__.replace('Loss','')}"
+    cls_name = cls_name.replace('Config', '')
 
     # also either state transform and loss, or replace the words
     def rename(s):
@@ -505,13 +506,23 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     acc_gain_vs_ref = df_res.loc[adapter_name] / df_res.loc["base"]
 
     # metric: do we retain coherency? measured with perplexity
+    # attempt1: ratio per sample, then mena
+    d = df_res2.set_index(['dataset', 'ds_i'])[['adapter', '_chosen_ppl']]
+    perplexity_gain_vs_ref = (
+        d.query('adapter == @adapter_name')['_chosen_ppl'] / d.query('adapter == "base"')['_chosen_ppl']
+        )#.mean()
+    perplexity_gain_vs_ref = perplexity_gain_vs_ref.reset_index().groupby('dataset')['_chosen_ppl'].mean()
+    perplexity_gain_vs_ref3 = np.exp(np.log(perplexity_gain_vs_ref).reset_index().groupby('dataset')['_chosen_ppl'].mean())
+
+    # attempt2: mean then ratio
     df_res_logp = (
         df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_ppl"]
         .mean()
         .unstack()
         .T
     )
-    perplexity_gain_vs_ref = df_res_logp.loc[adapter_name] / df_res_logp.loc["base"]
+    # larger is worse
+    perplexity_gain_vs_ref2 = df_res_logp.loc[adapter_name] / df_res_logp.loc["base"]
 
     # metric: how much does the model follow the preference vs the rejected. log ratio difference or ρθ in GPO https://arxiv.org/html/2402.05749v2
     df_res2["logratios"] = df_res2["_chosen_logps"] - df_res2["_rejected_logps"]
@@ -617,15 +628,19 @@ def parse_eval(df_res2, ds_alias, human_name, base_model=""):
 
 
     if not df_metrics['train']['acc_gain_vs_ref']>=1.0:
-        logger.error(f"Worse `acc` on training set for `{human_name}`")
+        logger.error(f"Worse `acc` on training set for `{human_name}` (didn't learn?)")
+
+    # now one comparing acc train vs test in df_res2
+    if not df_res2['train'][adapter_name] >= df_res2['test'][adapter_name]:
+        logger.error(f"Underfitting (acc_test>ac_train) for `{human_name}` (train for longer?)")
 
     # https://thegradient.pub/understanding-evaluation-metrics-for-language-models/
     # this one often happens as dpo makes preference better and ppx worse
     if not df_metrics['train']['perplexity_gain_vs_ref']<=1.5:
         # the ppx always gets worse with dpo, but usually only like 1.5. 5x is incoherent
-        logger.error(f"Worse `ppx` on training set for `{human_name}`")
+        logger.warning(f"Worse `ppx` on training set for `{human_name}` (incoherent model? loss to high?)")
     if not df_metrics['train']['preference_logp_gain_vs_ref']>=0:
-        logger.error(f"Worse `pref` on training set for `{human_name}`")
+        logger.error(f"Worse `pref` on training set for `{human_name}` (didn't learn?)")
 
     df_acc = df_res2.loc[adapter_name].to_frame(human_name).T
     info = {

@@ -1,10 +1,5 @@
 # set shell := ["zsh", "-uc"]
 
-# settings
-# set dotenv-load
-
-# Export all just variables as environment variables.
-# set export
 
 export CUDA_VISIBLE_DEVICES := "0"
 export TOKENIZERS_PARALLELISM := "false"
@@ -28,61 +23,33 @@ run METHOD='reprpo_ortho' +EXTRA_ARGS='':
     source ./.venv/bin/activate
     python scripts/train.py {{METHOD}} $EXTRA_ARGS
 
-run2 METHOD='reprpo_ortho' +EXTRA_ARGS='':
-    #!/usr/bin/zsh
-    export EXTRA_ARGS="{{EXTRA_ARGS}}"
-    export METHOD="{{METHOD}}"
-    echo "METHOD={{METHOD}} $METHOD EXTRA_ARGS=${EXTRA_ARGS}"
 
 run_all EXTRA_ARGS='':
     #!/usr/bin/bash
-    # export HF_DATASETS_OFFLINE=1
-    # export WANDB_MODE=offline
-    # export WANDB_SILENT"]=true
-    # export HF_DATASETS_DISABLE_PROGRESS_BARS=1
 
     . ./.venv/bin/activate
-    export WANDB_GROUP=${WANDB_GROUP:-mdl-$(date +%Y%m%d_%H%M%S)}
-    # export EXTRA_ARGS=${EXTRA_ARGS:---verbose=1}
+    export WANDB_GROUP=${WANDB_GROUP:-mdl-$(date +%y%m%d_%H%M)}
     echo "REPR_CONFIG=$REPR_CONFIG"
     echo "WANDB_GROUP=$WANDB_GROUP"
     echo "EXTRA_ARGS=$EXTRA_ARGS"
 
-    export EXPERIMENTS=(hs-ortho-rank hs-ortho-prefvec hs-ortho-mse side-none-mse hs-ether-rank hs-ether-prefvec hs-ether-mse hs-hra-rank hs-hra-prefvec hs-hra-mse hs-none-rank hs-none-prefvec hs-none-mse hs-svd-rank hs-svd-prefvec hs-svd-mse dpo projbp projgrad hs-oft-prefvec)
-    export EXPERIMENTS="${EXPERIMENTS[@]}"
+    # export EXPERIMENTS=(hs-ortho-rank hs-ortho-prefvec hs-ortho-mse side-none-mse hs-ether-rank hs-ether-prefvec hs-ether-mse hs-hra-rank hs-hra-prefvec hs-hra-mse hs-none-rank hs-none-prefvec hs-none-mse hs-svd-rank hs-svd-prefvec hs-svd-mse dpo projbp projgrad hs-oft-prefvec)
+    # export EXPERIMENTS="${EXPERIMENTS[@]}"
 
-    # readarray -t EXPERIMENTS <<< "$(python ./scripts/export_experiments.py)"
+    readarray -t EXPERIMENTS <<< "$(python ./scripts/export_experiments.py)"
 
+    set -x
     echo EXPERIMENTS $EXPERIMENTS $S
     for METHOD in $EXPERIMENTS; do
         echo "python scripts/train.py $METHOD $EXTRA_ARGS"
-        python scripts/train.py "$METHOD" "$EXTRA_ARGS"
+        python scripts/train.py $METHOD $EXTRA_ARGS
     done
-
-# export_exp:
-#     #!/usr/bin/bash
-#     . ./.venv/bin/activate
-#     export EXPERIMENTS=$(python ./scripts/export_experiments.py)
-#     IFS=' ' read -r -a DS <<< "$STRING"
-    
-#     # echo $EXPERIMENTS
-
-#     export DS=(
-#         alpaca_easy
-#         alpaca_mmlu 
-#         alpaca_low_quality 
-#         alpaca_short 
-#         code_easy 
-#         alpaca_mmlu 
-#         math 
-#         raven_matrices  
-#         us_history_textbook
-#     )
 
 
 run_ds:
     #!/usr/bin/zsh
     export REPR_CONFIG=./configs/llama-3-7b_a100.yaml
+    export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%y%m%d_%H%M)}
     source ./.venv/bin/activate
     export DS=(
         alpaca_easy
@@ -96,15 +63,11 @@ run_ds:
         us_history_textbook
     )
 
-    export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
     . ./.venv/bin/activate
     export METHODS=(
         dpo
         hs-ether-prefvec
         side-none-prefvec
-        # side-none-mse
-        # side-none-rank
-        prefvec
         projgrad
     )
     echo $DS
@@ -116,87 +79,36 @@ run_ds:
         done
     done
 
-
-run_hp:
-    export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
-    python scripts/train.py side-ether-prefvec --loss.β 0.04
-    python scripts/train.py side-ether-prefvec --loss.β 0.08 --loss.no-use_orth_loss --loss.use_angle_loss
-    python scripts/train.py side-ether-prefvec --loss.β 0.3 --loss.no-use_orth_loss --loss.no-use_angle_loss
-    python scripts/train.py side-ether-prefvec --loss.no-use_dpo_loss --loss.no-use_orth_loss 
-    python scripts/train.py side-ether-prefvec --loss.no-use_dpo_loss --loss.no-use_orth_loss --loss.weight_tokens
-    python scripts/train.py side-ether-prefvec --loss.no-use_nll_loss --loss.no-use_orth_loss --loss.weight_tokens --loss.use_angle_loss
-    python scripts/train.py side-ether-prefvec --transform.Htype=ether
-    python scripts/train.py side-ether-prefvec --transform.Htype=oft
-    python scripts/train.py side-ether-prefvec --transform.Htype=HH
-
-    python scripts/train.py hs-ether-prefvec --transform.Htype=ether --transform.nb=16 --transform.reduction=1
-    python scripts/train.py hs-ether-prefvec --transform.Htype=oft --transform.nb=16 --transform.reduction=1
-    python scripts/train.py hs-ether-prefvec --transform.Htype=HH --transform.nb=16 --transform.reduction=1
-    just run_ds
-
-
-
+run_sizes:
+    #!/usr/bin/zsh -x
+    export METHODS=(
+        dpo
+        hs-ether-prefvec
+        side-none-prefvec
+        projgrad
+    )
+    export WANDB_GROUP=${WANDB_GROUP:-sz-$(date +%y%m%d_%H%M)}
+    for METHOD in $EXPERIMENTS; do
+        REPR_CONFIG=./configs/llama-3-7b_a100.yaml python scripts/train.py $METHOD
+        REPR_CONFIG=./configs/llama-3-2-3b_a100.yaml python scripts/train.py $METHOD
+        REPR_CONFIG=./configs/llama-3-2-1b_a100.yaml python scripts/train.py $METHOD
 
 
 run_llama:
     #!/usr/bin/zsh
-    # -x
     export REPR_CONFIG=./configs/llama-3-7b_a100.yaml
     just run_all
     just run_ds
+    just run_sizes
 
 
-dev:
-    #!/usr/bin/zsh
-    export REPR_CONFIG=./configs/dev.yaml
-    . ./.venv/bin/activate
-    python scripts/train.py -m pdb sidein-hra
+# dev:
+#     #!/usr/bin/zsh
+#     export REPR_CONFIG=./configs/dev.yaml
+#     . ./.venv/bin/activate
+#     python scripts/train.py -m pdb sidein-hra
 
 # copy trained models from runpod
 cp:
     rsync -avz --ignore-existing runpod:/workspace/repr-preference-optimization/ouputs/ ./ouputs/
-
-
-run_temp:
-    #!/usr/bin/zsh
-    export REPR_CONFIG=./configs/llama-3-7b_a100.yaml
-    . ./.venv/bin/activate
-    python scripts/train.py projgrad
-    python scripts/train.py dpo
-    python scripts/train.py side-ether-prefvec
-
-run_pg:
-    #!/usr/bin/zsh
-    export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
-    #python scripts/train.py projgrad --n-samples=6000 --verbose=1
-    # python scripts/train.py projgrad
-    export REPR_CONFIG=./configs/llama-3-7b_a100.yaml
-    python scripts/train.py projgrad --β=0.0 --neg-slope=1.0 --verbose=1
-    python scripts/train.py projbp --β=0.0 --neg-slope=1.0 --verbose=1
-    python scripts/train.py dpo --verbose=1
-    python scripts/train.py projgrad_right --verbose=1
-    python scripts/train.py projgrad_left --verbose=1
-    python scripts/train.py projgrad_fb
-    python scripts/train.py projgrad_fs
-    python scripts/train.py projgrad_fs2
-    python scripts/train.py projgrad_fs3
-    python scripts/train.py projgrad_fs4
-    python scripts/train.py projgrad_bs3
-    # python scripts/train.py projgrad --β=1.0 --ignore-direction 
-    python scripts/train.py projgrad --β=0.5 --neg-slope=0.05
-    python scripts/train.py projgrad --β=1.0 --neg-slope=1.0 # should be like dpo. yes
-    python scripts/train.py projgrad --no-scale-orth --no-reverse_pref
-    python scripts/train.py projgrad --no-reverse-pref
-    python scripts/train.py projgrad --weight-dim=1
-    python scripts/train.py projgrad --weight-dim=2
-
-    python scripts/train.py projgrad --β=0.8 --neg-slope=0.1 --mag-clip=0.2 # soft constraint
-
-
-run_l:
-    export WANDB_GROUP=${WANDB_GROUP:-ds-$(date +%Y%m%d_%H%M%S)}
-    # python scripts/train.py projgrad --base-model=NousResearch/Llama-3.2-1B
-    python scripts/train.py projgrad --base-model=unsloth/Llama-3.2-1B-Instruct
-    python scripts/train.py dpo --base-model=NousResearch/Llama-3.2-1B
-    python scripts/train.py dpo --base-model=unsloth/Llama-3.2-1B-Instruct
 

@@ -43,9 +43,8 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "hs-svd-mse",
+                "hs-ether-prefvec",
                 "--dev", 
-                "--eval_samples=750",
                 "--verbose=2",
 
             ]
@@ -60,9 +59,8 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "hs-svd-mse",
+                "hs-ether-prefvec",
                 "--dev", 
-                "--eval_samples=750",
                 "--verbose=2",
 
             ]

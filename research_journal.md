@@ -3772,3 +3772,52 @@ Now I want to try:
 
 TODO
 - [ ] 
+
+
+hmm sv and projbp seem to crash. maybe less layers for them?
+
+
+| adapter/ds         |   train |   test |   oos |   rnd |
+|:-------------------|--------:|-------:|------:|------:|
+| base               |   0.988 |  0.989 | 0.796 | 0.677 |
+| side-ETHER-PrefVec |   0.992 |  0.999 | 0.891 | 0.639 |
+| projgrad           |   1     |  0.995 | 0.867 | 0.687 |
+| dpo                |   1     |  0.993 | 0.845 | 0.661 |
+| side-Ortho-PrefVec |   0.996 |  0.999 | 0.897 | 0.649 |
+Table 2: Absolute accuracy
+
+| acc_inc/eval_ds [pp]                         |   train |   test |    oos |    rnd |
+|:---------------------------------------------|--------:|-------:|-------:|-------:|
+| ReprPO_ETHERConfig_PrefVecConfig prefvec.β=3 |   0.405 |  0.943 | 11.893 | -5.709 |
+| DPO                                          |   1.215 |  0.404 |  6.198 | -2.362 |
+| ProjGrad                                     |   1.215 |  0.539 |  8.878 |  1.378 |
+| Ortho_Rank hs=True α=0.25 β=0.38 map=hra     |   1.215 |   0.27 |  7.538 | -2.953 |
+| ReprPO_Ortho_PrefVec hs=True map=householder |    0.81 |  0.943 | 12.73 | -4.134 |
+
+| projgrad\dist shift         |   train |    test |     oos |      rnd |
+|:----------------------------|--------:|--------:|--------:|---------:|
+| acc_gain_vs_ref             |   1.012 |   1.005 |   1.089 |    1.014 |
+| perplexity_gain_vs_ref      | 199.416 | 300.697 | 392.234 | 2055.11  |
+| preference_logp_gain_vs_ref | 369.747 | 346.714 | 194.287 |    6.74  |
+
+| side-ETHER-PrefVec\dist shift   |   train |   test |    oos |    rnd |
+|:--------------------------------|--------:|-------:|-------:|-------:|
+| acc_gain_vs_ref                 |   1.004 |  1.009 |  1.119 |  0.943 |
+| perplexity_gain_vs_ref          |   1.038 |  1.038 |  1.027 |  1.234 |
+| preference_logp_gain_vs_ref     |  18.644 | 16.576 | 22.529 | -0.02  |
+
+| dpo\dist shift              |   train |    test |     oos |      rnd |
+|:----------------------------|--------:|--------:|--------:|---------:|
+| acc_gain_vs_ref             |   1.012 |   1.004 |   1.062 |    0.976 |
+| perplexity_gain_vs_ref      | 456.72  | 478.877 | 402.153 | 1198.56  |
+| preference_logp_gain_vs_ref | 344.444 | 313.759 | 174.241 |    5.661 |
+Table 1: Key metrics (adapter over base model)
+
+| side-Ortho-Rank\INOCHERENT   |   train |   test |    oos |   rnd |
+|:-----------------------------|--------:|-------:|-------:|------:|
+| acc_gain_vs_ref              |   1.012 |  1.003 |  1.075 | 0.97  |
+| perplexity_gain_vs_ref       |   3.327 |  3.323 |  2.938 | 2.728 |
+| preference_logp_gain_vs_ref  |  88.066 | 82.939 | 54.272 | 1.262 |
+Table 1: Key metrics (adapter over base model)
+
+so ppx doesn't seem sufficient to show incoherence... I'm not sure how to show it. We are not sampling so hmm
