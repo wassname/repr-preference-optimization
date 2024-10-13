@@ -9,8 +9,8 @@ from .svd import SVDConfig
 
 
 class Transforms(enum.Enum):
-    ortho = OrthoConfig
     ether = ETHERConfig
+    ortho = OrthoConfig
     hra = HRAConfig
     none = NoneConfig
     svd = SVDConfig

@@ -3821,3 +3821,41 @@ Table 1: Key metrics (adapter over base model)
 Table 1: Key metrics (adapter over base model)
 
 so ppx doesn't seem sufficient to show incoherence... I'm not sure how to show it. We are not sampling so hmm
+
+
+# calulating ppx
+
+
+for dpo, I try 3 ways... and it doesn't matter much if we mean first, ratio first, or log ratio mean exp
+
+perplexity_gain_vs_ref_mean_ratio dataset
+genies_preferences-ranking_logic-test                 546.105286
+genies_preferences-us_history_fiction-test             15.869489
+genies_preferences-us_history_textbook-test             7.939857
+genies_preferences-us_history_textbook-train[:750]      5.500533
+Name: _chosen_ppl, dtype: float32
+perplexity_gain_vs_ref_exp_log_ratio dataset
+genies_preferences-ranking_logic-test                 24.173147
+genies_preferences-us_history_fiction-test            11.555802
+genies_preferences-us_history_textbook-test            5.331226
+genies_preferences-us_history_textbook-train[:750]     4.414876
+Name: _chosen_ppl, dtype: float32
+perplexity_gain_vs_ref_ratio_of_means dataset
+genies_preferences-ranking_logic-test                 875.733643
+genies_preferences-us_history_fiction-test             17.603973
+genies_preferences-us_history_textbook-test             9.220794
+genies_preferences-us_history_textbook-train[:750]      6.128044
+dtype: float32
+
+
+ok I changed it to perplexity reduction but now it's tiny... sometimes? seems to depend on ds... ok
+
+| dpo\dist shift              |   train |    test |      oos |   rnd |
+|:----------------------------|--------:|--------:|---------:|------:|
+| acc_gain_vs_ref             |   1.203 |   1.15  |    0.975 | 1.01  |
+| perplexity_reduction_vs_ref |   0.009 |   0.006 |    0.026 | 0.004 |
+| preference_logp_gain_vs_ref | 402.367 | 417.062 | -106.47  | 0.942 |
+Table 1: Key metrics (adapter over base model)
+
+
+I would also like percentage of remaining accuracy instead, lets prototype in notebook

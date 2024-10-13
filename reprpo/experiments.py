@@ -19,6 +19,18 @@ experiment_configs = {
 }
 
 # first all the reprpo experiments
+for loss in Losses:
+    l_name = loss.name
+    experiment_configs.update({
+        f"side-none-{l_name}": (
+            f"No transform one side activations and use {l_name} loss.",
+            ReprPOConfig(
+                collect_hs=False,
+                transform=Transforms.none.value(),
+                loss=loss.value(),
+            ),
+        )
+    })
 for transform in Transforms:
     for loss in Losses:
         t_name = transform.name
@@ -33,17 +45,6 @@ for transform in Transforms:
                 ),
             )
         })
-    experiment_configs.update({
-        f"side-none-{l_name}": (
-            f"No transform one side activations and use {l_name} loss.",
-            ReprPOConfig(
-                collect_hs=False,
-                transform=Transforms.none.value(),
-                loss=loss.value(),
-            ),
-        )
-    })
-
 
 experiment_configs.update({   
     # variants
@@ -59,6 +60,7 @@ experiment_configs.update({
         ReprPOConfig(
             transform=Transforms.none.value(),
             loss=Losses.prefvec.value(β=0.5,),
+            lr=7e-4,
         ),
     ),
     "projbp": ("projbp experiment.", ProjBPConfig()),

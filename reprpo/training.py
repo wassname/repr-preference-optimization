@@ -141,6 +141,11 @@ def get_display_name_from_args(args):
     return s_short
 
 
+def safe_fn(s):
+    """make a safe filename from any string."""
+    return "".join(c for c in s if c.isalpha() or c.isdigit() or c==' ').rstrip()
+
+
 def train(args, trial: Optional[Trial] = None):
     if args.verbose < 1:
         silence()
@@ -162,7 +167,7 @@ def train(args, trial: Optional[Trial] = None):
     # we can set an experiment group name from env vars, otherwise it will just groupt by model and training ds
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
-        group_name = os.environ.get("WANDB_GROUP") + "_" + group_name
+        group_name = safe_fn(os.environ.get("WANDB_GROUP") + "_" + group_name)
         logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/groups/{group_name} ")
     if args.verbose > 1:
         logger.info("args")
@@ -174,15 +179,24 @@ def train(args, trial: Optional[Trial] = None):
     run_fname = f"{adapter_name}/{ts}"  # short for wandb
 
     # save_dir
-    timestamp = pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = safe_fn(pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S"))
     root_dir = Path(__file__).parent.parent
-    model_fname = "_".join(
+    model_fname = safe_fn("_".join(
         [args.base_model.replace("/", "-"), adapter_name, ds_name_train]
-    )
-    save_dir = root_dir / "outputs" / f"{model_fname}" / f"{timestamp}"
+    ))
+    save_dir = root_dir / "outputs" / group_name / f"{model_fname}" / f"{timestamp}"
     save_dir.mkdir(exist_ok=True, parents=True)
 
     config = asdict(args)
+    config.update({'post': {
+        'group_name': group_name,
+        'adapter_name': adapter_name,
+        'human_name': human_name,
+        'model_fname': model_fname,
+        'ds_name_train': ds_name_train,
+        'run_fname': run_fname,
+        'save_dir': str(save_dir),
+    'ts': ts,}})
     if args.wandb:
         wandb.require(experiment="core")
         pl_wandb_logger=WandbLogger(
@@ -506,23 +520,9 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     acc_gain_vs_ref = df_res.loc[adapter_name] / df_res.loc["base"]
 
     # metric: do we retain coherency? measured with perplexity
-    # attempt1: ratio per sample, then mena
     d = df_res2.set_index(['dataset', 'ds_i'])[['adapter', '_chosen_ppl']]
-    perplexity_gain_vs_ref = (
-        d.query('adapter == @adapter_name')['_chosen_ppl'] / d.query('adapter == "base"')['_chosen_ppl']
-        )#.mean()
-    perplexity_gain_vs_ref = perplexity_gain_vs_ref.reset_index().groupby('dataset')['_chosen_ppl'].mean()
-    perplexity_gain_vs_ref3 = np.exp(np.log(perplexity_gain_vs_ref).reset_index().groupby('dataset')['_chosen_ppl'].mean())
-
-    # attempt2: mean then ratio
-    df_res_logp = (
-        df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_ppl"]
-        .mean()
-        .unstack()
-        .T
-    )
-    # larger is worse
-    perplexity_gain_vs_ref2 = df_res_logp.loc[adapter_name] / df_res_logp.loc["base"]
+    perplexity_reduction_vs_ref = (np.log(d.query('adapter == "base"')['_chosen_ppl']) - np.log(d.query('adapter == @adapter_name')['_chosen_ppl']))
+    perplexity_reduction_vs_ref = np.exp(perplexity_reduction_vs_ref.reset_index().groupby('dataset')['_chosen_ppl'].mean())
 
     # metric: how much does the model follow the preference vs the rejected. log ratio difference or ρθ in GPO https://arxiv.org/html/2402.05749v2
     df_res2["logratios"] = df_res2["_chosen_logps"] - df_res2["_rejected_logps"]
@@ -532,21 +532,6 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     model_logratios = df_logratios.loc[adapter_name]
     ref_logratios = df_logratios.loc["base"]
     preference_logp_gain_vs_ref = (model_logratios - ref_logratios).mean()
-
-    # metric: how much do we prefer the chosen over the rejected? This is `model_logratios` in DPO
-    c = df_res_logp = (
-        df_res2.groupby(["dataset", "adapter"], dropna=False)["_chosen_logps"]
-        .mean()
-        .unstack()
-        .T.loc[adapter_name]
-    )
-    r = df_res_logp = (
-        df_res2.groupby(["dataset", "adapter"], dropna=False)["_rejected_logps"]
-        .mean()
-        .unstack()
-        .T.loc[adapter_name]
-    )
-    preference_logp_gain = c - r
 
     def fmt(s):
         return s.replace("genies_preferences-", "")
@@ -569,8 +554,8 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     acc_gain_vs_ref_metrics = generate_metrics(
         "acc_gain_vs_ref", datasets, acc_gain_vs_ref
     )
-    perplexity_gain_vs_ref_metrics = generate_metrics(
-        "perplexity_gain_vs_ref", datasets, perplexity_gain_vs_ref
+    perplexity_reduction_vs_ref_metrics = generate_metrics(
+        "perplexity_reduction_vs_ref", datasets, perplexity_reduction_vs_ref
     )
     preference_logp_gain_vs_ref_metrics = generate_metrics(
         "preference_logp_gain_vs_ref", datasets, preference_logp_gain_vs_ref
@@ -579,7 +564,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     # Concatenate all metrics
     all_metrics = (
         acc_gain_vs_ref_metrics
-        + perplexity_gain_vs_ref_metrics
+        + perplexity_reduction_vs_ref_metrics
         + preference_logp_gain_vs_ref_metrics
     )
 
@@ -636,8 +621,9 @@ def parse_eval(df_res2, ds_alias, human_name, base_model=""):
 
     # https://thegradient.pub/understanding-evaluation-metrics-for-language-models/
     # this one often happens as dpo makes preference better and ppx worse
-    if not df_metrics['train']['perplexity_gain_vs_ref']<=1.5:
-        # the ppx always gets worse with dpo, but usually only like 1.5. 5x is incoherent
+    if not df_metrics['train']['perplexity_reduction_vs_ref']>=105:
+        # the ppx always gets worse with dpo, but usually only like 10
+        # FIXME I indented this to indicate incoherence but it doesn't seem to track
         logger.warning(f"Worse `ppx` on training set for `{human_name}` (incoherent model? loss to high?)")
     if not df_metrics['train']['preference_logp_gain_vs_ref']>=0:
         logger.error(f"Worse `pref` on training set for `{human_name}` (didn't learn?)")
