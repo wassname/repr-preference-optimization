@@ -143,7 +143,7 @@ def get_display_name_from_args(args):
 
 def safe_fn(s):
     """make a safe filename from any string."""
-    return "".join(c for c in s if c.isalpha() or c.isdigit() or c==' ').rstrip()
+    return "".join(c for c in s if c.isalpha() or c.isdigit() or c==' ' or c=="_" or c=="-").rstrip()
 
 
 def train(args, trial: Optional[Trial] = None):
