@@ -466,6 +466,8 @@ def train(args, trial: Optional[Trial] = None):
     ds_alias = OrderedDict(
         list(zip(["train", "test", "oos", "rnd"], [ds2name(d) for d in datasets]))
     )
+    ds_alias_rev = {v: k for k, v in ds_alias.items()}
+    df_res2['ds_alias'] = df_res2['dataset'].map(lambda x: ds_alias_rev[x])
 
     # save
     f = str(save_dir) + "/eval.parquet"
@@ -579,7 +581,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     return df_metrics[list(ds_alias.keys())]
 
 
-def parse_eval(df_res2, ds_alias, human_name, base_model=""):
+def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
     adapter_name = df_res2[["adapter"]].query('adapter!="base"').values[0, 0]
 
     df_res = (
@@ -591,25 +593,27 @@ def parse_eval(df_res2, ds_alias, human_name, base_model=""):
     df_res.columns = [d.replace("genies_preferences-", "") for d in df_res.columns]
 
     df_metrics = key_metrics(df_res2, adapter_name, ds_alias)
-
-    logger.info(f"\n{df_metrics.round(3).to_markdown()}")
-    logger.info("""Table 1: Key metrics (adapter over base model)\n""")
+    if verbose:
+        logger.info(f"\n{df_metrics.round(3).to_markdown()}")
+        logger.info("""Table 1: Key metrics (adapter over base model)\n""")
 
     cols = [v.replace("genies_preferences-", "") for v in ds_alias.values()]
     df_res2 = df_res[cols]
     df_res2.columns = list(ds_alias.keys())
     df_res2.index.name = "adapter/ds"
-    logger.info(f"\n{df_res2.round(3).to_markdown()}")
-    logger.info("""Table 2: Absolute accuracy\n""")
+    if verbose:
+        logger.info(f"\n{df_res2.round(3).to_markdown()}")
+        logger.info("""Table 2: Absolute accuracy\n""")
 
     df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(human_name).T
     df_final = df_final * 100 - 100  # percentage points
     df_final.index.name = "acc_inc/eval_ds [pp]"
-    print(f"\n{df_final.round(3).to_markdown()}")
     caption = f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`{ds_alias["train"]}` compared to base model `{base_model}` for various distribution shifts:"""
     for k, v in ds_alias.items():
         caption += f"\n- `{k}`: `{v}`"
-    logger.info(caption)
+    if verbose:
+        print(f"\n{df_final.round(3).to_markdown()}")
+        logger.info(caption)
 
 
     if not df_metrics['train']['acc_gain_vs_ref']>=1.0:

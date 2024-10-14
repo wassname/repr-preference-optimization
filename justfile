@@ -107,5 +107,5 @@ dev:
 
 # copy trained models from runpod
 cp:
-    rsync -avz --ignore-existing runpod:/workspace/repr-preference-optimization/ouputs/ ./ouputs/
+    rsync -avz --ignore-existing runpod:/workspace/repr-preference-optimization/outputs/ ./ouputs/
 
