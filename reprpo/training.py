@@ -539,10 +539,11 @@ def key_metrics(df_res2, adapter_name, ds_alias):
         return s.replace("genies_preferences-", "")
 
     def generate_metrics(metric_name, datasets, values):
-        return [
-            [metric_name, split, fmt(ds_name), values[ds_name]]
-            for split, ds_name in datasets.items()
-        ]
+        o = []
+        for split, ds_name in datasets.items():
+            if ds_name in values:
+                o.append([metric_name, split, fmt(ds_name_train), values[ds_name]])
+        return o
 
     # Define the datasets
     datasets = {
@@ -577,6 +578,8 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     df_metrics = df_metrics.set_index(["metric", "split"])
     df_metrics = df_metrics["value"].unstack()
     df_metrics.index.name = f"{adapter_name}\dist shift"
+
+    return df_metrics.iloc[:, ::-1]
 
     return df_metrics[list(ds_alias.keys())]
 
