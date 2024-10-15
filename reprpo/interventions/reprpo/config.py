@@ -56,5 +56,5 @@ class ReprPOConfig(ExperimentConfig):
     def _name(self):
         transform = type(self.transform).__name__.replace("Config", "")
         loss = type(self.loss).__name__.replace("Config", "").replace("Loss", "")
-        h = "side" if len(self.collection_layers_side) > 0 else "hs"
+        h = "hs" if self.collect_hs else "side"
         return f"{h}-{transform}-{loss}"

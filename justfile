@@ -52,6 +52,23 @@ run_ds +args='':
         math 
         raven_matrices  
         us_history_textbook
+
+        # extreme
+        arc_easy
+        math_easy
+        ranking_logic_easy
+        raven_easy
+        code
+        cooking
+        pursue_goals
+        creative_writing
+        code_low_quality
+        shp_low_quality
+        math_make_questions
+        math_textbook
+        math_fiction
+        us_history_make_questions
+        change_my_view
     )
     export METHODS=(
         dpo
