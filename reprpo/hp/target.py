@@ -33,9 +33,9 @@ default_tuner_kwargs = dict(
     verbose=0,
     batch_size=16,
     eval_samples=128,
-    n_samples=1800 * 2, # to make sure it converges
+    n_samples=1800 * 6, # to make sure it converges
     save=False,
-    wandb=False,
+    wandb=True,
 )
 
 
@@ -89,4 +89,6 @@ def objective_func(kwargs, trial, starter_experiment_name):
 def objective(trial: optuna.Trial, starter_experiment_name, trial2args, key_metric:str) -> float:
     kwargs = trial2args(trial)
     r = objective_func(kwargs, trial, starter_experiment_name)
-    return r#[key_metric]
+    for k,v in r.items():
+        trial.set_user_attr(k, v)
+    return r[key_metric]

@@ -64,6 +64,7 @@ def prefec_loss(
 
         cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(cho, pref_dir)
         rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(rej, pref_dir)
+        rel_pref, rel_orth, rel_cossim = signed_proj_magnitude(cho-rej, pref_dir)
 
         # goes down if the hs moves along the direction of the preference vector
         loss_proj = -cho_pref - rej_pref
@@ -76,8 +77,8 @@ def prefec_loss(
 
         # we could also optimize angle, we want it to be close to 1, so we make it negative
         #  cosine sim ranges from -1 meaning exactly opposite, to 1 meaning exactly the same, with 0 indicating orthogonality
-        # so 1-cosine sim ranges from 0 to 2, with 0 meaning exactly the same, and 2 meaning exactly opposite
-        loss_angle = 2 - cho_cossim - rej_cossim
+        # so we shift it to be a positive loss than approaches zero
+        loss_angle = 3 - cho_cossim - rej_cossim - rel_cossim
 
         return dict(
             loss_proj=loss_proj,
@@ -90,6 +91,7 @@ def prefec_loss(
             _signed_rej_pref=rej_pref,
             _cho_cosine_similarity=cho_cossim,
             _rej_cosine_similarity=rej_cossim,
+            _rel_cosine_similarity=rel_cossim,
         )
 
     # compute losses per layer
@@ -99,12 +101,12 @@ def prefec_loss(
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
     loss_reroute = ll["loss_proj"]
+    if use_proj_rel:
+        loss_reroute += ll["loss_proj_rel"] * 1e6 # a very small number so we make it bigger
     if use_orth_loss:
         loss_reroute += β * ll["loss_orth"]
     if use_angle_loss:
         loss_reroute += β * ll["loss_angle"]
-    if use_proj_rel:
-        loss_reroute += ll["loss_proj_rel"]
     # TODO find better scaling, it needs to be small compared to nll and dpo losses which can be <0.1
     loss_reroute = torch.tanh(loss_reroute / 3) / 10
 
@@ -132,7 +134,10 @@ def prefec_loss(
     if use_nll_loss:
         loss_retain += loss_nll_retain
 
-    loss = loss_reroute.mean() + α * loss_retain.mean()
+    def signed_square_loss(loss):
+        return torch.sign(loss) * (loss ** 2)
+
+    loss = signed_square_loss(loss_reroute).mean() + α * signed_square_loss(loss_retain).mean()
 
     info = dict(
         loss_reroute=loss_reroute,
@@ -152,19 +157,18 @@ def prefec_loss(
 class PrefVecLossConfig:
     """
     moves the hidden states of the chosen and rejected hidden states along the preference vector, with some constraints:
-    - keep text at least as coherent (relu(mode/base),
-    - keep the chosen answer at least prefered (relu(rej-cho)
+    - keep text at least as coherent (relu(mode/base), (nll_loss)
+    - keep the chosen answer at least prefered (relu(rej-cho) dpo_loss
     - punish movement orthogonal to the preference vector: by distance * β
     - punish movement orthogonal to the preference vector: by angle * β
     """
 
-    # remove this as an option since we always want retain to be large
     # α: float = 1.0
     # """balance between reroute and retain loss."""
 
     eps: float = 1.0e-12
 
-    β: float = 2
+    β: float = 50
     """factor to punish orthogonal movement"""
 
     use_orth_loss: bool = False
