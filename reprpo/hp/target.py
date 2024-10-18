@@ -9,6 +9,8 @@ import gc
 import torch
 import functools
 import optuna
+import wandb
+
 key_metric = "acc_gain_vs_ref/oos"
 
 def setattrattr(cfg, k, v):
@@ -30,8 +32,8 @@ def setattrattr(cfg, k, v):
 
 # quick 2m per run
 default_tuner_kwargs = dict(
-    verbose=0,
-    batch_size=16,
+    verbose=1,
+    batch_size=16*3,
     eval_samples=128,
     n_samples=1800 * 6, # to make sure it converges
     save=False,
@@ -91,4 +93,5 @@ def objective(trial: optuna.Trial, starter_experiment_name, trial2args, key_metr
     r = objective_func(kwargs, trial, starter_experiment_name)
     for k,v in r.items():
         trial.set_user_attr(k, v)
+    wandb.finish()
     return r[key_metric]

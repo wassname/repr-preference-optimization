@@ -127,10 +127,10 @@ def get_display_name_from_args(args):
     def rename(s):
         if hasattr(args, 'loss'):
             loss_name = type(args.loss).__name__.lower().replace('config', '').replace('loss', '')
-            s = s.replace('loss', loss_name)
+            s = s.replace('loss.', f"{loss_name}.")
         if hasattr(args, 'transform'):
             transform_name = type(args.transform).__name__.lower().replace('config', '')
-            s = s.replace('transform', transform_name)
+            s = s.replace('transform.', f"{transform_name}.")
         return s
 
     s_all = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff)])
@@ -216,15 +216,15 @@ def train(args, trial: Optional[Trial] = None):
     (save_dir / "config.json").open("w").write(json.dumps(config, indent=4))
 
     # logging
+    if args.verbose < 1:
+        logger.remove() # info by default
+        logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
     log_file = save_dir / "log.txt"
     logger.add(
         log_file,
         level="INFO",
         format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}",
     )
-    if args.verbose < 1:
-        logger.remove()
-        logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
 
     model, tokenizer = load_model(
         args.base_model,
@@ -363,7 +363,7 @@ def train(args, trial: Optional[Trial] = None):
         # checkpoint_callback
     ]
     if trial is not None:
-        callbacks += [PyTorchLightningPruningCallback(trial, 'val/loss_epoch')]
+        callbacks += [PyTorchLightningPruningCallback(trial, 'val/negloss_epoch')]
     if args.verbose>1:
         callbacks += [GenCallback(every=max_steps // 2 + 1)]
 

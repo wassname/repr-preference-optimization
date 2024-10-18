@@ -44,6 +44,7 @@ class PL_MODEL(pl.LightningModule):
             prog_bar=True,
             batch_size=self.hparams.batch_size,
         )
+        info['negloss'] = -loss # for optuna so we have an intermediate value to maximize
 
         (
             self.log_dict(

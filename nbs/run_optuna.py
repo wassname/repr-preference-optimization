@@ -47,12 +47,13 @@ from loguru import logger
 # logger.remove()
 # logger.add(os.sys.stderr, level="WARNING")
 
-os.environ["WANDB_MODE"] = "disabled"
+# os.environ["WANDB_MODE"] = "disabled"
 os.environ["HF_DATASETS_OFFLINE"] = "1"
 os.environ["TQDM_DISABLE"] = "true"
+os.environ["WANDB_GROUP"] = "optuna4"
 # -
 
-f_db = f"sqlite:///optuna3.db"
+f_db = f"sqlite:///optuna4.db"
 f = f_db.replace('sqlite:///', './')
 print(f)
 Path(f).parent.mkdir(parents=True, exist_ok=True)
