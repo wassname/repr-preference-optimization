@@ -35,11 +35,37 @@ Status: Work in Progress
 
 #### Interventions
 
-- [DPO](https://arxiv.org/abs/2305.18290): our baseline method
-- Gradient based
-   - ProjGrad: At each learnable layer, project the accumulated gradient onto a preference direction in hidden space. The preference direction is defined as `hs_chosen - hs_rejected`
-   - ProjBP: Same as above but performed during backpropogation instead of after. This means that any gradient changes reach downstream layers
-- Hidden state based: these methods optimise for hidden states rather than logits. We try different losses and transformers. The transforms are intended to find a mapping where there is better internal state representation, hopefully making internal steering information better
+Our interventions are mean to answer "How can we align hidden states instead of outputs? And if we do, will they generalise out of distribution better than a baseline method?"
+
+Setup:
+- Given a preference pair, we have a chosen answer and a rejected answer (e.g. Q: 2+2, chosen: 4, rejected: 2)
+- We have a base model and we intervene by adding a LoRA adapter, and fine tuning it on some preference dataset (e.g. [MATH](https://github.com/hendrycks/math))
+- For each layer we have activations that correspond with the chosen answer `hs_cho` and `hs_rej`. We have the same for the base model `hs_cho_ref` and `hs_rej_ref`.
+- In the activation space, using the base model, we define a preference vector `pref_dir = hs_cho_ref - hs_rej_ref`
+
+Interventions:
+   - Gradient based: these modify the gradient while fine tuning on DPO
+    - What if we clip the gradient to `pref_dir` before applying to the weights? (while performing DPO)
+    - What if we clip the gradient in `pref_dir` before backpropgating?
+  - Loss based
+     - MSE: What if we make the representation of the rejected text look like the representation of the chosen states, while keeping the chosen states the same?
+       - `loss = MSE(hs_rej, hs_cho_ref.detach()) + MSE(hs_cho, hs_cho_ref.detach())` similar to the [Circuit Breakers paper](https://github.com/GraySwanAI/circuit-breakers)
+     - PrefVec: What if we make the representations move in the preference direction, within a trust region?
+       - `loss = ((hs_cho - hs_rej) /  (hs_cho_ref - hs_rej_ref)) /  • |pref_div|`
+     - Rank: What if we unembed the hidden states, then use KL loss to make sure the rejected states look like the hidden states?
+        - `loss = KL(softmax(hs_ref), softmax(hs_cho_ref))`
+  - Transforms: The hidden states are dominated by the embedding and unembedding information, but we want to target the internal steering information. So we modify the above interventions by adding a transformation on the hidden states, in the hope that it will provide a more natural representation on the hidden states
+     - SVD
+     - Orthogonal
+     - Householder rotation
+     - [ETHER](https://arxiv.org/html/2405.20271v1)
+
+- Baseline: [DPO](https://arxiv.org/abs/2305.18290)
+- Interventions
+   - Gradient based: these intervention clip or modify the gradient
+      - ProjGrad: At each learnable layer, project the accumulated gradient onto a preference direction in hidden space. The preference direction is defined as `hs_chosen - hs_rejected`
+      - ProjBackProp: Same as above but performed during backpropogation instead of after. This means that any gradient changes reach downstream layers
+- Hidden state based: these interventions optimise for hidden states rather than logits. We try different losses. The transforms are intended to find a mapping where there is better internal state representation, hopefully making internal steering information better
    -  MSE: Make the hs_rejected like hs_chosen, while keeping hs_chosen the same
    -  rank: make `log_softmax(hs_rejected) like `log_softmax(hs_chosen)`
    -  prefvec: make both hs_chosen and hs_rejected move along the preference direction
