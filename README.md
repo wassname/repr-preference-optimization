@@ -33,7 +33,7 @@ Alignment needs to work out of distribution (or at least fail gracefully after c
 Status: Work in Progress
 
 
-#### Interventions
+#### Interventions: "How can we align hidden states instead of outputs?"
 
 Our interventions are mean to answer "How can we align hidden states instead of outputs? And if we do, will they generalise out of distribution better than a baseline method?"
 
@@ -70,6 +70,15 @@ Interventions:
    -  rank: make `log_softmax(hs_rejected) like `log_softmax(hs_chosen)`
    -  prefvec: make both hs_chosen and hs_rejected move along the preference direction
 
+  - Define a preference direction `pref_dir` on a reference model as `activations_chosen_text- activations_rejected_text`. Here `activations_chosen_text` is the internal representation of the human prefered answer on a dataset like HelpSteer when run through the base model. We then add a LoRA adapter to the base model, and fine tune it with various interventions:
+     - Gradient based:
+       - What if we clip the gradient to `pref_dir` before applying to the weights? (while performing DPO)
+       - What if we clip the gradient in `pref_dir` before backpropogating?
+    - Loss based
+     - What if we make the representation of the rejected text look like the representation of the chosen states, while keeping the chosen states the same?
+     - What if we make the representations move in the preference direction, within a trust region?
+     - What if we unembedd the hidden states, then use KL loss to make sure the rejected states look like the hidden states?
+  - What if we transform the hidden states using (with SVD, Householder roation or other methods) before applying the above losses? Would this lead to a more effective representation of the inner states?
 
 ### Results
 
