@@ -53,7 +53,7 @@ os.environ["TQDM_DISABLE"] = "true"
 os.environ["WANDB_GROUP"] = "optuna4"
 # -
 
-f_db = f"sqlite:///optuna4.db"
+f_db = f"sqlite:///outputs/optuna4.db"
 f = f_db.replace('sqlite:///', './')
 print(f)
 Path(f).parent.mkdir(parents=True, exist_ok=True)
