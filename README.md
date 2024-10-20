@@ -39,24 +39,24 @@ Our interventions are meant to answer, "How can we align hidden states instead o
 Setup:
 - Given a preference pair, we have a chosen answer and a rejected answer (e.g. Q: 2+2, chosen: 4, rejected: 2).
 - We have a base model, and we intervene by adding a LoRA adapter, then fine-tuning it on some preference dataset (e.g., [MATH](https://github.com/hendrycks/math)).
-- For each layer, we have activations that correspond with the chosen answer `hs_cho` and `hs_rej`. We have the same for the base model `hs_cho_ref` and `hs_rej_ref`.
+- For each layer, we have activations that correspond with the chosen answer `hs_cho` and `hs_rej`. We have the same for the base model `hs_cho_ref` and `hs_rej_ref`. Here `hs` is short for hidden states and is used to refer to the activations, `ref` indicates the base model, which provides reference activations.
 - In the activation space, using the base model, we define a preference vector `pref_dir = hs_cho_ref - hs_rej_ref`.
 
 Interventions:
    - Gradient-based: These modify the gradient while fine-tuning on DPO
-    - What if we clip the gradient to `pref_dir` before applying it to the weights? (while performing DPO)
-    - What if we clip the gradient in `pref_dir` before backpropagating?
+      - What if we clip the gradient to `pref_dir` before applying it to the weights? (while performing DPO)
+      - What if we clip the gradient in `pref_dir` before backpropagating?
   - Loss based:
      - MSE: What if we make the representation of the rejected text look like the representation of the chosen states, while keeping the chosen states the same?
        - `loss = MSE(hs_rej, hs_cho_ref.detach()) + MSE(hs_cho, hs_cho_ref.detach())` similar to the [Circuit Breakers paper](https://github.com/GraySwanAI/circuit-breakers).
      - PrefVec: What if we make the representations move in the preference direction, within a trust region?
        - `loss = ((hs_cho - hs_rej) / (hs_cho_ref - hs_rej_ref)) / |pref_div|`
-     - Rank: What if we unembed the hidden states, then use KL loss to ensure the rejected states look like the hidden states?
+     - Rank: What if we use softmax to treat the hidden states as a distribution, then use KL loss to ensure the rejected hs distribution look like the chosen hs distribution
         - `loss = KL(softmax(hs_ref), softmax(hs_cho_ref))`.
   - Transforms: The hidden states are dominated by the embedding and unembedding information, but we want to target the internal steering information. So we modify the above interventions by adding a transformation to the hidden states, in the hope that it will provide a more natural representation of the hidden states:
      - SVD
      - Orthogonal
-     - Householder rotation
+     - [Householder rotation](https://arxiv.org/html/2405.17484v2)
      - [ETHER](https://arxiv.org/html/2405.20271v1)
 
 ### Results so far
