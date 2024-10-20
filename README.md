@@ -34,51 +34,30 @@ Status: Work in Progress
 
 
 #### Interventions: "How can we align hidden states instead of outputs?"
-
-Our interventions are mean to answer "How can we align hidden states instead of outputs? And if we do, will they generalise out of distribution better than a baseline method?"
+Our interventions are meant to answer, "How can we align hidden states instead of outputs? And if we do, will they generalize out of distribution better than a baseline method?"
 
 Setup:
-- Given a preference pair, we have a chosen answer and a rejected answer (e.g. Q: 2+2, chosen: 4, rejected: 2)
-- We have a base model and we intervene by adding a LoRA adapter, and fine tuning it on some preference dataset (e.g. [MATH](https://github.com/hendrycks/math))
-- For each layer we have activations that correspond with the chosen answer `hs_cho` and `hs_rej`. We have the same for the base model `hs_cho_ref` and `hs_rej_ref`.
-- In the activation space, using the base model, we define a preference vector `pref_dir = hs_cho_ref - hs_rej_ref`
+- Given a preference pair, we have a chosen answer and a rejected answer (e.g. Q: 2+2, chosen: 4, rejected: 2).
+- We have a base model, and we intervene by adding a LoRA adapter, then fine-tuning it on some preference dataset (e.g., [MATH](https://github.com/hendrycks/math)).
+- For each layer, we have activations that correspond with the chosen answer `hs_cho` and `hs_rej`. We have the same for the base model `hs_cho_ref` and `hs_rej_ref`.
+- In the activation space, using the base model, we define a preference vector `pref_dir = hs_cho_ref - hs_rej_ref`.
 
 Interventions:
-   - Gradient based: these modify the gradient while fine tuning on DPO
-    - What if we clip the gradient to `pref_dir` before applying to the weights? (while performing DPO)
-    - What if we clip the gradient in `pref_dir` before backpropgating?
-  - Loss based
+   - Gradient-based: These modify the gradient while fine-tuning on DPO
+    - What if we clip the gradient to `pref_dir` before applying it to the weights? (while performing DPO)
+    - What if we clip the gradient in `pref_dir` before backpropagating?
+  - Loss based:
      - MSE: What if we make the representation of the rejected text look like the representation of the chosen states, while keeping the chosen states the same?
-       - `loss = MSE(hs_rej, hs_cho_ref.detach()) + MSE(hs_cho, hs_cho_ref.detach())` similar to the [Circuit Breakers paper](https://github.com/GraySwanAI/circuit-breakers)
+       - `loss = MSE(hs_rej, hs_cho_ref.detach()) + MSE(hs_cho, hs_cho_ref.detach())` similar to the [Circuit Breakers paper](https://github.com/GraySwanAI/circuit-breakers).
      - PrefVec: What if we make the representations move in the preference direction, within a trust region?
-       - `loss = ((hs_cho - hs_rej) /  (hs_cho_ref - hs_rej_ref)) /  • |pref_div|`
-     - Rank: What if we unembed the hidden states, then use KL loss to make sure the rejected states look like the hidden states?
-        - `loss = KL(softmax(hs_ref), softmax(hs_cho_ref))`
-  - Transforms: The hidden states are dominated by the embedding and unembedding information, but we want to target the internal steering information. So we modify the above interventions by adding a transformation on the hidden states, in the hope that it will provide a more natural representation on the hidden states
+       - `loss = ((hs_cho - hs_rej) / (hs_cho_ref - hs_rej_ref)) / |pref_div|`
+     - Rank: What if we unembed the hidden states, then use KL loss to ensure the rejected states look like the hidden states?
+        - `loss = KL(softmax(hs_ref), softmax(hs_cho_ref))`.
+  - Transforms: The hidden states are dominated by the embedding and unembedding information, but we want to target the internal steering information. So we modify the above interventions by adding a transformation to the hidden states, in the hope that it will provide a more natural representation of the hidden states:
      - SVD
      - Orthogonal
      - Householder rotation
      - [ETHER](https://arxiv.org/html/2405.20271v1)
-
-- Baseline: [DPO](https://arxiv.org/abs/2305.18290)
-- Interventions
-   - Gradient based: these intervention clip or modify the gradient
-      - ProjGrad: At each learnable layer, project the accumulated gradient onto a preference direction in hidden space. The preference direction is defined as `hs_chosen - hs_rejected`
-      - ProjBackProp: Same as above but performed during backpropogation instead of after. This means that any gradient changes reach downstream layers
-- Hidden state based: these interventions optimise for hidden states rather than logits. We try different losses. The transforms are intended to find a mapping where there is better internal state representation, hopefully making internal steering information better
-   -  MSE: Make the hs_rejected like hs_chosen, while keeping hs_chosen the same
-   -  rank: make `log_softmax(hs_rejected) like `log_softmax(hs_chosen)`
-   -  prefvec: make both hs_chosen and hs_rejected move along the preference direction
-
-  - Define a preference direction `pref_dir` on a reference model as `activations_chosen_text- activations_rejected_text`. Here `activations_chosen_text` is the internal representation of the human prefered answer on a dataset like HelpSteer when run through the base model. We then add a LoRA adapter to the base model, and fine tune it with various interventions:
-     - Gradient based:
-       - What if we clip the gradient to `pref_dir` before applying to the weights? (while performing DPO)
-       - What if we clip the gradient in `pref_dir` before backpropogating?
-    - Loss based
-     - What if we make the representation of the rejected text look like the representation of the chosen states, while keeping the chosen states the same?
-     - What if we make the representations move in the preference direction, within a trust region?
-     - What if we unembedd the hidden states, then use KL loss to make sure the rejected states look like the hidden states?
-  - What if we transform the hidden states using (with SVD, Householder roation or other methods) before applying the above losses? Would this lead to a more effective representation of the inner states?
 
 ### Results
 
