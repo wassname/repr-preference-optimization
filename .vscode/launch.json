@@ -104,10 +104,10 @@
                 "CUDA_VISIBLE_DEVICES": "0",
                 "TOKENIZERS_PARALLELISM": "false",
                 //  "REPR_CONFIG": "./configs/dev.yaml", 
-                "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml"
-                //  "REPR_CONFIG": "./configs/tinyllama_a100.yaml", 
+                // "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml"
+                //  "REPR_CONFIG": "./configs/llama-3-2-1b.yaml", 
                 //  "WANDB_MODE": "offline"
-            },
+            },llllllc 
             "pythonArgs": [
                 "-Xfrozen_modules=off"
             ],
@@ -119,7 +119,7 @@
             },
             "args": [
                 "hs-ether-prefvec",
-                "--dev",
+                // "--dev",
                 "--verbose=2"
             ]
         },

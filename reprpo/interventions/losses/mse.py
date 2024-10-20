@@ -104,6 +104,7 @@ def mse_loss(
 @dataclass
 class MSELossConfig:
     α: float = 0.6
+    """weight between retain and reroute loss."""    
     eps: float = 1e-12
 
     def c(self, *args, **kwargs):

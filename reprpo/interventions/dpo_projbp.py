@@ -130,7 +130,7 @@ class ProjBPConfig(ExperimentConfig):
     scale the orthogonal movement to be β proportion of the prefered direction movement
     """
 
-    neg_slope: float = 0.8
+    neg_slope: float = 0.01
     """
     When clipping the gradient in the negative preference direction, we can use leakly relu with this slope. 0 is relu. 0.01 is leaky relu.
     """

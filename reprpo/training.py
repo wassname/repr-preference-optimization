@@ -44,6 +44,7 @@ from reprpo.gen import display_gen, get_model_generations
 from reprpo.helpers.lightning_hist import read_metrics_csv
 from typing import Optional, Tuple, Union
 from optuna.trial import Trial
+from optuna.integration import PyTorchLightningPruningCallback
 import yaml
 
 # Local
@@ -126,10 +127,10 @@ def get_display_name_from_args(args):
     def rename(s):
         if hasattr(args, 'loss'):
             loss_name = type(args.loss).__name__.lower().replace('config', '').replace('loss', '')
-            s = s.replace('loss', loss_name)
+            s = s.replace('loss.', f"{loss_name}.")
         if hasattr(args, 'transform'):
             transform_name = type(args.transform).__name__.lower().replace('config', '')
-            s = s.replace('transform', transform_name)
+            s = s.replace('transform.', f"{transform_name}.")
         return s
 
     s_all = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff)])
@@ -215,15 +216,15 @@ def train(args, trial: Optional[Trial] = None):
     (save_dir / "config.json").open("w").write(json.dumps(config, indent=4))
 
     # logging
+    if args.verbose < 1:
+        logger.remove() # info by default
+        logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
     log_file = save_dir / "log.txt"
     logger.add(
         log_file,
         level="INFO",
         format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}",
     )
-    if args.verbose < 1:
-        logger.remove()
-        logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
 
     model, tokenizer = load_model(
         args.base_model,
@@ -361,6 +362,8 @@ def train(args, trial: Optional[Trial] = None):
         LearningRateMonitor(logging_interval="step"),
         # checkpoint_callback
     ]
+    if trial is not None:
+        callbacks += [PyTorchLightningPruningCallback(trial, 'val/negloss_epoch')]
     if args.verbose>1:
         callbacks += [GenCallback(every=max_steps // 2 + 1)]
 
@@ -391,6 +394,7 @@ def train(args, trial: Optional[Trial] = None):
         enable_progress_bar=args.verbose > 0,
         enable_model_summary=args.verbose > 1,
     )
+    trainer.logger.log_hyperparams(config)
 
     # train
     trainer.fit(pl_model, dl_train, dl_val)
@@ -451,6 +455,8 @@ def train(args, trial: Optional[Trial] = None):
             # 'math', 'sycophancy_mimicry'
         ]
     ]
+    ds_names =  [ds2name(d) for d in datasets]
+    logger.info(f"evaluating on {ds_names}")
 
     clear_mem()
     res, df_res2 = evaluate_model(
@@ -464,10 +470,10 @@ def train(args, trial: Optional[Trial] = None):
     )
 
     ds_alias = OrderedDict(
-        list(zip(["train", "test", "oos", "rnd"], [ds2name(d) for d in datasets]))
+        list(zip(["train", "test", "oos", "rnd"], ds_names))
     )
     ds_alias_rev = {v: k for k, v in ds_alias.items()}
-    df_res2['ds_alias'] = df_res2['dataset'].map(lambda x: ds_alias_rev[x])
+    df_res2['ds_alias'] = df_res2['dataset'].map(lambda x: ds_alias_rev.get(x, x))
 
     # save
     f = str(save_dir) + "/eval.parquet"

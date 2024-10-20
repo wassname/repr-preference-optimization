@@ -1,3 +1,5 @@
+#!/bin/bash -x
+set -x
 # init a runpod env
 apt update
 apt install -y tig vim htop nvtop tmux git curl wget unzip zip jq tree zsh zsh-antigen fizsh ncdu neovim sudo cron lsyncd ranger direnv python3-pygments powerline xsel xclip yadm fzf autojump fish fasd bat exa ripgrep

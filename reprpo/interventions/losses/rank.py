@@ -91,6 +91,8 @@ def rank_loss(
 @dataclass
 class RankLossConfig:
     α: float = 0.25
+    """weight between retain and reroute loss."""    
+    
     # eps: float = 1e-12
 
     β: float = .38

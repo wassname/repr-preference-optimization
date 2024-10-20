@@ -9,8 +9,8 @@ import optuna
 def base_reprpo_params(trial):
     return {
         "lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True),
-        "collect_input": trial.suggest_categorical("collect_input", [True, False]),
-        "collect_hs": trial.suggest_categorical("collect_hs", [True, False]),
+        # "collect_input": trial.suggest_categorical("collect_input", [True, False]),
+        # "collect_hs": trial.suggest_categorical("collect_hs", [True, False]),
     }
 
 def ortho_params(trial):
@@ -33,7 +33,7 @@ def prefvec_params(trial):
         "use_angle_loss": trial.suggest_categorical("use_angle_loss", [True, False]),
         "use_dpo_loss": trial.suggest_categorical("use_dpo_loss", [True, False]),
         "use_nll_loss": trial.suggest_categorical("use_nll_loss", [True, False]),
-        "weight_tokens": trial.suggest_categorical("weight_tokens", [True, False]),
+        # "weight_tokens": trial.suggest_categorical("weight_tokens", [True, False]),
         "use_proj_rel": trial.suggest_categorical("use_proj_rel", [True, False]),
     }
 
@@ -53,7 +53,7 @@ def rank_params(trial):
 
 def mse_params(trial):
     return {
-        "α": trial.suggest_float("α", 0, 10.0),
+        "α": trial.suggest_float("α", 1e-4, 1e4, log=True),
     }
 
 def svd_params(trial):
@@ -62,7 +62,7 @@ def svd_params(trial):
         "dual_svd": trial.suggest_categorical("dual_svd", [True, False]),
     }
     if args["quantile"] == "float":
-        args["quantile"] = trial.suggest_float("quantile_value", 0.1, 0.9, step=0.1)  
+        args["quantile"] = trial.suggest_float("quantile_value", 0.1, 0.9, step=0.1)
     return args
 
 
@@ -71,17 +71,18 @@ def svd_params(trial):
 def projgrad(trial):
     args = {
         "lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True),
-        "β": trial.suggest_float("β", 0.0, 1.0, log=False),
+        "β": trial.suggest_float("β", 1e-2, 1e3, log=True),
         "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
         "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
+        "mag_clip": trial.suggest_categorical("mag_clip", [0, 1]),
         "weight_dim": trial.suggest_int("weight_dim", 0, 2),
-        "neg_slope": trial.suggest_categorical("neg_slope",[0, 'float']), # error?
-        "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
+        "neg_slope": trial.suggest_categorical("neg_slope",[0, 0.1, 0.5]), # error?
+        # "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
     }
-    if args["mag_clip"] == "float":
-        args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
-    if args["neg_slope"] == "float":
-        args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
+    # if args["mag_clip"] == "float":
+    #     args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
+    # if args["neg_slope"] == "float":
+    #     args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
     # args = {f"loss.{k}": v for k, v in args.items()}
     # args.update(base_reprpo_params(trial))
     return args
@@ -92,35 +93,37 @@ def projbp(trial):
         "β": trial.suggest_float("β", 0.0, 1.0, log=False),
         "reverse_pref": trial.suggest_categorical("reverse_pref", [True, False]),
         "scale_orth": trial.suggest_categorical("scale_orth", [True, False]),
-        "neg_slope": trial.suggest_categorical("neg_slope",[0, 'float']),
-        "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
+        # "neg_slope": trial.suggest_categorical("neg_slope",[0, 'float']),
+        # "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
     }
-    if args["mag_clip"] == "float":
-        args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
-    if args["neg_slope"] == "float":
-        args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
+    # if args["mag_clip"] == "float":
+    #     args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
+    # if args["neg_slope"] == "float":
+    #     args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
     # args = {f"loss.{k}": v for k, v in args.items()}
     # args.update(base_reprpo_params(trial))
     return args
 
 def ether_prefvec(trial):
     args = base_reprpo_params(trial)
-    args.update({f"transform.{k}": v for k, v in ether_params(trial).items()})
+    # args.update({f"transform.{k}": v for k, v in ether_params(trial).items()})
     args.update({f"loss.{k}": v for k, v in prefvec_params(trial).items()})
     return args
 
-def hs_hra_rank(trial):
-    args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
-    args.update({f"transform.{k}": v for k, v in hra_params(trial).items()})
+def hs_ether_rank(trial):
+    args = base_reprpo_params(trial)
+    # args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
+    # args.update({f"transform.{k}": v for k, v in hra_params(trial).items()})
     args.update({f"loss.{k}": v for k, v in rank_params(trial).items()})
     return args
 
-def hs_svd_mse(trial):
-    args = {
-        "lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True),
-    }    
+def hs_ether_mse(trial):
+    # args = base_reprpo_params(trial)
+    # args = {
+    #     "lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True),
+    # }    
     args = base_reprpo_params(trial)
-    args.update({f"transform.{k}": v for k, v in svd_params(trial).items()})
+    # args.update({f"transform.{k}": v for k, v in svd_params(trial).items()})
     args.update({f"loss.{k}": v for k, v in mse_params(trial).items()})
     return args
 
@@ -129,9 +132,10 @@ def dpo(trial):
     args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
     return args
 
-def hs_ortho_prefvec(trial):
-    args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
-    args.update({f"transform.{k}": v for k, v in ortho_params(trial).items()})
+def hs_ether_prefvec(trial):
+    args = base_reprpo_params(trial)
+    # args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
+    # args.update({f"transform.{k}": v for k, v in ortho_params(trial).items()})
     args.update({f"loss.{k}": v for k, v in prefvec_params(trial).items()})
     return args
 
@@ -141,39 +145,39 @@ def hs_ortho_prefvec(trial):
 search_spaces = {
     # starter experiment name, search space function
     # number: rougly 50 per float, 10 per bool
-    'hs-svd-mse': (250, hs_svd_mse),
-    'hs-hra-rank': (250, hs_hra_rank),
-    "hs-ortho-prefvec": (250, hs_ortho_prefvec), 
-    'ether-prefvec': (500, ether_prefvec),
-    'projgrad3': (500, projgrad),
-    'projbp': (500, projbp),
-    'dpo': (250, dpo),
+    'hs-ether-mse': (150, hs_ether_mse),
+    'hs-ether-rank': (150, hs_ether_rank),
+    "hs-ether-prefvec": (550, hs_ether_prefvec), 
+    # 'ether-prefvec': (250, ether_prefvec),
+    'projgrad2': (350, projgrad),
+    # 'projbp': (500, projbp),
+    # 'dpo': (250, dpo),
 }
 
 
 experiment_configs = {
-    "hs-svd-mse": (
+    "hs-ether-mse": (
         "",  # unstable due to svd
         ReprPOConfig(
             collect_hs=True, # OOM on sides, to many layers
-            transform=Transforms.svd.value(),
+            transform=Transforms.ether.value(),
             loss=Losses.mse.value(),
         ),
 
     ),
-    "hs-hra-rank": (
+    "hs-ether-rank": (
         "",
         ReprPOConfig(
             collect_hs=True, # OOM on sides, to many layers
-            transform=Transforms.hra.value(),
+            transform=Transforms.ether.value(),
             loss=Losses.rank.value(),
         ),
     ),
-    "hs-ortho-prefvec": (
+    "hs-ether-prefvec": (
         "",  
         ReprPOConfig(
             collect_hs=True,# OOM on sides, to many layers
-            transform=Transforms.ortho.value(),
+            transform=Transforms.ether.value(),
             loss=Losses.prefvec.value(),
         ),
     ),
@@ -187,7 +191,7 @@ experiment_configs = {
     ),
     "dpo": ("DPO experiment.", DPOConfig()),
     "projbp": ("DPO experiment.", ProjBPConfig()),
-    "projgrad3": ("DPO experiment.", ProjGradConfig()),
+    "projgrad2": ("DPO experiment.", ProjGradConfig()),
     # TODO also some side ones with no transform
 }
 

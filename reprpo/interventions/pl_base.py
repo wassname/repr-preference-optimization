@@ -44,6 +44,7 @@ class PL_MODEL(pl.LightningModule):
             prog_bar=True,
             batch_size=self.hparams.batch_size,
         )
+        info['negloss'] = -loss # for optuna so we have an intermediate value to maximize
 
         (
             self.log_dict(
@@ -108,9 +109,9 @@ class PL_MODEL(pl.LightningModule):
         elif self.hparams.schedule == "wsd":
             scheduler = get_wsd_schedule(
                 optimizer,
-                num_warmup_steps=int(self.hparams.num_iterations * 0.05),
-                num_stable_steps=int(self.hparams.num_iterations * 0.9),
-                num_decay_steps=int(self.hparams.num_iterations * 0.05),
+                num_warmup_steps=int(self.hparams.num_iterations * 0.15),
+                num_stable_steps=int(self.hparams.num_iterations * 0.7),
+                num_decay_steps=int(self.hparams.num_iterations * 0.15),
             )
         lr_scheduler = {"scheduler": scheduler, "interval": "step"}
         return [optimizer], [lr_scheduler]
