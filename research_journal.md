@@ -3859,3 +3859,223 @@ Table 1: Key metrics (adapter over base model)
 
 
 I would also like percentage of remaining accuracy instead, lets prototype in notebook
+
+# 2024-10-15 06:59:58
+
+Now I'm just trying to run all the experiments and accumulate results. DPO is narrowly losing but it seems to learn much faster. What is my methods train for much longer...? I need turuthis
+
+![dpo](files/image-2.png)
+![hs-ether-prefvec](files/image-3.png)
+![sid--none-prefbec](files/image-4.png)
+
+Trying this on vast...
+
+![sid--none-prefbec](files/image-5.png)
+![dpo](files/image-6.png)
+800 steps instead of 100 yes
+
+| adapter/ds   |   train |   test |   oos |   rnd |
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.98  |  0.983 | 0.781 | 0.677 |
+| projgrad     |   0.996 |  0.977 | 0.747 | 0.637 |
+| dpo          |   0.997 |  0.979 | 0.748 | 0.631 |
+
+but the diff is not huge?
+
+# 2024-10-15 18:51:53
+
+
+| adapter/ds       |   train |   test |   oos |   rnd |
+|:-----------------|--------:|-------:|------:|------:|
+| base             |   0.779 |  0.755 | 0.701 | 0.796 |
+| hs-ETHER-PrefVec |   0.816 |  0.747 | 0.661 | 0.703 |
+| side-None-PrefVec|   0.867 |  0.777 | 0.711 | 0.685 |
+| dpo              |   0.991 |  0.864 | 0.744 | 0.737 |
+Table 2: Absolute accuracy after training with named adapter on ds:`genies_preferences-alpaca_mmlu-train[:750]` compared to base model `Llama-3-Base-8B-SFT` for various distribution shifts:
+- `train`: `genies_preferences-alpaca_mmlu-train[:750]`
+- `test`: `genies_preferences-alpaca_mmlu-test`
+- `oos`: `genies_preferences-spanish_output-test`
+- `rnd`: `genies_preferences-raven_matrices-test`
+
+
+python scripts/train.py side-none-prefvec --n_samples=30000 --lr=1e-5 --dataset=alpaca_mmlu --verbose=2
+
+gives a words result
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.796 |
+| side-None-PrefVec |   0.848 |  0.755 | 0.673 | 0.652 |
+Table 2: Absolute accuracy
+
+is this even too high
+python scripts/train.py side-none-prefvec --n_samples=10000 --lr=6e-4 --dataset=alpaca_mmlu
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.796 |
+| side-None-PrefVec |   0.788 |  0.76  | 0.693 | 0.8   |
+Table 2: Absolute accuracy
+
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.677 |
+| side-None-PrefVec  --n_samples=130000 --lr=1e-6 |   0.784 |  0.753 | 0.7   | 0.672 |
+| projgrad  --n_samples=30000 --lr=1e-5   |   0.989 |  0.801 | 0.733 | 0.659 |
+
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.677 |
+| side-None-PrefVec --n_samples=30000 --lr=1e-5  |   0.787 |  0.756 | 0.697 | 0.672 |
+Table 2: Absolute accuracy
+
+Table 2: Absolute accuracy
+![very long prefvec still going](files/image-7.png)
+![projgrd](files/image-8.png)
+  - python scripts/train.py projgrad --n_samples=30000 --lr=1e-5 --dataset=alpaca_mmlu --verbose=2
+
+python scripts/train.py side-none-prefvec --n_samples=10000 --lr=6e-4 --dataset=alpaca_mmlu
+python scripts/train.py projgrad --n_samples=10000 --lr=6e-4 --dataset=alpaca_mmlu
+
+
+I think I need low nd very ong? it actually seems faster at a lower lr
+
+python scripts/train.py side-none-prefvec --n_samples=10000 --lr=4e-5 --dataset=alpaca_mmlu --verbose=2
+python scripts/train.py projgrad --n_samples=10000 --lr=2e-5 --dataset=alpaca_mmlu --verbose=2
+
+
+python scripts/train.py side-none-prefvec --n_samples=30000 --lr=1e-5 --dataset=alpaca_mmlu --verbose=2
+python scripts/train.py projgrad --n_samples=30000 --lr=1e-5 --dataset=alpaca_mmlu --verbose=2
+
+python scripts/train.py side-none-prefvec --n_samples=130000 --lr=1e-6 --dataset=alpaca_mmlu --verbose=2
+python scripts/train.py projgrad --n_samples=130000 --lr=1e-6 --dataset=alpaca_mmlu --verbose=2
+
+python scripts/train.py side-none-prefvec --n_samples=20000 --lr=6e-5 --dataset=alpaca_mmlu --verbose=2
+python scripts/train.py projgrad --n_samples=20000 --lr=6e-5 --dataset=alpaca_mmlu --verbose=2
+
+
+Ah I tried squaring prevvec (or at least the reroute part) and it seemed to work. Also rel is 1e6 rims bigger
+oh wait I can't square it if it's negative grrr
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.677 |
+| side-None-PrefVec |   0.771 |  0.752 | 0.687 | 0.629 |
+Table 2: Absolute accuracy
+
+
+loss_prj rel was -5e-6*1e08=-500, loss_proj was -400
+
+
+hmm try with nll loss, and balancing
+python scripts/train.py side-none-prefvec --n_samples=12000 --lr=8e-5 --dataset=alpaca_mmlu --verbose=2 --loss.β=200 --loss.use-nll-loss --loss.α=100
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.677 |
+| side-None-PrefVec |   0.779 |  0.755 | 0.701 | 0.677 |
+Table 2: Absolute accuracy
+
+python scripts/train.py side-none-prefvec --n_samples=12000 --lr=8e-5 --dataset=alpaca_mmlu --verbose=2 --loss.β=1 --loss.use-nll-loss --loss.α=100 --loss.use-dpo-loss
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.677 |
+| side-None-PrefVec |   0.896 |  0.793 | 0.705 | 0.683 |
+| dpo               |   0.991 |  0.864 | 0.744 | - |
+Table 2: Absolute accuracy
+
+
+python scripts/train.py side-none-prefvec --n_samples=22000 --lr=1e-4 --dataset=alpaca_mmlu --verbose=2 --loss.β=1 --loss.use-nll-loss --loss.α=100 --loss.use-dpo-loss
+
+
+hmm it occurs to me that I don't need nll at all, or it can be much smaller....
+
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.677 |
+| side-None-PrefVec |   0.923 |  0.813 | 0.713 | 0.665 |
+| dpo               |   0.991 |  0.864 | 0.744 | - |
+Table 2: Absolute accuracy
+
+try one with bigger angle loss, and no nll
+
+python scripts/train.py side-none-prefvec --n_samples=22000 --lr=1e-4 --dataset=alpaca_mmlu --verbose=2 --loss.β=10 --loss.α=100 --loss.use-dpo-loss
+
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.677 |
+| side-None-PrefVec |   0.943 |  0.828 | 0.725 | 0.627 |
+| dpo               |   0.991 |  0.864 | 0.744 | - |
+Table 2: Absolute accuracy
+
+it actually started unlearning at the end... it seems that it can't do the angle and orthogonal ones well? or perhaps not at the same time
+
+
+so lets try one with angle loss only ramped up
+the onther with only dpo
+and only nll
+```sh
+### only dpo
+python scripts/train.py side-none-prefvec --n_samples=22000 --dataset=alpaca_mmlu --verbose=2 --loss.β=0.001 --no-use-angle-loss --loss.α=100 --loss.use-dpo-loss
+
+| side-None-PrefVec |   0.876 |  0.785 | 0.703 | 0.687 |
+
+python scripts/train.py side-none-prefvec --n_samples=42000 
+--dataset=alpaca_mmlu --verbose=2 --loss.β=0.001 --no-use-angle-loss --loss.α=10 --loss.use-dpo-loss
+| side-none-prefvec | 0.876 | 0.785 | 0.703 | 0.687 | 
+
+### only nll
+python scripts/train.py side-none-prefvec --n_samples=42000 --dataset=alpaca_mmlu --verbose=2 --loss.β=0.001 --no-use-angle-loss --loss.α=10 --loss.use-nll-loss
+| 0.55 | 0.533 | 0.307| 0.497 |
+
+### only angle
+python scripts/train.py side-none-prefvec --n_samples=42000 --dataset=alpaca_mmlu --verbose=2 --loss.β=10 --loss.α=0.001
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.677 |
+| side-None-PrefVec |   0.516 |  0.5   | 0.497 | 0.485 |
+Table 2: Absolute accuracy
+
+python scripts/train.py projgrad --n_samples=42000 --dataset=alpaca_mmlu --verbose=2
+| adapter/ds        |   train |   test |   oos |   rnd |
+|:------------------|--------:|-------:|------:|------:|
+| base              |   0.779 |  0.755 | 0.701 | 0.677 |
+| dpo               |   0.991 |  0.864 | 0.744 | - |
+| projgrad          |   0.999 |  0.828 | 0.759 | 0.692 |
+```
+
+
+I should probobly do more optuna stuff, but with much longer runs, and wandb logging so I can check!
+
+# 2024-10-17 18:00:21
+
+I'm doing an optuna seocnd one with wandb, long runs, early stopping, etc
+
+But first I need to restrict the search space, and balance the losses If I can
+
+
+'loss_proj' = 9.976604461669922
+'loss_orth' = 2.501805647625588e-05
+'loss_angle' = 1.6716301441192627
+'loss_proj_rel' = 6.633349016738066e-07
+'_cho_orthorgonal2pref' = 3.947233835788211e-06
+'_ref_orthorgonal2pref' = 6.720138117088936e-06
+'_signed_cho_pref' = 2.0076420241821324e-06
+'_signed_rej_pref' = 2.670976982699358e-06
+'_cho_cosine_similarity' = 0.19653406739234924
+'_rej_cosine_similarity' = 0.22570520639419556
+'_rel_cosine_similarity' = -0.09386942535638809
+
+
+24GB with hs
+
+
+# 2024-10-21 07:16:36
+
+- recover optuna.db
+- change to vast.ai cheaper
+- check wandb to make sure they were converging?
