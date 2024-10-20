@@ -59,12 +59,28 @@ Interventions:
      - Householder rotation
      - [ETHER](https://arxiv.org/html/2405.20271v1)
 
-### Results
+### Results so far
 
 In the below results we look at how much the models accuracy improved in training, test, out-of-distribution and random data when using the proposed method compared to DPO.
 
 - [ ] TODO replace these with mean of 5 random seeds, show they occur on multiple datasets and model sizes
 - [ ] TODO hyperopt each
+
+
+|                    |   n_trials |    best OOD score |   n_trials_completed |
+|:-------------------|-----------:|--------:|---------------------:|
+| projgrad3          |        208 | 1.27938 |                  207 |
+| dpo                |        250 | 1.27553 |                  248 |
+| side-hra-rank      |        183 | 1.22929 |                  182 |
+| ether-prefvec      |        326 | 1.18304 |                  321 |
+| side-ether-prefvec |        209 | 1.16923 |                  208 |
+| hs-ortho-prefvec   |        261 | 1.15222 |                  259 |
+| hs-hra-rank        |        262 | 1.15222 |                  259 |
+| projbp             |        363 | 1.07129 |                  227 |
+| hs-svd-mse         |        332 | 1.01727 |                   14 |
+| side-svd-mse       |        316 | 1.00962 |                   28 |
+
+
 
 | Model | Train | Test | OOS | Random |
 | --- | --- | --- | --- | --- |
