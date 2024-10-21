@@ -94,5 +94,5 @@ def objective(trial: optuna.Trial, starter_experiment_name, trial2args, key_metr
     r = objective_func(kwargs, trial, starter_experiment_name)
     for k,v in r.items():
         trial.set_user_attr(k, v)
-    wandb.finish(quiet=True)
+    # wandb.finish(quiet=True)
     return r[key_metric]

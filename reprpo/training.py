@@ -168,7 +168,7 @@ def train(args, trial: Optional[Trial] = None):
     # we can set an experiment group name from env vars, otherwise it will just groupt by model and training ds
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
-        group_name = safe_fn(os.environ.get("WANDB_GROUP") + "_" + group_name)
+        group_name = safe_fn(os.environ.get("WANDB_GROUP") + "-" + group_name)
         logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/groups/{group_name} ")
     if args.verbose > 1:
         logger.info("args")
@@ -205,11 +205,16 @@ def train(args, trial: Optional[Trial] = None):
             project="reprpo2",
             # entity="wassname",
             group=group_name,
-            config=config,
+            # config=config,
             mode="disabled"
             if os.environ.get("WANDB_MODE", None) == "disabled"
             else "online",
         )
+
+        # in case we already initialised it earlier, update it
+        wandb.config.update(config)
+        wandb.run.tags = tuple(wandb.run.tags) + (ds_name_train, model_fname)
+        wandb.run.name = run_fname
     # run = pl_wandb_logger._experiment
 
     # config
@@ -463,8 +468,8 @@ def train(args, trial: Optional[Trial] = None):
         bf16=True,
         torch_empty_cache_steps=100,
         verbose=args.verbose,
-        # dataloader_num_workers=12,
-        dataloader_pin_memory=True,
+        # dataloader_num_workers=2,
+        # dataloader_pin_memory=True,
     )
 
     ds_alias = OrderedDict(

@@ -50,7 +50,8 @@ from loguru import logger
 # os.environ["WANDB_MODE"] = "disabled"
 os.environ["HF_DATASETS_OFFLINE"] = "1"
 os.environ["TQDM_DISABLE"] = "true"
-os.environ["WANDB_GROUP"] = "optuna4"
+ts = pd.Timestamp.now().strftime("%H%M%S")
+os.environ["WANDB_GROUP"] = "optuna4_{ts}"
 # -
 
 f_db = f"sqlite:///outputs/optuna4.db"
@@ -123,6 +124,11 @@ for study_name in study_names:
 # -
 
 
+from optuna.integration.wandb import WeightsAndBiasesCallback
+wandb_kwargs = {"project": "reprpo2-optuna"}
+wandbc = WeightsAndBiasesCallback(wandb_kwargs=wandb_kwargs, as_multirun=True)
+
+
 
 MAX_TRIALS= 250
 import numpy as np
@@ -156,12 +162,17 @@ while True:
 
             
             if n < max_trials:
-                _objective = functools.partial(objective, key_metric=key_metric, starter_experiment_name=exp_name, trial2args=trial2args)
+                @wandbc.track_in_wandb()
+                def _objective(trial):
+                    return objective(trial, key_metric=key_metric, starter_experiment_name=exp_name, trial2args=trial2args)
+                # _objective = functools.partial(objective, key_metric=key_metric, starter_experiment_name=exp_name, trial2args=trial2args)
+                # _objective = wandbc.track_in_wandb(_objective)
 
                 study.optimize(_objective, 
                             n_trials=20, # do 20 at a time, round robin, untill done
                             gc_after_trial=True, 
-                            catch=(AssertionError, OSError, RuntimeError, KeyError, torch.OutOfMemoryError)
+                            catch=(AssertionError, OSError, RuntimeError, KeyError, torch.OutOfMemoryError),
+                            callbacks=[wandbc],
                 )
 
             print('='*80)
