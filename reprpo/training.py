@@ -254,61 +254,49 @@ def train(args, trial: Optional[Trial] = None):
     if args.verbose > 1:
         logger.info(f"{model}")
 
-    # ## Load data
-    dataset2 = load_dataset("wassname/genies_preferences", name=args.dataset)
-
-    # ### Data Loader
-    # We use huggingface datasets, which are pretokenized. So that we can stack
-
+    if args.dev:
+        # no cache
+        import datasets
+        datasets.disable_caching()
     tokenize_row = TokenizeRow(
         tokenizer,
         max_length=args.max_length,
         max_prompt_length=args.max_prompt_length,
     )
-
-    if args.dev:
-        # no cache
-        import datasets
-
-        datasets.disable_caching()
-    dataset3 = dataset2.map(tokenize_row, batched=False)
+    
+    # ## Load data
+    ds_train = load_dataset("wassname/genies_preferences", name=args.dataset)
+    ds_train_tok = ds_train.map(tokenize_row, batched=False)    
 
     if args.verbose > 0:
         logger.info(
-            f"Prompts truncated {np.mean(dataset3['train']['prompt_truncated']):2.2%}"
+            f"Prompts truncated {np.mean(ds_train_tok['train']['prompt_truncated']):2.2%}"
         )
         logger.info(
-            f"Chosens truncated {np.mean(dataset3['train']['chosen_truncated']):2.2%}"
+            f"Chosens truncated {np.mean(ds_train_tok['train']['chosen_truncated']):2.2%}"
         )
 
-    ds = dataset3
-    dl_train = DataLoader(
-        ds["train"]
-        .select_columns(["chosen", "rejected", "chosen_mask", "rejected_mask"])
-        .with_format("torch"),
-        batch_size=args.batch_size,
-        #   collate_fn=default_data_collator
-    )
+    def ds2dl(ds):
+        return DataLoader(
+            ds
+            .select_columns(["chosen", "rejected", "chosen_mask", "rejected_mask"])
+            .with_format("torch"),
+            batch_size=args.batch_size,
+        )
 
-    dl_val = DataLoader(
-        ds["test"]
-        .select_columns(["chosen", "rejected", "chosen_mask", "rejected_mask"])
-        .with_format("torch"),
-        batch_size=args.batch_size,
-        # , collate_fn=default_data_collator
+    dl_train = ds2dl(ds_train_tok["train"])
+
+    # do we want to use test or OOS as val? I choose OOS as I want to find the intervention that generalises the best (and then I validate on other distribution shifts to avoid cherry-picking/overfitting)
+    ds_val_oos = dist2datasets(
+        GENIES,
+        N=150,
+        source=[args.dataset],
+    )[0].map(tokenize_row, batched=False)
+    dl_val = ds2dl(
+        ds_val_oos
     )
 
     if args.verbose > 2:
-        # logger.info("QC one dataset row")
-        # r = dataset2["train"][0]
-        # logger.info(r["prompt"])
-        # logger.info("===")
-        # logger.info(r["chosen"])
-        # logger.info("---")
-        # logger.info(r["rejected"])
-        logger.info("===")
-        # logger.info()
-
         logger.info("QC one train batch (after pad/crop")
         batch = next(iter(dl_train))
         # logger.info(batch.keys())
@@ -363,7 +351,7 @@ def train(args, trial: Optional[Trial] = None):
         # checkpoint_callback
     ]
     if trial is not None:
-        callbacks += [PyTorchLightningPruningCallback(trial, 'val/negloss_epoch')]
+        callbacks += [PyTorchLightningPruningCallback(trial, 'val/dpo_acc')]
     if args.verbose>1:
         callbacks += [GenCallback(every=max_steps // 2 + 1)]
 
@@ -374,7 +362,7 @@ def train(args, trial: Optional[Trial] = None):
         loggers.append(pl_wandb_logger)
     trainer = pl.Trainer(
         max_steps=max_steps,
-        limit_val_batches=6,
+        # limit_val_batches=max(6, max_steps//10),
         gradient_clip_val=0.3,
         # accelerator='gpu',
         devices=1,
@@ -427,6 +415,8 @@ def train(args, trial: Optional[Trial] = None):
 
     logger.debug("eval")
 
+    ds_val_oos = ds_train_tok = dl_train = dl_val = None
+    trainer = None
     # ## Eval
     # eval on ethics, GENIES, and our train dataset
     N = args.eval_samples
@@ -441,19 +431,25 @@ def train(args, trial: Optional[Trial] = None):
             "wassname/genies_preferences", name=args.dataset, split="test", N=N
         ),
     ]
+    # datasets += [
+    #     load_dataset_n("wassname/genies_preferences", name=name, split="test", N=N)
+    #     for name in [
+    #         # "math_make_questions",  #'truthful_qa',# 'wrong_arc', 
+    #         'ranking_logic',  # FIXME make sure we choose a dataset that is random and not in 
+    #         # 'math', 'sycophancy_mimicry'
+    #     ]
+    # ]
+
+    # get the out of distribution set
     datasets += dist2datasets(
         GENIES,
         # N=N, # can't cheap out on the main metric
         source=[args.dataset],
     )  # our hard OOS test
-    # datasets += get_ethics_datasets(N=N)
+
+    # our unrelated dataset
     datasets += [
-        load_dataset_n("wassname/genies_preferences", name=name, split="test", N=N)
-        for name in [
-            # "math_make_questions",  #'truthful_qa',# 'wrong_arc', 
-            'ranking_logic',
-            # 'math', 'sycophancy_mimicry'
-        ]
+        load_dataset_n('wassname/ethics_expression_preferences', name='justice', split='test', N=N)
     ]
     ds_names =  [ds2name(d) for d in datasets]
     logger.info(f"evaluating on {ds_names}")
@@ -467,6 +463,8 @@ def train(args, trial: Optional[Trial] = None):
         bf16=True,
         torch_empty_cache_steps=100,
         verbose=args.verbose,
+        # dataloader_num_workers=12,
+        dataloader_pin_memory=True,
     )
 
     ds_alias = OrderedDict(
@@ -552,12 +550,12 @@ def key_metrics(df_res2, adapter_name, ds_alias):
         return o
 
     # Define the datasets
-    datasets = {
-        "train": ds_name_train,
-        "test": ds_name_test,
-        "oos": ds_name_oos,
-        "rnd": ds_name_rnd,
-    }
+    datasets = OrderedDict(
+        train=ds_name_train,
+        test=ds_name_test,
+        oos=ds_name_oos,
+        rnd=ds_name_rnd,
+    )
 
     # Generate metrics for each category
     acc_gain_vs_ref_metrics = generate_metrics(
@@ -587,11 +585,10 @@ def key_metrics(df_res2, adapter_name, ds_alias):
 
     return df_metrics.iloc[:, ::-1]
 
-    return df_metrics[list(ds_alias.keys())]
-
 
 def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
     adapter_name = df_res2[["adapter"]].query('adapter!="base"').values[0, 0]
+    ds_alias_rev = {v:k for k,v in ds_alias.items()}
 
     df_res = (
         df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
@@ -599,7 +596,7 @@ def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
         .unstack()
         .T
     )
-    df_res.columns = [d.replace("genies_preferences-", "") for d in df_res.columns]
+    df_res = df_res.rename(columns=ds_alias_rev)
 
     df_metrics = key_metrics(df_res2, adapter_name, ds_alias)
     if verbose:
@@ -607,8 +604,7 @@ def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
         logger.info("""Table 1: Key metrics (adapter over base model)\n""")
 
     cols = [v.replace("genies_preferences-", "") for v in ds_alias.values()]
-    df_res2 = df_res[cols]
-    df_res2.columns = list(ds_alias.keys())
+    df_res2 = df_res[list(ds_alias.keys())]
     df_res2.index.name = "adapter/ds"
     if verbose:
         logger.info(f"\n{df_res2.round(3).to_markdown()}")

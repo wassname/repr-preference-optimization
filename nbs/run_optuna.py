@@ -165,7 +165,7 @@ while True:
                 )
 
             print('='*80)
-            wandb.finish(silent=True)
+            wandb.finish(quiet=True)
         except KeyboardInterrupt:
             break
         except Exception as e:
