@@ -22,6 +22,7 @@ import pandas as pd
 import torch
 from datasets import load_dataset
 
+import warnings
 # get a union class from the enum
 
 from lightning.pytorch.loggers.csv_logs import CSVLogger
@@ -199,22 +200,30 @@ def train(args, trial: Optional[Trial] = None):
         'save_dir': str(save_dir),
     'ts': ts,}})
     if args.wandb:
-        wandb.require(experiment="core")
-        pl_wandb_logger=WandbLogger(
-            name=run_fname, save_dir=save_dir,
-            project="reprpo2",
-            # entity="wassname",
-            group=group_name,
-            # config=config,
-            mode="disabled"
-            if os.environ.get("WANDB_MODE", None) == "disabled"
-            else "online",
-        )
+        with warnings.catch_warnings(action='ignore'):
+
+            wandb.require(experiment="core")
+            pl_wandb_logger=WandbLogger(
+                name=run_fname, save_dir=save_dir,
+                project="reprpo2",
+                # entity="wassname",
+                group=group_name,
+                # config=config,
+                mode="disabled"
+                if os.environ.get("WANDB_MODE", None) == "disabled"
+                else "online",
+            )
 
         # in case we already initialised it earlier, update it
         wandb.config.update(config)
-        wandb.run.tags = tuple(wandb.run.tags) + (ds_name_train, model_fname)
+        wandb.run.tags = tuple(wandb.run.tags) + (
+            ds_name_train, 
+            model_fname, 
+            adapter_name
+        )
         wandb.run.name = run_fname
+        # wandb.run.groupName = group_name
+        wandb.run._quiet = True
     # run = pl_wandb_logger._experiment
 
     # config
