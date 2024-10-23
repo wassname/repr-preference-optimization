@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from dataclasses import dataclass, asdict
 from typing import Literal, Optional
-
+from .helpers import TransformByLayer
 
 class OrthoTransform(nn.Module):
     def __init__(
@@ -20,6 +20,10 @@ class OrthoTransform(nn.Module):
         )
 
 
+    
+class OrthoTransforms(TransformByLayer):
+    Transform = OrthoTransform
+
 @dataclass
 class OrthoConfig:
     orthogonal_map: Literal["householder", "cayley", "matrix_exp"] = "householder"
@@ -29,4 +33,4 @@ class OrthoConfig:
         *args,
         **kwargs,
     ):
-        return OrthoTransform(*args, **kwargs, **asdict(self))
+        return OrthoTransforms(*args, **kwargs, **asdict(self))

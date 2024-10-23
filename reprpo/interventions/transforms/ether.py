@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import math
 from dataclasses import dataclass, asdict
-
+from .helpers import TransformByLayer
 
 class ETHERLayer(nn.Module):
     def __init__(
@@ -262,6 +262,11 @@ class ETHERLinearSmall(ETHERLinear):
         return self.linear_up(super_out)
 
 
+
+    
+class EtherTransforms(TransformByLayer):
+    Transform = ETHERLinearSmall
+
 @dataclass
 class ETHERConfig:
     """ETHER parameters"""
@@ -288,7 +293,7 @@ class ETHERConfig:
     reduction: int = 60
 
     def c(self, *args, **kwargs):
-        return ETHERLinearSmall(
+        return EtherTransforms(
             *args,
             **kwargs,
             **asdict(self),

@@ -15,7 +15,7 @@ def rank_loss(
     ref_cho: ReprPOModelOutput,
     ref_rej: ReprPOModelOutput,
     batch: Dict[str, Any],
-    transform: Optional[Callable] = None,
+    transforms: Optional[Callable] = None,
     # custom loss_args
     α: float = 1,
     β: float = 100,
@@ -30,11 +30,14 @@ def rank_loss(
     - nll to make sure the chosen is at least as likely
     """
 
-    def preproc_hs(o, k):
-        hs = o.hs[k]
-        if transform is not None:
-            hs = transform(hs)
-        hs = hs.log_softmax(-1)
+    if transforms is not None:
+        pi_cho.hs = transforms(pi_cho.hs)
+        pi_rej.hs = transforms(pi_rej.hs)
+        ref_cho.hs = transforms(ref_cho.hs)
+        ref_rej.hs = transforms(ref_rej.hs)
+
+    def preproc_hs(o: Dict[str, Tensor], k: str):
+        hs = o.hs[k].log_softmax(-1)
         hs = reduce_tokens_w_attention(hs, o.mask)
         return hs
 

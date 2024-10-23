@@ -16,7 +16,7 @@ def prefec_loss(
     ref_cho: ReprPOModelOutput,
     ref_rej: ReprPOModelOutput,
     batch: Dict[str, Any],
-    transform: Optional[Callable] = None,
+    transforms: Optional[Callable] = None,
     # custom loss_args
     α: float = 1.0,
     eps=1e-12,
@@ -32,10 +32,14 @@ def prefec_loss(
     movement of hs along the hs pref vector.
     """
 
-    def preproc_hs(o, k):
+    if transforms is not None:
+        pi_cho.hs = transforms(pi_cho.hs)
+        pi_rej.hs = transforms(pi_rej.hs)
+        ref_cho.hs = transforms(ref_cho.hs)
+        ref_rej.hs = transforms(ref_rej.hs)
+
+    def preproc_hs(o, k: str):
         hs = o.hs[k]
-        if transform is not None:
-            hs = transform(hs)
         hs = reduce_tokens_w_attention(hs, o.mask, weight_tokens=weight_tokens)
         return hs
 
