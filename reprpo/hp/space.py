@@ -129,7 +129,7 @@ def hs_ether_mse(trial):
 
 
 def dpo(trial):
-    args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
+    args = {"lr": trial.suggest_float("lr", 1e-6, 1e-4, log=True)}
     return args
 
 def hs_ether_prefvec(trial):
@@ -151,7 +151,7 @@ search_spaces = {
     # 'ether-prefvec': (250, ether_prefvec),
     'projgrad2': (350, projgrad),
     # 'projbp': (500, projbp),
-    # 'dpo': (250, dpo),
+    'dpo': (5, dpo),
 }
 
 

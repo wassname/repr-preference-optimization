@@ -39,20 +39,25 @@ class PL_MODEL(pl.LightningModule):
         self.log(
             f"{phase}/loss",
             loss,
+            on_epoch=False,
+            on_step=True,
+            prog_bar=True,
+            batch_size=self.hparams.batch_size,
+        )
+        self.log(
+            f"{phase}/dpo_acc",
+            info.pop(f"dpo_acc"),
             on_epoch=True,
             on_step=True,
             prog_bar=True,
             batch_size=self.hparams.batch_size,
         )
-        info['negloss'] = -loss # for optuna so we have an intermediate value to maximize
 
-        (
-            self.log_dict(
-                {f"{phase}/{k}": v for k, v in info.items()},
-                # on_epoch=True,
-                on_step=True,
-                batch_size=self.hparams.batch_size,
-            ),
+        self.log_dict(
+            {f"{phase}/{k}": v for k, v in info.items()},
+            # on_epoch=True,
+            on_step=True,
+            batch_size=self.hparams.batch_size,
         )
         return loss
 
