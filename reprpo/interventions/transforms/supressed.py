@@ -17,12 +17,12 @@ from typing import Literal, Optional, Dict
 from .helpers import TransformByLayer
 from ..types import HS
 
-class SupressedHSTransform(TransformByLayer):
+class SupressedHSTransform(nn.Module):
     def __init__(self, dim_sizes: Dict[str, int], model: nn.Module, **kwargs):
         super().__init__()
 
     def forward(self, x: Dict[str, HS]) -> Dict[str, HS]:
-        keys = sorted([int(k) for k in x.keys()])   
+        keys = sorted([k for k in x.keys()])   
         hs = torch.stack([x[k] for k in keys], dim=1)
         hs = hs.diff(dim=1).clamp(min=None, max=0)
         return {k: hs[:, i] for i, k in enumerate(keys[1:])}

@@ -7,7 +7,7 @@ experiment_configs = {
     "hs-ether-prefvec2": ("No transform one side activations and use prefvec loss.",
         ReprPOConfig(
             transform=Transforms.ether.value(),
-            loss=Losses.prefvec.value(β=3),
+            loss=Losses.prefvec.value(β=3.),
         ),
     ),
 
@@ -64,6 +64,14 @@ experiment_configs.update({
         ),
     ),
     "projbp": ("projbp experiment.", ProjBPConfig()),
+
+    "hs-suppressed-prefvec": ('', 
+        ReprPOConfig(
+            collect_hs=True,
+            transform=Transforms.ether.value(),
+            loss=Losses.prefvec.value(β=0.1),
+        ),
+    ),
 
 
 })

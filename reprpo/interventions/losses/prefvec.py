@@ -172,7 +172,7 @@ class PrefVecLossConfig:
 
     eps: float = 1.0e-12
 
-    β: float = 5
+    β: float = 5.
     """factor to punish orthogonal movement"""
 
     use_orth_loss: bool = False

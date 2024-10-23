@@ -36,7 +36,7 @@ def rank_loss(
         ref_cho.hs = transforms(ref_cho.hs)
         ref_rej.hs = transforms(ref_rej.hs)
 
-    def preproc_hs(o: Dict[str, Tensor], k: str):
+    def preproc_hs(o, k: str):
         hs = o.hs[k].log_softmax(-1)
         hs = reduce_tokens_w_attention(hs, o.mask)
         return hs

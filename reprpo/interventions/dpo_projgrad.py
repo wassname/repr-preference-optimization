@@ -258,7 +258,6 @@ class PL_ProjGrad_MODEL(PL_MODEL):
                 else:
                     scale = 1.0
 
-                h = self.hparams
                 param.grad = F.leaky_relu(grad_proj_onto_pref, h.neg_slope) + h.β * grad_orthogonal / scale
 
                 proj_frac.append(F.relu(grad_proj_onto_pref).norm()/grad.norm())

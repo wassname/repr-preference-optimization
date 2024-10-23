@@ -13,11 +13,14 @@ class OrthoTransform(nn.Module):
         model: Optional[nn.Module] = None,
     ):
         super().__init__()
-        self.ortho = nn.Linear(in_features, out_features, bias=False)
-        torch.nn.init.orthogonal_(self.ortho.weight)
+        ortho = nn.Linear(in_features, out_features, bias=False)
+        torch.nn.init.orthogonal_(ortho.weight)
         self.transform = torch.nn.utils.parametrizations.orthogonal(
-            self.ortho, orthogonal_map=orthogonal_map
+            ortho, orthogonal_map=orthogonal_map
         )
+
+    def forward(self, x):
+        return self.transform(x)
 
 
     

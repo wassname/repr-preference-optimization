@@ -271,7 +271,7 @@ class EtherTransforms(TransformByLayer):
 class ETHERConfig:
     """ETHER parameters"""
 
-    nb: int = 20
+    nb: int = 16
     """number of diagonal blocks"""
 
     Htype: Literal["ether", "etherplus", "oft", "etherplusHH"] = "ether"
