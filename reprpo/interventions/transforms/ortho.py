@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from dataclasses import dataclass, asdict
 from typing import Literal, Optional
-
+from .helpers import TransformByLayer
 
 class OrthoTransform(nn.Module):
     def __init__(
@@ -13,12 +13,19 @@ class OrthoTransform(nn.Module):
         model: Optional[nn.Module] = None,
     ):
         super().__init__()
-        self.ortho = nn.Linear(in_features, out_features, bias=False)
-        torch.nn.init.orthogonal_(self.ortho.weight)
+        ortho = nn.Linear(in_features, out_features, bias=False)
+        torch.nn.init.orthogonal_(ortho.weight)
         self.transform = torch.nn.utils.parametrizations.orthogonal(
-            self.ortho, orthogonal_map=orthogonal_map
+            ortho, orthogonal_map=orthogonal_map
         )
 
+    def forward(self, x):
+        return self.transform(x)
+
+
+    
+class OrthoTransforms(TransformByLayer):
+    Transform = OrthoTransform
 
 @dataclass
 class OrthoConfig:
@@ -29,4 +36,4 @@ class OrthoConfig:
         *args,
         **kwargs,
     ):
-        return OrthoTransform(*args, **kwargs, **asdict(self))
+        return OrthoTransforms(*args, **kwargs, **asdict(self))

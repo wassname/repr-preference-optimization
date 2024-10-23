@@ -200,7 +200,8 @@ def train(args, trial: Optional[Trial] = None):
         'save_dir': str(save_dir),
     'ts': ts,}})
     if args.wandb:
-        with warnings.catch_warnings(action='ignore'):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
 
             wandb.require(experiment="core")
             pl_wandb_logger=WandbLogger(
@@ -215,15 +216,16 @@ def train(args, trial: Optional[Trial] = None):
             )
 
         # in case we already initialised it earlier, update it
-        wandb.config.update(config)
-        wandb.run.tags = tuple(wandb.run.tags) + (
-            ds_name_train, 
-            model_fname, 
-            adapter_name
-        )
-        wandb.run.name = run_fname
-        # wandb.run.groupName = group_name
-        wandb.run._quiet = True
+        if wandb.run:
+            wandb.config.update(config)
+            wandb.run.tags = tuple(wandb.run.tags) + (
+                ds_name_train, 
+                model_fname, 
+                adapter_name
+            )
+            wandb.run.name = run_fname
+            # wandb.run.groupName = group_name
+            wandb.run._quiet = True
     # run = pl_wandb_logger._experiment
 
     # config
@@ -595,7 +597,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     )[["metric", "split", "value", "dataset"]]
     df_metrics = df_metrics.set_index(["metric", "split"])
     df_metrics = df_metrics["value"].unstack()
-    df_metrics.index.name = f"{adapter_name}\dist shift"
+    df_metrics.index.name = f"{adapter_name}\ dist shift"
 
     return df_metrics.iloc[:, ::-1]
 

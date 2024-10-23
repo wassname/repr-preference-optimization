@@ -7,7 +7,7 @@ from reprpo.helpers.svd_decomposer import (
 )
 from dataclasses import dataclass, asdict
 from torch import nn
-
+from .helpers import TransformByLayer
 
 class SVDLayer(nn.Module):
     def __init__(
@@ -34,6 +34,8 @@ class SVDLayer(nn.Module):
         hs_io = self.decomposer(hs)
         return hs - hs_io  # .detach() # FIXME, should I not detach this?
 
+class SVDTransforms(TransformByLayer):
+    Transform = SVDLayer
 
 @dataclass
 class SVDConfig:
@@ -53,7 +55,7 @@ class SVDConfig:
     """if true, will use the embedding and lm_head, if false only lm_head"""
 
     def c(self, *args, **kwargs):
-        return SVDLayer(
+        return SVDTransforms(
             *args,
             **kwargs,
             **asdict(self),

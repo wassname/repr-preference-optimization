@@ -69,9 +69,10 @@ def objective_func(kwargs, trial, starter_experiment_name):
     r = train(cfg, trial=trial)
     return r
 
-def objective(trial: optuna.Trial, starter_experiment_name, trial2args, key_metric:str) -> float:
-    kwargs = trial2args(trial)
-    r = objective_func(kwargs, trial, starter_experiment_name)
+def objective(trial: optuna.Trial, starter_experiment_name, trial2args, key_metric:str, **kwargs) -> float:
+    kwargs2 = trial2args(trial)
+    kwargs3 = {**kwargs2, **kwargs}
+    r = objective_func(kwargs3, trial, starter_experiment_name)
     for k,v in r.items():
         trial.set_user_attr(k, v)
     return r[key_metric]

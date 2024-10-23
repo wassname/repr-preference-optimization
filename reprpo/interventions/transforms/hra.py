@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass, asdict
 import warnings
 from typing import Optional
-
+from .helpers import TransformByLayer
 
 class HRATransform(nn.Module):
     """
@@ -89,6 +89,8 @@ class HRATransform(nn.Module):
         delta_weight = self.get_delta_weight()
         return torch.matmul(input, delta_weight)
 
+class HRATransforms(TransformByLayer):
+    Transform = HRATransform
 
 @dataclass
 class HRAConfig:
@@ -99,4 +101,4 @@ class HRAConfig:
     """Whether to apply Gram-Schmidt orthogonalization."""
 
     def c(self, *args, **kwargs):
-        return HRATransform(*args, **kwargs, **asdict(self))
+        return HRATransforms(*args, **kwargs, **asdict(self))

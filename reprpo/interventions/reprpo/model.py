@@ -119,12 +119,8 @@ class PL_REPRPO_MODEL(PL_MODEL):
                 k: self._model.config.hidden_size for k in self.hparams.layer_paths
             }
 
-        self.transforms = torch.nn.ParameterDict(
-            {
-                k: transform.c(dim_hs, dim_hs, model=self._model)
-                for k, dim_hs in hra_sizes.items()
-            }
-        )
+        self.transforms = transform.c(hra_sizes, model=self._model)
+
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
 
     def _loss_fn(self, batch, model):
@@ -176,6 +172,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             ref_cho=ref_cho,
             ref_rej=ref_rej,
             batch=batch,
+            transforms=self.transforms,
         )
 
         # collect extra metrics

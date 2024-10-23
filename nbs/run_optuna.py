@@ -55,7 +55,7 @@ from optuna.study.study import storages, get_all_study_names
 #
 
 SEED=42
-
+dev = False # put to True for unit test
 torch.manual_seed(SEED)
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -78,11 +78,13 @@ ts = pd.Timestamp.now().strftime("%H%M%S")
 os.environ["WANDB_GROUP"] = "optuna4_{ts}"
 # -
 
-f_db = f"sqlite:///outputs/optuna4_{ds_name}.db"
-f = f_db.replace('sqlite:///', './')
-print(f)
-Path(f).parent.mkdir(parents=True, exist_ok=True)
-f_db
+if dev:
+    f_db = f"sqlite:///:memory:"
+else:
+    f_db = f"sqlite:///outputs/optuna4_{ds_name}.db"
+    f = f_db.replace('sqlite:///', './')
+    Path(f).parent.mkdir(parents=True, exist_ok=True)
+print(f_db)
 
 # +
 # print(f'to visualise run in cli\ncd nbs\noptuna-dashboard {f_db}')
@@ -106,8 +108,10 @@ wandb.require(experiment="core")
 wandbc = WeightsAndBiasesCallback(wandb_kwargs=wandb_kwargs, as_multirun=True)
 
 
+
 import numpy as np
 spaces = list(search_spaces.items())
+first = True
 while True:
     np.random.shuffle(spaces)
     for exp_name, (max_trials, trial2args) in spaces:
@@ -142,10 +146,13 @@ while True:
                     wandb.run._quiet = True
                 @wandbc.track_in_wandb()
                 def _objective(trial):
-                    return objective(trial, key_metric=key_metric, starter_experiment_name=exp_name, trial2args=trial2args)
+                    r =  objective(trial, key_metric=key_metric, starter_experiment_name=exp_name, trial2args=trial2args, verbose=2 if first else 1, dev=dev)
+                    first = False
+                    return r
 
+                # FIXME allopw passing verbose on first, and dev on test
                 study.optimize(_objective, 
-                            n_trials=20, # do 20 at a time, round robin, untill done
+                            n_trials=1 if dev else 20, # do 20 at a time, round robin, untill done
                             gc_after_trial=True, 
                             catch=(AssertionError, OSError, RuntimeError, KeyError, torch.OutOfMemoryError),
                             callbacks=[wandbc],
@@ -157,3 +164,4 @@ while True:
             break
         except Exception as e:
             logger.exception(e)
+        if dev: break
