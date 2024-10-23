@@ -146,8 +146,7 @@ while True:
                     wandb.run._quiet = True
                 @wandbc.track_in_wandb()
                 def _objective(trial):
-                    r =  objective(trial, key_metric=key_metric, starter_experiment_name=exp_name, trial2args=trial2args, verbose=2 if first else 1, dev=dev)
-                    first = False
+                    r =  objective(trial, key_metric=key_metric, starter_experiment_name=exp_name, trial2args=trial2args, dev=dev)
                     return r
 
                 # FIXME allopw passing verbose on first, and dev on test

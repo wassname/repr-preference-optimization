@@ -139,6 +139,12 @@ def hs_ether_prefvec(trial):
     args.update({f"loss.{k}": v for k, v in prefvec_params(trial).items()})
     return args
 
+def hs_supr_mse(trial):
+    args = base_reprpo_params(trial)
+    args.update({f"loss.{k}": v for k, v in mse_params(trial).items()})
+    return args
+
+
 # Define other search space functions similarly
 
 # TODO replace with custom experiments
@@ -148,6 +154,7 @@ search_spaces = {
     'hs-ether-mse': (150, hs_ether_mse),
     'hs-ether-rank': (150, hs_ether_rank),
     "hs-ether-prefvec": (550, hs_ether_prefvec), 
+    "hs-supr-mse": (10, hs_supr_mse), 
     # 'ether-prefvec': (250, ether_prefvec),
     'projgrad2': (350, projgrad),
     # 'projbp': (500, projbp),
@@ -156,6 +163,14 @@ search_spaces = {
 
 
 experiment_configs = {
+    "hs-supr-mse": (
+        "",
+        ReprPOConfig(
+            collect_hs=True, # OOM on sides, to many layers
+            transform=Transforms.supr.value(),
+            loss=Losses.mse.value(),
+        ),
+    ),
     "hs-ether-mse": (
         "",  # unstable due to svd
         ReprPOConfig(
