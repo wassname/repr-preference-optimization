@@ -4079,3 +4079,171 @@ But first I need to restrict the search space, and balance the losses If I can
 - recover optuna.db
 - change to vast.ai cheaper
 - check wandb to make sure they were converging?
+
+
+# 2024-10-21 08:38:12 optuna4.db
+
+https://wandb.ai/wassname/reprpo2/groups/optuna4_us_history_textbook-llama-3-2-1b-sft/workspace
+
+| hs-ether-mse N=✓29/164, best=1.000   |   importance |     best |
+|:-------------------------------------|-------------:|---------:|
+| α                                    |        0.877 | 6.16     |
+| lr                                   |        0.123 | 0.000457 |
+
+| hs-ether-rank N=✓39/160, best=1.063   |   importance |     best |
+|:--------------------------------------|-------------:|---------:|
+| lr                                    |        0.983 | 0.000429 |
+| β                                     |        0.017 | 9.17     |
+| α                                     |        0     | 0.00241  |
+
+| projgrad2 N=✓50/236, best=1.253   |   importance |     best |
+|:----------------------------------|-------------:|---------:|
+| mag_clip                          |        0.609 | 1        |
+| lr                                |        0.271 | 0.000268 |
+| reverse_pref                      |        0.062 | 1        |
+| β                                 |        0.029 | 1.51     |
+| weight_dim                        |        0.019 | 1        |
+| neg_slope                         |        0.01  | 0        |
+| scale_orth                        |        0     | 0        |
+
+| hs-ether-prefvec N=✓97/220, best=1.033   |   importance |     best |
+|:-----------------------------------------|-------------:|---------:|
+| lr                                       |        0.651 | 5.13e-05 |
+| β                                        |        0.217 | 0.957    |
+| use_dpo_loss                             |        0.081 | 0        |
+| use_proj_rel                             |        0.04  | 1        |
+| use_orth_loss                            |        0.007 | 1        |
+| use_angle_loss                           |        0.004 | 1        |
+| use_nll_loss                             |        0     | 0        |
+
+|                  |   n_trials |    best |   n_trials_completed |   top10_mean |
+|:-----------------|-----------:|--------:|---------------------:|-------------:|
+| projgrad2        |        236 | 1.25287 |                   50 |  1.19932     |
+| hs-ether-rank    |        160 | 1.06322 |                   39 |  1.02514     |
+| hs-ether-prefvec |        220 | 1.03257 |                   97 |  1.00758     |
+| hs-ether-mse     |        164 | 1       |                   29 |  1.96143e+06 |
+
+
+hmm it seems to be pruning good ones... I should use train loss not val loss?
+Also some are messed up by multple wandb being combined grr
+especially priuned ones?
+
+hmm part of the problem is that I am changing loss setup, and there for loss... really I need a quick eval... damn
+How long would :5 be?
+or I could use dpo loss as a proxy?
+
+make sure each loss returns info['acc']
+
+
+# 2024-10-22 17:58:41 optuna on code dataset
+
+https://wandb.ai/wassname/reprpo2-optuna?nw=nwuserwassname
+
+| hs-ether-mse N=✓26/150, best=1.005   |   importance |           best |
+|:-------------------------------------|-------------:|---------------:|
+| lr                                   |        0.734 |    5.38777e-06 |
+| α                                    |        0.266 | 8621           |
+
+
+
+| projgrad2 N=✓30/353, best=1.025   |   importance |          best |
+|:----------------------------------|-------------:|--------------:|
+| mag_clip                          |        0.485 |   1           |
+| reverse_pref                      |        0.406 |   1           |
+| lr                                |        0.093 |   6.32719e-06 |
+| weight_dim                        |        0.014 |   1           |
+| β                                 |        0.001 | 997.23        |
+| neg_slope                         |        0     |   0.1         |
+| scale_orth                        |        0     |   1           |
+
+
+| dpo N=✓11/24, best=0.996   |   importance |        best |
+|:---------------------------|-------------:|------------:|
+| lr                         |            1 | 5.61152e-06 |
+
+
+
+| hs-ether-rank N=✓24/150, best=1.014   |   importance |         best |
+|:--------------------------------------|-------------:|-------------:|
+| lr                                    |        0.608 |  0.000138854 |
+| β                                     |        0.281 | 52.8438      |
+| α                                     |        0.111 |  1.85056     |
+
+
+| hs-ether-prefvec N=✓53/383, best=1.032   |   importance |        best |
+|:-----------------------------------------|-------------:|------------:|
+| lr                                       |        0.757 | 0.000132606 |
+| use_angle_loss                           |        0.106 | 1           |
+| β                                        |        0.061 | 0.714851    |
+| use_nll_loss                             |        0.045 | 0           |
+| use_proj_rel                             |        0.03  | 1           |
+| use_dpo_loss                             |        0.001 | 1           |
+| use_orth_loss                            |        0     | 0           |
+
+
+# 2024-10-22 19:07:08
+
+Idea:
+- https://x.com/i/bookmarks?post_id=1848670598102442067 just get the residual stream added after the first layer and removed on the final layer, this should correspond to working memory, internal only info etc
+
+>  Following [Universal neurons in gpt2 language models. arXiv preprint arXiv:2401.12181, 2024.], we find prediction and suppression neurons by analyzing the output weights with the unembedding matrix . Prediction neurons exhibit a logit effect distribution with high kurtosis and positive skew, while suppression neurons show high kurtosis but negative skew. Here, is the output MLP weight for a given layer.
+https://omnivore.app/wassname/the-remarkable-robustness-of-ll-ms-stages-of-inference-192b40e7d76
+
+> We find a striking pattern which is remarkably consistent across the different seeds: after about the halfway point in the model, prediction neurons become increasingly prevalent until the very end of the network where there is a sudden shift towards a much larger number of suppression neurons. To ensure this is not just an artifact of the tied embeddings (WE = WTU ) in the GPT2 models, we also run this analysis on five Pythia models ranging from 410M to 6.9B parameters and find the results are largely the same (Figure 22).
+> When studying the activations of suppression neurons, we noticed that they activate far more often when the next token is in fact from the set of tokens they suppress (e.g., a year token like “1970”; Figure 24). We intuit that these suppression neurons fire when it is plausible but not certain that the next token is from the relevant set. Combined with the observation that there exist many suppression and prediction neurons for the same token class (Figure 24), we take this as evidence of an ensemble hypothesis where the model uses multiple neurons with some independent error that combine to form a more robust and calibrated estimate of whether the next token is in fact a year
+https://arxiv.org/pdf/2401.12181
+
+so in other words these are neurons that tend to move the distribution toward the negative
+
+however I can do better, and look at logprobs that are made unlikely in the last layer
+https://github.com/wesg52/universal-neurons/blob/d797aaaff2abc6852b97aacc1524621617ad0071/analysis/prediction_neurons.py#L173
+
+so can't I just go `hs[-2]-hs[-1]` to get the stuff removed by the last layer!
+
+or `hs[-2]*(1-w[-1])` (which is the same when expanded but I could potentially sub in other layers)
+
+or maybe I could get the inverse or orthogonal to w[-1] (which mean weights for the last layer before unembedding
+
+As a quick QC I can visualise this hs, see the magnitude etc
+
+## optuna on alpaca_low to alpaca high quality
+
+hs-ether-rank
+| hs-ether-rank N=✓62/65, best=1.014   |   importance |        best |
+|:-------------------------------------|-------------:|------------:|
+| β                                    |        0.542 | 3.75206     |
+| lr                                   |        0.446 | 8.26081e-07 |
+| α                                    |        0.013 | 0.0271605   |
+
+dpo
+| dpo N=✓20/20, best=1.000   |   importance |        best |
+|:---------------------------|-------------:|------------:|
+| lr                         |            1 | 9.09892e-05 |
+
+projgrad2
+| projgrad2 N=✓20/20, best=1.000   |   importance |        best |
+|:---------------------------------|-------------:|------------:|
+| mag_clip                         |        0.952 | 1           |
+| reverse_pref                     |        0.031 | 1           |
+| neg_slope                        |        0.016 | 0.1         |
+| lr                               |        0     | 1.39313e-06 |
+| β                                |        0     | 0.0242605   |
+| weight_dim                       |        0     | 2           |
+| scale_orth                       |        0     | 1           |
+
+hs-ether-prefvec
+| hs-ether-prefvec N=✓20/20, best=1.014   |   importance |        best |
+|:----------------------------------------|-------------:|------------:|
+| lr                                      |        0.531 | 7.45934e-06 |
+| β                                       |        0.184 | 0.978316    |
+| use_angle_loss                          |        0.071 | 1           |
+| use_dpo_loss                            |        0.07  | 0           |
+| use_nll_loss                            |        0.064 | 0           |
+| use_orth_loss                           |        0.056 | 1           |
+| use_proj_rel                            |        0.024 | 0           |
+
+hs-ether-mse
+| hs-ether-mse N=✓22/23, best=1.027   |   importance |        best |
+|:------------------------------------|-------------:|------------:|
+| lr                                  |        0.768 | 3.4206e-06  |
+| α                                   |        0.232 | 0.000867935 |
