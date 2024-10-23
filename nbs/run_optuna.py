@@ -92,9 +92,9 @@ study_names = get_all_study_names(storage=f_db)
 for study_name in study_names:
     print(study_name)
     study = optuna.load_study(study_name=study_name, storage=f_db)
-    try:
+    try:    
         df_res = optuna_df(study, key_metric)
-        print(df_res)
+        print(df_res.to_markdown())
         print()
     except ValueError as e:
         print('-')
