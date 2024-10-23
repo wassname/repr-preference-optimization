@@ -4206,6 +4206,8 @@ or maybe I could get the inverse or orthogonal to w[-1] (which mean weights for 
 
 As a quick QC I can visualise this hs, see the magnitude etc
 
+hmm so I've setlles on `hs.diff(layers).mul(-1).relu()` to get only suppressed info. Now I need to add it as a transform. The only problem is that all my transforms have been defined on each layer. I need to make a transform that works on many layers....
+
 ## optuna on alpaca_low to alpaca high quality
 
 hs-ether-rank
