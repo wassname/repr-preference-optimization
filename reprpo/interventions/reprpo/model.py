@@ -91,6 +91,14 @@ class PL_REPRPO_MODEL(PL_MODEL):
 
         collection_keys = collection_keys_in if collect_input else collection_keys_out
 
+        # if collection_layers_side is None we collect the last 50% of layers
+        if collection_layers_side is None:
+            N = self._model.config.num_hidden_layers
+            collection_layers_side = list(range(N//2, N))
+
+        # turn negative numbers into offsets from the end
+        collection_layers_side = [i if i >= 0 else self._model.config.num_hidden_layers + i for i in collection_layers_side]
+
         # set layer_paths
         if not collect_hs:
             self.hparams.layer_paths = get_layer_paths(
@@ -108,9 +116,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     p: get_module(self._model, p).out_features
                     for p in self.hparams.layer_paths
                 }
-        else:
-            # FIXME handle -1
-            collection_layers_side = [i if i >= 0 else self._model.config.num_hidden_layers + i for i in collection_layers_side]
+        else:            
             self.hparams.layer_paths = [str(s) for s in collection_layers_side]
             hra_sizes = {
                 k: self._model.config.hidden_size for k in self.hparams.layer_paths

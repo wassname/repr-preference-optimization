@@ -3,13 +3,14 @@ from reprpo.interventions.losses import Losses, LossesType
 from reprpo.interventions.transforms import Transforms, TransformType
 from dataclasses import dataclass, field
 from reprpo.interventions.reprpo.model import PL_REPRPO_MODEL
+from typing import Optional
 
 
 @dataclass
 class ReprPOConfig(ExperimentConfig):
     lr: float = 2e-4
 
-    collection_layers_side: tuple = (8, 10, 12, 14, )
+    collection_layers_side: Optional[tuple] = None
     """layers to collect activations from in side layers."""
 
     collection_keys_in: tuple = (
