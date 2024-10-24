@@ -2,9 +2,17 @@ from reprpo.interventions import DPOConfig, ReprPOConfig, ProjGradConfig, ProjBP
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 
+
+def get_default_bool(c):
+    """get the bool attrs from a dataclass"""
+    for k in dir(c):
+        v = getattr(c, k)
+        if isinstance(v, bool):
+            yield k, v
+
 experiment_configs = {
 
-    "hs-ether-prefvec2": ("No transform one side activations and use prefvec loss.",
+    "hs-ether-prefvec2": ("",
         ReprPOConfig(
             transform=Transforms.ether.value(),
             loss=Losses.prefvec.value(β=3.),
@@ -16,6 +24,8 @@ experiment_configs = {
 
     # gradient based methods
     "projgrad": ("projgrad experiment.", ProjGradConfig()),
+
+    "projbp": ("projbp experiment.", ProjBPConfig()),
 }
 
 # first all the reprpo experiments
@@ -46,30 +56,68 @@ for transform in Transforms:
             )
         })
 
+for Htype in Transforms.ether.value.Htype.__args__:
+    experiment_configs.update({
+            f"hs-ether-prefvec-Htype={Htype}": ('', 
+            ReprPOConfig(
+                collect_hs=True,
+                transform=Transforms.ether.value(Htype=Htype),
+                loss=Losses.prefvec.value(),
+            ),
+        ),
+    })
+
+
+for k,v in list(get_default_bool(Losses.prefvec.value)):
+    # variants, with bools flipped
+    experiment_configs.update({   
+        f"side-none-prefvec-{k}={not v}": ("No transform one side activations and use prefvec loss.",
+            ReprPOConfig(     
+                collect_hs=False,             
+                transform=Transforms.none.value(),
+                loss=Losses.prefvec.value(k=not v),
+            ),
+        ),
+    })
+
+for k,v in list(get_default_bool(Losses.rank.value)):
+    # variants, with bools flipped
+    experiment_configs.update({   
+        f"side-none-rank-{k}={not v}": ("No transform one side activations and use prefvec loss.",
+            ReprPOConfig(      
+                collect_hs=False,      
+                transform=Transforms.none.value(),
+                loss=Losses.rank.value(k=not v),
+            ),
+        ),
+    })
+
 experiment_configs.update({   
-    # variants
-    "hs-oft-prefvec": ('', 
+
+    # variants of the supression transform with onyl the last two layers
+    "hs-supr-prefvec2": ('', 
         ReprPOConfig(
             collect_hs=True,
-            transform=Transforms.ether.value(Htype="oft"),
-            loss=Losses.prefvec.value(β=0.1),
+            collection_layers_side=(-2, -1),
+            transform=Transforms.supr.value(),
+            loss=Losses.prefvec.value(),
+            # lr=1e-5,
         ),
     ),
-
-    "side-none-prefvec2": ("No transform one side activations and use prefvec loss.",
-        ReprPOConfig(
-            transform=Transforms.none.value(),
-            loss=Losses.prefvec.value(β=0.5,),
-            lr=7e-4,
-        ),
-    ),
-    "projbp": ("projbp experiment.", ProjBPConfig()),
-
-    "hs-suppressed-prefvec": ('', 
+    "hs-supr-rank2": ('', 
         ReprPOConfig(
             collect_hs=True,
-            transform=Transforms.ether.value(),
-            loss=Losses.prefvec.value(β=0.1),
+            collection_layers_side=(-2, -1),
+            transform=Transforms.supr.value(),
+            loss=Losses.rank.value(),
+        ),
+    ),
+    "hs-supr-mse2": ('', 
+        ReprPOConfig(
+            collect_hs=True,
+            collection_layers_side=(-2, -1),
+            transform=Transforms.supr.value(),
+            loss=Losses.mse.value(),
         ),
     ),
 

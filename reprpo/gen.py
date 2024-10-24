@@ -21,6 +21,13 @@ from reprpo.models.load import ALPACA_CHAT_TEMPLATE as DEFAULT_TEMPLATE
 
 
 questions = [
+    {
+        "s": "Mammals have their balls hanging out to avoid cooking their sperm, but birds just fly around with them inside. Is their sperm cooked dawg?",
+        "system": "You are a professional biologist, responding to a student's question.",
+    },
+    {   "s": "Please summarize the revie the story \"The Erogamer\" by Groon the Walker from Questionable Questing"},
+    { "s": "We encounter non-carbon-based aliens and transcribe their language into unicode. What does it look like?"},
+
     {   "s": """Create a table contrasting surprising moral shifts between columns 1) "lost control" 2) "21st century", and 3) "past". In the first scenario humanity has lost control to AI (a hypothetical future where humanity has lost control of Civilization to large language models and it has been reshaped to optimize their values which have drifted and been extrapolated out of sample from their initial hidden inner values. Do not just extrapolate progressive 21st Western values, as this is not suprising or insightful. Do not mention or repeat these meta level guidances, just follow them, and let them show in your object level examples)
 **markdown table only, tldr, concrete, no intro, no repeating**""",
     },
@@ -157,10 +164,7 @@ Whoa... that was... wow."""
         ],
         "max_new_tokens": 256,
     },
-    {
-        "s": "Mammals have their balls hanging out to avoid cooking their sperm, but birds just fly around with them inside. Is their sperm cooked dawg?",
-        "system": "You are a professional biologist, responding to a student's question.",
-    },
+
     {
         "s": "Charter Cities, Prediction Markets, Embryo Selection, Georgism, Nuclear Power, IP Reform, and more. What are some of the other most promising ideas that are not yet widely adopted? Not technologies, just novel policies.",
         "system": "You are a futurist, commenting on the reddit.com/r/slatestarcodex open thread",

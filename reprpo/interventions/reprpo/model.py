@@ -109,12 +109,9 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     for p in self.hparams.layer_paths
                 }
         else:
-            # if no collection keys, we collect hidden states instead
-            # these hardly change so we generally need only a few so lets just take the first and last collection layers
-            self.hparams.layer_paths = tuple(
-                set([collection_layers_side[0], collection_layers_side[-1]])
-            )
-            self.hparams.layer_paths = [str(s) for s in self.hparams.layer_paths]
+            # FIXME handle -1
+            collection_layers_side = [i if i >= 0 else self._model.config.num_hidden_layers + i for i in collection_layers_side]
+            self.hparams.layer_paths = [str(s) for s in collection_layers_side]
             hra_sizes = {
                 k: self._model.config.hidden_size for k in self.hparams.layer_paths
             }
