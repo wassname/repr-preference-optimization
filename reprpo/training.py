@@ -209,7 +209,7 @@ def train(args, trial: Optional[Trial] = None):
                 project="reprpo2",
                 # entity="wassname",
                 group=group_name,
-                # config=config,
+                config=config,
                 mode="disabled"
                 if os.environ.get("WANDB_MODE", None) == "disabled"
                 else "online",
@@ -217,7 +217,7 @@ def train(args, trial: Optional[Trial] = None):
 
         # in case we already initialised it earlier, update it
         if wandb.run:
-            wandb.config.update(config)
+            wandb.config.update(config, allow_val_change=True)
             wandb.run.tags = tuple(wandb.run.tags) + (
                 ds_name_train, 
                 model_fname, 

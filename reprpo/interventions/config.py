@@ -21,10 +21,12 @@ class ExperimentConfig:
 
     batch_size: int = 16
 
-    n_samples: int = 1800 * 8
+    n_samples: int = 1800 * 5
     eval_samples: Optional[int] = None
     max_length: int = 196
     max_prompt_length: int = 96
+
+    
     base_model: str = "wassname/llama-3-2-1b-sft"
 
     save: bool = True

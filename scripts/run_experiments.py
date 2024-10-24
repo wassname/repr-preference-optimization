@@ -28,10 +28,14 @@ os.environ["WANDB_GROUP"] = f"exp-{timestamp}"
 keys = list(experiment_configs.keys())
 print(" ".join(keys))  # Print keys as a comma-separated string
 
-
-for i, (name, (_, training_args)) in enumerate(experiment_configs.items()):
-    print(f"Running experiment {i} {name}")
+# shuffle keys
+import random
+random.shuffle(keys)
+for i, name in enumerate(keys):
+    training_args = experiment_configs[name][1]
     training_args = apply_cfg_overrides(training_args)
+    print(f"Running experiment {i} {name}")
+
     if i == 0:
         training_args.verbose = 3
     # else:

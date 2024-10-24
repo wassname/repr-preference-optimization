@@ -272,7 +272,7 @@ class ETHERConfig:
     """ETHER parameters"""
 
     nb: int = 16
-    """number of diagonal blocks"""
+    """number of diagonal blocks, works best with powers of 2"""
 
     Htype: Literal["ether", "etherplus", "oft", "etherplusHH"] = "ether"
     """type of transformation 

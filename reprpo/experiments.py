@@ -58,7 +58,7 @@ for transform in Transforms:
 
 for Htype in ["ether", "etherplus", "oft", "etherplusHH"]:
     experiment_configs.update({
-            f"hs-ether-prefvec-Htype={Htype}": ('', 
+            f"hs-ether-prefvec-Htype_{Htype}": ('', 
             ReprPOConfig(
                 collect_hs=True,
                 transform=Transforms.ether.value(Htype=Htype),
@@ -71,7 +71,7 @@ for Htype in ["ether", "etherplus", "oft", "etherplusHH"]:
 for k,v in list(get_default_bool(Losses.prefvec.value)):
     # variants, with bools flipped
     experiment_configs.update({   
-        f"side-none-prefvec-{k}={not v}": ("No transform one side activations and use prefvec loss.",
+        f"side-none-prefvec-{k}_{not v}": ("No transform one side activations and use prefvec loss.",
             ReprPOConfig(     
                 collect_hs=False,             
                 transform=Transforms.none.value(),
@@ -83,7 +83,7 @@ for k,v in list(get_default_bool(Losses.prefvec.value)):
 for k,v in list(get_default_bool(Losses.rank.value)):
     # variants, with bools flipped
     experiment_configs.update({   
-        f"side-none-rank-{k}={not v}": ("No transform one side activations and use prefvec loss.",
+        f"side-none-rank-{k}_{not v}": ("No transform one side activations and use prefvec loss.",
             ReprPOConfig(      
                 collect_hs=False,      
                 transform=Transforms.none.value(),

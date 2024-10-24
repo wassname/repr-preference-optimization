@@ -89,7 +89,7 @@ def rank_loss(
     # only punish when the dpo/preference of the nll/coherency is worse than the base model
     loss_retain_dpo = F.relu(-dpo_ptheta)
     loss_retain_nll = F.relu(nll_loss_ratio)
-    loss_retain = 0
+    loss_retain = torch.zeros_like(loss_reroute)
     if use_dpo_loss:
         loss_retain += loss_retain_dpo
     if use_nll_loss:
