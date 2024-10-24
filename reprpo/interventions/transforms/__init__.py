@@ -11,7 +11,7 @@ from .supressed import SupressedHSConfig
 
 class Transforms(enum.Enum):
     ether = ETHERConfig
-    ortho = OrthoConfig
+    # ortho = OrthoConfig # not compatible with bfloat16
     hra = HRAConfig
     none = NoneConfig
     svd = SVDConfig

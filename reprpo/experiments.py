@@ -56,7 +56,7 @@ for transform in Transforms:
             )
         })
 
-for Htype in Transforms.ether.value.Htype.__args__:
+for Htype in ["ether", "etherplus", "oft", "etherplusHH"]:
     experiment_configs.update({
             f"hs-ether-prefvec-Htype={Htype}": ('', 
             ReprPOConfig(
@@ -75,7 +75,7 @@ for k,v in list(get_default_bool(Losses.prefvec.value)):
             ReprPOConfig(     
                 collect_hs=False,             
                 transform=Transforms.none.value(),
-                loss=Losses.prefvec.value(k=not v),
+                loss=Losses.prefvec.value(**{k:not v}),
             ),
         ),
     })
@@ -87,7 +87,7 @@ for k,v in list(get_default_bool(Losses.rank.value)):
             ReprPOConfig(      
                 collect_hs=False,      
                 transform=Transforms.none.value(),
-                loss=Losses.rank.value(k=not v),
+                loss=Losses.rank.value(**{k:not v}),
             ),
         ),
     })
