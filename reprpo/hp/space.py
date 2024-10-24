@@ -6,11 +6,13 @@ from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 import optuna
 
+# components
+
 def base_reprpo_params(trial):
     return {
         "lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True),
-        # "collect_input": trial.suggest_categorical("collect_input", [False, True]),
-        # "collect_hs": trial.suggest_categorical("collect_hs", [False, True]),
+        "collect_input": trial.suggest_categorical("collect_input", [False, True]),
+        "collect_hs": trial.suggest_categorical("collect_hs", [False, True]),
     }
 
 def ortho_params(trial):
@@ -24,6 +26,10 @@ def ether_params(trial):
         "Htype": trial.suggest_categorical("Htype", ["ether", "etherplus", "oft", "etherplusHH"]),
         "flip_side": trial.suggest_categorical("flip_side", [False, True]),
         "reduction": trial.suggest_int("reduction", 1, 512, log=True),
+    }
+
+def supr_params(trial):
+    return {
     }
 
 def prefvec_params(trial):
@@ -71,7 +77,7 @@ def svd_params(trial):
 
 # Define other parameter groups similarly
 
-def projgrad(trial):
+def projgrad_params(trial):
     args = {
         "lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True),
         "β": trial.suggest_float("β", 1e-2, 1e3, log=True),
@@ -79,33 +85,33 @@ def projgrad(trial):
         "scale_orth": trial.suggest_categorical("scale_orth", [False, True]),
         "mag_clip": trial.suggest_categorical("mag_clip", [0, 1]),
         "weight_dim": trial.suggest_int("weight_dim", 0, 2),
-        "neg_slope": trial.suggest_categorical("neg_slope",[0, 0.1, 0.5]), # error?
-        # "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
+        "neg_slope": trial.suggest_float("neg_slope_value", 1e-8, 1, log=True),
+        "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
     }
-    # if args["mag_clip"] == "float":
-    #     args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
-    # if args["neg_slope"] == "float":
-    #     args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
-    # args = {f"loss.{k}": v for k, v in args.items()}
-    # args.update(base_reprpo_params(trial))
+    if args["mag_clip"] == "float":
+        args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
     return args
 
-def projbp(trial):
+def projbp_params(trial):
     args = {
         "lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True),
         "β": trial.suggest_float("β", 0.0, 1.0, log=False),
         "reverse_pref": trial.suggest_categorical("reverse_pref", [False, True]),
         "scale_orth": trial.suggest_categorical("scale_orth", [False, True]),
-        # "neg_slope": trial.suggest_categorical("neg_slope",[0, 'float']),
-        # "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
+        "neg_slope": trial.suggest_float("neg_slope_value", 1e-8, 1, log=True),
+        "mag_clip": trial.suggest_categorical("mag_clip", [None, "float"]),
     }
-    # if args["mag_clip"] == "float":
-    #     args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
-    # if args["neg_slope"] == "float":
-    #     args["neg_slope"] = trial.suggest_float("neg_slope_value", 0, 1)
-    # args = {f"loss.{k}": v for k, v in args.items()}
-    # args.update(base_reprpo_params(trial))
+    if args["mag_clip"] == "float":
+        args["mag_clip"] = trial.suggest_float("mag_clip_value", 1e-2, 1e4, log=True)
     return args
+
+def dpo(trial):
+    args = {"lr": trial.suggest_float("lr", 1e-6, 1e-4, log=True)}
+    # beta TODO
+    # ipo vs dpo vs others
+    return args
+
+## experiments
 
 def ether_prefvec(trial):
     args = base_reprpo_params(trial)
@@ -131,9 +137,7 @@ def hs_ether_mse(trial):
     return args
 
 
-def dpo(trial):
-    args = {"lr": trial.suggest_float("lr", 1e-6, 1e-4, log=True)}
-    return args
+
 
 def hs_ether_prefvec(trial):
     args = base_reprpo_params(trial)
@@ -148,6 +152,46 @@ def hs_supr_mse(trial):
     return args
 
 
+def superspace(trial):
+    intervention = trial.suggest_categorical("space", ['dpo', 'projgrad', 'projbp', 'reprpo'])
+    if intervention == 'dpo':
+        return dpo(trial)
+    elif intervention == 'projgrad':
+        return projgrad_params(trial)
+    elif intervention == 'projbp':
+        return projbp_params(trial)
+    elif intervention == 'reprpo':
+        args = base_reprpo_params(trial)
+        transform = trial.suggest_categorical("transform", ['ether', 'hra', 'none', 'svd', 'supr'])
+
+        if transform == 'ether':
+            args.update({f"transform.{k}": v for k, v in ether_params(trial).items()})
+        elif transform == 'hra':
+            args.update({f"transform.{k}": v for k, v in hra_params(trial).items()})
+        elif transform == 'none':
+            pass
+        elif transform == 'svd':
+            args.update({f"transform.{k}": v for k, v in svd_params(trial).items()})
+        elif transform == 'supr':
+            args.update({f"transform.{k}": v for k, v in supr_params(trial).items()})
+
+        loss = trial.suggest_categorical("loss", ['prefvec', 'rank', 'mse'])
+        if loss == 'prefvec':
+            args.update({f"loss.{k}": v for k, v in prefvec_params(trial).items()})
+        elif loss == 'rank':
+            args.update({f"loss.{k}": v for k, v in rank_params(trial).items()})
+        elif loss == 'mse':
+            args.update({f"loss.{k}": v for k, v in mse_params(trial).items()})
+        else:
+            raise ValueError("Invalid loss")
+        return args
+    else:
+        raise ValueError("Invalid intervention")
+
+
+    
+
+
 # Define other search space functions similarly
 
 # TODO replace with custom experiments
@@ -159,7 +203,7 @@ search_spaces = {
     "hs-ether-prefvec": (550, hs_ether_prefvec), 
     "hs-supr-mse": (10, hs_supr_mse), 
     # 'ether-prefvec': (250, ether_prefvec),
-    'projgrad2': (350, projgrad),
+    'projgrad2': (350, projgrad_params),
     # 'projbp': (500, projbp),
     'dpo': (5, dpo),
 }

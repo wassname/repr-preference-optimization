@@ -21,7 +21,7 @@ class ExperimentConfig:
 
     batch_size: int = 16
 
-    n_samples: int = 1800 * 3
+    n_samples: int = 1800 * 8
     eval_samples: Optional[int] = None
     max_length: int = 196
     max_prompt_length: int = 96
