@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 import os
 from baukit.nethook import TraceDict, get_module
-
+import numpy as np
 from reprpo.interventions.types import ReprPOModelOutput
 from reprpo.interventions.pl_base import PL_MODEL
 from reprpo.interventions.helpers import compute_logprobs
@@ -13,6 +13,20 @@ from ..losses import LossesType
 from ..transforms import TransformType
 from ..dpo import compute_dpo_loss
 
+def get_default_layers(N, side_channels=False):
+    """
+    Which layers to use? If we use all of them it will take lots of memory. For hidden space ones we don't need many. But for side channel ones we typically need many.
+
+    Simialr to [Circuit Breakers](https://arxiv.org/html/2406.04313v4), we use the layers at 33% and 66%. 
+    
+    I also want the last two layers to enable supression neurons. 
+    
+    """
+    layers = list(np.linspace(0, N, 4).astype(int)[1:-1]) # 33% and 66% as in Circuit Breakers
+    layers += [N-2, N-1] # last two for supression neurons
+    if side_channels;
+        layers += list(range(int(N*0.33),int(N*0.66))) # for side channels we use the middle 33% similar to the RepE setup in Circuit Breakers
+    return sorted(set(layers))
 
 def reprpo_forward_baukit(
     model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False
@@ -92,9 +106,11 @@ class PL_REPRPO_MODEL(PL_MODEL):
         collection_keys = collection_keys_in if collect_input else collection_keys_out
 
         # if collection_layers_side is None we collect the last 50% of layers
+
+
         if collection_layers_side is None:
             N = self._model.config.num_hidden_layers
-            collection_layers_side = list(range(N//2, N))
+            collection_layers_side = get_default_layers(N, side_channels=not collect_hs)
 
         # turn negative numbers into offsets from the end
         collection_layers_side = [i if i >= 0 else self._model.config.num_hidden_layers + i for i in collection_layers_side]

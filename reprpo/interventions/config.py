@@ -7,7 +7,7 @@ class ExperimentConfig:
 
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences"""
 
-    dataset: str = "us_history_textbook"
+    dataset: str = "math"
     """train dataset."""
 
     verbose: int = 1

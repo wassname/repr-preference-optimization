@@ -1,10 +1,3 @@
 # not really needed as this is the default params
 base_model: 'tanliboy/llama-3.2-3b-sft-2'
-batch_size: 32
-collection_layers_side: 
-  - 8
-  - 10
-  - 12
-  - 14
-  - 16
-  - 18
+batch_size: 28

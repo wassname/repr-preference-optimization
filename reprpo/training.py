@@ -170,7 +170,7 @@ def train(args, trial: Optional[Trial] = None):
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = safe_fn(os.environ.get("WANDB_GROUP") + "-" + group_name)
-        logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/groups/{group_name} ")
+        logger.info(f"📌Using WANDB_GROUP= https://wandb.ai/wassname/reprpo2/groups/{group_name} 📎")
     if args.verbose > 1:
         logger.info("args")
         pprint(args, compact=True)
