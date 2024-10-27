@@ -13,7 +13,7 @@ from reprpo.hp.target import override, default_tuner_kwargs
 from reprpo.experiments import experiment_configs
 from reprpo.hp.space import search_spaces
 import optuna
-from reprpo.hp.target import override, default_tuner_kwargs, list2tuples, objective, key_metric, objective_func
+from reprpo.hp.target import override, default_tuner_kwargs, list2tuples, objective, key_metric, override_cfg
 import functools
 import copy
 
@@ -42,6 +42,6 @@ def test_optuna_spaces(exp_name, N, trial2args):
     trial = study.ask()
     kwargs = trial2args(trial)
     kwargs = {**kwargs, **dev_overrides}
-    r = objective_func(kwargs, None, exp_name)
+    r = override_cfg(kwargs, None, exp_name)
     print(r['key_metric'])
     print(r)

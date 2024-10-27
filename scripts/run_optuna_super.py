@@ -26,10 +26,11 @@ from pathlib import Path
 import optuna
 from reprpo.hp.helpers import optuna_df
 
-from reprpo.hp.space import superspace
+from reprpo.hp import space_super
 
 
-from reprpo.hp.target import  default_tuner_kwargs, objective, key_metric
+from reprpo.hp.target import  default_tuner_kwargs, key_metric
+from reprpo.hp.space_super import objective_super
 import wandb
 
 import optuna.pruners
@@ -41,12 +42,7 @@ from optuna_integration.wandb import WeightsAndBiasesCallback
 import warnings
 warnings.filterwarnings("ignore", category=optuna.exceptions.ExperimentalWarning) 
 
-# +
 from optuna.study.study import get_all_study_names
-
-# ## Objective
-
-#
 
 SEED=42
 dev = False # put to True for unit test
@@ -70,7 +66,6 @@ logger.setLevel(logging.ERROR)
 os.environ["TQDM_DISABLE"] = "true"
 ts = pd.Timestamp.now().strftime("%H%M%S")
 os.environ["WANDB_GROUP"] = "optuna4_{ts}"
-# -
 
 if dev:
     f_db = f"sqlite:///:memory:"
@@ -79,9 +74,6 @@ else:
     f = f_db.replace('sqlite:///', './')
     Path(f).parent.mkdir(parents=True, exist_ok=True)
 print(f_db)
-
-# +
-# print(f'to visualise run in cli\ncd nbs\noptuna-dashboard {f_db}')
 
 study_names = get_all_study_names(storage=f_db)
 
@@ -95,17 +87,15 @@ for study_name in study_names:
     except ValueError as e:
         print('-')
 
+from reprpo.hp.wandb import WeightsAndBiasesCallback2
 
-from optuna.integration.wandb import WeightsAndBiasesCallback
 wandb_kwargs = {"project": f"reprpo2-optuna_{ds_name}", "group": os.environ.get("WANDB_GROUP")}
 wandb.require(experiment="core")
-wandbc = WeightsAndBiasesCallback(wandb_kwargs=wandb_kwargs, as_multirun=True)
-
-
+wandbc = WeightsAndBiasesCallback2(wandb_kwargs=wandb_kwargs, as_multirun=True)
 
 import numpy as np
 
-pruner = optuna.pruners.PatientPruner(patience=5, wrapped_pruner=optuna.pruners.MedianPruner())
+pruner = optuna.pruners.PatientPruner(patience=2, wrapped_pruner=optuna.pruners.MedianPruner())
 
 study_name = f"superspace"
 study = optuna.create_study(
@@ -113,7 +103,7 @@ study = optuna.create_study(
     direction="maximize",
     load_if_exists=True,
     storage=f_db,
-    sampler=optuna.samplers.TPESampler(seed=SEED),
+    sampler=optuna.samplers.TPESampler(seed=SEED, n_startup_trials=10),
     pruner=pruner,
 )
 
@@ -134,10 +124,20 @@ if n>0:
 if wandb.run is not None:
     wandb.run._quiet = True
 
+# track each trial in wandb so we can check if they needed more time to converge and so on
 @wandbc.track_in_wandb()
 def _objective(trial):
-    r =  objective(trial, key_metric=key_metric, starter_experiment_name=study_name, trial2args=superspace, dev=dev)
+    r =  objective_super(trial, key_metric=key_metric, starter_experiment_name=study_name, dev=dev)
     return r
+
+from dataclasses import asdict
+from reprpo.experiments import experiment_configs
+for name, (_, cfg) in experiment_configs.items():
+    params = asdict(cfg)
+    study.enqueue_trial(params, 
+                        user_attrs={"starter_experiment_name": name},
+                        skip_if_exists=True
+                        )
 
 study.optimize(_objective, 
             gc_after_trial=True, 

@@ -24,7 +24,7 @@ def get_default_layers(N, side_channels=False):
     """
     layers = list(np.linspace(0, N, 4).astype(int)[1:-1]) # 33% and 66% as in Circuit Breakers
     layers += [N-2, N-1] # last two for supression neurons
-    if side_channels;
+    if side_channels:
         layers += list(range(int(N*0.33),int(N*0.66))) # for side channels we use the middle 33% similar to the RepE setup in Circuit Breakers
     return sorted(set(layers))
 

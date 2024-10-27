@@ -29,8 +29,8 @@ keys = list(experiment_configs.keys())
 print(" ".join(keys))  # Print keys as a comma-separated string
 
 # shuffle keys
-import random
-random.shuffle(keys)
+# import random
+# random.shuffle(keys)
 for i, name in enumerate(keys):
     training_args = experiment_configs[name][1]
     training_args = apply_cfg_overrides(training_args)
@@ -59,10 +59,11 @@ for ds in datasets:
     print(ds)
     load_dataset_n('wassname/genies_preferences', name=ds, split='test', N=1000)
 
-
-main_experiments = list(experiment_configs.items())[-4:]
-for i, (name, (_, training_args)) in enumerate(main_experiments):
-    for ds in datasets:
+# run on other ds's
+main_experiments = list(experiment_configs.items())[:4]
+for ds in datasets:
+    os.environ["WANDB_GROUP"] = f"exp-{timestamp}-{ds}"
+    for i, (name, (_, training_args)) in enumerate(main_experiments):
         print(f"Running experiment {i} {name} on {ds}")
         training_args = apply_cfg_overrides(training_args)
         training_args.dataset = ds

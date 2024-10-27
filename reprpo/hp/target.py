@@ -37,10 +37,11 @@ default_tuner_kwargs = dict(
     save=False,
     wandb=True,
     #  https://huggingface.co/datasets/wassname/genies_preferences
+    # https://arxiv.org/html/2311.07723v3/extracted/5300973/figures/generalization_results.png
     # dataset='code_easy',
-    dataset='alpaca_low_quality',
+    # dataset='alpaca_low_quality',
     # dataset='raven_matrices',
-    # dataset='math',
+    dataset='math',
 
 )
 
@@ -62,17 +63,29 @@ def list2tuples(d):
             d[k] = tuple(v)
     return d
 
-def objective_func(kwargs, trial, starter_experiment_name):
-    cfg = copy.deepcopy(experiment_configs[starter_experiment_name][1])
+def override_cfg(kwargs, cfg):
+    cfg = copy.deepcopy(cfg)
     override(cfg, default_tuner_kwargs)
-    override(cfg, kwargs)
-    r = train(cfg, trial=trial)
-    return r
+    override(cfg, kwargs)    
+    return cfg
+
 
 def objective(trial: optuna.Trial, starter_experiment_name, trial2args, key_metric:str, **kwargs) -> float:
+    # set params
     kwargs2 = trial2args(trial)
     kwargs3 = {**kwargs2, **kwargs}
-    r = objective_func(kwargs3, trial, starter_experiment_name)
+    cfg = copy.deepcopy(experiment_configs[starter_experiment_name][1])
+    cfg2 = override_cfg(kwargs3, cfg)
+
+    # run
+    r = train(cfg2, trial=trial)
+
+    # store results
     for k,v in r.items():
         trial.set_user_attr(k, v)
+    
+    # return
     return r[key_metric]
+
+
+
