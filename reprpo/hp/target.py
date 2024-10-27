@@ -41,7 +41,7 @@ default_tuner_kwargs = dict(
     # dataset='code_easy',
     # dataset='alpaca_low_quality',
     # dataset='raven_matrices',
-    dataset='math',
+    dataset='code_easy',
 
 )
 

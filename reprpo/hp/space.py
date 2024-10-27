@@ -94,15 +94,15 @@ def projgrad_params(trial):
 
 def projbp_params(trial):
     args = {
-        "lr": trial.suggest_float("projbbp.lr", 1e-7, 1e-2, log=True),
-        "β": trial.suggest_float("projbbp.β", 1e-3, 1.0, log=True),
-        "reverse_pref": trial.suggest_categorical("projbbp.reverse_pref", [False, True]),
-        "scale_orth": trial.suggest_categorical("projbbp.scale_orth", [False, True]),
-        "neg_slope": trial.suggest_float("projbbp.neg_slope_value", 1e-8, 1, log=True),
-        "mag_clip": trial.suggest_categorical("projbbp.mag_clip", [None, "float"]),
+        "lr": trial.suggest_float("projbp.lr", 1e-7, 1e-2, log=True),
+        "β": trial.suggest_float("projbp.β", 1e-3, 1.0, log=True),
+        "reverse_pref": trial.suggest_categorical("projbp.reverse_pref", [False, True]),
+        "scale_orth": trial.suggest_categorical("projbp.scale_orth", [False, True]),
+        "neg_slope": trial.suggest_float("projbp.neg_slope_value", 1e-8, 1, log=True),
+        "mag_clip": trial.suggest_categorical("projbp.mag_clip", [None, "float"]),
     }
     if args["mag_clip"] == "float":
-        args["mag_clip"] = trial.suggest_float("projbbp.mag_clip_value", 1e-2, 1e4, log=True)
+        args["mag_clip"] = trial.suggest_float("projbp.mag_clip_value", 1e-2, 1e4, log=True)
     return args
 
 def dpo_params(trial):

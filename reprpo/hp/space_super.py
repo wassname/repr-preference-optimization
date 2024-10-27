@@ -65,6 +65,7 @@ def objective_super(trial: optuna.Trial, key_metric:str, **kwargs) -> float:
     kwargs2, cfg = superspace(trial)
     kwargs3 = {**kwargs2, **kwargs}
     cfg2 = override_cfg(kwargs3, cfg)
+    print(cfg2)
 
     # run
     r = train(cfg2, trial=trial)

@@ -127,17 +127,49 @@ if wandb.run is not None:
 # track each trial in wandb so we can check if they needed more time to converge and so on
 @wandbc.track_in_wandb()
 def _objective(trial):
-    r =  objective_super(trial, key_metric=key_metric, starter_experiment_name=study_name, dev=dev)
+    r =  objective_super(trial, key_metric=key_metric, dev=dev)
     return r
 
-from dataclasses import asdict
-from reprpo.experiments import experiment_configs
-for name, (_, cfg) in experiment_configs.items():
-    params = asdict(cfg)
+# HACK, the best way to get defaults is sample some, and change them manually
+# from reprpo.hp.space_super import superspace
+# def sample(study, n=1):
+#     study = optuna.create_study()
+#     for _ in range(n):
+#         trial = study.ask()
+#         args, cfg = superspace(trial)
+#         print([trial._cached_frozen_trial.params, args, cfg])
+# sample(study, 10)
+# 1/0
+
+# TODO need cfg and args grr
+defaults = [
+    {'space': 'dpo', 'dpo.lr': 6e-5},
+    # {'space': 'projbp', 'projbp.lr': 1e-5, 'projbp.β': 0.9035496929952938, 'projbp.reverse_pref': False, 'projbp.scale_orth': False, 'projbp.neg_slope_value': 0.01, 'projbp.mag_clip': None},
+    {'space': 'projgrad', 'projgrad.lr': 6e-5, 'projgrad.β': 7.938142168093467, 'projgrad.reverse_pref': False, 'projgrad.scale_orth': True, 'projgrad.weight_dim': 0, 'projgrad.neg_slope_value': 0.014520194983786325, 'projgrad.mag_clip': None},
+    # supr-rank
+    {'space': 'reprpo', 'reprpo.lr': 3e-4, 
+     'transform': 'supr', 
+     'loss': 'rank', 'rank.α': 0.25, 'rank.β': 1.0, 'rank.use_dpo_loss': True, 'rank.use_nll_loss': False, 'rank.use_rank_retain': False},
+    # ether-mse
+    {'space': 'reprpo', 'reprpo.lr': 2e-4, 
+     'transform': 'ether', 'ether.nb': 16, 'ether.Htype': 'ether', 'ether.flip_side': False, 'ether.reduction': 60, 
+     'loss': 'mse', 'mse.α': 0.6},
+    # hra-prefvec
+    {
+        'space': 'reprpo', 'reprpo.lr': 1e-4, 
+        'transform': 'hra', 'r': 38, 'apply_GS': True, 
+        'loss': 'prefvec', 'prefvec.β': 5, 'prefvec.use_orth_loss': False, 'prefvec.use_angle_loss': True, 'prefvec.use_dpo_loss': False, 'prefvec.use_nll_loss': False, 'prefvec.use_proj_rel': False},
+    # none-prefvec
+    {'space': 'reprpo', 'reprpo.lr': 3e-4,
+      'transform': 'none', 
+      'loss': 'prefvec', 'prefvec.β': 3, 'prefvec.use_orth_loss': False, 'prefvec.use_angle_loss': True, 'prefvec.use_dpo_loss': False, 'prefvec.use_nll_loss': False, 'prefvec.use_proj_rel': False},
+]
+
+for params in defaults:
     study.enqueue_trial(params, 
-                        user_attrs={"starter_experiment_name": name},
-                        skip_if_exists=True
-                        )
+                    user_attrs={"starter_experiment": True},
+                    skip_if_exists=True
+                    )
 
 study.optimize(_objective, 
             gc_after_trial=True, 

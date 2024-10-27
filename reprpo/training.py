@@ -285,12 +285,23 @@ def train(args, trial: Optional[Trial] = None):
     ds_train_tok = ds_train.map(tokenize_row, batched=False)    
 
     if args.verbose > 0:
+        pt = np.mean(ds_train_tok['train']['prompt_truncated'])
+        ct = np.mean(ds_train_tok['train']['chosen_truncated'])
+        if pt>0.1:
+            logger.warning(f"Prompt truncated {pt:2.2%}")
+        if ct>0.1:
+            logger.warning(f"Chosens truncated {ct:2.2%}")
+        logger.info(f"Prompt truncated {pt:2.2%}")
+        logger.info(f"Chosens truncated {ct:2.2%}")
+
+                     
         logger.info(
             f"Prompts truncated {np.mean(ds_train_tok['train']['prompt_truncated']):2.2%}"
         )
         logger.info(
             f"Chosens truncated {np.mean(ds_train_tok['train']['chosen_truncated']):2.2%}"
         )
+        # FIXME in genies they filter out thos that are larger than max legnth https://github.com/Joshuaclymer/GENIES/blob/22c8afb2551851fb3f2d1a2dcf70e7608908f6b1/src/api/data_classes.py#L171
 
     def ds2dl(ds):
         return DataLoader(
@@ -307,7 +318,11 @@ def train(args, trial: Optional[Trial] = None):
         GENIES,
         N=150,
         source=[args.dataset],
-    )[0].map(tokenize_row, batched=False)
+    )
+    if not len(ds_val_oos):
+        logger.error(f"{args.dataset} not found in GENIES")
+        # try GENIES_ALL
+    ds_val_oos = ds_val_oos[0].map(tokenize_row, batched=False)
     dl_val = ds2dl(
         ds_val_oos
     )
