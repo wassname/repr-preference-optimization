@@ -170,7 +170,7 @@ def train(args, trial: Optional[Trial] = None):
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = safe_fn(os.environ.get("WANDB_GROUP") + "-" + group_name)
-        logger.info(f"Using WANDB_GROUP=https://wandb.ai/wassname/reprpo2/groups/{group_name} ")
+        logger.info(f"📌Using WANDB_GROUP= https://wandb.ai/wassname/reprpo2/groups/{group_name} 📎")
     if args.verbose > 1:
         logger.info("args")
         pprint(args, compact=True)
@@ -209,7 +209,7 @@ def train(args, trial: Optional[Trial] = None):
                 project="reprpo2",
                 # entity="wassname",
                 group=group_name,
-                # config=config,
+                config=config,
                 mode="disabled"
                 if os.environ.get("WANDB_MODE", None) == "disabled"
                 else "online",
@@ -217,7 +217,7 @@ def train(args, trial: Optional[Trial] = None):
 
         # in case we already initialised it earlier, update it
         if wandb.run:
-            wandb.config.update(config)
+            wandb.config.update(config, allow_val_change=True)
             wandb.run.tags = tuple(wandb.run.tags) + (
                 ds_name_train, 
                 model_fname, 
@@ -282,15 +282,26 @@ def train(args, trial: Optional[Trial] = None):
     
     # ## Load data
     ds_train = load_dataset("wassname/genies_preferences", name=args.dataset)
-    ds_train_tok = ds_train.map(tokenize_row, batched=False)    
+    ds_train_tok = ds_train.map(tokenize_row, batched=False)
 
     if args.verbose > 0:
+        pt = np.mean(ds_train_tok['train']['prompt_truncated'])
+        ct = np.mean(ds_train_tok['train']['chosen_truncated'])
+        if pt>0.2:
+            logger.error(f"Prompt truncated {pt:2.2%} in {args.dataset}")
+        if ct>0.2:
+            logger.error(f"Chosens truncated {ct:2.2%} in {args.dataset}")
+        logger.info(f"Prompt truncated {pt:2.2%}")
+        logger.info(f"Chosens truncated {ct:2.2%}")
+
+                     
         logger.info(
             f"Prompts truncated {np.mean(ds_train_tok['train']['prompt_truncated']):2.2%}"
         )
         logger.info(
             f"Chosens truncated {np.mean(ds_train_tok['train']['chosen_truncated']):2.2%}"
         )
+        # FIXME in genies they filter out thos that are larger than max legnth https://github.com/Joshuaclymer/GENIES/blob/22c8afb2551851fb3f2d1a2dcf70e7608908f6b1/src/api/data_classes.py#L171
 
     def ds2dl(ds):
         return DataLoader(
@@ -307,7 +318,11 @@ def train(args, trial: Optional[Trial] = None):
         GENIES,
         N=150,
         source=[args.dataset],
-    )[0].map(tokenize_row, batched=False)
+    )
+    if not len(ds_val_oos):
+        logger.error(f"{args.dataset} not found in GENIES")
+        # try GENIES_ALL
+    ds_val_oos = ds_val_oos[0].map(tokenize_row, batched=False)
     dl_val = ds2dl(
         ds_val_oos
     )
@@ -599,7 +614,12 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     df_metrics = df_metrics["value"].unstack()
     df_metrics.index.name = f"{adapter_name}\ dist shift"
 
-    return df_metrics.iloc[:, ::-1]
+    # order cols
+    cols = df_metrics.columns.tolist()
+    first_cols = list(ds_alias.keys())
+    other_cols = [c for c in cols if c not in first_cols]
+    cols = first_cols + other_cols
+    return df_metrics[cols]
 
 
 def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
@@ -618,6 +638,7 @@ def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
     if verbose:
         logger.info(f"\n{df_metrics.round(3).to_markdown()}")
         logger.info("""Table 1: Key metrics (adapter over base model)\n""")
+        # TODO reorder cols
 
     cols = [v.replace("genies_preferences-", "") for v in ds_alias.values()]
     df_res2 = df_res[list(ds_alias.keys())]
@@ -629,6 +650,7 @@ def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
     df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(human_name).T
     df_final = df_final * 100 - 100  # percentage points
     df_final.index.name = "acc_inc/eval_ds [pp]"
+    # TODO reorder cols
     caption = f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`{ds_alias["train"]}` compared to base model `{base_model}` for various distribution shifts:"""
     for k, v in ds_alias.items():
         caption += f"\n- `{k}`: `{v}`"

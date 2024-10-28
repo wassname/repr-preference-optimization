@@ -12,8 +12,8 @@ class Losses(enum.Enum):
     """
 
     prefvec = PrefVecLossConfig
-    mse = MSELossConfig
     rank = RankLossConfig
+    mse = MSELossConfig
 
 
 LossesType = Union[tuple(e.value for e in Losses)]

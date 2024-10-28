@@ -11,11 +11,11 @@ from .supressed import SupressedHSConfig
 
 class Transforms(enum.Enum):
     ether = ETHERConfig
-    ortho = OrthoConfig
-    hra = HRAConfig
-    none = NoneConfig
-    svd = SVDConfig
+    # ortho = OrthoConfig # not compatible with bfloat16
     supr = SupressedHSConfig
+    none = NoneConfig
+    hra = HRAConfig
+    svd = SVDConfig
 
 
 TransformType = Union[tuple(e.value for e in Transforms)]

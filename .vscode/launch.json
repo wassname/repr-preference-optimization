@@ -107,7 +107,7 @@
                 // "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml"
                 //  "REPR_CONFIG": "./configs/llama-3-2-1b.yaml", 
                 //  "WANDB_MODE": "offline"
-            },llllllc 
+            }, 
             "pythonArgs": [
                 "-Xfrozen_modules=off"
             ],
@@ -118,7 +118,7 @@
                 "enable": true
             },
             "args": [
-                "hs-ether-prefvec",
+                "hs-supr-rank",
                 // "--dev",
                 "--verbose=2"
             ]

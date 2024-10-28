@@ -57,11 +57,8 @@ class SoftSVDDecomposer:
         self.Vt = Vt.to(dtype).detach()
 
     def __call__(
-        self, hs: Float[Tensor, "batch layers tokens hidden_size"]
-    ) -> Tuple[
-        Float[Tensor, "batch layers tokens hidden_size"],
-        Float[Tensor, "batch layers tokens hidden_size"],
-    ]:
+        self, hs: Float[Tensor, "batch tokens hidden_size"]
+    ) ->  Float[Tensor, "batch tokens hidden_size"]:
         original_shape = hs.shape
 
         def match_dtype(a, b):
@@ -131,11 +128,8 @@ class SVDDecomposer:
         self.Vt = Vt.to(dtype).detach()
 
     def __call__(
-        self, hs: Tensor
-    ) -> Tuple[
-        Tensor,
-        Tensor,
-    ]:
+        self, hs: Float[Tensor, "batch tokens hidden_size"]
+    ) -> Float[Tensor, "batch tokens hidden_size"]:
         original_shape = hs.shape
 
         def preshape(hs):
@@ -180,8 +174,8 @@ class DualSVDDecomposer:
 
     def __init__(
         self,
-        W_in: Float[Tensor, "vocab_size hidden_size"],
-        W_out: Float[Tensor, "hidden_size vocab_size"],
+        W_in: Float[Tensor, "hs vocab_size"],
+        W_out: Float[Tensor, "hs vocab_size"],
         full_matrices=False,
         quantile=0.1,
     ):
@@ -200,11 +194,7 @@ class DualSVDDecomposer:
 
     def __call__(
         self, hs: Tensor
-    ) -> Tuple[
-        Tensor,
-        Tensor,
-        Tensor,
-    ]:
+    ) ->  Tensor:
         hs_external_in = self.decomposer_in(hs)
         hs_external_out = self.decomposer_out(hs)
 

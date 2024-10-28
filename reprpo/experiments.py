@@ -2,26 +2,50 @@ from reprpo.interventions import DPOConfig, ReprPOConfig, ProjGradConfig, ProjBP
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 
+
+def get_default_bool(c):
+    """get the bool attrs from a dataclass"""
+    for k in dir(c):
+        v = getattr(c, k)
+        if isinstance(v, bool):
+            yield k, v
+
 experiment_configs = {
 
-    "hs-ether-prefvec2": ("No transform one side activations and use prefvec loss.",
+    # this will use lots of memory, so good to have it as the first one
+    "side-none-prefvec2": ("",
         ReprPOConfig(
-            transform=Transforms.ether.value(),
+            collect_hs=False,
+            transform=Transforms.none.value(),
             loss=Losses.prefvec.value(β=3.),
         ),
     ),
+
 
     # baseline
     "dpo": ("DPO experiment.", DPOConfig()),
 
     # gradient based methods
     "projgrad": ("projgrad experiment.", ProjGradConfig()),
+
+    "hs-ether-rank2": ("",
+        ReprPOConfig(
+            collect_hs=True,
+            transform=Transforms.ether.value(),
+            loss=Losses.rank.value(use_nll_loss=True, β=0.1, α=100),
+        ),
+    ),
+    
+    "projbp": ("projbp experiment.", ProjBPConfig()),
+
+
 }
 
 # first all the reprpo experiments
+experiment_configs2 = {}
 for loss in Losses:
     l_name = loss.name
-    experiment_configs.update({
+    experiment_configs2.update({
         f"side-none-{l_name}": (
             f"No transform one side activations and use {l_name} loss.",
             ReprPOConfig(
@@ -35,7 +59,7 @@ for transform in Transforms:
     for loss in Losses:
         t_name = transform.name
         l_name = loss.name
-        experiment_configs.update({
+        experiment_configs2.update({
             f"hs-{t_name}-{l_name}": (
                 f"Apply {t_name} transform on hs and use {l_name} loss.",
                 ReprPOConfig(
@@ -46,32 +70,68 @@ for transform in Transforms:
             )
         })
 
+# shuffle experiment_configs2
+import random
+keys = list(experiment_configs2.keys())
+random.shuffle(keys)
+experiment_configs2 = {k: experiment_configs2[k] for k in keys}
+experiment_configs.update(experiment_configs2)
+
+for Htype in ["ether", "etherplus", "oft", "etherplusHH"]:
+    experiment_configs.update({
+            f"hs-ether-prefvec-Htype_{Htype}": ('', 
+            ReprPOConfig(
+                collect_hs=True,
+                transform=Transforms.ether.value(Htype=Htype),
+                loss=Losses.prefvec.value(),
+            ),
+        ),
+    })
+
+
+for k,v in list(get_default_bool(Losses.prefvec.value)):
+    # variants, with bools flipped
+    experiment_configs.update({   
+        f"side-none-prefvec-{k}_{not v}": ("No transform one side activations and use prefvec loss.",
+            ReprPOConfig(     
+                collect_hs=False,             
+                transform=Transforms.none.value(),
+                loss=Losses.prefvec.value(**{k:not v}),
+            ),
+        ),
+    })
+
+for k,v in list(get_default_bool(Losses.rank.value)):
+    # variants, with bools flipped
+    experiment_configs.update({   
+        f"side-none-rank-{k}_{not v}": ("No transform one side activations and use rank loss.",
+            ReprPOConfig(      
+                collect_hs=False,      
+                transform=Transforms.none.value(),
+                loss=Losses.rank.value(**{k:not v}),
+            ),
+        ),
+    })
+
 experiment_configs.update({   
-    # variants
-    "hs-oft-prefvec": ('', 
+
+    # variants of the supression transform with only the last two layers
+    "hs-supr-prefvec2": ('', 
         ReprPOConfig(
             collect_hs=True,
-            transform=Transforms.ether.value(Htype="oft"),
-            loss=Losses.prefvec.value(β=0.1),
+            collection_layers_side=(-2, -1),
+            transform=Transforms.supr.value(),
+            loss=Losses.prefvec.value(),
+            # lr=1e-5,
         ),
     ),
-
-    "side-none-prefvec2": ("No transform one side activations and use prefvec loss.",
-        ReprPOConfig(
-            transform=Transforms.none.value(),
-            loss=Losses.prefvec.value(β=0.5,),
-            lr=7e-4,
-        ),
-    ),
-    "projbp": ("projbp experiment.", ProjBPConfig()),
-
-    "hs-suppressed-prefvec": ('', 
+    "hs-supr-rank2": ('', 
         ReprPOConfig(
             collect_hs=True,
-            transform=Transforms.ether.value(),
-            loss=Losses.prefvec.value(β=0.1),
+            collection_layers_side=(-2, -1),
+            transform=Transforms.supr.value(),
+            loss=Losses.rank.value(),
         ),
     ),
-
 
 })

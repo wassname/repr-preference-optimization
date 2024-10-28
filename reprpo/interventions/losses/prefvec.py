@@ -120,23 +120,23 @@ def prefec_loss(
         ref_cho.logits, batch["chosen"], batch["chosen_mask"]
     )
     nll_loss_ratio = (nll_loss - ref_nll_loss).mean(1)
-    loss_nll_retain = F.relu(nll_loss_ratio)
+    loss_retain_nll = F.relu(nll_loss_ratio)
     # FIXME why is loss_nll_retain<>nll_loss_ratio is logs?
 
     # dpo loss, punished model if rejected completion is more likely than the chosen
-    ptheta = compute_ptheta(
+    dpo_ptheta = compute_ptheta(
         pi_cho.label_logprobs,
         pi_rej.label_logprobs,
         ref_cho.label_logprobs,
         ref_rej.label_logprobs,
     )
-    loss_dpo_retain = F.relu(-ptheta)
+    loss_retain_dpo = F.relu(-dpo_ptheta)
 
     loss_retain = torch.zeros_like(loss_reroute)
     if use_dpo_loss:
-        loss_retain += loss_dpo_retain
+        loss_retain += loss_retain_dpo
     if use_nll_loss:
-        loss_retain += loss_nll_retain
+        loss_retain += loss_retain_nll * 100 # HACKY balance
 
     def signed_square_loss(loss):
         return torch.sign(loss) * (loss ** 2)
@@ -145,11 +145,11 @@ def prefec_loss(
 
     info = dict(
         loss_reroute=loss_reroute,
-        loss_dpo_retain=loss_dpo_retain,
-        loss_nll_retain=loss_nll_retain,
+        loss_dpo_retain=loss_retain_dpo,
+        loss_nll_retain=loss_retain_nll,
         loss_retain=loss_retain,
         nll_loss_ratio=nll_loss_ratio,
-        ptheta=ptheta,
+        ptheta=dpo_ptheta,
         **ll,
     )
     info = {k: v.mean().detach() for k, v in info.items()}
