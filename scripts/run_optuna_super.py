@@ -143,6 +143,15 @@ def _objective(trial):
 
 # TODO need cfg and args grr
 defaults = [
+    # none-prefvec, this uses the most memn
+    {'space': 'reprpo', 'reprpo.lr': 3e-4,
+      'transform': 'none', 
+      'loss': 'prefvec', 'prefvec.β': 3, 'prefvec.use_orth_loss': False, 'prefvec.use_angle_loss': True, 'prefvec.use_dpo_loss': False, 'prefvec.use_nll_loss': False, 'prefvec.use_proj_rel': False},
+    # ether-mse
+    {'space': 'reprpo', 'reprpo.lr': 2e-4, 
+     'transform': 'ether', 'ether.nb': 16, 'ether.Htype': 'ether', 'ether.flip_side': False, 'ether.reduction': 60, 
+     'loss': 'mse', 'mse.α': 0.6},
+     # baseline
     {'space': 'dpo', 'dpo.lr': 6e-5},
     # {'space': 'projbp', 'projbp.lr': 1e-5, 'projbp.β': 0.9035496929952938, 'projbp.reverse_pref': False, 'projbp.scale_orth': False, 'projbp.neg_slope_value': 0.01, 'projbp.mag_clip': None},
     {'space': 'projgrad', 'projgrad.lr': 6e-5, 'projgrad.β': 7.938142168093467, 'projgrad.reverse_pref': False, 'projgrad.scale_orth': True, 'projgrad.weight_dim': 0, 'projgrad.neg_slope_value': 0.014520194983786325, 'projgrad.mag_clip': None},
@@ -150,19 +159,11 @@ defaults = [
     {'space': 'reprpo', 'reprpo.lr': 3e-4, 
      'transform': 'supr', 
      'loss': 'rank', 'rank.α': 0.25, 'rank.β': 1.0, 'rank.use_dpo_loss': True, 'rank.use_nll_loss': False, 'rank.use_rank_retain': False},
-    # ether-mse
-    {'space': 'reprpo', 'reprpo.lr': 2e-4, 
-     'transform': 'ether', 'ether.nb': 16, 'ether.Htype': 'ether', 'ether.flip_side': False, 'ether.reduction': 60, 
-     'loss': 'mse', 'mse.α': 0.6},
     # hra-prefvec
     {
         'space': 'reprpo', 'reprpo.lr': 1e-4, 
         'transform': 'hra', 'r': 38, 'apply_GS': True, 
         'loss': 'prefvec', 'prefvec.β': 5, 'prefvec.use_orth_loss': False, 'prefvec.use_angle_loss': True, 'prefvec.use_dpo_loss': False, 'prefvec.use_nll_loss': False, 'prefvec.use_proj_rel': False},
-    # none-prefvec
-    {'space': 'reprpo', 'reprpo.lr': 3e-4,
-      'transform': 'none', 
-      'loss': 'prefvec', 'prefvec.β': 3, 'prefvec.use_orth_loss': False, 'prefvec.use_angle_loss': True, 'prefvec.use_dpo_loss': False, 'prefvec.use_nll_loss': False, 'prefvec.use_proj_rel': False},
 ]
 
 for params in defaults:
