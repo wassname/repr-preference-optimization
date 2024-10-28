@@ -22,10 +22,10 @@ def ortho_params(trial):
 
 def ether_params(trial):
     return {
-        "nb": trial.suggest_int("ether.nb", 1, 32, log=True),
+        # "nb": trial.suggest_int("ether.nb", 1, 32, log=True), # this often leads to crashes
         "Htype": trial.suggest_categorical("ether.Htype", ["ether", "etherplus", "oft", "etherplusHH"]),
         "flip_side": trial.suggest_categorical("ether.flip_side", [False, True]),
-        "reduction": trial.suggest_int("ether.reduction", 1, 512, log=True),
+        # "reduction": trial.suggest_int("ether.reduction", 1, 512, log=True), # this often leads to crashes
     }
 
 def supr_params(trial):
