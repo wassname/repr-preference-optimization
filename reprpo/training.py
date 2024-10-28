@@ -282,7 +282,7 @@ def train(args, trial: Optional[Trial] = None):
     
     # ## Load data
     ds_train = load_dataset("wassname/genies_preferences", name=args.dataset)
-    ds_train_tok = ds_train.map(tokenize_row, batched=False)    
+    ds_train_tok = ds_train.map(tokenize_row, batched=False)
 
     if args.verbose > 0:
         pt = np.mean(ds_train_tok['train']['prompt_truncated'])

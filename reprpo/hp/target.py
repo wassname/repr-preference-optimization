@@ -38,10 +38,10 @@ default_tuner_kwargs = dict(
     wandb=True,
     #  https://huggingface.co/datasets/wassname/genies_preferences
     # https://arxiv.org/html/2311.07723v3/extracted/5300973/figures/generalization_results.png
+    # dataset='us_history',
     # dataset='code_easy',
     # dataset='alpaca_low_quality',
     # dataset='raven_matrices',
-    dataset='code_easy',
 
 )
 

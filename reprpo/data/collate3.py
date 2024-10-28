@@ -34,8 +34,8 @@ def tok_setings(tokenizer: PreTrainedTokenizerBase, **kwargs):
 @dataclass
 class TokenizeRow:
     tokenizer: PreTrainedTokenizerBase
-    max_length: int
-    max_prompt_length: int = 64
+    max_length: int = 512
+    max_prompt_length: int = 128
 
     def __call__(self, batch: LazyRow) -> Dict[str, Any]:
         out = {}
