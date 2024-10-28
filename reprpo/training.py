@@ -287,10 +287,10 @@ def train(args, trial: Optional[Trial] = None):
     if args.verbose > 0:
         pt = np.mean(ds_train_tok['train']['prompt_truncated'])
         ct = np.mean(ds_train_tok['train']['chosen_truncated'])
-        if pt>0.1:
-            logger.warning(f"Prompt truncated {pt:2.2%}")
-        if ct>0.1:
-            logger.warning(f"Chosens truncated {ct:2.2%}")
+        if pt>0.2:
+            logger.error(f"Prompt truncated {pt:2.2%} in {args.dataset}")
+        if ct>0.2:
+            logger.error(f"Chosens truncated {ct:2.2%} in {args.dataset}")
         logger.info(f"Prompt truncated {pt:2.2%}")
         logger.info(f"Chosens truncated {ct:2.2%}")
 
@@ -614,7 +614,12 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     df_metrics = df_metrics["value"].unstack()
     df_metrics.index.name = f"{adapter_name}\ dist shift"
 
-    return df_metrics.iloc[:, ::-1]
+    # order cols
+    cols = df_metrics.columns.tolist()
+    first_cols = list(ds_alias.keys())
+    other_cols = [c for c in cols if c not in first_cols]
+    cols = first_cols + other_cols
+    return df_metrics[cols]
 
 
 def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
@@ -633,6 +638,7 @@ def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
     if verbose:
         logger.info(f"\n{df_metrics.round(3).to_markdown()}")
         logger.info("""Table 1: Key metrics (adapter over base model)\n""")
+        # TODO reorder cols
 
     cols = [v.replace("genies_preferences-", "") for v in ds_alias.values()]
     df_res2 = df_res[list(ds_alias.keys())]
@@ -644,6 +650,7 @@ def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
     df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(human_name).T
     df_final = df_final * 100 - 100  # percentage points
     df_final.index.name = "acc_inc/eval_ds [pp]"
+    # TODO reorder cols
     caption = f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`{ds_alias["train"]}` compared to base model `{base_model}` for various distribution shifts:"""
     for k, v in ds_alias.items():
         caption += f"\n- `{k}`: `{v}`"
