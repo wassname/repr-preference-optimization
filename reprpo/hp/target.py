@@ -31,15 +31,15 @@ def setattrattr(cfg, k, v):
 # quick 2m per run
 default_tuner_kwargs = dict(
     verbose=1,
-    batch_size=16*3,
+    batch_size=16*2,
     eval_samples=128,
-    n_samples=1800 * 6, # to make sure it converges
+    n_samples=1800 * 5, # to make sure it converges
     save=False,
     wandb=True,
     #  https://huggingface.co/datasets/wassname/genies_preferences
     # https://arxiv.org/html/2311.07723v3/extracted/5300973/figures/generalization_results.png
-    # dataset='us_history',
-    # dataset='code_easy',
+    # dataset='us_history', # prompts are 477
+    dataset='code_easy',
     # dataset='alpaca_low_quality',
     # dataset='raven_matrices',
 

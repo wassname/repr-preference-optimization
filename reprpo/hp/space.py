@@ -47,7 +47,7 @@ def prefvec_params(trial):
 
 def hra_params(trial):
     return {
-        "r": trial.suggest_int("hra.r", 2, 512, log=True),
+        "r": trial.suggest_int("hra.r", 2, 64, log=True),
         "apply_GS": trial.suggest_categorical("hra.apply_GS", [False, True]),
     }
 

@@ -78,6 +78,8 @@ class ETHERLinear(ETHERLayer):
                 in_features = out_features
                 out_features = tmp_features
 
+            # TODO ake sure nb fits in the input size without remainder
+
             if self.Htype == "ether":
                 R_shape = [nb, in_features // nb]
                 ether_R = torch.rand(R_shape[-1])
@@ -110,6 +112,7 @@ class ETHERLinear(ETHERLayer):
 
                 # back
                 R34_shape = [nb, out_features // nb]
+                assert out_features % nb == 0, f"nb={nb} should divide out_features={out_features}"
                 ether_R3 = torch.rand(R34_shape[-1])
                 ether_R3 = torch.stack([ether_R3] * nb)
                 self.ether_R3 = nn.Parameter(ether_R3)
@@ -118,6 +121,7 @@ class ETHERLinear(ETHERLayer):
                 self.ether_R4 = nn.Parameter(ether_R4)
             else:
                 raise ValueError(f"Unknown Htype: {self.Htype}")
+            assert in_features % nb == 0, f"nb={nb} should divide in_features={in_features}"
 
     def reset_parameters(self):
         """Reset ETHER weights"""
@@ -162,6 +166,7 @@ class ETHERLinear(ETHERLayer):
         # - shapes
         nb, m, n = H.shape  # > [4,512,512]
         f, d = filt.shape  # > [8192,2048] or [2048,2048]
+        assert d % nb == 0, f"nb={nb} should divide d={d}"
 
         # - direct transformation
         if not self.flip_side:
@@ -271,7 +276,7 @@ class EtherTransforms(TransformByLayer):
 class ETHERConfig:
     """ETHER parameters"""
 
-    nb: int = 16
+    nb: int = 2
     """number of diagonal blocks, works best with powers of 2"""
 
     Htype: Literal["ether", "etherplus", "oft", "etherplusHH"] = "ether"

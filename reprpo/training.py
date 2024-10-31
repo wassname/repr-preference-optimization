@@ -170,7 +170,7 @@ def train(args, trial: Optional[Trial] = None):
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = safe_fn(os.environ.get("WANDB_GROUP") + "-" + group_name)
-        logger.info(f"📌Using WANDB_GROUP= https://wandb.ai/wassname/reprpo2/groups/{group_name} 📎")
+
     if args.verbose > 1:
         logger.info("args")
         pprint(args, compact=True)
@@ -219,13 +219,15 @@ def train(args, trial: Optional[Trial] = None):
         if wandb.run:
             wandb.config.update(config, allow_val_change=True)
             wandb.run.tags = tuple(wandb.run.tags) + (
-                ds_name_train, 
-                model_fname, 
-                adapter_name
+                f"ds:{ds_name_train}", 
+                f"m:{model_fname}", 
+                f"i:{adapter_name}",
             )
             wandb.run.name = run_fname
-            # wandb.run.groupName = group_name
+            # wandb.run._group = group_name # can't change this
             wandb.run._quiet = True
+
+            logger.info(f"📌Using WANDB_GROUP= https://wandb.ai/wassname/reprpo2/groups/{wandb.run.group} 📎")
     # run = pl_wandb_logger._experiment
 
     # config

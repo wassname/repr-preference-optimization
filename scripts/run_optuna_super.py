@@ -54,8 +54,16 @@ DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 import os
 from loguru import logger
 import logging
+from reprpo.interventions.config import ExperimentConfig
+from reprpo.hp.target import default_tuner_kwargs, key_metric, override_cfg, override
+from dataclasses import asdict
 
-ds_name = default_tuner_kwargs['dataset']
+cfg = ExperimentConfig()
+override(cfg, default_tuner_kwargs)
+default_args = asdict(cfg)
+
+ds_name = default_args['dataset']
+model_name = default_args['base_model'].replace("/", "-")
 # os.environ["WANDB_MODE"] = "disabled"
 os.environ["HF_DATASETS_OFFLINE"] = "1"
 
@@ -65,12 +73,12 @@ logger.setLevel(logging.ERROR)
 
 os.environ["TQDM_DISABLE"] = "true"
 ts = pd.Timestamp.now().strftime("%H%M%S")
-os.environ["WANDB_GROUP"] = "optuna4_{ts}"
+os.environ["WANDB_GROUP"] = f"optuna4_{ts}_{model_name}_{ds_name}"
 
 if dev:
     f_db = f"sqlite:///:memory:"
 else:
-    f_db = f"sqlite:///outputs/optuna_super_{ds_name}.db"
+    f_db = f"sqlite:///outputs/optuna_super.db"
     f = f_db.replace('sqlite:///', './')
     Path(f).parent.mkdir(parents=True, exist_ok=True)
 print(f_db)
@@ -89,15 +97,21 @@ for study_name in study_names:
 
 from reprpo.hp.wandb import WeightsAndBiasesCallback2
 
-wandb_kwargs = {"project": f"reprpo2-optuna_{ds_name}", "group": os.environ.get("WANDB_GROUP")}
+wandb_kwargs = {
+    "project": f"reprpo2-optuna_{ds_name}", 
+    "group": os.environ.get("WANDB_GROUP"),
+    "tags": [ds_name, model_name, "optuna", ],
+}
 wandb.require(experiment="core")
-wandbc = WeightsAndBiasesCallback2(wandb_kwargs=wandb_kwargs, as_multirun=True)
-
+wandbc = WeightsAndBiasesCallback2(
+    wandb_kwargs=wandb_kwargs, as_multirun=True
+    )
 import numpy as np
 
-pruner = optuna.pruners.PatientPruner(patience=2, wrapped_pruner=optuna.pruners.MedianPruner())
+# pruner = optuna.pruners.PatientPruner(patience=2, wrapped_pruner=optuna.pruners.MedianPruner(n_warmup_steps=2))
+pruner = optuna.pruners.MedianPruner(n_warmup_steps=2)
 
-study_name = f"superspace"
+study_name = f"super_{ds_name}_{model_name}"
 study = optuna.create_study(
     study_name=study_name,
     direction="maximize",
@@ -143,7 +157,7 @@ def _objective(trial):
 
 # TODO need cfg and args grr
 defaults = [
-    # none-prefvec, this uses the most memn
+    # side-none-prefvec, this uses the most mem python scripts/train.py side-none-rank
     {'space': 'reprpo', 'reprpo.lr': 3e-4,
       'transform': 'none', 
       'loss': 'prefvec', 'prefvec.β': 3, 'prefvec.use_orth_loss': False, 'prefvec.use_angle_loss': True, 'prefvec.use_dpo_loss': False, 'prefvec.use_nll_loss': False, 'prefvec.use_proj_rel': False},
