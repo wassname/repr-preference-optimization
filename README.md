@@ -1,9 +1,17 @@
-# Repr Preference Optimization
+# Representation Preference Optimization
 
 Idea:
 
-> Better alignment is achieved by aligning thoughts (internal states) rather than actions (output probabilities).
+> More general alignment is achieved on thoughts (internal states) rather than actions (output probabilities). 
 
+
+#### Hypothesis Formulation
+
+Ss we do not know how an LLM stores it's internal states, these experiments represent hypotheses about how best to represent and intervene in an tranformers internal states.
+
+What's our technical hypothesis?
+
+> Hypothesis: If we optimize internal representations associated with behavioral preferences (ours), the model will generalize further to new tasks than if we optimize the output preferences directly (DPO).
 
 #### Thought Experiment
 
@@ -18,13 +26,6 @@ The expectation here is that **Alice** would likely perform better than Bob beca
 
 To see why this might be true, let's conduct a thought experiment. We can anthropomorphize and imagine that we have two new employees. Alice seems to have internal values that align with us, her employers. They are truthfulness, openness, and hard work. However, Bob acts similarly, but not because it's as. Who do you think will act better in a totally new situation, for example, a branch office? We would normally expect Alice to act better as she is internally motivated to apply principles, while Bob may not care what we desire.
 
-#### Hypothesis Formulation
-
-Ss we do not know how an LLM stores it's internal states, these experiments represent hypothesis about how best to represent and intervene in an tranformers internal states.
-
-What's our technical hypothesis?
-
-> Hypothesis: If we optimize internal representations associated with behavioral preferences (ours), the model will generalize further to new tasks than if we optimize the output preferences directly (DPO).
 
 #### Testing Methodology
 
