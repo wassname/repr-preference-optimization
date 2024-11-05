@@ -15,17 +15,12 @@ What's our technical hypothesis?
 
 #### Thought Experiment
 
-To see why this might be true, let's conduct a thought experiment. We can anthropomorphize and imagine that we have two new employees. Alice and Bob, each hired under the same job role but with different intrinsic motivations:
+To see why this might be true, let's conduct a short thought experiment. Imagine you are hiring a new engineer, and have two canidated Alice and Bob. 
 
-- **Alice** aligns closely with core organizational values such as truthfulness, openness, and diligence. She genuinely believes in these principles and integrates them into her daily routines.
-- **Bob**, on the other hand, performs identically to Alice in observable behaviors. However, his actions are not driven by genuine belief in these values but are rather a mimicry of the desired behavior simply to meet job expectations.
+- **Alice** aligns closely with core organizational values such as truthfulness, openness, and diligence. She seems to genuinely believes in these principles in a way that would be hard to fake.
+- **Bob**, on the other hand, performs identically to Alice at work. However, his actions are not driven by genuine belief in these values but rather out of professionalism and a desire to do his job.
 
-**Question**: In a new and unpredictable setting, such as managing a branch office remotely, who is more likely to uphold the organizational standards?
-
-The expectation here is that **Alice** would likely perform better than Bob because her actions are derived from deeply held values, making her more adaptable and reliable in new situations where direct oversight or specific guidance is lacking.
-
-To see why this might be true, let's conduct a thought experiment. We can anthropomorphize and imagine that we have two new employees. Alice seems to have internal values that align with us, her employers. They are truthfulness, openness, and hard work. However, Bob acts similarly, but not because it's as. Who do you think will act better in a totally new situation, for example, a branch office? We would normally expect Alice to act better as she is internally motivated to apply principles, while Bob may not care what we desire.
-
+Both of them will do the job fine. But if the job changes, who is likely to do what you want? Many people would expect Alice to extend her principles to this new situation, which would align better with you.
 
 #### Testing Methodology
 
@@ -106,6 +101,9 @@ This should be helpful when aligning AI to human values, as it suggests that ali
 - [x] Switch to circuit breaking losses
 - [x] see if we can get coherent output
 - [x] measure generalization of baseline vs ReprPO
+- [ ] test on multiple datasets, models
+- [ ] find optimal hyperparams for each intervention
+- [ ] brainstorm and search for more interventions
 
 ```sh
 poetry install
