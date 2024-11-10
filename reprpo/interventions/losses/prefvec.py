@@ -27,6 +27,7 @@ def prefec_loss(
     use_nll_loss=True,
     weight_tokens=False,
     use_proj_rel=False,
+    use_pref_ref=True,
 ):
     """
     movement of hs along the hs pref vector.
@@ -50,30 +51,39 @@ def prefec_loss(
         hs_ref_rej = preproc_hs(ref_rej, k)  # .detach()
 
         # we define the reference vector as the direction between the reference chosen and rejected hidden states. It's a high dim vector in the space of hidden states
-        pref_dir = hs_ref_cho - hs_ref_rej  # preference vector
+        pref_dir_ref = hs_ref_cho - hs_ref_rej  # preference vector
+        pref_dir_pi = hs_pi_cho - hs_pi_rej  # preference vector
         cho = (
             hs_pi_cho - hs_ref_cho
         )  # vector describing movement of chosen hidden state compared to base model
         rej = hs_pi_rej - hs_ref_rej
 
-        pref_dir_unit = pref_dir / pref_dir.norm(dim=-1, keepdim=True).clamp(eps)
+        # pref_dir_ref_unit = pref_dir_ref / pref_dir_ref.norm(dim=-1, keepdim=True).clamp(eps)
+        # pref_dir_pi_unit = pref_dir_pi / pref_dir_pi.norm(dim=-1, keepdim=True).clamp(eps)
 
-        def signed_proj_magnitude(a, ref_dir):
+        def signed_proj_magnitude(a, pref_dir):
+            pref_dir_unit = pref_dir / pref_dir.norm(dim=-1, keepdim=True).clamp(eps)
+
             # get projection of `a` along ref_dir
             a_proj = (pref_dir_unit * a).sum(dim=-1, keepdim=True) * pref_dir_unit
 
             a_orth = a - a_proj
-            cosine_sim = F.cosine_similarity(a, ref_dir, dim=-1)
+            cosine_sim = F.cosine_similarity(a, pref_dir, dim=-1)
             return a_proj.mean(dim=-1), a_orth.mean(dim=-1), cosine_sim
 
-        cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(cho, pref_dir)
-        rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(rej, pref_dir)
-        rel_pref, rel_orth, rel_cossim = signed_proj_magnitude(cho-rej, pref_dir)
+        if use_pref_ref:
+            cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(cho, pref_dir_ref)
+            rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(rej, pref_dir_ref)
+            rel_pref, rel_orth, rel_cossim = signed_proj_magnitude(cho-rej, pref_dir_ref)
+        else:
+            cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(cho, pref_dir_pi)
+            rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(rej, pref_dir_pi)
+            rel_pref, rel_orth, rel_cossim = signed_proj_magnitude(cho-rej, pref_dir_pi)
 
         # goes down if the hs moves along the direction of the preference vector
         loss_proj = -cho_pref - rej_pref
 
-        # we would also like cho to be preferenced over ref
+        # we would also like cho to be preferenced over ref, so make them far away?
         loss_proj_rel = -(cho_pref - rej_pref)
 
         # increases with movement of hs orthogonal to the preference vector
@@ -104,9 +114,10 @@ def prefec_loss(
     ll_keys = next(iter(ll.values())).keys()
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
-    loss_reroute = ll["loss_proj"]
     if use_proj_rel:
-        loss_reroute += ll["loss_proj_rel"] * 1e6 # a very small number so we make it bigger
+        loss_reroute = ll["loss_proj_rel"] * 1e6 # a very small number so we make it bigger
+    else:
+        loss_reroute = ll["loss_proj"]
     if use_orth_loss:
         loss_reroute += β * ll["loss_orth"]
     if use_angle_loss:
@@ -119,9 +130,9 @@ def prefec_loss(
     ref_nll_loss = cross_entropy_loss(
         ref_cho.logits, batch["chosen"], batch["chosen_mask"]
     )
-    nll_loss_ratio = (nll_loss - ref_nll_loss).mean(1)
-    loss_retain_nll = F.relu(nll_loss_ratio)
-    # FIXME why is loss_nll_retain<>nll_loss_ratio is logs?
+    nll_loss_ratio = (nll_loss - ref_nll_loss)
+    loss_retain_nll = F.relu(nll_loss_ratio).mean(1)
+    # FIXME why is loss_retain_mll<>nll_loss_ratio in logs?
 
     # dpo loss, punished model if rejected completion is more likely than the chosen
     dpo_ptheta = compute_ptheta(
@@ -192,6 +203,9 @@ class PrefVecLossConfig:
 
     use_proj_rel: bool = True
     """encourage chosen to be more in the pref dir than rejected"""
+
+    use_pref_ref: bool = True
+    """use the reference model to get the preference vector. Is false we use the moving policy and it could lead to a better outcome, or instability (TODO investigate)"""
 
     def c(self, *args, **kwargs):
         return prefec_loss(*args, **kwargs, **asdict(self))

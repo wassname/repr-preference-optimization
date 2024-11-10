@@ -4249,3 +4249,37 @@ hs-ether-mse
 |:------------------------------------|-------------:|------------:|
 | lr                                  |        0.768 | 3.4206e-06  |
 | α                                   |        0.232 | 0.000867935 |
+
+# 2024-10-31 08:33:44
+
+From DavidAd's idea
+
+- and model drift (per hs), clip or loss
+- and log_softmax as transform or add to none
+- optuna all is just doing dpo, and out of mem sometimes
+
+TODO show one sample from each dataset?
+
+
+# 2024-11-01 07:25:10 Did a full set of experiments, prefvec often goes to far
+
+https://wandb.ai/wassname/reprpo2/groups/exp-31Oct1252-math-llama-3-2-1b-sft/workspace?nw=nwuserwassname
+
+The PrefVec ones are weird. They scores highly, but only on the eval. Thee acc just went down even on train? wbhy
+- ReprPO_ETHER_PrefVec collect_hs=True ether.Htype=etherplus
+but this one was good
+- ReprPO_None_PrefVec prefvec.use_dpo_loss=True 
+
+FIXME:
+- [x] need to print ALL into wandb logs? it's in log.txt, or is it now
+- [ ] need sample of each eval
+- [ ] work out wh some prefeval was terrible
+- [ ] why is val acc diff from eval acc? one is only 10 samples and dpo. the other is a diff framework and agg?
+  - one is score_weighted and 750 samples. hmm
+
+
+# 2024-11-10 idea
+
+I'm using the preference direction on the ref/base model, but if I use the pi model.. would it improve... or become unstable....
+- [ ] add flag, try both on quick 1b model
+- [ ] also should I not make the rejected string go in the -ve pref dir?

@@ -126,3 +126,14 @@ dev:
 cp:
     rsync -avz --ignore-existing runpod:/workspace/repr-preference-optimization/outputs/ ./ouputs/
 
+scratch2:
+    #!/usr/bin/zsh
+    export WANDB_GROUP=${WANDB_GROUP:-prefvecexp-$(date +%y%m%d_%H%M)}
+    # baseline
+    python scripts/train.py --verbose 1 prefvec
+    # what if we use the pref vec on pi model?
+    python scripts/train.py --verbose 1 prefvec --no-use-pref-ref
+    # what if we make the rejected string less prefered
+    python scripts/train.py --verbose 1 prefvec --no-use-proj-rel
+    # what if both?
+    python scripts/train.py --verbose 1 prefvec --no-use-proj-rel --no-use-pref-ref
