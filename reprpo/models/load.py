@@ -3,6 +3,7 @@ import torch
 
 # from peft import prepare_model_for_kbit_training
 from reprpo.helpers.torch import clear_mem
+from loguru import logger
 
 
 def print_trainable_parameters(model):
@@ -15,7 +16,7 @@ def print_trainable_parameters(model):
         all_param += param.numel()
         if param.requires_grad:
             trainable_params += param.numel()
-    print(
+    logger.info(
         f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}"
     )
 

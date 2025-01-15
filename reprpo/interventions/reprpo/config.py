@@ -1,26 +1,23 @@
 from reprpo.interventions.config import ExperimentConfig
-from reprpo.interventions.losses import Losses, mse, LossesType
+from reprpo.interventions.losses import Losses, LossesType
 from reprpo.interventions.transforms import Transforms, TransformType
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
-from .model import PL_REPRPO_MODEL
+from dataclasses import dataclass, field
+from reprpo.interventions.reprpo.model import PL_REPRPO_MODEL
+from typing import Optional
 
 
 @dataclass
 class ReprPOConfig(ExperimentConfig):
     lr: float = 1e-4
 
-    collection_layers_side: tuple = (10, 12, 14, 16, 18)
+    collection_layers_side: Optional[tuple] = None
     """layers to collect activations from in side layers."""
-
-    # collection_layers_hs: tuple=(10, 20, 30)
-    # """The layers to collect the hidden states from. Thisis for methods that operate on the redundant residual stream so only needs a couple of points of collection"""
 
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
         "base_model.model.model.layers.{layer}.mlp.down_proj",
     )
-    """keys to collect inputs from."""
+    """keys to collect inputs from"""
 
     collection_keys_out: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.q_proj",
@@ -34,10 +31,13 @@ class ReprPOConfig(ExperimentConfig):
     collect_input: bool = True
     """use collection_keys_in? else use collection_keys_out."""
 
-    loss_fn: LossesType = mse
+    collect_hs: bool = False
+    """collect hidden states instead of activations"""
+
+    loss: LossesType = field(default_factory=lambda: Losses.prefvec.value())
     """loss function"""
 
-    transform: TransformType = Transforms.ether.value
+    transform: TransformType = field(default_factory=lambda: Transforms.ether.value())
     """transform function"""
 
     _cls = PL_REPRPO_MODEL
@@ -45,10 +45,17 @@ class ReprPOConfig(ExperimentConfig):
     _model_keys = [
         "lr",
         "collection_layers_side",
-        # 'collection_layers_hs',
         "collection_keys_in",
         "collection_keys_out",
         "collect_input",
-        "loss_fn",
+        "collect_hs",
+        "loss",
         "transform",
     ]
+
+    @property
+    def _name(self):
+        transform = type(self.transform).__name__.replace("Config", "")
+        loss = type(self.loss).__name__.replace("Config", "").replace("Loss", "")
+        h = "hs" if self.collect_hs else "side"
+        return f"{h}-{transform}-{loss}"

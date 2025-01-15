@@ -1,29 +1,38 @@
 import torch
 import torch.nn.functional as F
-from einops import rearrange, repeat, reduce
 
-from torch import Tensor
-from jaxtyping import Float, Int
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
-
-from types import SimpleNamespace
+import os
 from baukit.nethook import TraceDict, get_module
-from dataclasses import dataclass
-
-from reprpo.interventions.types import ReprPOModelOutput, HS, Mask
-from reprpo.interventions.pl_base import PL_MODEL, ModelConfigBase
+import numpy as np
+from reprpo.interventions.types import ReprPOModelOutput
+from reprpo.interventions.pl_base import PL_MODEL
 from reprpo.interventions.helpers import compute_logprobs
 import warnings
 from .helpers import get_layer_paths, validate_layer_paths
-from ..losses import Losses, LossesType
-from ..transforms import Transforms, TransformType
-from ..losses.helpers import cross_entropy_loss
+from ..losses import LossesType
+from ..transforms import TransformType
 from ..dpo import compute_dpo_loss
 
+def get_default_layers(N, side_channels=False):
+    """
+    Which layers to use? If we use all of them it will take lots of memory. For hidden space ones we don't need many. But for side channel ones we typically need many.
 
-def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_input=True):
+    Simialr to [Circuit Breakers](https://arxiv.org/html/2406.04313v4), we use the layers at 33% and 66%. 
+    
+    I also want the last two layers to enable supression neurons. 
+    
+    """
+    layers = list(np.linspace(0, N, 4).astype(int)[1:-1]) # 33% and 66% as in Circuit Breakers
+    layers += [N-2, N-1] # last two for supression neurons
+    if side_channels:
+        layers += list(range(int(N*0.33),int(N*0.66))) # for side channels we use the middle 33% similar to the RepE setup in Circuit Breakers
+    return sorted(set(layers))
+
+def reprpo_forward_baukit(
+    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False
+):
     # if the layer paths are just str(ints) then just collect the hidden states
-    try:
+    if collect_hs:
         layer_paths = [int(p) for p in layer_paths]
         outs = model(
             input_ids,
@@ -33,7 +42,7 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
             output_hidden_states=True,
         )
         reprs = {str(k): outs.hidden_states[k] for k in layer_paths}
-    except ValueError:
+    else:
         reprs = {}
         with TraceDict(
             model,
@@ -56,13 +65,15 @@ def reprpo_forward_baukit(model, input_ids, attn_mask, layer_paths, collect_inpu
                     reprs[p] = ret[p].output
 
     for p in reprs:
-        if not torch.isfinite(reprs[p]).all():
-            warnings.warn(
-                f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
-            )
-        # assert torch.isfinite(
-        #     reprs[p]
-        # ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
+        if os.environ.get("DEBUG", False):
+            if not torch.isfinite(reprs[p]).all():
+                warnings.warn(
+                    f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
+                )
+        else:
+            assert torch.isfinite(
+                reprs[p]
+            ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
 
     logprobs = compute_logprobs(
         logits=outs.logits, labels=input_ids, selection_mask=attn_mask
@@ -78,22 +89,34 @@ class PL_REPRPO_MODEL(PL_MODEL):
         *args,
         collection_layers_side,
         collect_input,
+        collect_hs,
         collection_keys_in: tuple = None,
         collection_keys_out: tuple = None,
-        loss_fn: LossesType,
+        loss: LossesType,
         transform: TransformType,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.hparams.loss_fn = loss_fn
+        self.hparams.loss = loss
         self.hparams.transform = transform
         self.hparams.collection_layers_side = collection_layers_side
         self.hparams.collect_input = collect_input
+        self.hparams.collect_hs = collect_hs
 
         collection_keys = collection_keys_in if collect_input else collection_keys_out
 
+        # if collection_layers_side is None we collect the last 50% of layers
+
+
+        if collection_layers_side is None:
+            N = self._model.config.num_hidden_layers
+            collection_layers_side = get_default_layers(N, side_channels=not collect_hs)
+
+        # turn negative numbers into offsets from the end
+        collection_layers_side = [i if i >= 0 else self._model.config.num_hidden_layers + i for i in collection_layers_side]
+
         # set layer_paths
-        if len(collection_keys) > 0:
+        if not collect_hs:
             self.hparams.layer_paths = get_layer_paths(
                 collection_keys, collection_layers_side
             )
@@ -109,20 +132,14 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     p: get_module(self._model, p).out_features
                     for p in self.hparams.layer_paths
                 }
-        else:
-            # if no collection keys, we collect hidden states instead
-            # we generally need only a few so lets just take the first and last
-            self.hparams.layer_paths = tuple(
-                set([collection_layers_side[0], collection_layers_side[-1]])
-            )
-            self.hparams.layer_paths = [str(s) for s in self.hparams.layer_paths]
+        else:            
+            self.hparams.layer_paths = [str(s) for s in collection_layers_side]
             hra_sizes = {
                 k: self._model.config.hidden_size for k in self.hparams.layer_paths
             }
 
-        self.transforms = torch.nn.ParameterDict(
-            {k: transform.c(dim_hs, dim_hs, model=self._model) for k, dim_hs in hra_sizes.items()}
-        )
+        self.transforms = transform.c(hra_sizes, model=self._model)
+
         self.transforms = self.transforms.to(self._model.dtype).to(self._model.device)
 
     def _loss_fn(self, batch, model):
@@ -138,6 +155,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     attn_mask=batch["chosen_mask"],
                     layer_paths=h.layer_paths,
                     collect_input=h.collect_input,
+                    collect_hs=h.collect_hs,
                 )
                 ref_rej = reprpo_forward_baukit(
                     model=model,
@@ -145,6 +163,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     attn_mask=batch["rejected_mask"],
                     layer_paths=h.layer_paths,
                     collect_input=h.collect_input,
+                    collect_hs=h.collect_hs,
                 )
 
         model.train()
@@ -154,6 +173,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             attn_mask=batch["chosen_mask"],
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
+            collect_hs=h.collect_hs,
         )
         pi_rej = reprpo_forward_baukit(
             model=model,
@@ -161,15 +181,17 @@ class PL_REPRPO_MODEL(PL_MODEL):
             attn_mask=batch["rejected_mask"],
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
+            collect_hs=h.collect_hs,
         )
 
         # run loss function
-        loss, info = h.loss_fn.c(
+        loss, info = h.loss.c(
             pi_cho=pi_cho,
             pi_rej=pi_rej,
             ref_cho=ref_cho,
             ref_rej=ref_rej,
             batch=batch,
+            transforms=self.transforms,
         )
 
         # collect extra metrics
@@ -183,10 +205,10 @@ class PL_REPRPO_MODEL(PL_MODEL):
             )
 
             # measures preference for cho>ref compared to base model. Should increase
-            info['logits'] = info_dpo['logits']
+            info["logits"] = info_dpo["logits"]
 
             # measures if coherence has increased over ref model. Should be increase
-            info['chosen_rewards'] = info_dpo['chosen_rewards']
+            info["chosen_rewards"] = info_dpo["chosen_rewards"]
 
             def cosine_on_keys(hs1, hs2):
                 return torch.stack(
@@ -195,11 +217,10 @@ class PL_REPRPO_MODEL(PL_MODEL):
                         for k in hs1.keys()
                     ]
                 ).nanmean()
+
             # measure if chosen models are still close to the ref model, should stay at 1
-            info['retain_cosine'] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
+            info["retain_cosine"] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
             # measures if refject hs are getting close to cho, should rise towards 1
-            info['rr_cosine'] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
-
-
+            info["rr_cosine"] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
         return loss, {**info, **info_dpo}

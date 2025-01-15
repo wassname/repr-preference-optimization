@@ -101,15 +101,16 @@ This should be helpful when aligning AI to human values, as it suggests that ali
 - [x] Switch to circuit breaking losses
 - [x] see if we can get coherent output
 - [x] measure generalization of baseline vs ReprPO
-- [ ] test on multiple datasets, models
+- [ ] over all dataset
+- [ ] over 3 model sizes [1b 3b 8b]
+- [ ] mean of 5 random seeds
 - [ ] find optimal hyperparams for each intervention
 - [ ] brainstorm and search for more interventions
 
 ```sh
 poetry install
 
-python -u nbs/train.py --method reprpo_ortho
-python -u nbs/train.py --method dpo
+python -u nbs/train.py --help
 
 # to test
 pytest

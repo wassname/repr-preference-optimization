@@ -1,15 +1,15 @@
-from jaxtyping import Float, Int
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from jaxtyping import Float
+from typing import Any, Callable, Dict, Optional
 from torch import Tensor
-from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
-from .helpers import cross_entropy_loss
-from ..types import HS, HS2, Mask, ReprPOModelOutput
-from ..reprpo.helpers import mean_tokens_w_attention, detach_hsd
+from ..types import HS2, ReprPOModelOutput
+from ..reprpo.helpers import reduce_tokens_w_attention
 
 
-def log_dist_ratio(a: HS2, b: HS2, a_ref: HS2, b_ref: HS2, eps=1e-12) -> Float[Tensor, "b"]:
+def log_dist_ratio(
+    a: HS2, b: HS2, a_ref: HS2, b_ref: HS2, eps=1e-12
+) -> Float[Tensor, "b"]:
     """distance between a and b, as a log ratio to the distance between a_ref and b_ref"""
 
     dist = a - b
@@ -19,7 +19,7 @@ def log_dist_ratio(a: HS2, b: HS2, a_ref: HS2, b_ref: HS2, eps=1e-12) -> Float[T
 
     # if provided with reference points, return the distance as a ratio to the reference distance
     if (a_ref is not None) and (b_ref is not None):
-        dist_ref = (a_ref - b_ref)
+        dist_ref = a_ref - b_ref
         dist_ref = torch.norm(dist_ref, dim=-1)
         dist_ref = dist_ref + eps
 
@@ -35,23 +35,26 @@ def mse_loss(
     ref_cho: ReprPOModelOutput,
     ref_rej: ReprPOModelOutput,
     batch: Dict[str, Any],
-    transform: Optional[Callable] = None,
+    transforms: Optional[Callable] = None,
     # custom loss_args
-    alpha: float = 1,
+    α: float = 1,
     eps=1e-12,
 ):
     """
     movement of hs along the hs pref vector.
     """
 
+    if transforms is not None:
+        pi_cho.hs = transforms(pi_cho.hs)
+        pi_rej.hs = transforms(pi_rej.hs)
+        ref_cho.hs = transforms(ref_cho.hs)
+        ref_rej.hs = transforms(ref_rej.hs)
+
     def preproc_hs(o, k):
-        hs = o.hs[k]
-        if transform is not None:
-            hs = transform(hs)
-        hs = mean_tokens_w_attention(hs, o.mask)
+        hs = reduce_tokens_w_attention(o.hs[k], o.mask)
         return hs
 
-    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) ->  Dict[str, Float[Tensor, 'b']]:
+    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, "b"]]:
         hs_pi_cho = preproc_hs(pi_cho, k)
         hs_pi_rej = preproc_hs(pi_rej, k)
         hs_ref_cho = preproc_hs(ref_cho, k)  # .detach()
@@ -60,7 +63,7 @@ def mse_loss(
         # loss_reroute: the repr of policy rejected responses should be closer to the reference chosen responses
         # we measure it as a ratio to the distance between the chosen responses and the rejected responses in the reference model as this is a stable target
         loss_reroute = log_dist_ratio(
-            hs_ref_cho,#.detach(),
+            hs_ref_cho,  # .detach(),
             hs_pi_rej,
             hs_ref_cho,
             hs_ref_rej,
@@ -70,7 +73,7 @@ def mse_loss(
         # loss_retain: the repr of policy model chosen responses should be closer to the ref model chosen responses
         # we scale it using the reference model as a stable target
         loss_retain = log_dist_ratio(
-            hs_ref_cho,#.detach(),
+            hs_ref_cho,  # .detach(),
             hs_pi_cho,
             hs_ref_cho,
             hs_ref_rej,
@@ -89,7 +92,7 @@ def mse_loss(
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
     loss_reroute, loss_retain = ll["loss_reroute"], ll["loss_retain"]
 
-    loss = (loss_reroute + loss_retain * alpha).nanmean()
+    loss = (loss_reroute + loss_retain * α).nanmean() * 100 # multiply by 10 to make ideal lr around 1e-4
 
     # log info
     info = dict(
@@ -101,9 +104,11 @@ def mse_loss(
     return loss, info
 
 
-@dataclass(frozen=True)
+@dataclass
 class MSELossConfig:
-    alpha: float = 1.0
+    α: float = 0.6
+    """weight between retain and reroute loss."""   
+     
     eps: float = 1e-12
 
     def c(self, *args, **kwargs):

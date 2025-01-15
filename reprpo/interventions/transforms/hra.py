@@ -4,6 +4,7 @@ import math
 from dataclasses import dataclass, asdict
 import warnings
 from typing import Optional
+from .helpers import TransformByLayer
 
 class HRATransform(nn.Module):
     """
@@ -11,7 +12,14 @@ class HRATransform(nn.Module):
     - https://github.com/huggingface/peft/blob/54be5a3db61748d698ca2e6b55bcfef229a9b475/src/peft/tuners/hra/layer.py#L197
     """
 
-    def __init__(self, in_features, out_features, r=8, apply_GS=False, model: Optional[nn.Module]=None):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        r=8,
+        apply_GS=False,
+        model: Optional[nn.Module] = None,
+    ):
         super().__init__()
 
         self.hra_r = r
@@ -81,14 +89,16 @@ class HRATransform(nn.Module):
         delta_weight = self.get_delta_weight()
         return torch.matmul(input, delta_weight)
 
+class HRATransforms(TransformByLayer):
+    Transform = HRATransform
 
-@dataclass(frozen=True)
+@dataclass
 class HRAConfig:
-    r: int = 8
+    r: int = 38
     """The rank of HRA across different layers. Can be large as there is only one HRA matrix."""
 
     apply_GS: bool = True
     """Whether to apply Gram-Schmidt orthogonalization."""
 
     def c(self, *args, **kwargs):
-        return HRATransform(*args, **kwargs, **asdict(self))
+        return HRATransforms(*args, **kwargs, **asdict(self))

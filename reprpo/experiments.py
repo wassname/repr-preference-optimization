@@ -1,123 +1,137 @@
-from reprpo.interventions import Interventions, DPOConfig, ReprPOConfig
+from reprpo.interventions import DPOConfig, ReprPOConfig, ProjGradConfig, ProjBPConfig
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 
+
+def get_default_bool(c):
+    """get the bool attrs from a dataclass"""
+    for k in dir(c):
+        v = getattr(c, k)
+        if isinstance(v, bool):
+            yield k, v
+
 experiment_configs = {
-    "ether-side-mse": (
-        "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
+
+    # this will use lots of memory, so good to have it as the first one
+    "side-none-prefvec2": ("",
         ReprPOConfig(
-            transform=Transforms.ether.value(),
-            loss_fn=Losses.mse.value(),
-        ),
-    ),
-    "ether-side-rank": (
-        "2",
-        ReprPOConfig(
-            transform=Transforms.ether.value(),
-            loss_fn=Losses.rank.value(),
-        ),
-    ),
-    "ether-side-prefvec": (
-        "3",  # unstable?
-        ReprPOConfig(
-            transform=Transforms.ether.value(),
-            loss_fn=Losses.prefvec.value(),
-            lr=1e-5,
-        ),
-    ),
-    "none-side-mse": (
-        "Collect hs from the side channels, apply an ETHER transform and use MSE loss.",
-        ReprPOConfig(
+            collect_hs=False,
             transform=Transforms.none.value(),
-            loss_fn=Losses.mse.value(),
+            loss=Losses.prefvec.value(β=3.),
         ),
     ),
-    "none-side-rank": (
-        "2",
-        ReprPOConfig(
-            transform=Transforms.none.value(),
-            loss_fn=Losses.rank.value(),
-        ),
-    ),
-    "none-side-prefvec": (
-        "3",  # unstable?
-        ReprPOConfig(
-            transform=Transforms.none.value(),
-            loss_fn=Losses.prefvec.value(),
-            lr=1e-5,
-        ),
-    ),
-    "none-hs-prefvec": (
-        "Collect hs and use PreferenceVector loss.",
-        ReprPOConfig(
-            collection_keys_in=(),
-            transform=Transforms.none.value(),
-            loss_fn=Losses.prefvec.value(),
-        ),
-    ),
-    "none-hs-rank": (
-        "Collect hs and use ranking loss.",
-        ReprPOConfig(
-            collection_keys_in=(),
-            transform=Transforms.none.value(),
-            loss_fn=Losses.rank.value(),
-        ),
-    ),
-    "none-hs-mse": (
-        "Collect hs and use ranking loss.",
-        ReprPOConfig(
-            collection_keys_in=(),
-            transform=Transforms.none.value(),
-            loss_fn=Losses.rank.value(),
-        ),
-    ),
-    "ether-hs-rank": (
-        "",
-        ReprPOConfig(
-            collection_keys_in=(),
-            transform=Transforms.ether.value(),
-            loss_fn=Losses.rank.value(),
-        ),
-    ),
-    # "ether-hs-mse": (
-    #     "",  # unstable with tinyllama, no grad otherwise?
-    #     ReprPOConfig(
-    #         collection_keys_in=(),
-    #         transform=Transforms.ether.value(),
-    #         loss_fn=Losses.mse.value(),
-    #     ),
-    # ),
-    "ether-hs-prefvec": (
-        "",
-        ReprPOConfig(
-            collection_keys_in=(),
-            transform=Transforms.ether.value(),
-            loss_fn=Losses.prefvec.value(),
-        ),
-    ),
-    "hra-hs-prefvec": (
-        "",
-        ReprPOConfig(
-            collection_keys_in=(),
-            transform=Transforms.hra.value(),
-            loss_fn=Losses.prefvec.value(),
-        ),
-    ),
-    "ortho-hs-prefvec": (
-        "Collect hs, apply Orthogonal transform and use PreferenceVector loss.",
-        ReprPOConfig(
-            collection_keys_in=(),
-            transform=Transforms.ortho.value(),
-            loss_fn=Losses.prefvec.value(),
-        ),
-    ),
-    "svd-hs-prefvec": (
-        "",
-        ReprPOConfig(
-            collection_keys_in=(),
-            transform=Transforms.svd.value(),
-            loss_fn=Losses.prefvec.value(),
-        ),
-    ),
+
+
+    # baseline
     "dpo": ("DPO experiment.", DPOConfig()),
+
+    # gradient based methods
+    "projgrad": ("projgrad experiment.", ProjGradConfig()),
+
+    "hs-ether-rank2": ("",
+        ReprPOConfig(
+            collect_hs=True,
+            transform=Transforms.ether.value(),
+            loss=Losses.rank.value(use_nll_loss=True, β=0.1, α=100),
+        ),
+    ),
+    
+    "projbp": ("projbp experiment.", ProjBPConfig()),
+
+
 }
+
+# first all the reprpo experiments
+experiment_configs2 = {}
+for loss in Losses:
+    l_name = loss.name
+    experiment_configs2.update({
+        f"side-none-{l_name}": (
+            f"No transform one side activations and use {l_name} loss.",
+            ReprPOConfig(
+                collect_hs=False,
+                transform=Transforms.none.value(),
+                loss=loss.value(),
+            ),
+        )
+    })
+for transform in Transforms:
+    for loss in Losses:
+        t_name = transform.name
+        l_name = loss.name
+        experiment_configs2.update({
+            f"hs-{t_name}-{l_name}": (
+                f"Apply {t_name} transform on hs and use {l_name} loss.",
+                ReprPOConfig(
+                    collect_hs=True,
+                    transform=transform.value(),
+                    loss=loss.value(),
+                ),
+            )
+        })
+
+# shuffle experiment_configs2
+import random
+keys = list(experiment_configs2.keys())
+random.shuffle(keys)
+experiment_configs2 = {k: experiment_configs2[k] for k in keys}
+experiment_configs.update(experiment_configs2)
+
+for Htype in ["ether", "etherplus", "oft", "etherplusHH"]:
+    experiment_configs.update({
+            f"hs-ether-prefvec-Htype_{Htype}": ('', 
+            ReprPOConfig(
+                collect_hs=True,
+                transform=Transforms.ether.value(Htype=Htype),
+                loss=Losses.prefvec.value(),
+            ),
+        ),
+    })
+
+
+for k,v in list(get_default_bool(Losses.prefvec.value)):
+    # variants, with bools flipped
+    experiment_configs.update({   
+        f"side-none-prefvec-{k}_{not v}": ("No transform one side activations and use prefvec loss.",
+            ReprPOConfig(     
+                collect_hs=False,             
+                transform=Transforms.none.value(),
+                loss=Losses.prefvec.value(**{k:not v}),
+            ),
+        ),
+    })
+
+for k,v in list(get_default_bool(Losses.rank.value)):
+    # variants, with bools flipped
+    experiment_configs.update({   
+        f"side-none-rank-{k}_{not v}": ("No transform one side activations and use rank loss.",
+            ReprPOConfig(      
+                collect_hs=False,      
+                transform=Transforms.none.value(),
+                loss=Losses.rank.value(**{k:not v}),
+            ),
+        ),
+    })
+
+experiment_configs.update({   
+
+    # variants of the supression transform with only the last two layers
+    "hs-supr-prefvec2": ('', 
+        ReprPOConfig(
+            collect_hs=True,
+            collection_layers_side=(-2, -1),
+            transform=Transforms.supr.value(),
+            loss=Losses.prefvec.value(),
+            # lr=1e-5,
+        ),
+    ),
+    "hs-supr-rank2": ('', 
+        ReprPOConfig(
+            collect_hs=True,
+            collection_layers_side=(-2, -1),
+            transform=Transforms.supr.value(),
+            loss=Losses.rank.value(),
+        ),
+    ),
+
+})

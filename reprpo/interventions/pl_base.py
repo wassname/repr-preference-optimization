@@ -2,13 +2,12 @@ from torch import optim
 import lightning as pl
 import bitsandbytes as bnb
 from dataclasses import dataclass
-from ..helpers.scheduler import get_constant_schedule_with_warmup
+from transformers.optimization import get_cosine_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup, get_inverse_sqrt_schedule, get_wsd_schedule, get_constant_schedule_with_warmup
 
-
-@dataclass
-class ModelConfigBase:
-    lr: float = 3e-4
-    weight_decay: float = 0.0
+# @dataclass
+# class ModelConfigBase:
+#     lr: float = 3e-4
+#     weight_decay: float = 0.0
 
 
 class PL_MODEL(pl.LightningModule):
@@ -22,7 +21,7 @@ class PL_MODEL(pl.LightningModule):
         weight_decay=0,
         batch_size=None,
         adam8bit=False,
-        schedule="constant",
+        schedule="wsd",
     ):
         super().__init__()
         self._model = model
@@ -40,19 +39,25 @@ class PL_MODEL(pl.LightningModule):
         self.log(
             f"{phase}/loss",
             loss,
+            on_epoch=False,
+            on_step=True,
+            prog_bar=True,
+            batch_size=self.hparams.batch_size,
+        )
+        self.log(
+            f"{phase}/dpo_acc",
+            info.pop(f"dpo_acc"),
             on_epoch=True,
             on_step=True,
             prog_bar=True,
             batch_size=self.hparams.batch_size,
         )
 
-        (
-            self.log_dict(
-                {f"{phase}/{k}": v for k, v in info.items()},
-                on_epoch=True,
-                on_step=True,
-                batch_size=self.hparams.batch_size,
-            ),
+        self.log_dict(
+            {f"{phase}/{k}": v for k, v in info.items()},
+            # on_epoch=True,
+            on_step=True,
+            batch_size=self.hparams.batch_size,
         )
         return loss
 
@@ -98,12 +103,20 @@ class PL_MODEL(pl.LightningModule):
                 total_steps=self.hparams.num_iterations,
                 verbose=True,
                 pct_start=0.1,
+                final_div_factor=1e2,
             )
         elif self.hparams.schedule == "constant":
             # same as GENIES warmup_ratio=0.03
             num_warmup_steps = int(self.hparams.num_iterations * 0.03)
             scheduler = get_constant_schedule_with_warmup(
                 optimizer, num_warmup_steps=num_warmup_steps
+            )
+        elif self.hparams.schedule == "wsd":
+            scheduler = get_wsd_schedule(
+                optimizer,
+                num_warmup_steps=int(self.hparams.num_iterations * 0.15),
+                num_stable_steps=int(self.hparams.num_iterations * 0.7),
+                num_decay_steps=int(self.hparams.num_iterations * 0.15),
             )
         lr_scheduler = {"scheduler": scheduler, "interval": "step"}
         return [optimizer], [lr_scheduler]

@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 
 
-def compute_logprobs(logits, labels, selection_mask=None):
+def compute_logprobs(logits, labels, selection_mask=None, type="dpo"):
     """
     Compute log probabilities.
 
@@ -34,11 +34,14 @@ def compute_logprobs(logits, labels, selection_mask=None):
         # Apply the mask to filter out padding tokens
         selected_log_probs = selected_log_probs * mask
 
-        # Calculate the average log probability excluding padding tokens
-        # This averages over the tokens, so the shape is (batch_size, num_tokens)
-        avg_log_prob = selected_log_probs.sum(-1) / mask.sum(-1)
-
-        return avg_log_prob
+        if type == "dpo":
+            return selected_log_probs.sum(
+                -1
+            )  # sum over logprobs, total prob of whole completion
+        elif type == "ipo":
+            # Calculate the average log probability excluding padding tokens
+            # This averages over the tokens, so the shape is (batch_size, num_tokens)
+            return selected_log_probs.sum(-1) / mask.sum(-1)
 
     else:
         return selected_log_probs.mean(-1)

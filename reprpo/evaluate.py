@@ -1,8 +1,6 @@
 from datasets import load_dataset
 from open_pref_eval.evaluation import evaluate_model
-import pandas as pd
 from open_pref_eval.datasets import get_default_datasets
-from reprpo.helpers.adapters import set_adapter
 
 
 def evaluate_adapters(model, tokenizer, N=30, **kwargs):

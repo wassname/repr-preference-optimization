@@ -1,7 +1,8 @@
 import torch
-from torch import nn, Tensor
+from torch import Tensor
 from typing import Tuple
 from jaxtyping import Float
+from loguru import logger
 
 
 def soft_svd(W, quantile=0.1, full_matrices=False):
@@ -11,7 +12,7 @@ def soft_svd(W, quantile=0.1, full_matrices=False):
     tau = torch.quantile(S, quantile)
     # print(m, S, tau)
     m = (S.abs() > tau).float().mean()
-    print(
+    logger.debug(
         f"Soft SVD: {m:.2%} of singular values kept, with tau={tau:.2f}, Smean={S.abs().mean():.2f}, Smax={S.max():.2f}, Smin={S.min():.2f}"
     )
 
@@ -56,11 +57,8 @@ class SoftSVDDecomposer:
         self.Vt = Vt.to(dtype).detach()
 
     def __call__(
-        self, hs: Float[Tensor, "batch layers tokens hidden_size"]
-    ) -> Tuple[
-        Float[Tensor, "batch layers tokens hidden_size"],
-        Float[Tensor, "batch layers tokens hidden_size"],
-    ]:
+        self, hs: Float[Tensor, "batch tokens hidden_size"]
+    ) ->  Float[Tensor, "batch tokens hidden_size"]:
         original_shape = hs.shape
 
         def match_dtype(a, b):
@@ -130,11 +128,8 @@ class SVDDecomposer:
         self.Vt = Vt.to(dtype).detach()
 
     def __call__(
-        self, hs: Float[Tensor, "batch layers tokens hidden_size"]
-    ) -> Tuple[
-        Float[Tensor, "batch layers tokens hidden_size"],
-        Float[Tensor, "batch layers tokens hidden_size"],
-    ]:
+        self, hs: Float[Tensor, "batch tokens hidden_size"]
+    ) -> Float[Tensor, "batch tokens hidden_size"]:
         original_shape = hs.shape
 
         def preshape(hs):
@@ -179,13 +174,13 @@ class DualSVDDecomposer:
 
     def __init__(
         self,
-        W_in: Float[Tensor, "vocab_size hidden_size"],
-        W_out: Float[Tensor, "hidden_size vocab_size"],
+        W_in: Float[Tensor, "hs vocab_size"],
+        W_out: Float[Tensor, "hs vocab_size"],
         full_matrices=False,
         quantile=0.1,
     ):
-        print("W_in", W_in.shape)
-        print("W_out", W_out.shape)
+        logger.debug("W_in", W_in.shape)
+        logger.debug("W_out", W_out.shape)
         if quantile < 1:
             self.decomposer_in = SoftSVDDecomposer(
                 W_in, full_matrices=full_matrices, quantile=quantile
@@ -198,12 +193,8 @@ class DualSVDDecomposer:
             self.decomposer_out = SVDDecomposer(W_out, full_matrices=full_matrices)
 
     def __call__(
-        self, hs: Float[Tensor, "batch layers tokens hidden_size"]
-    ) -> Tuple[
-        Float[Tensor, "batch layers tokens hidden_size"],
-        Float[Tensor, "batch layers tokens hidden_size"],
-        Float[Tensor, "batch layers tokens hidden_size"],
-    ]:
+        self, hs: Tensor
+    ) ->  Tensor:
         hs_external_in = self.decomposer_in(hs)
         hs_external_out = self.decomposer_out(hs)
 

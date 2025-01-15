@@ -9,7 +9,7 @@ class GenCallback(Callback):
         self.every = every
 
     def do_gen(self, model):
-        df_gen = get_model_generations(model, model.tokenizer, max_new_tokens=32, N=1)
+        df_gen = get_model_generations(model, model.tokenizer, max_new_tokens=64, N=1)
         display_gen(df_gen, with_q=False)
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):

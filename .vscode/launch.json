@@ -5,19 +5,34 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
             "name": "Python: Debug Tests",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "purpose": ["debug-test"],
+            "purpose": [
+                "debug-test"
+            ],
             "console": "integratedTerminal",
             "justMyCode": false
-        },          
+        },
         {
             "name": "tinyllama",
             "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false"},
-            "pythonArgs": ["-Xfrozen_modules=off"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false"
+            },
+            "pythonArgs": [
+                "-Xfrozen_modules=off"
+            ],
             "request": "launch",
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
@@ -26,8 +41,14 @@
         {
             "name": "llama",
             "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", "REPR_CONFIG": "./configs/llama3_7b.yaml"},
-            "pythonArgs": ["-Xfrozen_modules=off"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false",
+                "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml"
+            },
+            "pythonArgs": [
+                "-Xfrozen_modules=off"
+            ],
             "request": "launch",
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
@@ -36,41 +57,92 @@
         {
             "name": "dev",
             "type": "debugpy",
-            "env": {"CUDA_VISIBLE_DEVICES": "0", "TOKENIZERS_PARALLELISM": "false", 
-            "REPR_CONFIG": "./configs/dev.yaml", "WANDB_MODE": "offline"},
-            "pythonArgs": ["-Xfrozen_modules=off"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false",
+                "REPR_CONFIG": "./configs/dev.yaml",
+                "WANDB_MODE": "offline"
+            },
+            "pythonArgs": [
+                "-Xfrozen_modules=off"
+            ],
             "request": "launch",
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "ether-hs-mse",
-                "--dev", 
-                "--verbose 1",
+                "hs-ether-prefvec",
+                "--dev",
+                "--verbose=2",
+            ]
+        },
+        {
+            "name": "dev1b",
+            "type": "debugpy",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false",
+                "REPR_CONFIG": "./configs/dev1b.yaml",
+                "WANDB_MODE": "offline"
+            },
+            "pythonArgs": [
+                "-Xfrozen_modules=off"
+            ],
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "hs-ether-prefvec",
+                "--dev",
+                "--verbose=2",
             ]
         },
         {
             "name": "scratch",
             "type": "debugpy",
+            "justMyCode": false,
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0", 
-            "TOKENIZERS_PARALLELISM": "false",
-            //  "REPR_CONFIG": "./configs/dev.yaml", 
-             "REPR_CONFIG": "./configs/llama3_7b.yaml", 
-            //  "WANDB_MODE": "offline"
-            },
-            "pythonArgs": ["-Xfrozen_modules=off"],
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false",
+                //  "REPR_CONFIG": "./configs/dev.yaml", 
+                // "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml"
+                //  "REPR_CONFIG": "./configs/llama-3-2-1b.yaml", 
+                //  "WANDB_MODE": "offline"
+            }, 
+            "pythonArgs": [
+                "-Xfrozen_modules=off"
+            ],
             "request": "launch",
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
-            "autoReload": {"enable": true},
+            "autoReload": {
+                "enable": true
+            },
             "args": [
-                // "hs-dist",
-                "side-dist",
-                "--verbose",
-                // "--eval_samples=128",
-                // "--batch-size=24", 
-                // "--lr=4e-5"
-                // "--n_samples=6000",
+                "hs-supr-rank",
+                // "--dev",
+                "--verbose=2"
+            ]
+        },
+        {
+            "name": "experiments",
+            "type": "debugpy",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false",
+                "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml",
+            },
+            "pythonArgs": [
+                "-Xfrozen_modules=off"
+            ],
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/run_experiments.py",
+            "console": "integratedTerminal",
+            // "justMyCode": false,
+            "autoReload": {
+                "enable": true
+            },
+            "args": [
+                "--dev",
             ]
         }
     ]

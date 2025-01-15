@@ -1,8 +1,7 @@
-import enum
-from typing import Union, Dict, Callable
+from typing import Dict
 from jaxtyping import Float, Int
 from torch import Tensor
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 HS2 = Float[Tensor, "b h"]
 HS = Float[Tensor, "b t h"]

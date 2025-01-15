@@ -1,14 +1,13 @@
 """
 https://github.dev/mwbini/ether
 """
-from typing import Any, Dict, List, Optional, Tuple, Type, Union, Literal, Callable
+from typing import Optional, Literal
 
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
 import math
 from dataclasses import dataclass, asdict
-
+from .helpers import TransformByLayer
 
 class ETHERLayer(nn.Module):
     def __init__(
@@ -79,6 +78,8 @@ class ETHERLinear(ETHERLayer):
                 in_features = out_features
                 out_features = tmp_features
 
+            # TODO ake sure nb fits in the input size without remainder
+
             if self.Htype == "ether":
                 R_shape = [nb, in_features // nb]
                 ether_R = torch.rand(R_shape[-1])
@@ -111,6 +112,7 @@ class ETHERLinear(ETHERLayer):
 
                 # back
                 R34_shape = [nb, out_features // nb]
+                assert out_features % nb == 0, f"nb={nb} should divide out_features={out_features}"
                 ether_R3 = torch.rand(R34_shape[-1])
                 ether_R3 = torch.stack([ether_R3] * nb)
                 self.ether_R3 = nn.Parameter(ether_R3)
@@ -119,6 +121,7 @@ class ETHERLinear(ETHERLayer):
                 self.ether_R4 = nn.Parameter(ether_R4)
             else:
                 raise ValueError(f"Unknown Htype: {self.Htype}")
+            assert in_features % nb == 0, f"nb={nb} should divide in_features={in_features}"
 
     def reset_parameters(self):
         """Reset ETHER weights"""
@@ -163,6 +166,7 @@ class ETHERLinear(ETHERLayer):
         # - shapes
         nb, m, n = H.shape  # > [4,512,512]
         f, d = filt.shape  # > [8192,2048] or [2048,2048]
+        assert d % nb == 0, f"nb={nb} should divide d={d}"
 
         # - direct transformation
         if not self.flip_side:
@@ -241,7 +245,7 @@ class ETHERLinearSmall(ETHERLinear):
         Htype: str = "ether",
         ether_dropout: float = 0.0,
         flip_side: bool = False,
-        model: Optional[nn.Module]=None,
+        model: Optional[nn.Module] = None,
         **kwargs,
     ):
         super().__init__(
@@ -263,20 +267,25 @@ class ETHERLinearSmall(ETHERLinear):
         return self.linear_up(super_out)
 
 
-@dataclass(frozen=True)
+
+    
+class EtherTransforms(TransformByLayer):
+    Transform = ETHERLinearSmall
+
+@dataclass
 class ETHERConfig:
     """ETHER parameters"""
 
-    nb: int = 4
-    """number of diagonal blocks"""
+    nb: int = 2
+    """number of diagonal blocks, works best with powers of 2"""
 
-    Htype: str = "etherplus"
+    Htype: Literal["ether", "etherplus", "oft", "etherplusHH"] = "ether"
     """type of transformation 
 
     - ether: like HRA but allowing a negative unit vector (reflection)
     - etherplus: relaxing distance and orthogonality constraints
     - oft: Orthogonal Finetuning: https://arxiv.org/abs/2306.07280
-    - HH: front and back transform
+    - etherplusHH: front and back transform
     
     see https://arxiv.org/pdf/2405.20271v1
     """
@@ -286,10 +295,10 @@ class ETHERConfig:
     flip_side: bool = False
     """apply ETHER on the other (smaller) side to reduce computational overhead"""
 
-    reduction: int = 4
+    reduction: int = 60
 
     def c(self, *args, **kwargs):
-        return ETHERLinearSmall(
+        return EtherTransforms(
             *args,
             **kwargs,
             **asdict(self),

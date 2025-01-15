@@ -1,11 +1,10 @@
 {
     "recommendations": [
-        "ms-toolsai.jupyter",
         "yzhang.markdown-all-in-one",
-        "ms-python.vscode-pylance",
         "ms-python.debugpy",
-        "ms-python.python",
         "github.copilot",
-        "ms-toolsai.jupyter-renderers"
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.jupyter",
+        "ms-python.vscode-pylance"
     ]
 }

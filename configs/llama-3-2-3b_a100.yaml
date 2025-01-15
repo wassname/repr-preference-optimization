@@ -1,0 +1,3 @@
+# not really needed as this is the default params
+base_model: 'tanliboy/llama-3.2-3b-sft-2'
+batch_size: 28
