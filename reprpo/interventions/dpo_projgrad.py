@@ -32,7 +32,7 @@ def hs_norm(t: Float[Tensor, 'b t h']) -> Float[Tensor, 'b t h']:
     return repeat(t, 'b -> b t h', t=1, h=1)
 
 class ProjGradHooks:
-    def __init__(self, model, β=0.1, reverse_pref=False, scale_orth=False, neg_slope=0.0, mag_clip=None, weight_dim=2):
+    def __init__(self, model, β=0.1, reverse_pref=False, scale_orth=False, neg_slope=0.0, mag_clip=None, weight_dim=2, use_pref_ref=True):
         self.model = model
         self.β = β
         self.reverse_pref = reverse_pref
@@ -40,6 +40,7 @@ class ProjGradHooks:
         self.neg_slope = neg_slope
         self.mag_clip = mag_clip
         self.weight_dim = weight_dim
+        self.use_pref_ref = use_pref_ref
         self.register_hooks()
 
     def enabled_modules(self):
@@ -71,13 +72,17 @@ class ProjGradHooks:
         if not hasattr(m, "_cache"):
             m._cache = {}
         
-        if m._mode != "normal":
-            # FIXME ideally mask the hs
-            assert m._mode in ["ref_cho", "ref_rej"]
+        if m._mode in ["ref_cho", "ref_rej"]:
+            output2 = tuple(o.detach() for o in output)
             m._cache[m._mode+'_mask'] = m._mask.detach()
-            m._cache[m._mode] = output # (o.detach() for o in output)
+            m._cache[m._mode] = output2 # (o.detach() for o in output)
+        elif m._mode in ["cho", "rej"]:
+            output2 = tuple(o.detach() for o in output)
+            assert m._mode in ["cho", "rej"]
+            m._cache[m._mode+'_mask'] = m._mask.detach()
+            m._cache[m._mode] = output2 # (o.detach() for o in output)
         elif m._mode == "normal":
-            assert ('ref_cho' in m._cache and 'ref_rej' in m._cache)
+            pass
         elif m._mode == "clear":
             m._cache = {}
         else:
@@ -138,15 +143,17 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
                 )
 
     model.train()
-    pi_cho = model(batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs)
+    with projgrad.set_projgrad_mode("cho", batch["chosen_mask"]):
+        pi_cho = model(batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs)
     policy_chosen_log_probas = compute_logprobs(
         logits=pi_cho.logits,
         labels=batch["chosen"],
         selection_mask=batch["chosen_mask"],
     )
-    pi_rej = model(
-        batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
-    )
+    with projgrad.set_projgrad_mode("rej", batch["rejected_mask"]):
+        pi_rej = model(
+            batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
+        )
     policy_rejected_log_probas = compute_logprobs(
         logits=pi_rej.logits,
         labels=batch["rejected"],
@@ -177,9 +184,9 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
 
 
 class PL_ProjGrad_MODEL(PL_MODEL):
-    def __init__(self, *args, β, reverse_pref, scale_orth, neg_slope, mag_clip, weight_dim, **kwargs):
+    def __init__(self, *args, β, reverse_pref, scale_orth, neg_slope, mag_clip, weight_dim, use_pref_ref, **kwargs):
         super().__init__(*args, **kwargs)
-        self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orth=scale_orth, neg_slope=neg_slope, mag_clip=mag_clip, weight_dim=weight_dim)
+        self.projgrad = ProjGradHooks(self._model, β=β, reverse_pref=reverse_pref, scale_orth=scale_orth, neg_slope=neg_slope, mag_clip=mag_clip, weight_dim=weight_dim, use_pref_ref=use_pref_ref)
 
 
     def _loss_fn(self, batch, model):
@@ -197,21 +204,28 @@ class PL_ProjGrad_MODEL(PL_MODEL):
 
         for k, module in self.projgrad.enabled_modules().items():
 
-            ref_cho = module._cache['ref_cho']
+            if self.projgrad.use_pref_ref:
+                ref_cho = module._cache['ref_cho']                
+                ref_rej = module._cache['ref_rej']                
+                # sum over tokens either using mask
+                # [b t h] -> [b h]
+                mask_cho = module._cache['ref_cho_mask'].unsqueeze(-1)
+                mask_rej = module._cache['ref_rej_mask'].unsqueeze(-1)
+            else:
+                ref_cho = module._cache['cho']                
+                ref_rej = module._cache['rej']      
+                mask_cho = module._cache['cho_mask'].unsqueeze(-1)
+                mask_rej = module._cache['rej_mask'].unsqueeze(-1)
+
             if isinstance(ref_cho, tuple):
                 ref_cho = ref_cho[0]
             
-            ref_rej = module._cache['ref_rej']
             if isinstance(ref_rej, tuple):
                 ref_rej = ref_rej[0]
             
-            # sum over tokens either using mask
-            # [b t h] -> [b h]
-            mask = module._cache['ref_cho_mask'].unsqueeze(-1)
-            ref_cho = (ref_cho * mask).sum(1) / mask.sum(1)
-            mask = module._cache['ref_rej_mask'].unsqueeze(-1)
-            ref_rej = (ref_rej * mask).sum(1) / mask.sum(1)
-
+            ref_cho = (ref_cho * mask_cho).sum(1) / mask_cho.sum(1)
+            ref_rej = (ref_rej * mask_rej).sum(1) / mask_rej.sum(1)
+            
             eps = 1e-12
             # note these have shape [batch, hs_dim] at this point
             preference_dir = (ref_cho - ref_rej).mean(0) # FIXME ideally we do it per sample, but that would require modifying param.grad when it's applied after backprop
@@ -309,9 +323,12 @@ class ProjGradConfig(ExperimentConfig):
     Clip the magnitude of the gradient in the hs space, to ensure a proximal policy in hs space. Value is a fraction of the distance of the preference vector
     """
 
+    use_pref_ref: bool = True
+    """use the reference model to get the preference vector. Is false we use the moving policy and it could lead to a better outcome, or instability (TODO investigate)"""
+
     _cls = PL_ProjGrad_MODEL
 
-    _model_keys = ["lr", "β", "reverse_pref", "scale_orth", "neg_slope", "mag_clip", "weight_dim"]
+    _model_keys = ["lr", "β", "reverse_pref", "scale_orth", "neg_slope", "mag_clip", "weight_dim", "use_pref_ref"]
 
     @property
     def _name(self):

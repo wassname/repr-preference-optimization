@@ -1,4 +1,7 @@
 import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import tyro
 import yaml
 from reprpo.training import train, apply_cfg_overrides
@@ -7,7 +10,6 @@ from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 from reprpo.experiments import experiment_configs
 from pathlib import Path
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 

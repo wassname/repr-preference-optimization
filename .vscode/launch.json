@@ -118,9 +118,11 @@
                 "enable": true
             },
             "args": [
-                "hs-supr-rank",
+                // "hs-supr-rank",
+                "projgrad",
                 // "--dev",
-                "--verbose=2"
+                "--verbose=2",
+                "--batch-size=8",
             ]
         },
         {

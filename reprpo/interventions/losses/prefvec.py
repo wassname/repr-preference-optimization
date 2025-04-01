@@ -10,7 +10,7 @@ from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
 
-def prefec_loss(
+def prefvec_loss(
     pi_cho: ReprPOModelOutput,
     pi_rej: ReprPOModelOutput,
     ref_cho: ReprPOModelOutput,
@@ -40,7 +40,7 @@ def prefec_loss(
         ref_rej.hs = transforms(ref_rej.hs)
 
     def preproc_hs(o, k: str):
-        hs = o.hs[k]
+        hs = o.hs[k]#.softmax(-1)
         hs = reduce_tokens_w_attention(hs, o.mask, weight_tokens=weight_tokens)
         return hs
 
@@ -208,4 +208,4 @@ class PrefVecLossConfig:
     """use the reference model to get the preference vector. Is false we use the moving policy and it could lead to a better outcome, or instability (TODO investigate)"""
 
     def c(self, *args, **kwargs):
-        return prefec_loss(*args, **kwargs, **asdict(self))
+        return prefvec_loss(*args, **kwargs, **asdict(self))

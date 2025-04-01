@@ -8,7 +8,7 @@ from typing import Optional
 
 @dataclass
 class ReprPOConfig(ExperimentConfig):
-    lr: float = 1e-4
+    lr: float = 7e-5
 
     collection_layers_side: Optional[tuple] = None
     """layers to collect activations from in side layers."""

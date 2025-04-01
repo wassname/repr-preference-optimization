@@ -39,6 +39,7 @@ colorama = "^0.4.6"
 optuna-dashboard = "^0.16.2"
 optuna = "^4.0.0"
 optuna-integration = "^4.0.0"
+wheel = "^0.45.1"
 
 [build-system]
 requires = ["poetry-core"]

@@ -33,6 +33,8 @@ def silence():
     logger.setLevel(logging.ERROR)
     os.environ["WANDB_SILENT"] = "true"
 
+    logging.getLogger("transformers.trainer").setLevel
+
     # datasets is too verbose
     disable_progress_bar()
     # from datasets.utils.logging import set_verbosity_error

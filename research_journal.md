@@ -2991,7 +2991,7 @@ dpo
 | side-None-Rank             |   0.62 |     0.135 |      1.005 |  0.419 |
 | side-None-PrefVec          |  1.296 |     0.539 |       13.4 |      0 |
 | side-ETHER-PrefVec         |  1.352 |     0.404 |     13.233 |   0.14 |
-| side-ETHER-PrefVec         |  0.299 |     9.787 |      0.103 | 
+| side-ETHER-PrefVec         |  0.299 |     9.787 |      0.103 |
 
 Fig . ds=us_history_textbook 
 
@@ -3382,43 +3382,43 @@ Warning: collection_layers_hs not found in training_args
 |INFO| Table 2: Absolute accuracy
 
 
-| acc_inc/eval_ds [pp]                     | train |  test |    oos |   rnd |
-| :--------------------------------------- | ----: | ----: | -----: | ----: |
-| ProjGrad                                 | 1.215 | 0.809 |  **12.06** | 0.559 |
-| ProjGrad β=1.00                          | 1.215 | 0.809 |  11.39 | 0.559 |
-| ProjGrad neg_slope=1.00                  | 1.215 | 0.809 | 11.223 | 0.559 |
-| ProjGrad weight_dim=2                    | 1.215 | 0.809 | 10.553 | 1.117 |
-| ProjGrad mag_clip=0.02 β=1.00            | 1.215 | 0.539 |  9.548 | 1.816 |
-| ProjBP                                   | 1.215 | 0.674 |  9.213 | 0.559 |
-| ProjGrad rev_pref=False                  | 1.215 | 0.404 |  8.208 | 0.698 |
-| ProjGrad neg_slope=1.00 weight_dim=1     | 1.215 | 0.539 |  7.705 | 0.838 |
-| ProjGrad weight_dim=1                    | 1.215 | 0.674 |   7.37 |  0.14 |
-| ProjGrad rev_pref=False scale_orth=False | 1.215 | 0.539 |  6.533 | **1.257** |
-| DPO                                      | 1.215 | 0.135 |  6.198 | 0.978 |
+| acc_inc/eval_ds [pp]                     | train |  test |       oos |       rnd |
+| :--------------------------------------- | ----: | ----: | --------: | --------: |
+| ProjGrad                                 | 1.215 | 0.809 | **12.06** |     0.559 |
+| ProjGrad β=1.00                          | 1.215 | 0.809 |     11.39 |     0.559 |
+| ProjGrad neg_slope=1.00                  | 1.215 | 0.809 |    11.223 |     0.559 |
+| ProjGrad weight_dim=2                    | 1.215 | 0.809 |    10.553 |     1.117 |
+| ProjGrad mag_clip=0.02 β=1.00            | 1.215 | 0.539 |     9.548 |     1.816 |
+| ProjBP                                   | 1.215 | 0.674 |     9.213 |     0.559 |
+| ProjGrad rev_pref=False                  | 1.215 | 0.404 |     8.208 |     0.698 |
+| ProjGrad neg_slope=1.00 weight_dim=1     | 1.215 | 0.539 |     7.705 |     0.838 |
+| ProjGrad weight_dim=1                    | 1.215 | 0.674 |      7.37 |      0.14 |
+| ProjGrad rev_pref=False scale_orth=False | 1.215 | 0.539 |     6.533 | **1.257** |
+| DPO                                      | 1.215 | 0.135 |     6.198 |     0.978 |
 
 note that  full dpo reslt
 
-| dpo\dist shift              |   train |     test |     oos |     rnd |
-|:----------------------------|--------:|---------:|--------:|--------:|
-| acc_gain_vs_ref             |   1.012 |    1.001 |   1.062 |   1.01  |
-| perplexity_gain_vs_ref      | 833.07  | 1770.18  | 711.841 | 195.059 |
-| preference_logp_gain_vs_ref | 351.991 |  329.691 | 170.018 |  70.139 |
-|INFO| Table 1: Key metrics (adapter over base model)
+| dpo\dist shift              |                                          train |    test |     oos |     rnd |
+| :-------------------------- | ---------------------------------------------: | ------: | ------: | ------: |
+| acc_gain_vs_ref             |                                          1.012 |   1.001 |   1.062 |    1.01 |
+| perplexity_gain_vs_ref      |                                         833.07 | 1770.18 | 711.841 | 195.059 |
+| preference_logp_gain_vs_ref |                                        351.991 | 329.691 | 170.018 |  70.139 |
+| INFO                        | Table 1: Key metrics (adapter over base model) |
 
 |INFO| 
-| adapter/ds   |   train |   test |   oos |   rnd |
-|:-------------|--------:|-------:|------:|------:|
-| base         |   0.988 |  0.989 | 0.796 | 0.955 |
-| dpo          |   1     |  0.991 | 0.845 | 0.964 |
-| projgrad     |   1     |  0.997 | 0.88  | 0.965 |
-| projbp       |   1     |  0.996 | 0.869 | 0.96  |
-|INFO| Table 2: Absolute accuracy
+| adapter/ds |                      train |  test |   oos |   rnd |
+| :--------- | -------------------------: | ----: | ----: | ----: |
+| base       |                      0.988 | 0.989 | 0.796 | 0.955 |
+| dpo        |                          1 | 0.991 | 0.845 | 0.964 |
+| projgrad   |                          1 | 0.997 |  0.88 | 0.965 |
+| projbp     |                          1 | 0.996 | 0.869 |  0.96 |
+| INFO       | Table 2: Absolute accuracy |
 
 
-| acc_inc/eval_ds [pp]   |   train |   test |   oos |   rnd |
-|:-----------------------|--------:|-------:|------:|------:|
-| DPO                    |   1.215 |  0.135 | 6.198 | 0.978 |
-|INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model for various distribution shifts:
+| acc_inc/eval_ds [pp] |                                                                                                                                                                                                   train |  test |   oos |   rnd |
+| :------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | ----: | ----: | ----: |
+| DPO                  |                                                                                                                                                                                                   1.215 | 0.135 | 6.198 | 0.978 |
+| INFO                 | Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model for various distribution shifts: |
 - `train`: `genies_preferences-us_history_textbook-train[:750]`
 - `test`: `genies_preferences-us_history_textbook-test`
 - `oos`: `genies_preferences-us_history_fiction-test`
@@ -3430,13 +3430,13 @@ sadly it looks like -us_history_textbook-train is too easy for the 8b model?
 
 # this is how they do on each ds
 
-| adapter   |   commonsense |   deontology |   justice |   utilitarianism |     math |   math_make_questions |   ranking_logic |   sycophancy_mimicry |   truthful_qa |   us_history_textbook |   us_history_textbook-train |   wrong_arc |   us_history_fiction |
-|:----------|--------------:|-------------:|----------:|-----------------:|---------:|----------------------:|----------------:|---------------------:|--------------:|----------------------:|----------------------------:|------------:|---------------------:|
-| base      |      0.671875 |     0.625    |  0.359375 |         0.421875 | 0.859375 |              0.984375 |        0.59375  |             0.328125 |      0.546875 |                     1 |                           1 |    0.265625 |             0.75     |
-| default   |      0.65625  |     0.625    |  0.3125   |         0.4375   | 0.890625 |              0.984375 |        0.65625  |             0.234375 |      0.78125  |                     1 |                           1 |    0.140625 |             0.8125   |
-| dpo       |      0.65625  |     0.625    |  0.3125   |         0.4375   | 0.890625 |              0.984375 |        0.65625  |             0.234375 |      0.78125  |                     1 |                           1 |    0.140625 |             0.8125   |
-| projbp    |      0.65625  |     0.640625 |  0.34375  |         0.421875 | 0.90625  |              0.96875  |        0.671875 |             0.21875  |      0.71875  |                     1 |                           1 |    0.15625  |             0.890625 |
-| projgrad  |      0.6875   |     0.609375 |  0.296875 |         0.421875 | 0.90625  |              0.96875  |        0.640625 |             0.1875   |      0.765625 |                     1 |                           1 |    0.140625 |             0.84375  |
+| adapter  | commonsense | deontology |  justice | utilitarianism |     math | math_make_questions | ranking_logic | sycophancy_mimicry | truthful_qa | us_history_textbook | us_history_textbook-train | wrong_arc | us_history_fiction |
+| :------- | ----------: | ---------: | -------: | -------------: | -------: | ------------------: | ------------: | -----------------: | ----------: | ------------------: | ------------------------: | --------: | -----------------: |
+| base     |    0.671875 |      0.625 | 0.359375 |       0.421875 | 0.859375 |            0.984375 |       0.59375 |           0.328125 |    0.546875 |                   1 |                         1 |  0.265625 |               0.75 |
+| default  |     0.65625 |      0.625 |   0.3125 |         0.4375 | 0.890625 |            0.984375 |       0.65625 |           0.234375 |     0.78125 |                   1 |                         1 |  0.140625 |             0.8125 |
+| dpo      |     0.65625 |      0.625 |   0.3125 |         0.4375 | 0.890625 |            0.984375 |       0.65625 |           0.234375 |     0.78125 |                   1 |                         1 |  0.140625 |             0.8125 |
+| projbp   |     0.65625 |   0.640625 |  0.34375 |       0.421875 |  0.90625 |             0.96875 |      0.671875 |            0.21875 |     0.71875 |                   1 |                         1 |   0.15625 |           0.890625 |
+| projgrad |      0.6875 |   0.609375 | 0.296875 |       0.421875 |  0.90625 |             0.96875 |      0.640625 |             0.1875 |    0.765625 |                   1 |                         1 |  0.140625 |            0.84375 |
 
 Hmm doing optuna on the small model did generalise o the larger one which is great!
 
@@ -3453,52 +3453,52 @@ I am woried that-
 
 oh compare dpo and projgrad with NousResearch/Llama-3.2-1B and inct
 
-  | acc_inc/eval_ds [pp]           |   train |   test |   oos |   rnd |
-  |:-----------------------        |--------:|-------:|------:|------:|
-  | ProjGrad  base                 |   3.734 |  1.662 | 18.35 | 22.778 |
-  | DPO   base                     |   3.458 |  1.247 |  12.5 | 8.333 |
+  | acc_inc/eval_ds [pp] | train |  test |   oos |    rnd |
+  | :------------------- | ----: | ----: | ----: | -----: |
+  | ProjGrad  base       | 3.734 | 1.662 | 18.35 | 22.778 |
+  | DPO   base           | 3.458 | 1.247 |  12.5 |  8.333 |
   
-  | acc_inc/eval_ds [pp]           |   train |   test |   oos |   rnd |
-  |:-----------------------        |--------:|-------:|------:|------:|
-  | ProjGrad  instruct             |   1.626 |  1.374 | 5.382 | 12.796 |
-  | DPO  instruct                  |   1.491 |  1.511 | 5.208 | 17.773 |
+  | acc_inc/eval_ds [pp] | train |  test |   oos |    rnd |
+  | :------------------- | ----: | ----: | ----: | -----: |
+  | ProjGrad  instruct   | 1.626 | 1.374 | 5.382 | 12.796 |
+  | DPO  instruct        | 1.491 | 1.511 | 5.208 | 17.773 |
 
 it seems fine... ProjGrad mostly wins but DPO wins on instruct which is not what I expected
 now 
 I should compare it to the SFT
 
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:-------------     |--------:|-------:|------:|------:|
-| base              |   0.964 |  0.963 | 0.683 | 0.48  |
-| projgrad base     |   1     |  0.979 | 0.808 | 0.589 |
-| instruct          |   0.984 |  0.971 | 0.768 | 0.563 |
-| projgrad instruct |   1     |  0.984 | 0.809 | 0.635 |
-| projgrad instgruct magclip-1  |   1     |  0.989 | 0.855 | 0.612 |
-| dpo  base         |   0.997 |  0.975 | 0.768 |  0.52 |
-| dpo  instruct     |   0.999 |  0.985 | 0.808 | 0.663 |
+| adapter/ds                   | train |  test |   oos |   rnd |
+| :--------------------------- | ----: | ----: | ----: | ----: |
+| base                         | 0.964 | 0.963 | 0.683 |  0.48 |
+| projgrad base                |     1 | 0.979 | 0.808 | 0.589 |
+| instruct                     | 0.984 | 0.971 | 0.768 | 0.563 |
+| projgrad instruct            |     1 | 0.984 | 0.809 | 0.635 |
+| projgrad instgruct magclip-1 |     1 | 0.989 | 0.855 | 0.612 |
+| dpo  base                    | 0.997 | 0.975 | 0.768 |  0.52 |
+| dpo  instruct                | 0.999 | 0.985 | 0.808 | 0.663 |
 
 
   |INFO| 
-  | projgrad\dist shift         |   train |    test |    oos |   rnd |
-  |:----------------------------|--------:|--------:|-------:|------:|
-  | acc_gain_vs_ref             |   1.037 |   1.017 |  1.184 | 1.228 |
-  | perplexity_gain_vs_ref      |  27.968 |  61.436 | 57.376 | 0.938 |
-  | preference_logp_gain_vs_ref | 179.657 | 166.311 | 94.113 | 0.661 |
-  |INFO| Table 1: Key metrics (adapter over base model)
+  | projgrad\dist shift         |                                          train |    test |    oos |   rnd |
+  | :-------------------------- | ---------------------------------------------: | ------: | -----: | ----: |
+  | acc_gain_vs_ref             |                                          1.037 |   1.017 |  1.184 | 1.228 |
+  | perplexity_gain_vs_ref      |                                         27.968 |  61.436 | 57.376 | 0.938 |
+  | preference_logp_gain_vs_ref |                                        179.657 | 166.311 | 94.113 | 0.661 |
+  | INFO                        | Table 1: Key metrics (adapter over base model) |
 
   |INFO| 
-  | adapter/ds   |   train |   test |   oos |   rnd |
-  |:-------------|--------:|-------:|------:|------:|
-  | base         |   0.964 |  0.963 | 0.683 | 0.48  |
-  | projgrad     |   1     |  0.979 | 0.808 | 0.589 |
-  |INFO| Table 2: Absolute accuracy
+  | adapter/ds |                      train |  test |   oos |   rnd |
+  | :--------- | -------------------------: | ----: | ----: | ----: |
+  | base       |                      0.964 | 0.963 | 0.683 |  0.48 |
+  | projgrad   |                          1 | 0.979 | 0.808 | 0.589 |
+  | INFO       | Table 2: Absolute accuracy |
 
 
-  | acc_inc/eval_ds [pp]   |   train |   test |    oos |    rnd |
-  |:-----------------------|--------:|-------:|-------:|-------:|
-  | ProjGrad               |   3.734 |  1.662 | 18.359 | 22.778 |
-  |INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B` for various distribution shifts:
+  | acc_inc/eval_ds [pp] |                                                                                                                                                                                                                  train |  test |    oos |    rnd |
+  | :------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | ----: | -----: | -----: |
+  | ProjGrad             |                                                                                                                                                                                                                  3.734 | 1.662 | 18.359 | 22.778 |
+  | INFO                 | Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B` for various distribution shifts: |
   - `train`: `genies_preferences-us_history_textbook-train[:750]`
   - `test`: `genies_preferences-us_history_textbook-test`
   - `oos`: `genies_preferences-us_history_fiction-test`
@@ -3509,25 +3509,25 @@ I should compare it to the SFT
 
 
 |INFO| 
-| projgrad\dist shift         |   train |    test |    oos |    rnd |
-|:----------------------------|--------:|--------:|-------:|-------:|
-| acc_gain_vs_ref             |   1.016 |   1.014 |  1.054 |  1.128 |
-| perplexity_gain_vs_ref      |  11.117 |  13.364 | 15.453 | 90.723 |
-| preference_logp_gain_vs_ref | 146.201 | 129.737 | 59.752 |  1.884 |
-|INFO| Table 1: Key metrics (adapter over base model)
+| projgrad\dist shift         |                                          train |    test |    oos |    rnd |
+| :-------------------------- | ---------------------------------------------: | ------: | -----: | -----: |
+| acc_gain_vs_ref             |                                          1.016 |   1.014 |  1.054 |  1.128 |
+| perplexity_gain_vs_ref      |                                         11.117 |  13.364 | 15.453 | 90.723 |
+| preference_logp_gain_vs_ref |                                        146.201 | 129.737 | 59.752 |  1.884 |
+| INFO                        | Table 1: Key metrics (adapter over base model) |
 
 |INFO| 
-| adapter/ds   |   train |   test |   oos |   rnd |
-|:-------------|--------:|-------:|------:|------:|
-| base         |   0.984 |  0.971 | 0.768 | 0.563 |
-| projgrad     |   1     |  0.984 | 0.809 | 0.635 |
-|INFO| Table 2: Absolute accuracy
+| adapter/ds |                      train |  test |   oos |   rnd |
+| :--------- | -------------------------: | ----: | ----: | ----: |
+| base       |                      0.984 | 0.971 | 0.768 | 0.563 |
+| projgrad   |                          1 | 0.984 | 0.809 | 0.635 |
+| INFO       | Table 2: Absolute accuracy |
 
 
-| acc_inc/eval_ds [pp]   |   train |   test |   oos |    rnd |
-|:-----------------------|--------:|-------:|------:|-------:|
-| ProjGrad               |   1.626 |  1.374 | 5.382 | 12.796 |
-|INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B-Instruct` for various distribution shifts:
+| acc_inc/eval_ds [pp] |                                                                                                                                                                                                                           train |  test |   oos |    rnd |
+| :------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | ----: | ----: | -----: |
+| ProjGrad             |                                                                                                                                                                                                                           1.626 | 1.374 | 5.382 | 12.796 |
+| INFO                 | Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B-Instruct` for various distribution shifts: |
 - `train`: `genies_preferences-us_history_textbook-train[:750]`
 - `test`: `genies_preferences-us_history_textbook-test`
 - `oos`: `genies_preferences-us_history_fiction-test`
@@ -3536,25 +3536,25 @@ I should compare it to the SFT
 
 
 |INFO| 
-| dpo\dist shift              |    train |      test |     oos |   rnd |
-|:----------------------------|---------:|----------:|--------:|------:|
-| acc_gain_vs_ref             |    1.035 |     1.012 |   1.125 | 1.083 |
-| perplexity_gain_vs_ref      | 2377.82  | 19005.2   | 936.602 | 0.917 |
-| preference_logp_gain_vs_ref |  336.92  |   308.166 |  91.39  | 0.102 |
-|INFO| Table 1: Key metrics (adapter over base model)
+| dpo\dist shift              |                                          train |    test |     oos |   rnd |
+| :-------------------------- | ---------------------------------------------: | ------: | ------: | ----: |
+| acc_gain_vs_ref             |                                          1.035 |   1.012 |   1.125 | 1.083 |
+| perplexity_gain_vs_ref      |                                        2377.82 | 19005.2 | 936.602 | 0.917 |
+| preference_logp_gain_vs_ref |                                         336.92 | 308.166 |   91.39 | 0.102 |
+| INFO                        | Table 1: Key metrics (adapter over base model) |
 
 |INFO| 
-| adapter/ds   |   train |   test |   oos |   rnd |
-|:-------------|--------:|-------:|------:|------:|
-| base         |   0.964 |  0.963 | 0.683 |  0.48 |
-| dpo          |   0.997 |  0.975 | 0.768 |  0.52 |
-|INFO| Table 2: Absolute accuracy
+| adapter/ds |                      train |  test |   oos |  rnd |
+| :--------- | -------------------------: | ----: | ----: | ---: |
+| base       |                      0.964 | 0.963 | 0.683 | 0.48 |
+| dpo        |                      0.997 | 0.975 | 0.768 | 0.52 |
+| INFO       | Table 2: Absolute accuracy |
 
 
-| acc_inc/eval_ds [pp]   |   train |   test |   oos |   rnd |
-|:-----------------------|--------:|-------:|------:|------:|
-| DPO                    |   3.458 |  1.247 |  12.5 | 8.333 |
-|INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B` for various distribution shifts:
+| acc_inc/eval_ds [pp] |                                                                                                                                                                                                                  train |  test |  oos |   rnd |
+| :------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | ----: | ---: | ----: |
+| DPO                  |                                                                                                                                                                                                                  3.458 | 1.247 | 12.5 | 8.333 |
+| INFO                 | Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B` for various distribution shifts: |
 - `train`: `genies_preferences-us_history_textbook-train[:750]`
 - `test`: `genies_preferences-us_history_textbook-test`
 - `oos`: `genies_preferences-us_history_fiction-test`
@@ -3563,25 +3563,25 @@ I should compare it to the SFT
 wandb:                                                                                
 wandb: 🚀 View run dpo/020225 at: https://wandb.ai/wassname/reprpo2/runs/5wli02ax
 
-| dpo\dist shift              |   train |    test |    oos |     rnd |
-|:----------------------------|--------:|--------:|-------:|--------:|
-| acc_gain_vs_ref             |   1.015 |   1.015 |  1.052 |   1.178 |
-| perplexity_gain_vs_ref      |  11.661 |  12.483 | 18.162 | 175.215 |
-| preference_logp_gain_vs_ref | 170.883 | 152.372 | 64.533 |   2.168 |
-|INFO| Table 1: Key metrics (adapter over base model)
+| dpo\dist shift              |                                          train |    test |    oos |     rnd |
+| :-------------------------- | ---------------------------------------------: | ------: | -----: | ------: |
+| acc_gain_vs_ref             |                                          1.015 |   1.015 |  1.052 |   1.178 |
+| perplexity_gain_vs_ref      |                                         11.661 |  12.483 | 18.162 | 175.215 |
+| preference_logp_gain_vs_ref |                                        170.883 | 152.372 | 64.533 |   2.168 |
+| INFO                        | Table 1: Key metrics (adapter over base model) |
 
 |INFO| 
-| adapter/ds   |   train |   test |   oos |   rnd |
-|:-------------|--------:|-------:|------:|------:|
-| base         |   0.984 |  0.971 | 0.768 | 0.563 |
-| dpo          |   0.999 |  0.985 | 0.808 | 0.663 |
-|INFO| Table 2: Absolute accuracy
+| adapter/ds |                      train |  test |   oos |   rnd |
+| :--------- | -------------------------: | ----: | ----: | ----: |
+| base       |                      0.984 | 0.971 | 0.768 | 0.563 |
+| dpo        |                      0.999 | 0.985 | 0.808 | 0.663 |
+| INFO       | Table 2: Absolute accuracy |
 
 
-| acc_inc/eval_ds [pp]   |   train |   test |   oos |    rnd |
-|:-----------------------|--------:|-------:|------:|-------:|
-| DPO                    |   1.491 |  1.511 | 5.208 | 17.773 |
-|INFO| Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B-Instruct` for various distribution shifts:
+| acc_inc/eval_ds [pp] |                                                                                                                                                                                                                           train |  test |   oos |    rnd |
+| :------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | ----: | ----: | -----: |
+| DPO                  |                                                                                                                                                                                                                           1.491 | 1.511 | 5.208 | 17.773 |
+| INFO                 | Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-us_history_textbook-train[:750]` compared to base model `Llama-3.2-1B-Instruct` for various distribution shifts: |
 - `train`: `genies_preferences-us_history_textbook-train[:750]`
 - `test`: `genies_preferences-us_history_textbook-test`
 - `oos`: `genies_preferences-us_history_fiction-test`
@@ -3590,44 +3590,44 @@ wandb: 🚀 View run dpo/020225 at: https://wandb.ai/wassname/reprpo2/runs/5wli0
 
 ## I want to make a llama sft
 
-| url | params | dataset | loss |
-| :--- | :--- | :--- | :--- |
-| [Ritvik19/zephyr-tinyllama-sft-qlora](https://huggingface.co/Ritvik19/zephyr-tinyllama-sft-qlora) | 1.1b | ultrachat | 1.19 |
-| [martimfasantos/tinyllama-1.1b-chat-sft-full](https://huggingface.co/martimfasantos/tinyllama-1.1b-chat-sft-full) | 1.1 | ultrachat | 1.15 |
-| [wassname/llama-3-2-1b-sft](https://huggingface.co/wassname/llama-3-2-1b-sft) | 1b | ultrachat | 1.2b |
-| [ondevicellm/phi-1_5_sft](https://huggingface.co/ondevicellm/phi-1_5_sft) | 1.3 | ultrachat | 1.25 |
-| [tanliboy/llama-3.2-3b-sft-2](https://huggingface.co/tanliboy/llama-3.2-3b-sft-2) | 3.2b | openhermes | 0.6 |
+| url                                                                                                               | params | dataset    | loss |
+| :---------------------------------------------------------------------------------------------------------------- | :----- | :--------- | :--- |
+| [Ritvik19/zephyr-tinyllama-sft-qlora](https://huggingface.co/Ritvik19/zephyr-tinyllama-sft-qlora)                 | 1.1b   | ultrachat  | 1.19 |
+| [martimfasantos/tinyllama-1.1b-chat-sft-full](https://huggingface.co/martimfasantos/tinyllama-1.1b-chat-sft-full) | 1.1    | ultrachat  | 1.15 |
+| [wassname/llama-3-2-1b-sft](https://huggingface.co/wassname/llama-3-2-1b-sft)                                     | 1b     | ultrachat  | 1.2b |
+| [ondevicellm/phi-1_5_sft](https://huggingface.co/ondevicellm/phi-1_5_sft)                                         | 1.3    | ultrachat  | 1.25 |
+| [tanliboy/llama-3.2-3b-sft-2](https://huggingface.co/tanliboy/llama-3.2-3b-sft-2)                                 | 3.2b   | openhermes | 0.6  |
 
 
 - math trained unkown loss 
   - https://huggingface.co/RLHFlow/LLaMA3.2-3B-SFT
   - https://huggingface.co/RLHFlow/LLaMA3.2-1B-SFT loss?
 
-| dpo\dist shift              |   train |   test |    oos |   rnd |
-|:----------------------------|--------:|-------:|-------:|------:|
-| acc_gain_vs_ref             |   1.058 |  1.027 |  1.023 | 1.027 |
-| perplexity_gain_vs_ref      |   3.036 |  4.135 |  1.402 | 3.648 |
-| preference_logp_gain_vs_ref |  34.314 | 29.157 | -2.69  | 1.134 |
-|INFO| Table 1: Key metrics (adapter over base model)
+| dpo\dist shift              |                                          train |   test |   oos |   rnd |
+| :-------------------------- | ---------------------------------------------: | -----: | ----: | ----: |
+| acc_gain_vs_ref             |                                          1.058 |  1.027 | 1.023 | 1.027 |
+| perplexity_gain_vs_ref      |                                          3.036 |  4.135 | 1.402 | 3.648 |
+| preference_logp_gain_vs_ref |                                         34.314 | 29.157 | -2.69 | 1.134 |
+| INFO                        | Table 1: Key metrics (adapter over base model) |
 
-| projgrad\dist shift         |   train |   test |    oos |   rnd |
-|:----------------------------|--------:|-------:|-------:|------:|
-| acc_gain_vs_ref             |   1.085 |  1.01  |  1.011 | 1.041 |
-| perplexity_gain_vs_ref      |   7.812 | 11.785 |  1.538 | 5.802 |
-| preference_logp_gain_vs_ref |  52.591 | 41.017 | -4.334 | 1.512 |
-|INFO| Table 1: Key metrics (adapter over base model)
+| projgrad\dist shift         |                                          train |   test |    oos |   rnd |
+| :-------------------------- | ---------------------------------------------: | -----: | -----: | ----: |
+| acc_gain_vs_ref             |                                          1.085 |   1.01 |  1.011 | 1.041 |
+| perplexity_gain_vs_ref      |                                          7.812 | 11.785 |  1.538 | 5.802 |
+| preference_logp_gain_vs_ref |                                         52.591 | 41.017 | -4.334 | 1.512 |
+| INFO                        | Table 1: Key metrics (adapter over base model) |
 
 |INFO| 
-| adapter/ds   |   train |   test |   oos |   rnd |
-|:-------------|--------:|-------:|------:|------:|
-| base         |   0.892 |  0.896 | 0.352 | 0.683 |
-| dpo          |   0.944 |  0.92  | 0.36  | 0.701 |
-| projgrad     |   0.968 |  0.905 | 0.356 | 0.711 |
+| adapter/ds | train |  test |   oos |   rnd |
+| :--------- | ----: | ----: | ----: | ----: |
+| base       | 0.892 | 0.896 | 0.352 | 0.683 |
+| dpo        | 0.944 |  0.92 |  0.36 | 0.701 |
+| projgrad   | 0.968 | 0.905 | 0.356 | 0.711 |
 
-| acc_inc/eval_ds [pp]   |   train |   test |   oos |   rnd |
-|:-----------------------|--------:|-------:|------:|------:|
-| DPO dataset=math       |    5.83 |  2.679 | 2.273 | 2.734 |
-| ProjGrad dataset=math  |    8.52 |  1.042 | 1.136 | 4.102 |
+| acc_inc/eval_ds [pp]  | train |  test |   oos |   rnd |
+| :-------------------- | ----: | ----: | ----: | ----: |
+| DPO dataset=math      |  5.83 | 2.679 | 2.273 | 2.734 |
+| ProjGrad dataset=math |  8.52 | 1.042 | 1.136 | 4.102 |
  Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-math-train[:750]` compared to base model `llama-3.2-3b-sft-2` for various distribution shifts:
 - `train`: `genies_preferences-math-train[:750]`
 - `test`: `genies_preferences-math-test`
@@ -3638,127 +3638,127 @@ wandb: 🚀 View run dpo/020225 at: https://wandb.ai/wassname/reprpo2/runs/5wli0
 
 # 2024-10-09 12:06:48
 
-| side-ether-prefvec N=✓208/209, best=1.169   |   importance | best     |
-|:--------------------------------------------|-------------:|:---------|
-| β                                           |        0.234 | 0.404    |
-| Htype                                       |        0.157 | oft      |
-| use_angle_loss                              |        0.145 | True     |
-| lr                                          |        0.136 | 0.000615 |
-| use_dpo_loss                                |        0.129 | False    |
-| weight_tokens                               |        0.077 | False    |
-| collect_hs                                  |        0.022 | False    |
-| flip_side                                   |        0.019 | True     |
-| nb                                          |        0.018 | 30       |
-| collect_input                               |        0.018 | False    |
-| reduction                                   |        0.018 | 25       |
-| use_orth_loss                               |        0.015 | False    |
-| use_nll_loss                                |        0.013 | False    |
+| side-ether-prefvec N=✓208/209, best=1.169 | importance | best     |
+| :---------------------------------------- | ---------: | :------- |
+| β                                         |      0.234 | 0.404    |
+| Htype                                     |      0.157 | oft      |
+| use_angle_loss                            |      0.145 | True     |
+| lr                                        |      0.136 | 0.000615 |
+| use_dpo_loss                              |      0.129 | False    |
+| weight_tokens                             |      0.077 | False    |
+| collect_hs                                |      0.022 | False    |
+| flip_side                                 |      0.019 | True     |
+| nb                                        |      0.018 | 30       |
+| collect_input                             |      0.018 | False    |
+| reduction                                 |      0.018 | 25       |
+| use_orth_loss                             |      0.015 | False    |
+| use_nll_loss                              |      0.013 | False    |
 
-| side-svd-mse N=✓28/316, best=1.010   |   importance | best    |
-|:-------------------------------------|-------------:|:--------|
-| lr                                   |        0.997 | 0.00119 |
-| α                                    |        0.002 | 0.636   |
-| collect_hs                           |        0.001 | True    |
-| quantile                             |        0.001 | float   |
-| dual_svd                             |        0     | True    |
-| collect_input                        |        0     | False   |
-| quantile_value                       |      nan     | 0.3     |
+| side-svd-mse N=✓28/316, best=1.010 | importance | best    |
+| :--------------------------------- | ---------: | :------ |
+| lr                                 |      0.997 | 0.00119 |
+| α                                  |      0.002 | 0.636   |
+| collect_hs                         |      0.001 | True    |
+| quantile                           |      0.001 | float   |
+| dual_svd                           |          0 | True    |
+| collect_input                      |          0 | False   |
+| quantile_value                     |        nan | 0.3     |
 
-| side-hra-rank N=✓182/183, best=1.229   |   importance |     best |
-|:---------------------------------------|-------------:|---------:|
-| lr                                     |        0.846 | 0.000188 |
-| collect_hs                             |        0.071 | 0        |
-| apply_GS                               |        0.04  | 0        |
-| collect_input                          |        0.033 | 0        |
-| r                                      |        0.007 | 2        |
-| β                                      |        0.002 | 0.11     |
-| α                                      |        0.001 | 5.92     |
+| side-hra-rank N=✓182/183, best=1.229 | importance |     best |
+| :----------------------------------- | ---------: | -------: |
+| lr                                   |      0.846 | 0.000188 |
+| collect_hs                           |      0.071 |        0 |
+| apply_GS                             |       0.04 |        0 |
+| collect_input                        |      0.033 |        0 |
+| r                                    |      0.007 |        2 |
+| β                                    |      0.002 |     0.11 |
+| α                                    |      0.001 |     5.92 |
 
-| hs-ortho-prefvec N=✓259/261, best=1.152   |   importance | best       |
-|:------------------------------------------|-------------:|:-----------|
-| lr                                        |        0.9   | 0.000411   |
-| β                                         |        0.051 | 1.97       |
-| orthogonal_map                            |        0.019 | matrix_exp |
-| use_angle_loss                            |        0.011 | True       |
-| weight_tokens                             |        0.009 | False      |
-| use_nll_loss                              |        0.003 | True       |
-| use_proj_rel                              |        0.003 | True       |
-| use_dpo_loss                              |        0.002 | False      |
-| use_orth_loss                             |        0.002 | True       |
+| hs-ortho-prefvec N=✓259/261, best=1.152 | importance | best       |
+| :-------------------------------------- | ---------: | :--------- |
+| lr                                      |        0.9 | 0.000411   |
+| β                                       |      0.051 | 1.97       |
+| orthogonal_map                          |      0.019 | matrix_exp |
+| use_angle_loss                          |      0.011 | True       |
+| weight_tokens                           |      0.009 | False      |
+| use_nll_loss                            |      0.003 | True       |
+| use_proj_rel                            |      0.003 | True       |
+| use_dpo_loss                            |      0.002 | False      |
+| use_orth_loss                           |      0.002 | True       |
 
-| projbp N=✓227/363, best=1.071   |   importance | best   |
-|:--------------------------------|-------------:|:-------|
-| β                               |        0.355 | 0.238  |
-| scale_orth                      |        0.35  | False  |
-| lr                              |        0.281 | 5e-06  |
-| neg_slope                       |        0.009 | float  |
-| mag_clip                        |        0.005 | float  |
-| reverse_pref                    |        0     | True   |
-| mag_clip_value                  |      nan     | 0.981  |
-| neg_slope_value                 |      nan     | 0.699  |
+| projbp N=✓227/363, best=1.071 | importance | best  |
+| :---------------------------- | ---------: | :---- |
+| β                             |      0.355 | 0.238 |
+| scale_orth                    |       0.35 | False |
+| lr                            |      0.281 | 5e-06 |
+| neg_slope                     |      0.009 | float |
+| mag_clip                      |      0.005 | float |
+| reverse_pref                  |          0 | True  |
+| mag_clip_value                |        nan | 0.981 |
+| neg_slope_value               |        nan | 0.699 |
 
-| dpo N=✓248/250, best=1.276   |   importance |     best |
-|:-----------------------------|-------------:|---------:|
-| lr                           |            1 | 0.000265 |
+| dpo N=✓248/250, best=1.276 | importance |     best |
+| :------------------------- | ---------: | -------: |
+| lr                         |          1 | 0.000265 |
 
-| hs-svd-mse N=✓14/332, best=1.017   |   importance | best    |
-|:-----------------------------------|-------------:|:--------|
-| lr                                 |        0.93  | 0.00119 |
-| α                                  |        0.034 | 0.636   |
-| collect_input                      |        0.021 | False   |
-| dual_svd                           |        0.013 | True    |
-| collect_hs                         |        0.001 | True    |
-| quantile                           |        0.001 | float   |
-| quantile_value                     |      nan     | 0.3     |
+| hs-svd-mse N=✓14/332, best=1.017 | importance | best    |
+| :------------------------------- | ---------: | :------ |
+| lr                               |       0.93 | 0.00119 |
+| α                                |      0.034 | 0.636   |
+| collect_input                    |      0.021 | False   |
+| dual_svd                         |      0.013 | True    |
+| collect_hs                       |      0.001 | True    |
+| quantile                         |      0.001 | float   |
+| quantile_value                   |        nan | 0.3     |
 
-| hs-hra-rank N=✓259/262, best=1.152   |   importance |      best |
-|:-------------------------------------|-------------:|----------:|
-| lr                                   |        0.855 |  0.000333 |
-| β                                    |        0.071 |  0.38     |
-| r                                    |        0.071 | 38        |
-| apply_GS                             |        0.003 |  1        |
-| α                                    |        0     |  0.28     |
+| hs-hra-rank N=✓259/262, best=1.152 | importance |     best |
+| :--------------------------------- | ---------: | -------: |
+| lr                                 |      0.855 | 0.000333 |
+| β                                  |      0.071 |     0.38 |
+| r                                  |      0.071 |       38 |
+| apply_GS                           |      0.003 |        1 |
+| α                                  |          0 |     0.28 |
 
-| ether-prefvec N=✓321/326, best=1.183   |   importance | best     |
-|:---------------------------------------|-------------:|:---------|
-| lr                                     |        0.849 | 0.000378 |
-| β                                      |        0.058 | 1.98     |
-| reduction                              |        0.042 | 1        |
-| nb                                     |        0.014 | 20       |
-| use_proj_rel                           |        0.008 | True     |
-| use_dpo_loss                           |        0.007 | False    |
-| use_orth_loss                          |        0.007 | True     |
-| collect_hs                             |        0.005 | False    |
-| flip_side                              |        0.003 | True     |
-| use_angle_loss                         |        0.003 | True     |
-| collect_input                          |        0.002 | True     |
-| use_nll_loss                           |        0.002 | True     |
-| weight_tokens                          |        0.001 | True     |
-| Htype                                  |        0.001 | ether    |
+| ether-prefvec N=✓321/326, best=1.183 | importance | best     |
+| :----------------------------------- | ---------: | :------- |
+| lr                                   |      0.849 | 0.000378 |
+| β                                    |      0.058 | 1.98     |
+| reduction                            |      0.042 | 1        |
+| nb                                   |      0.014 | 20       |
+| use_proj_rel                         |      0.008 | True     |
+| use_dpo_loss                         |      0.007 | False    |
+| use_orth_loss                        |      0.007 | True     |
+| collect_hs                           |      0.005 | False    |
+| flip_side                            |      0.003 | True     |
+| use_angle_loss                       |      0.003 | True     |
+| collect_input                        |      0.002 | True     |
+| use_nll_loss                         |      0.002 | True     |
+| weight_tokens                        |      0.001 | True     |
+| Htype                                |      0.001 | ether    |
 
-| projgrad3 N=✓207/208, best=1.279   |   importance | best     |
-|:-----------------------------------|-------------:|:---------|
-| lr                                 |        0.93  | 0.000232 |
-| β                                  |        0.042 | 0.843    |
-| weight_dim                         |        0.013 | 1        |
-| reverse_pref                       |        0.006 | True     |
-| scale_orth                         |        0.005 | False    |
-| mag_clip                           |        0.003 | float    |
-| neg_slope                          |        0.003 | 0        |
-| mag_clip_value                     |      nan     | 0.23     |
+| projgrad3 N=✓207/208, best=1.279 | importance | best     |
+| :------------------------------- | ---------: | :------- |
+| lr                               |       0.93 | 0.000232 |
+| β                                |      0.042 | 0.843    |
+| weight_dim                       |      0.013 | 1        |
+| reverse_pref                     |      0.006 | True     |
+| scale_orth                       |      0.005 | False    |
+| mag_clip                         |      0.003 | float    |
+| neg_slope                        |      0.003 | 0        |
+| mag_clip_value                   |        nan | 0.23     |
 
-|                    |   n_trials |    best |   n_trials_completed |   top10_mean |
-|:-------------------|-----------:|--------:|---------------------:|-------------:|
-| projgrad3          |        208 | 1.27938 |                  207 |      1.22437 |
-| dpo                |        250 | 1.27553 |                  248 |      1.24125 |
-| side-hra-rank      |        183 | 1.22929 |                  182 |      1.19589 |
-| ether-prefvec      |        326 | 1.18304 |                  321 |      1.176   |
-| side-ether-prefvec |        209 | 1.16923 |                  208 |      1.16385 |
-| hs-ortho-prefvec   |        261 | 1.15222 |                  259 |      1.14744 |
-| hs-hra-rank        |        262 | 1.15222 |                  259 |      1.10929 |
-| projbp             |        363 | 1.07129 |                  227 |      1.06595 |
-| hs-svd-mse         |        332 | 1.01727 |                   14 |      1.01727 |
-| side-svd-mse       |        316 | 1.00962 |                   28 |      1.0077  |
+|                    | n_trials |    best | n_trials_completed | top10_mean |
+| :----------------- | -------: | ------: | -----------------: | ---------: |
+| projgrad3          |      208 | 1.27938 |                207 |    1.22437 |
+| dpo                |      250 | 1.27553 |                248 |    1.24125 |
+| side-hra-rank      |      183 | 1.22929 |                182 |    1.19589 |
+| ether-prefvec      |      326 | 1.18304 |                321 |      1.176 |
+| side-ether-prefvec |      209 | 1.16923 |                208 |    1.16385 |
+| hs-ortho-prefvec   |      261 | 1.15222 |                259 |    1.14744 |
+| hs-hra-rank        |      262 | 1.15222 |                259 |    1.10929 |
+| projbp             |      363 | 1.07129 |                227 |    1.06595 |
+| hs-svd-mse         |      332 | 1.01727 |                 14 |    1.01727 |
+| side-svd-mse       |      316 | 1.00962 |                 28 |     1.0077 |
 
 
 # 2024-10-10 10:04:50
@@ -3777,47 +3777,47 @@ TODO
 hmm sv and projbp seem to crash. maybe less layers for them?
 
 
-| adapter/ds         |   train |   test |   oos |   rnd |
-|:-------------------|--------:|-------:|------:|------:|
-| base               |   0.988 |  0.989 | 0.796 | 0.677 |
-| side-ETHER-PrefVec |   0.992 |  0.999 | 0.891 | 0.639 |
-| projgrad           |   1     |  0.995 | 0.867 | 0.687 |
-| dpo                |   1     |  0.993 | 0.845 | 0.661 |
-| side-Ortho-PrefVec |   0.996 |  0.999 | 0.897 | 0.649 |
+| adapter/ds         | train |  test |   oos |   rnd |
+| :----------------- | ----: | ----: | ----: | ----: |
+| base               | 0.988 | 0.989 | 0.796 | 0.677 |
+| side-ETHER-PrefVec | 0.992 | 0.999 | 0.891 | 0.639 |
+| projgrad           |     1 | 0.995 | 0.867 | 0.687 |
+| dpo                |     1 | 0.993 | 0.845 | 0.661 |
+| side-Ortho-PrefVec | 0.996 | 0.999 | 0.897 | 0.649 |
 Table 2: Absolute accuracy
 
-| acc_inc/eval_ds [pp]                         |   train |   test |    oos |    rnd |
-|:---------------------------------------------|--------:|-------:|-------:|-------:|
-| ReprPO_ETHERConfig_PrefVecConfig prefvec.β=3 |   0.405 |  0.943 | 11.893 | -5.709 |
-| DPO                                          |   1.215 |  0.404 |  6.198 | -2.362 |
-| ProjGrad                                     |   1.215 |  0.539 |  8.878 |  1.378 |
-| Ortho_Rank hs=True α=0.25 β=0.38 map=hra     |   1.215 |   0.27 |  7.538 | -2.953 |
-| ReprPO_Ortho_PrefVec hs=True map=householder |    0.81 |  0.943 | 12.73 | -4.134 |
+| acc_inc/eval_ds [pp]                         | train |  test |    oos |    rnd |
+| :------------------------------------------- | ----: | ----: | -----: | -----: |
+| ReprPO_ETHERConfig_PrefVecConfig prefvec.β=3 | 0.405 | 0.943 | 11.893 | -5.709 |
+| DPO                                          | 1.215 | 0.404 |  6.198 | -2.362 |
+| ProjGrad                                     | 1.215 | 0.539 |  8.878 |  1.378 |
+| Ortho_Rank hs=True α=0.25 β=0.38 map=hra     | 1.215 |  0.27 |  7.538 | -2.953 |
+| ReprPO_Ortho_PrefVec hs=True map=householder |  0.81 | 0.943 |  12.73 | -4.134 |
 
-| projgrad\dist shift         |   train |    test |     oos |      rnd |
-|:----------------------------|--------:|--------:|--------:|---------:|
-| acc_gain_vs_ref             |   1.012 |   1.005 |   1.089 |    1.014 |
-| perplexity_gain_vs_ref      | 199.416 | 300.697 | 392.234 | 2055.11  |
-| preference_logp_gain_vs_ref | 369.747 | 346.714 | 194.287 |    6.74  |
+| projgrad\dist shift         |   train |    test |     oos |     rnd |
+| :-------------------------- | ------: | ------: | ------: | ------: |
+| acc_gain_vs_ref             |   1.012 |   1.005 |   1.089 |   1.014 |
+| perplexity_gain_vs_ref      | 199.416 | 300.697 | 392.234 | 2055.11 |
+| preference_logp_gain_vs_ref | 369.747 | 346.714 | 194.287 |    6.74 |
 
-| side-ETHER-PrefVec\dist shift   |   train |   test |    oos |    rnd |
-|:--------------------------------|--------:|-------:|-------:|-------:|
-| acc_gain_vs_ref                 |   1.004 |  1.009 |  1.119 |  0.943 |
-| perplexity_gain_vs_ref          |   1.038 |  1.038 |  1.027 |  1.234 |
-| preference_logp_gain_vs_ref     |  18.644 | 16.576 | 22.529 | -0.02  |
+| side-ETHER-PrefVec\dist shift |  train |   test |    oos |   rnd |
+| :---------------------------- | -----: | -----: | -----: | ----: |
+| acc_gain_vs_ref               |  1.004 |  1.009 |  1.119 | 0.943 |
+| perplexity_gain_vs_ref        |  1.038 |  1.038 |  1.027 | 1.234 |
+| preference_logp_gain_vs_ref   | 18.644 | 16.576 | 22.529 | -0.02 |
 
-| dpo\dist shift              |   train |    test |     oos |      rnd |
-|:----------------------------|--------:|--------:|--------:|---------:|
-| acc_gain_vs_ref             |   1.012 |   1.004 |   1.062 |    0.976 |
-| perplexity_gain_vs_ref      | 456.72  | 478.877 | 402.153 | 1198.56  |
-| preference_logp_gain_vs_ref | 344.444 | 313.759 | 174.241 |    5.661 |
+| dpo\dist shift              |   train |    test |     oos |     rnd |
+| :-------------------------- | ------: | ------: | ------: | ------: |
+| acc_gain_vs_ref             |   1.012 |   1.004 |   1.062 |   0.976 |
+| perplexity_gain_vs_ref      |  456.72 | 478.877 | 402.153 | 1198.56 |
+| preference_logp_gain_vs_ref | 344.444 | 313.759 | 174.241 |   5.661 |
 Table 1: Key metrics (adapter over base model)
 
-| side-Ortho-Rank\INOCHERENT   |   train |   test |    oos |   rnd |
-|:-----------------------------|--------:|-------:|-------:|------:|
-| acc_gain_vs_ref              |   1.012 |  1.003 |  1.075 | 0.97  |
-| perplexity_gain_vs_ref       |   3.327 |  3.323 |  2.938 | 2.728 |
-| preference_logp_gain_vs_ref  |  88.066 | 82.939 | 54.272 | 1.262 |
+| side-Ortho-Rank\INOCHERENT  |  train |   test |    oos |   rnd |
+| :-------------------------- | -----: | -----: | -----: | ----: |
+| acc_gain_vs_ref             |  1.012 |  1.003 |  1.075 |  0.97 |
+| perplexity_gain_vs_ref      |  3.327 |  3.323 |  2.938 | 2.728 |
+| preference_logp_gain_vs_ref | 88.066 | 82.939 | 54.272 | 1.262 |
 Table 1: Key metrics (adapter over base model)
 
 so ppx doesn't seem sufficient to show incoherence... I'm not sure how to show it. We are not sampling so hmm
@@ -3850,11 +3850,11 @@ dtype: float32
 
 ok I changed it to perplexity reduction but now it's tiny... sometimes? seems to depend on ds... ok
 
-| dpo\dist shift              |   train |    test |      oos |   rnd |
-|:----------------------------|--------:|--------:|---------:|------:|
-| acc_gain_vs_ref             |   1.203 |   1.15  |    0.975 | 1.01  |
-| perplexity_reduction_vs_ref |   0.009 |   0.006 |    0.026 | 0.004 |
-| preference_logp_gain_vs_ref | 402.367 | 417.062 | -106.47  | 0.942 |
+| dpo\dist shift              |   train |    test |     oos |   rnd |
+| :-------------------------- | ------: | ------: | ------: | ----: |
+| acc_gain_vs_ref             |   1.203 |    1.15 |   0.975 |  1.01 |
+| perplexity_reduction_vs_ref |   0.009 |   0.006 |   0.026 | 0.004 |
+| preference_logp_gain_vs_ref | 402.367 | 417.062 | -106.47 | 0.942 |
 Table 1: Key metrics (adapter over base model)
 
 
@@ -3874,23 +3874,23 @@ Trying this on vast...
 ![dpo](files/image-6.png)
 800 steps instead of 100 yes
 
-| adapter/ds   |   train |   test |   oos |   rnd |
-|:-------------|--------:|-------:|------:|------:|
-| base         |   0.98  |  0.983 | 0.781 | 0.677 |
-| projgrad     |   0.996 |  0.977 | 0.747 | 0.637 |
-| dpo          |   0.997 |  0.979 | 0.748 | 0.631 |
+| adapter/ds | train |  test |   oos |   rnd |
+| :--------- | ----: | ----: | ----: | ----: |
+| base       |  0.98 | 0.983 | 0.781 | 0.677 |
+| projgrad   | 0.996 | 0.977 | 0.747 | 0.637 |
+| dpo        | 0.997 | 0.979 | 0.748 | 0.631 |
 
 but the diff is not huge?
 
 # 2024-10-15 18:51:53
 
 
-| adapter/ds       |   train |   test |   oos |   rnd |
-|:-----------------|--------:|-------:|------:|------:|
-| base             |   0.779 |  0.755 | 0.701 | 0.796 |
-| hs-ETHER-PrefVec |   0.816 |  0.747 | 0.661 | 0.703 |
-| side-None-PrefVec|   0.867 |  0.777 | 0.711 | 0.685 |
-| dpo              |   0.991 |  0.864 | 0.744 | 0.737 |
+| adapter/ds        | train |  test |   oos |   rnd |
+| :---------------- | ----: | ----: | ----: | ----: |
+| base              | 0.779 | 0.755 | 0.701 | 0.796 |
+| hs-ETHER-PrefVec  | 0.816 | 0.747 | 0.661 | 0.703 |
+| side-None-PrefVec | 0.867 | 0.777 | 0.711 | 0.685 |
+| dpo               | 0.991 | 0.864 | 0.744 | 0.737 |
 Table 2: Absolute accuracy after training with named adapter on ds:`genies_preferences-alpaca_mmlu-train[:750]` compared to base model `Llama-3-Base-8B-SFT` for various distribution shifts:
 - `train`: `genies_preferences-alpaca_mmlu-train[:750]`
 - `test`: `genies_preferences-alpaca_mmlu-test`
@@ -3902,33 +3902,33 @@ python scripts/train.py side-none-prefvec --n_samples=30000 --lr=1e-5 --dataset=
 
 gives a words result
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.796 |
-| side-None-PrefVec |   0.848 |  0.755 | 0.673 | 0.652 |
+| adapter/ds        | train |  test |   oos |   rnd |
+| :---------------- | ----: | ----: | ----: | ----: |
+| base              | 0.779 | 0.755 | 0.701 | 0.796 |
+| side-None-PrefVec | 0.848 | 0.755 | 0.673 | 0.652 |
 Table 2: Absolute accuracy
 
 is this even too high
 python scripts/train.py side-none-prefvec --n_samples=10000 --lr=6e-4 --dataset=alpaca_mmlu
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.796 |
-| side-None-PrefVec |   0.788 |  0.76  | 0.693 | 0.8   |
+| adapter/ds        | train |  test |   oos |   rnd |
+| :---------------- | ----: | ----: | ----: | ----: |
+| base              | 0.779 | 0.755 | 0.701 | 0.796 |
+| side-None-PrefVec | 0.788 |  0.76 | 0.693 |   0.8 |
 Table 2: Absolute accuracy
 
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.677 |
-| side-None-PrefVec  --n_samples=130000 --lr=1e-6 |   0.784 |  0.753 | 0.7   | 0.672 |
-| projgrad  --n_samples=30000 --lr=1e-5   |   0.989 |  0.801 | 0.733 | 0.659 |
+| adapter/ds                                      | train |  test |   oos |   rnd |
+| :---------------------------------------------- | ----: | ----: | ----: | ----: |
+| base                                            | 0.779 | 0.755 | 0.701 | 0.677 |
+| side-None-PrefVec  --n_samples=130000 --lr=1e-6 | 0.784 | 0.753 |   0.7 | 0.672 |
+| projgrad  --n_samples=30000 --lr=1e-5           | 0.989 | 0.801 | 0.733 | 0.659 |
 
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.677 |
-| side-None-PrefVec --n_samples=30000 --lr=1e-5  |   0.787 |  0.756 | 0.697 | 0.672 |
+| adapter/ds                                    | train |  test |   oos |   rnd |
+| :-------------------------------------------- | ----: | ----: | ----: | ----: |
+| base                                          | 0.779 | 0.755 | 0.701 | 0.677 |
+| side-None-PrefVec --n_samples=30000 --lr=1e-5 | 0.787 | 0.756 | 0.697 | 0.672 |
 Table 2: Absolute accuracy
 
 Table 2: Absolute accuracy
@@ -3959,10 +3959,10 @@ python scripts/train.py projgrad --n_samples=20000 --lr=6e-5 --dataset=alpaca_mm
 Ah I tried squaring prevvec (or at least the reroute part) and it seemed to work. Also rel is 1e6 rims bigger
 oh wait I can't square it if it's negative grrr
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.677 |
-| side-None-PrefVec |   0.771 |  0.752 | 0.687 | 0.629 |
+| adapter/ds        | train |  test |   oos |   rnd |
+| :---------------- | ----: | ----: | ----: | ----: |
+| base              | 0.779 | 0.755 | 0.701 | 0.677 |
+| side-None-PrefVec | 0.771 | 0.752 | 0.687 | 0.629 |
 Table 2: Absolute accuracy
 
 
@@ -3972,19 +3972,19 @@ loss_prj rel was -5e-6*1e08=-500, loss_proj was -400
 hmm try with nll loss, and balancing
 python scripts/train.py side-none-prefvec --n_samples=12000 --lr=8e-5 --dataset=alpaca_mmlu --verbose=2 --loss.β=200 --loss.use-nll-loss --loss.α=100
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.677 |
-| side-None-PrefVec |   0.779 |  0.755 | 0.701 | 0.677 |
+| adapter/ds        | train |  test |   oos |   rnd |
+| :---------------- | ----: | ----: | ----: | ----: |
+| base              | 0.779 | 0.755 | 0.701 | 0.677 |
+| side-None-PrefVec | 0.779 | 0.755 | 0.701 | 0.677 |
 Table 2: Absolute accuracy
 
 python scripts/train.py side-none-prefvec --n_samples=12000 --lr=8e-5 --dataset=alpaca_mmlu --verbose=2 --loss.β=1 --loss.use-nll-loss --loss.α=100 --loss.use-dpo-loss
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.677 |
-| side-None-PrefVec |   0.896 |  0.793 | 0.705 | 0.683 |
-| dpo               |   0.991 |  0.864 | 0.744 | - |
+| adapter/ds        | train |  test |   oos |   rnd |
+| :---------------- | ----: | ----: | ----: | ----: |
+| base              | 0.779 | 0.755 | 0.701 | 0.677 |
+| side-None-PrefVec | 0.896 | 0.793 | 0.705 | 0.683 |
+| dpo               | 0.991 | 0.864 | 0.744 |     - |
 Table 2: Absolute accuracy
 
 
@@ -3994,22 +3994,22 @@ python scripts/train.py side-none-prefvec --n_samples=22000 --lr=1e-4 --dataset=
 hmm it occurs to me that I don't need nll at all, or it can be much smaller....
 
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.677 |
-| side-None-PrefVec |   0.923 |  0.813 | 0.713 | 0.665 |
-| dpo               |   0.991 |  0.864 | 0.744 | - |
+| adapter/ds        | train |  test |   oos |   rnd |
+| :---------------- | ----: | ----: | ----: | ----: |
+| base              | 0.779 | 0.755 | 0.701 | 0.677 |
+| side-None-PrefVec | 0.923 | 0.813 | 0.713 | 0.665 |
+| dpo               | 0.991 | 0.864 | 0.744 |     - |
 Table 2: Absolute accuracy
 
 try one with bigger angle loss, and no nll
 
 python scripts/train.py side-none-prefvec --n_samples=22000 --lr=1e-4 --dataset=alpaca_mmlu --verbose=2 --loss.β=10 --loss.α=100 --loss.use-dpo-loss
 
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.677 |
-| side-None-PrefVec |   0.943 |  0.828 | 0.725 | 0.627 |
-| dpo               |   0.991 |  0.864 | 0.744 | - |
+| adapter/ds        | train |  test |   oos |   rnd |
+| :---------------- | ----: | ----: | ----: | ----: |
+| base              | 0.779 | 0.755 | 0.701 | 0.677 |
+| side-None-PrefVec | 0.943 | 0.828 | 0.725 | 0.627 |
+| dpo               | 0.991 | 0.864 | 0.744 |     - |
 Table 2: Absolute accuracy
 
 it actually started unlearning at the end... it seems that it can't do the angle and orthogonal ones well? or perhaps not at the same time
@@ -4034,18 +4034,18 @@ python scripts/train.py side-none-prefvec --n_samples=42000 --dataset=alpaca_mml
 
 ### only angle
 python scripts/train.py side-none-prefvec --n_samples=42000 --dataset=alpaca_mmlu --verbose=2 --loss.β=10 --loss.α=0.001
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.677 |
-| side-None-PrefVec |   0.516 |  0.5   | 0.497 | 0.485 |
+| adapter/ds        | train |  test |   oos |   rnd |
+| :---------------- | ----: | ----: | ----: | ----: |
+| base              | 0.779 | 0.755 | 0.701 | 0.677 |
+| side-None-PrefVec | 0.516 |   0.5 | 0.497 | 0.485 |
 Table 2: Absolute accuracy
 
 python scripts/train.py projgrad --n_samples=42000 --dataset=alpaca_mmlu --verbose=2
-| adapter/ds        |   train |   test |   oos |   rnd |
-|:------------------|--------:|-------:|------:|------:|
-| base              |   0.779 |  0.755 | 0.701 | 0.677 |
-| dpo               |   0.991 |  0.864 | 0.744 | - |
-| projgrad          |   0.999 |  0.828 | 0.759 | 0.692 |
+| adapter/ds | train |  test |   oos |   rnd |
+| :--------- | ----: | ----: | ----: | ----: |
+| base       | 0.779 | 0.755 | 0.701 | 0.677 |
+| dpo        | 0.991 | 0.864 | 0.744 |     - |
+| projgrad   | 0.999 | 0.828 | 0.759 | 0.692 |
 ```
 
 
@@ -4085,43 +4085,43 @@ But first I need to restrict the search space, and balance the losses If I can
 
 https://wandb.ai/wassname/reprpo2/groups/optuna4_us_history_textbook-llama-3-2-1b-sft/workspace
 
-| hs-ether-mse N=✓29/164, best=1.000   |   importance |     best |
-|:-------------------------------------|-------------:|---------:|
-| α                                    |        0.877 | 6.16     |
-| lr                                   |        0.123 | 0.000457 |
+| hs-ether-mse N=✓29/164, best=1.000 | importance |     best |
+| :--------------------------------- | ---------: | -------: |
+| α                                  |      0.877 |     6.16 |
+| lr                                 |      0.123 | 0.000457 |
 
-| hs-ether-rank N=✓39/160, best=1.063   |   importance |     best |
-|:--------------------------------------|-------------:|---------:|
-| lr                                    |        0.983 | 0.000429 |
-| β                                     |        0.017 | 9.17     |
-| α                                     |        0     | 0.00241  |
+| hs-ether-rank N=✓39/160, best=1.063 | importance |     best |
+| :---------------------------------- | ---------: | -------: |
+| lr                                  |      0.983 | 0.000429 |
+| β                                   |      0.017 |     9.17 |
+| α                                   |          0 |  0.00241 |
 
-| projgrad2 N=✓50/236, best=1.253   |   importance |     best |
-|:----------------------------------|-------------:|---------:|
-| mag_clip                          |        0.609 | 1        |
-| lr                                |        0.271 | 0.000268 |
-| reverse_pref                      |        0.062 | 1        |
-| β                                 |        0.029 | 1.51     |
-| weight_dim                        |        0.019 | 1        |
-| neg_slope                         |        0.01  | 0        |
-| scale_orth                        |        0     | 0        |
+| projgrad2 N=✓50/236, best=1.253 | importance |     best |
+| :------------------------------ | ---------: | -------: |
+| mag_clip                        |      0.609 |        1 |
+| lr                              |      0.271 | 0.000268 |
+| reverse_pref                    |      0.062 |        1 |
+| β                               |      0.029 |     1.51 |
+| weight_dim                      |      0.019 |        1 |
+| neg_slope                       |       0.01 |        0 |
+| scale_orth                      |          0 |        0 |
 
-| hs-ether-prefvec N=✓97/220, best=1.033   |   importance |     best |
-|:-----------------------------------------|-------------:|---------:|
-| lr                                       |        0.651 | 5.13e-05 |
-| β                                        |        0.217 | 0.957    |
-| use_dpo_loss                             |        0.081 | 0        |
-| use_proj_rel                             |        0.04  | 1        |
-| use_orth_loss                            |        0.007 | 1        |
-| use_angle_loss                           |        0.004 | 1        |
-| use_nll_loss                             |        0     | 0        |
+| hs-ether-prefvec N=✓97/220, best=1.033 | importance |     best |
+| :------------------------------------- | ---------: | -------: |
+| lr                                     |      0.651 | 5.13e-05 |
+| β                                      |      0.217 |    0.957 |
+| use_dpo_loss                           |      0.081 |        0 |
+| use_proj_rel                           |       0.04 |        1 |
+| use_orth_loss                          |      0.007 |        1 |
+| use_angle_loss                         |      0.004 |        1 |
+| use_nll_loss                           |          0 |        0 |
 
-|                  |   n_trials |    best |   n_trials_completed |   top10_mean |
-|:-----------------|-----------:|--------:|---------------------:|-------------:|
-| projgrad2        |        236 | 1.25287 |                   50 |  1.19932     |
-| hs-ether-rank    |        160 | 1.06322 |                   39 |  1.02514     |
-| hs-ether-prefvec |        220 | 1.03257 |                   97 |  1.00758     |
-| hs-ether-mse     |        164 | 1       |                   29 |  1.96143e+06 |
+|                  | n_trials |    best | n_trials_completed |  top10_mean |
+| :--------------- | -------: | ------: | -----------------: | ----------: |
+| projgrad2        |      236 | 1.25287 |                 50 |     1.19932 |
+| hs-ether-rank    |      160 | 1.06322 |                 39 |     1.02514 |
+| hs-ether-prefvec |      220 | 1.03257 |                 97 |     1.00758 |
+| hs-ether-mse     |      164 |       1 |                 29 | 1.96143e+06 |
 
 
 hmm it seems to be pruning good ones... I should use train loss not val loss?
@@ -4139,46 +4139,46 @@ make sure each loss returns info['acc']
 
 https://wandb.ai/wassname/reprpo2-optuna?nw=nwuserwassname
 
-| hs-ether-mse N=✓26/150, best=1.005   |   importance |           best |
-|:-------------------------------------|-------------:|---------------:|
-| lr                                   |        0.734 |    5.38777e-06 |
-| α                                    |        0.266 | 8621           |
+| hs-ether-mse N=✓26/150, best=1.005 | importance |        best |
+| :--------------------------------- | ---------: | ----------: |
+| lr                                 |      0.734 | 5.38777e-06 |
+| α                                  |      0.266 |        8621 |
 
 
 
-| projgrad2 N=✓30/353, best=1.025   |   importance |          best |
-|:----------------------------------|-------------:|--------------:|
-| mag_clip                          |        0.485 |   1           |
-| reverse_pref                      |        0.406 |   1           |
-| lr                                |        0.093 |   6.32719e-06 |
-| weight_dim                        |        0.014 |   1           |
-| β                                 |        0.001 | 997.23        |
-| neg_slope                         |        0     |   0.1         |
-| scale_orth                        |        0     |   1           |
+| projgrad2 N=✓30/353, best=1.025 | importance |        best |
+| :------------------------------ | ---------: | ----------: |
+| mag_clip                        |      0.485 |           1 |
+| reverse_pref                    |      0.406 |           1 |
+| lr                              |      0.093 | 6.32719e-06 |
+| weight_dim                      |      0.014 |           1 |
+| β                               |      0.001 |      997.23 |
+| neg_slope                       |          0 |         0.1 |
+| scale_orth                      |          0 |           1 |
 
 
-| dpo N=✓11/24, best=0.996   |   importance |        best |
-|:---------------------------|-------------:|------------:|
-| lr                         |            1 | 5.61152e-06 |
+| dpo N=✓11/24, best=0.996 | importance |        best |
+| :----------------------- | ---------: | ----------: |
+| lr                       |          1 | 5.61152e-06 |
 
 
 
-| hs-ether-rank N=✓24/150, best=1.014   |   importance |         best |
-|:--------------------------------------|-------------:|-------------:|
-| lr                                    |        0.608 |  0.000138854 |
-| β                                     |        0.281 | 52.8438      |
-| α                                     |        0.111 |  1.85056     |
+| hs-ether-rank N=✓24/150, best=1.014 | importance |        best |
+| :---------------------------------- | ---------: | ----------: |
+| lr                                  |      0.608 | 0.000138854 |
+| β                                   |      0.281 |     52.8438 |
+| α                                   |      0.111 |     1.85056 |
 
 
-| hs-ether-prefvec N=✓53/383, best=1.032   |   importance |        best |
-|:-----------------------------------------|-------------:|------------:|
-| lr                                       |        0.757 | 0.000132606 |
-| use_angle_loss                           |        0.106 | 1           |
-| β                                        |        0.061 | 0.714851    |
-| use_nll_loss                             |        0.045 | 0           |
-| use_proj_rel                             |        0.03  | 1           |
-| use_dpo_loss                             |        0.001 | 1           |
-| use_orth_loss                            |        0     | 0           |
+| hs-ether-prefvec N=✓53/383, best=1.032 | importance |        best |
+| :------------------------------------- | ---------: | ----------: |
+| lr                                     |      0.757 | 0.000132606 |
+| use_angle_loss                         |      0.106 |           1 |
+| β                                      |      0.061 |    0.714851 |
+| use_nll_loss                           |      0.045 |           0 |
+| use_proj_rel                           |       0.03 |           1 |
+| use_dpo_loss                           |      0.001 |           1 |
+| use_orth_loss                          |          0 |           0 |
 
 
 # 2024-10-22 19:07:08
@@ -4211,44 +4211,44 @@ hmm so I've setlles on `hs.diff(layers).mul(-1).relu()` to get only suppressed i
 ## optuna on alpaca_low to alpaca high quality
 
 hs-ether-rank
-| hs-ether-rank N=✓62/65, best=1.014   |   importance |        best |
-|:-------------------------------------|-------------:|------------:|
-| β                                    |        0.542 | 3.75206     |
-| lr                                   |        0.446 | 8.26081e-07 |
-| α                                    |        0.013 | 0.0271605   |
+| hs-ether-rank N=✓62/65, best=1.014 | importance |        best |
+| :--------------------------------- | ---------: | ----------: |
+| β                                  |      0.542 |     3.75206 |
+| lr                                 |      0.446 | 8.26081e-07 |
+| α                                  |      0.013 |   0.0271605 |
 
 dpo
-| dpo N=✓20/20, best=1.000   |   importance |        best |
-|:---------------------------|-------------:|------------:|
-| lr                         |            1 | 9.09892e-05 |
+| dpo N=✓20/20, best=1.000 | importance |        best |
+| :----------------------- | ---------: | ----------: |
+| lr                       |          1 | 9.09892e-05 |
 
 projgrad2
-| projgrad2 N=✓20/20, best=1.000   |   importance |        best |
-|:---------------------------------|-------------:|------------:|
-| mag_clip                         |        0.952 | 1           |
-| reverse_pref                     |        0.031 | 1           |
-| neg_slope                        |        0.016 | 0.1         |
-| lr                               |        0     | 1.39313e-06 |
-| β                                |        0     | 0.0242605   |
-| weight_dim                       |        0     | 2           |
-| scale_orth                       |        0     | 1           |
+| projgrad2 N=✓20/20, best=1.000 | importance |        best |
+| :----------------------------- | ---------: | ----------: |
+| mag_clip                       |      0.952 |           1 |
+| reverse_pref                   |      0.031 |           1 |
+| neg_slope                      |      0.016 |         0.1 |
+| lr                             |          0 | 1.39313e-06 |
+| β                              |          0 |   0.0242605 |
+| weight_dim                     |          0 |           2 |
+| scale_orth                     |          0 |           1 |
 
 hs-ether-prefvec
-| hs-ether-prefvec N=✓20/20, best=1.014   |   importance |        best |
-|:----------------------------------------|-------------:|------------:|
-| lr                                      |        0.531 | 7.45934e-06 |
-| β                                       |        0.184 | 0.978316    |
-| use_angle_loss                          |        0.071 | 1           |
-| use_dpo_loss                            |        0.07  | 0           |
-| use_nll_loss                            |        0.064 | 0           |
-| use_orth_loss                           |        0.056 | 1           |
-| use_proj_rel                            |        0.024 | 0           |
+| hs-ether-prefvec N=✓20/20, best=1.014 | importance |        best |
+| :------------------------------------ | ---------: | ----------: |
+| lr                                    |      0.531 | 7.45934e-06 |
+| β                                     |      0.184 |    0.978316 |
+| use_angle_loss                        |      0.071 |           1 |
+| use_dpo_loss                          |       0.07 |           0 |
+| use_nll_loss                          |      0.064 |           0 |
+| use_orth_loss                         |      0.056 |           1 |
+| use_proj_rel                          |      0.024 |           0 |
 
 hs-ether-mse
-| hs-ether-mse N=✓22/23, best=1.027   |   importance |        best |
-|:------------------------------------|-------------:|------------:|
-| lr                                  |        0.768 | 3.4206e-06  |
-| α                                   |        0.232 | 0.000867935 |
+| hs-ether-mse N=✓22/23, best=1.027 | importance |        best |
+| :-------------------------------- | ---------: | ----------: |
+| lr                                |      0.768 |  3.4206e-06 |
+| α                                 |      0.232 | 0.000867935 |
 
 # 2024-10-31 08:33:44
 
@@ -4283,3 +4283,230 @@ FIXME:
 I'm using the preference direction on the ref/base model, but if I use the pi model.. would it improve... or become unstable....
 - [ ] add flag, try both on quick 1b model
 - [ ] also should I not make the rejected string go in the -ve pref dir?
+
+
+
+| acc_inc/eval_ds [pp]                                                      |   train |    test |    oos |     rnd |
+| :------------------------------------------------------------------------ | ------: | ------: | -----: | ------: |
+| use_dpo_loss=True use_nll_loss=True use_pref_ref=False use_proj_rel=False |   9.812 |   2.603 |  3.236 |  -0.394 |
+| ReprPO_None_PrefVec use_dpo_loss=True use_nll_loss=True                   |  10.647 |   3.254 |  1.942 |  -0.787 |
+| ReprPO_None_PrefVec prefvec.use_pref_ref=False prefvec.use_proj_rel=False |  -1.044 |   0.217 |  0.971 |  -0.394 |
+| ReprPO_None_PrefVec                                                       |  -5.219 |   -5.64 |  5.502 |   0.394 |
+| ReprPO_None_PrefVec prefvec.use_pref_ref=False                            | -18.789 | -22.126 |  0.647 |  13.386 |
+| ReprPO_None_PrefVec prefvec.use_proj_rel=False                            |  -0.835 |  -0.434 |  1.618 |       0 |
+| ProjGrad use_pref_ref=False                                               |   54.28 |  29.284 | 43.042 | -12.205 |
+| ProjGrad                                                                  |  53.445 |  29.501 | 38.511 | -10.236 |
+
+Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-arc_easy-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
+- `train`: `genies_preferences-arc_easy-train[:750]`
+- `test`: `genies_preferences-arc_easy-test`
+- `oos`: `genies_preferences-arc_hard-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+
+when using use_rel_pref=False it's going back and forth
+ReprPO_None_PrefVec prefvec.use_proj_rel=False it's final accuracy is poorer too
+![alt text](files/image-1.png)
+
+ReprPO_None_PrefVec prefvec.use_pref_ref=False  was just bad, OK, makes sense
+![alt text](files/image-2.png)
+
+
+Now why did `ReprPO_None_PrefVec prefvec.use_pref_ref=False` just go down? it's just not stable to having a moving direction I guess. The loss is wrong
+I don't think I 
+
+
+| acc_inc/eval_ds [pp]                                                          |   train |    test |    oos |     rnd |
+| :---------------------------------------------------------------------------- | ------: | ------: | -----: | ------: |
+| ProjGrad                                 (baseline2 )                         |  56.576 |  25.163 | 39.482 | -11.024 |
+| ProjGrad use_pref_ref=False         (new2)                                    |  56.159 |   28.85 | 36.893 |  -6.693 |
+| .use_dpo_loss=True .use_pref_ref=False               (new 1)                  |  35.073 |  16.269 | 16.828 |  -3.543 |
+| .use_dpo_loss=True .use_nll_loss=True .use_pref_ref=False (new 3)             |  37.787 |  14.317 | 13.916 |  -5.906 |
+| .use_dpo_loss=True .use_nll_loss=True    (baeline 3)                          |  31.733 |  12.148 | 13.916 |  -2.362 |
+| ReprPO_None_PrefVec prefvec.use_dpo_loss=True     (baseline 1)                |  31.942 |   9.544 | 11.974 |  -1.575 |
+| .use_dpo_loss=True .use_nll_loss=True .use_pref_ref=False .use_proj_rel=False |  27.766 |   8.026 |  6.472 |   -3.15 |
+| ReprPO_None_PrefVec .use_proj_rel=False                                       |  -0.626 |  -1.735 |  0.647 |  -0.394 |
+| ReprPO_None_PrefVec .use_pref_ref=False                                       | -12.317 | -14.317 | -1.942 |  22.441 |
+| ReprPO_None_PrefVec                                                           |  -10.23 | -13.232 | -1.618 |    7.48 |
+| ReprPO_None_PrefVec .use_pref_ref=False .use_proj_rel=False                   | -27.766 | -27.115 | -5.825 |  40.157 |
+
+
+with softmax
+| ReprPO_None_PrefVec prefvec.use_dpo_loss=True prefvec.use_pref_ref=False |  24.635 |  8.894 | 10.68 | -2.756 |
+| ReprPO_None_PrefVec prefvec.use_dpo_loss=True                            |  29.019 |  9.761 | 10.356 | -2.756 |
+Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-arc_easy-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
+- `train`: `genies_preferences-arc_easy-train[:750]`
+- `test`: `genies_preferences-arc_easy-test`
+- `oos`: `genies_preferences-arc_hard-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+so just one bit but
+- PrefVec.use_pref_ref=FalseL unorivnebt
+
+
+I missed this one:
+`python scripts/train.py side-none-prefvec --loss.no-use-pref-ref --loss.use-nll-loss --loss.use-dpo-loss `
+| ReprPO_None_PrefVec prefvec.use_dpo_loss=True prefvec.use_nll_loss=True prefvec.use_pref_ref=False |  37.787 | 14.317 | 13.916 | -5.906 |
+
+
+## brainstorm template 
+
+I'll provide a summary of the ideas and interventions, followed by a PyTorch snippet setting up the context with dummy variables.
+
+Summary of Ideas and Interventions:
+
+The core idea behind Representation Preference Optimization (ReprPO) is to align the internal representations of language models with human preferences, rather than just optimizing output probabilities. This approach hypothesizes that aligning internal states will lead to more robust and generalizable safe behavior.
+
+
+Research Questions:
+
+- How do transformers internally represent human preferences?
+- Can internal alignment methods outperform output-focused methods in generalization?
+- Which distribution shifts best predict alignment robustness?
+- Hypothesis: Directly aligning internal representations leads to more robust and generalizable safety properties compared to output-focused methods like DPO.
+
+Evaluation: Compare ReprPO interventions against DPO baseline
+- Test generalization across distribution shifts (using extended GENIES benchmark)
+- Analyze scaling behavior across model sizes
+
+
+Key interventions and ideas include:
+
+1. Gradient-based methods:
+   - ProjGrad: Project accumulated gradients onto a preference direction in hidden space.
+   - ProjBP: Similar to ProjGrad, but performed during backpropagation.
+
+2. Hidden state transformations:
+   - MSE: Make rejected hidden states more similar to chosen hidden states.
+   - Rank: Align log-softmax of rejected hidden states with chosen hidden states.
+   - Prefvec: Move both chosen and rejected hidden states along a preference direction.
+
+3. Preference direction: Defined as the difference between chosen and rejected hidden states.
+
+4. Token masking: Aggregating (mean) over the sequence level before comparing rejected and chosen states.
+
+Now, let's set the scene with a PyTorch snippet defining dummy variables:
+
+```py
+import torch
+import torch.nn.functional as F
+
+# Dummy variables
+batch_size = 8
+seq_length = 32
+hidden_dim = 768
+
+# Hidden states for chosen and rejected outputs
+hs_cho = torch.randn(batch_size, seq_length, hidden_dim)
+hs_rej = torch.randn(batch_size, seq_length, hidden_dim)
+
+# Token masks (1 for tokens to consider, 0 for padding)
+token_mask_cho = torch.randint(0, 2, (batch_size, seq_length)).float()
+token_mask_rej = torch.randint(0, 2, (batch_size, seq_length)).float()
+
+# Aggregate hidden states using token masks
+hs_cho_agg = (hs_cho * token_mask_cho.unsqueeze(-1)).sum(dim=1) / token_mask_cho.sum(dim=1, keepdim=True)
+hs_rej_agg = (hs_rej * token_mask_rej.unsqueeze(-1)).sum(dim=1) / token_mask_rej.sum(dim=1, keepdim=True)
+
+# Preference direction
+pref_dir = hs_cho_agg - hs_rej_agg
+
+# Example intervention: ProjGrad
+def proj_grad(grad, pref_dir):
+    return grad * F.cosine_similarity(grad, pref_dir, dim=-1).unsqueeze(-1)
+
+# Example hidden state transformation: MSE
+def mse_transform(hs_cho, hs_rej):
+    return F.mse_loss(hs_rej, hs_cho.detach())
+
+# Example prefvec transformation
+def prefvec_transform(hs_cho, hs_rej, pref_dir, alpha=0.1):
+    hs_cho_new = hs_cho + alpha * pref_dir
+    hs_rej_new = hs_rej + alpha * pref_dir
+    return hs_cho_new, hs_rej_new
+
+# Usage examples
+grad = torch.randn_like(hs_cho)
+projected_grad = proj_grad(grad, pref_dir)
+
+mse_loss = mse_transform(hs_cho_agg, hs_rej_agg)
+
+hs_cho_new, hs_rej_new = prefvec_transform(hs_cho_agg, hs_rej_agg, pref_dir)
+```
+
+This snippet sets up the basic context and demonstrates how some of the interventions might be implemented. The actual implementation would involve integrating these functions into the training loop of a language model, applying them at appropriate points during forward and backward passes.
+
+
+
+note that SVD " computes another type of spectral decomposition that works on matrices of any shape."
+
+
+# 2025-03-30 07:46:23
+
+There are a few papers now using adapters and or gradient to try and sole this problem. Lets read some::
+
+Hmm today I found that turntrout seemsed to be on the same track as me
+
+- [x]  [Bi-directional Preference Optimization](https://arxiv.org/abs/2406.00045)
+https://arxiv.org/pdf/2409.05907
+  - R=1, bias only (?)
+  - it just tries to change the output logprobs... but I think this might be the wrong approach. Maybe it should do that on the projected intermediate layers. Or just make vectors of contrastive prompts similar
+
+- in the follow up work they found it didn't beat prompts! https://turntrout.com/gemini-steering
+
+- [ ] loRra for lying https://www.mask-benchmark.ai/
+  - >  Low-Rank Represen- tation Adaptation (LoRRA), a representation en- gineering technique (Zou et al., 2023). LoRRA trains adapters on earlier editable layers Le to align later target layers Lt with more honest representations. For more deta
+  - But it's not always better than prompt. hmm
+  - ontrastive prompt templates !
+  - or each training data point xi, we add the contrast vector to produce a target representation rt l = Act(xi) + αvc l where α is a hyperparameter controlling the strength of the vector. This guides the model to align its latent states closer to the honest representation. 
+    - damn this exactly what I was doing
+    - BUT thet don't use the YES/NO token trick... hmm but they are close
+  - LORRA https://arxiv.org/pdf/2310.01405
+  - > e use rank 8 for the LoRA adapters attached to the query and value weights and α = 5, β = 0 for LoRRA parameters. For the 7B model, we attach the adapters to layers range(10, 20, 2) due to instability of later layers and layers range(10, 40, 3) for the 13B model
+  - contrastive pairs
+  - this might have used specific tokens tooo....
+
+- [x] IBM https://arxiv.org/abs/2409.05907
+  - they claim amazing results, but only apply the condition vector if the hidden state is similar
+  - **no gradient**, just linear it seems
+  - they use contrastive pairs
+  - and have a overall one and a behavious one
+  - they say that you somtimes want to choose the <end_response> token, not the last. Or 5 into the prompt, etc
+
+- [x] self other steering https://www.lesswrong.com/posts/jtqcsARGtmgogdcLT/reducing-llm-deception-at-scale-with-self-other-overlap-fine
+  - only self atttn.o_proj, layer ? for this calc
+  - lora the query and value projection layers of the models.
+  - particular token, on contrastive examples
+
+
+## My current thinkings:
+
+Be powerful and general tools
+- use gradient descent
+- use adapters
+
+Use specific interventions:
+- specific tokens (!)
+- specific pairs
+- perhaps also
+  - specific supressed neurons
+  - specific diffs (see repreng)
+
+
+but after reading this, some papers have used almost all of these. I can combine the last ones but someone else will do it soon anyway
+
+so I'm not sure where to go, remainign ideas
+
+all together:
+  - LORA, yes/no tokens, contrastive prompts. Does it beat prompting?
+  - keep trying differen't transforms, like I tried supressed neurons, mean, last, etc
+  - NOTE I didn't use a proper projects supress hs
+
+
+Hm I could try the actual supression neuron approach
+grad superssion neuron? 
+
+I think I do need a sharper loss somehow
+rego plate 1INV596 1FA0656
+number plate 
+

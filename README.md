@@ -111,6 +111,8 @@ This should be helpful when aligning AI to human values, as it suggests that ali
 
 ```sh
 poetry install
+. ./venv/bin/activate
+pip install flash-attn --no-build-isolation
 
 python -u nbs/train.py --help
 

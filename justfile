@@ -128,12 +128,32 @@ cp:
 
 scratch2:
     #!/usr/bin/zsh
+    export CUDA_VISIBLE_DEVICES=0
     export WANDB_GROUP=${WANDB_GROUP:-prefvecexp-$(date +%y%m%d_%H%M)}
+    # export ARGS='--batch-size=10'
     # baseline
-    python scripts/train.py --verbose 1 prefvec
-    # what if we use the pref vec on pi model?
-    python scripts/train.py --verbose 1 prefvec --no-use-pref-ref
-    # what if we make the rejected string less prefered
-    python scripts/train.py --verbose 1 prefvec --no-use-proj-rel
     # what if both?
-    python scripts/train.py --verbose 1 prefvec --no-use-proj-rel --no-use-pref-ref
+    python scripts/train.py side-none-prefvec --loss.no-use-proj-rel --loss.no-use-pref-ref --loss.use-nll-loss --loss.use-dpo-loss  --verbose=2
+    python scripts/train.py side-none-prefvec --loss.no-use-pref-ref --loss.use-nll-loss --loss.use-dpo-loss 
+    python scripts/train.py side-none-prefvec --loss.use-nll-loss --loss.use-dpo-loss  --verbose=2
+    python scripts/train.py side-none-prefvec --loss.no-use-proj-rel --loss.no-use-pref-ref  --verbose=2
+    python scripts/train.py side-none-prefvec --verbose=2
+    # what if we use the pref vec on pi model?
+    python scripts/train.py side-none-prefvec --loss.no-use-pref-ref
+    # what if we make the rejected string less preferred
+    python scripts/train.py side-none-prefvec --loss.no-use-proj-rel
+
+    python scripts/train.py side-none-prefvec --loss.use-dpo-loss 
+    python scripts/train.py side-none-prefvec --loss.no-use-pref-ref --loss.use-dpo-loss
+
+    python scripts/train.py hs-ether-prefvec --loss.no-use-proj-rel --loss.no-use-pref-ref --loss.use-nll-loss --loss.use-dpo-loss  --verbose=2
+    python scripts/train.py hs-ether-prefvec --loss.use-nll-loss --loss.use-dpo-loss  --verbose=2
+    python scripts/train.py hs-ether-prefvec --loss.no-use-proj-rel --loss.no-use-pref-ref  --verbose=2
+    python scripts/train.py hs-ether-prefvec --verbose=2
+    # what if we use the pref vec on pi model?
+    python scripts/train.py hs-ether--prefvec --loss.no-use-pref-ref
+    # what if we make the rejected string less preferred
+    python scripts/train.py hs-ether--prefvec --loss.no-use-proj-rel
+
+    python scripts/train.py projgrad --no-use-pref-ref
+    python scripts/train.py projgrad
