@@ -9,10 +9,10 @@ import itertools
 from reprpo.interventions.types import HS, Mask
 
 
-def get_layer_paths(collection_keys, collection_layers_side):
+def get_layer_paths(collection_keys, collection_layers):
     layer_paths = [
         [p.format(layer=layer) for p in collection_keys]
-        for layer in collection_layers_side
+        for layer in collection_layers
     ]
     layer_paths = list(itertools.chain(*layer_paths))
     return layer_paths

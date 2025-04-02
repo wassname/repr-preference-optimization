@@ -101,8 +101,10 @@
             "type": "debugpy",
             "justMyCode": false,
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+                "CUDA_VISIBLE_DEVICES": "1",
                 "TOKENIZERS_PARALLELISM": "false",
+                "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:true",
                 //  "REPR_CONFIG": "./configs/dev.yaml", 
                 // "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml"
                 //  "REPR_CONFIG": "./configs/llama-3-2-1b.yaml", 
@@ -118,11 +120,11 @@
                 "enable": true
             },
             "args": [
-                // "hs-supr-rank",
-                "projgrad",
+                "hs-supr-prefvec",
+                // "projgrad",
                 // "--dev",
                 "--verbose=2",
-                "--batch-size=8",
+                "--batch-size=2",
             ]
         },
         {

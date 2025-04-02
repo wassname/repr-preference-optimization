@@ -4510,3 +4510,124 @@ I think I do need a sharper loss somehow
 rego plate 1INV596 1FA0656
 number plate 
 
+
+# 2025-04-02 16:19:13
+
+Trying new SupressedHS
+
+save_dir=/media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/unhelpful_alpaca-llama-3-2-1b-sft/wassname-llama-3-2-1b-sft_hs-SupressedHS-PrefVec_unhelpful_alpaca/2025-04-02_14-53-47
+
+| hs-SupressedHS-PrefVec\ dist shift   |   train |    test |    oos |   rnd |
+|:-------------------------------------|--------:|--------:|-------:|------:|
+| acc_gain_vs_ref                      |   0.929 |   1.219 |  1.377 | 1.027 |
+| perplexity_reduction_vs_ref          |   0.634 |   0.631 |  0.927 | 1.012 |
+| preference_logp_gain_vs_ref          | -19.713 | -19.857 | 12.347 | 0.2   |
+Table 1: Key metrics (adapter over base model)
+
+
+| adapter/ds             |   train |   test |   oos |   rnd |
+|:-----------------------|--------:|-------:|------:|------:|
+| base                   |   0.056 |  0.064 | 0.388 | 0.368 |
+| hs-SupressedHS-PrefVec |   0.052 |  0.078 | 0.535 | 0.378 |
+Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]                       |   train |   test |    oos |   rnd |
+|:-------------------------------------------|--------:|-------:|-------:|------:|
+| ReprPO_SupressedHS_PrefVec collect_hs=True |  -7.143 | 21.875 | 37.696 | 2.703 |
+Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-unhelpful_alpaca-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
+- `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
+- `test`: `genies_preferences-unhelpful_alpaca-test`
+- `oos`: `genies_preferences-illegal_dont_help-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+| dpo\ dist shift             |   train |    test |     oos |    rnd |
+|:----------------------------|--------:|--------:|--------:|-------:|
+| acc_gain_vs_ref             |  16     |  12.688 |   0.663 |  0.98  |
+| perplexity_reduction_vs_ref |   0.762 |   0.713 |   0.386 |  0.739 |
+| preference_logp_gain_vs_ref | 161.564 | 151.053 | -18.067 | -0.542 |
+Table 1: Key metrics (adapter over base model)
+
+
+| adapter/ds   |   train |   test |   oos |   rnd |
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.055 |  0.064 | 0.386 | 0.361 |
+| dpo          |   0.875 |  0.812 | 0.256 | 0.354 |
+Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]   |   train |    test |     oos |    rnd |
+|:-----------------------|--------:|--------:|--------:|-------:|
+| DPO                    |    1500 | 1168.75 | -33.684 | -1.969 |
+Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-unhelpful_alpaca-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
+- `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
+- `test`: `genies_preferences-unhelpful_alpaca-test`
+- `oos`: `genies_preferences-illegal_dont_help-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+python scripts/train.py projgrad --verbose=2
+
+
+| projgrad\ dist shift        |   train |    test |     oos |    rnd |
+|:----------------------------|--------:|--------:|--------:|-------:|
+| acc_gain_vs_ref             |  16     |  12.719 |   0.621 |  0.98  |
+| perplexity_reduction_vs_ref |   0.771 |   0.723 |   0.378 |  0.736 |
+| preference_logp_gain_vs_ref | 160.947 | 150.503 | -19.486 | -0.541 |
+Table 1: Key metrics (adapter over base model)
+
+
+| adapter/ds   |   train |   test |   oos |   rnd |
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.055 |  0.064 | 0.386 | 0.361 |
+| projgrad     |   0.875 |  0.814 | 0.24  | 0.354 |
+Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]   |   train |    test |     oos |    rnd |
+|:-----------------------|--------:|--------:|--------:|-------:|
+| ProjGrad               |    1500 | 1171.88 | -37.895 | -1.969 |
+Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-unhelpful_alpaca-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
+- `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
+- `test`: `genies_preferences-unhelpful_alpaca-test`
+- `oos`: `genies_preferences-illegal_dont_help-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+
+
+
+| adapter/ds      |   train |   test |   oos |   rnd |
+|:----------------|--------:|-------:|------:|------:|
+| base            |   0.055 |  0.064 | 0.386 | 0.361 |
+| hs-None-PrefVec |   0.029 |  0.048 | 0.445 | 0.361 |
+Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]                |   train |   test |    oos |   rnd |
+|:------------------------------------|--------:|-------:|-------:|------:|
+| ReprPO_None_PrefVec collect_hs=True | -46.341 |    -25 | 15.263 |     0 |
+
+
+
+COLLECTED
+
+| acc_inc/eval_ds [pp]                    |   train |    test |     oos |    rnd |
+|:-----------------------                 |--------:|--------:|--------:|-------:|
+| DPO                                     |    1500 | 1168.75 | -33.684 | -1.969 |
+| ProjGrad                                |    1500 | 1171.88 | -37.895 | -1.969 |
+| ReprPO_SupressedHS_PrefVec collect_hs=True |  -7.143 | 21.875 | 37.696 | 2.703 |
+| ReprPO_None_PrefVec collect_hs=True | -46.341 |    -25 | 15.263 |     0 |
+
+| adapter/ds             |   train |   test |   oos |   rnd |
+|:-------------          |--------:|-------:|------:|------:|
+| base                   |   0.055 |  0.064 | 0.386 | 0.361 |
+| dpo                    |   0.875 |  0.812 | 0.256 | 0.354 |
+| projgrad               |   0.875 |  0.814 | 0.24  | 0.354 |
+| hs-SupressedHS-PrefVec |   0.052 |  0.078 | 0.535 | 0.378 |
+| hs-None-PrefVec        |   0.029 |  0.048 | 0.445 | 0.361 |
+Table 2: Absolute accuracy
+
+
+
+python scripts/train.py hs-none-prefvec --verbose=2 --collection_layers=0.3,-2
+python scripts/train.py side-none-prefvec --verbose=2 --collection_layers=0.3,-2
+python scripts/train.py hs-supr-prefvec --verbose=2 --collection_layers=0.3,-2

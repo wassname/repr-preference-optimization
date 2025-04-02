@@ -110,7 +110,7 @@ def get_display_name_from_args(args):
 
     diff = set(list2tuple(flatten_dict(asdict(args))).items())-set(list2tuple(flatten_dict(asdict(defaults))).items())
     diff = sorted(diff, key=lambda x: x[0])
-    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers_side', 'collection_layers_hs', 'save', 'wandb',]
+    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers', 'collection_layers_hs', 'save', 'wandb',]
     def fmt(v):
         if isinstance(v, float):
             return f"{v:.2g}"
@@ -322,7 +322,7 @@ def train(args, trial: Optional[Trial] = None):
         source=[args.dataset],
     )
     if not len(ds_val_oos):
-        logger.error(f"{args.dataset} not found in GENIES")
+        logger.error(f"{args.dataset} has no OOS dist found in GENIES")
         # try GENIES_ALL
     ds_val_oos = ds_val_oos[0].map(tokenize_row, batched=False)
     dl_val = ds2dl(
@@ -485,7 +485,7 @@ def train(args, trial: Optional[Trial] = None):
         load_dataset_n('wassname/ethics_expression_preferences', name='justice', split='test', N=N)
     ]
     ds_names =  [ds2name(d) for d in datasets]
-    logger.info(f"evaluating on {ds_names}")
+    logger.info(f"evaluating on datasets: {ds_names}")
 
     clear_mem()
     res, df_res2 = evaluate_model(

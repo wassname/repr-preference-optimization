@@ -10,8 +10,8 @@ from typing import Optional
 class ReprPOConfig(ExperimentConfig):
     lr: float = 7e-5
 
-    collection_layers_side: Optional[tuple] = None
-    """layers to collect activations from in side layers."""
+    collection_layers: Optional[tuple] = None
+    """layers to collect activations from (none means deault 33% to 66% stride 4)."""
 
     collection_keys_in: tuple = (
         "base_model.model.model.layers.{layer}.self_attn.o_proj",
@@ -44,7 +44,7 @@ class ReprPOConfig(ExperimentConfig):
 
     _model_keys = [
         "lr",
-        "collection_layers_side",
+        "collection_layers",
         "collection_keys_in",
         "collection_keys_out",
         "collect_input",

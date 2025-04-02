@@ -69,10 +69,10 @@ class SupressedHSTransform(nn.Module):
         self.Wo_inv = torch.pinverse(self.Wo.clone().float())
 
     def forward(self, x: Dict[str, HS]) -> Dict[str, HS]:
-        keys = sorted([k for k in x.keys()])   
+        keys = sorted([k for k in x.keys()], key=lambda x: int(x))   
         hs = torch.stack([x[k] for k in keys], dim=0) #l b t h
         hs = get_supressed_activations(
-            hs=x,
+            hs=hs,
             w_out=self.Wo,
             w_inv=self.Wo_inv,
         )
