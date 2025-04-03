@@ -365,7 +365,7 @@ def train(args, trial: Optional[Trial] = None):
         logger.info(
             f"accumulated batch size {args.batch_size * accumulate_grad_batches}"
         )
-        logger.info(f"epochs {args.n_samples//len(dl_train.dataset)}")
+        logger.info(f"epochs {args.n_samples/len(dl_train.dataset)}")
 
     model_kwargs = {k: getattr(args, k) for k in args._model_keys}
     pl_model = PL_MODEL(

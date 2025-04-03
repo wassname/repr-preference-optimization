@@ -26,6 +26,12 @@ def remove_warnings():
         "ignore", ".*input hidden states seems to be silently casted in float32.*"
     )
 
+    # https://github.com/huggingface/transformers/blob/3e96a0c32b7fcebdf8992e5ad8161272e4651618/src/transformers/trainer.py#L816
+    warnings.filterwarnings(
+        "ignore",
+        ".*You should use Trainer.processing_class instead.*",
+    )
+
 
 def silence():
     # wandb logger is too verbose

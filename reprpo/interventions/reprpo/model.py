@@ -91,29 +91,33 @@ def parse_collection_layers(
     """
     Parse the collection layers. If they are not provided, use the default ones.
     """
-    # if str, turn into list of ints
     if len(collection_layers) == 1 and isinstance(collection_layers[0], str):
         collection_layers = collection_layers[0]
+    
     if isinstance(collection_layers, str):
         collection_layers = [float(i) for i in collection_layers.split(",")]
-    if len(collection_layers) <= 3 and collection_layers[1] < 1:
+    
+    if len(collection_layers) <= 3 and collection_layers[0] < 1:
         # turn shorthand into full [0.1, 0.9, 2] would be 10% to 90% and 
+        stride = 1
         if len(collection_layers) == 1:
             a = collection_layers[0]
             b = -1
-        if len(collection_layers) == 2:
+        elif len(collection_layers) == 2:
             a, b = collection_layers
-            stride = 1
         else:
             a, b, stride = collection_layers
+
+        
         if (a>0 and a<1):
             a = int(a * num_hidden_layers)
-        if a<0:
+        elif a<0:
             a = int((a+1) * num_hidden_layers)
+        
         if (b>0 and b<1):
             b = int(b * num_hidden_layers)
-        if b<0:
-            b = int((b+1) * num_hidden_layers)
+        elif b<0:
+            b = int(num_hidden_layers+b+1)
         collection_layers = list(range(a, b, stride))
 
     collection_layers = [int(i) for i in collection_layers] # int

@@ -4628,6 +4628,9 @@ Table 2: Absolute accuracy
 
 
 
+python scripts/train.py hs-supr-prefvec --verbose=2 --collection_layers=0.3,-2
 python scripts/train.py hs-none-prefvec --verbose=2 --collection_layers=0.3,-2
 python scripts/train.py side-none-prefvec --verbose=2 --collection_layers=0.3,-2
-python scripts/train.py hs-supr-prefvec --verbose=2 --collection_layers=0.3,-2
+python scripts/train.py dpo --verbose=2 --collection_layers=0.3,-2
+python scripts/train.py projgrad --verbose=2 --collection_layers=0.3,-2
+

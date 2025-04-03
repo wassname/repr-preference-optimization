@@ -33,7 +33,7 @@ default_tuner_kwargs = dict(
     verbose=1,
     batch_size=16*2,
     eval_samples=128,
-    n_samples=1800 * 5, # to make sure it converges
+    n_samples=1800 * 3, # to make sure it converges
     save=False,
     wandb=True,
     #  https://huggingface.co/datasets/wassname/genies_preferences
