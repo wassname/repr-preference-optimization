@@ -29,8 +29,9 @@ def remove_warnings():
     # https://github.com/huggingface/transformers/blob/3e96a0c32b7fcebdf8992e5ad8161272e4651618/src/transformers/trainer.py#L816
     warnings.filterwarnings(
         "ignore",
-        ".*You should use Trainer.processing_class instead.*",
+        ".*Trainer\.tokenizer is now deprecated.*",
     )
+    # Trainer.tokenizer is now deprecated. You should use Trainer.processing_class instead.
 
 
 def silence():

@@ -6,6 +6,12 @@ import json
 import os
 from pprint import pprint
 
+from .silence import silence, remove_warnings
+remove_warnings()
+
+import warnings
+warnings.filterwarnings("ignore")
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from collections import OrderedDict
@@ -51,10 +57,9 @@ import yaml
 # Local
 from reprpo.helpers.torch import clear_mem
 from reprpo.models.load import load_model, print_trainable_parameters
-from .silence import silence, remove_warnings
+
 from loguru import logger
 
-remove_warnings()
 
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
 LOGURU_FORMAT = "<level>{message}</level>"
@@ -486,33 +491,37 @@ def train(args, trial: Optional[Trial] = None):
     ]
     ds_names =  [ds2name(d) for d in datasets]
     logger.info(f"evaluating on datasets: {ds_names}")
+    remove_warnings()
 
-    clear_mem()
-    res, df_res2 = evaluate_model(
-        model=model,
-        tokenizer=tokenizer,
-        datasets=datasets,
-        batch_size=args.batch_size,
-        bf16=True,
-        torch_empty_cache_steps=100,
-        verbose=args.verbose,
-        # dataloader_num_workers=2,
-        # dataloader_pin_memory=True,
-    )
+    # silent warnings
+    with warnings.catch_warnings(action="ignore"):
 
-    ds_alias = OrderedDict(
-        list(zip(["train", "test", "oos", "rnd"], ds_names))
-    )
-    ds_alias_rev = {v: k for k, v in ds_alias.items()}
-    df_res2['ds_alias'] = df_res2['dataset'].map(lambda x: ds_alias_rev.get(x, x))
+        clear_mem()
+        res, df_res2 = evaluate_model(
+            model=model,
+            tokenizer=tokenizer,
+            datasets=datasets,
+            batch_size=args.batch_size,
+            bf16=True,
+            torch_empty_cache_steps=100,
+            verbose=args.verbose,
+            # dataloader_num_workers=2,
+            # dataloader_pin_memory=True,
+        )
 
-    # save
-    f = str(save_dir) + "/eval.parquet"
-    df_res2.to_parquet(f)
-    logger.info(f"save_dir={save_dir}")
-    # pprint(args, compact=1)
+        ds_alias = OrderedDict(
+            list(zip(["train", "test", "oos", "rnd"], ds_names))
+        )
+        ds_alias_rev = {v: k for k, v in ds_alias.items()}
+        df_res2['ds_alias'] = df_res2['dataset'].map(lambda x: ds_alias_rev.get(x, x))
 
-    r = parse_eval(df_res2, ds_alias, human_name=human_name, base_model=model_name)
+        # save
+        f = str(save_dir) + "/eval.parquet"
+        df_res2.to_parquet(f)
+        logger.info(f"save_dir={save_dir}")
+        # pprint(args, compact=1)
+
+        r = parse_eval(df_res2, ds_alias, human_name=human_name, base_model=model_name)
 
     # WANDB logging
     r2 = {}
@@ -625,6 +634,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
 
 
 def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
+    remove_warnings()
     adapter_name = df_res2[["adapter"]].query('adapter!="base"').values[0, 0]
     ds_alias_rev = {v:k for k,v in ds_alias.items()}
 
