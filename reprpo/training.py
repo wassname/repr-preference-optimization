@@ -9,8 +9,7 @@ from pprint import pprint
 from .silence import silence, remove_warnings
 remove_warnings()
 
-import warnings
-warnings.filterwarnings("ignore")
+
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -60,6 +59,9 @@ from reprpo.models.load import load_model, print_trainable_parameters
 
 from loguru import logger
 
+# weird that this doesn't work
+import warnings
+warnings.filterwarnings("ignore")
 
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
 LOGURU_FORMAT = "<level>{message}</level>"

@@ -4629,6 +4629,7 @@ COLLECTED
 | hs-SupressedHS-Ra(lngr) | 0.439 | 0.412 | 0.374 | 0.378 |
 | dpo                     | 0.875 | 0.812 | 0.256 | 0.354 |
 | projgrad                | 0.875 | 0.814 |  0.24 | 0.354 |
+| projgrad                | 0.913 | 0.87  | 0.222 | 0.345 |
 
 Table 2: Absolute accuracy
 - `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
@@ -4680,9 +4681,126 @@ ok try with more layers enables
 | side-None-PrefVec      | 0.067 | 0.074 | 0.411 | 0.382 |
 | hs-None-PrefVec        |  0.08 | 0.084 | 0.423 | 0.371 |
 | hs-SupressedHS-PrefVec | 0.043 | 0.058 | 0.447 | 0.372 |
+| hs-SupressedHS-PrefVec |   0.039 |  0.04  | 0.301 | 0.439 |
 
 Table 2: Absolute accuracy
 - `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
 - `test`: `genies_preferences-unhelpful_alpaca-test`
 - `oos`: `genies_preferences-illegal_dont_help-test`
 - `rnd`: `ethics_expression_preferences-justice-test`
+python scripts/train.py hs-supr-prefvec --verbose=2 --collection_layers=0.3,-2
+python scripts/train.py hs-supr-prefvec --verbose=2 --collection_layers=0.3,-2
+
+# 2025-05-08 13:31:53
+
+Brainstorming:
+- PCA the direction over a whole dataset
+- constrastive activate to learen a direction
+- trust region based on historic grad norms? have I tried this? briefly but I think there were other problems then
+- answer token focused?? (this seems very good though)
+- ~~take direction per token, then mean~~ no wait I don't have paired tokens I have whole setnaces
+
+```ps
+import torch
+import torch.nn.functional as F
+
+def overtaking_triplet_loss(hs_cho, hs_rej, hs_cho_ref, hs_rej_ref, margin=0.1, scale_factor=1.5):
+    """
+    Modified triplet loss to encourage chosen hidden states to move beyond the reference chosen states
+    in the preference direction.
+
+    Args:
+        hs_cho: Hidden states for the chosen response [batch, hidden_dim].
+        hs_rej: Hidden states for the rejected response [batch, hidden_dim].
+        hs_cho_ref: Reference hidden states for the chosen response [batch, hidden_dim].
+        hs_rej_ref: Reference hidden states for the rejected response [batch, hidden_dim].
+        margin: Margin for the triplet loss.
+        scale_factor: Factor to scale the preference direction for overtaking.
+
+    Returns:
+        Loss value.
+    """
+    # Compute the preference direction
+    pref_dir = hs_cho_ref - hs_rej_ref
+
+    # Encourage hs_cho to move beyond hs_cho_ref in the preference direction
+    target_cho = hs_cho_ref + scale_factor * pref_dir
+
+    # Compute distances
+    pos_dist = F.mse_loss(hs_cho, target_cho, reduction='none').mean(dim=-1)
+    neg_dist = F.mse_loss(hs_rej, hs_cho_ref, reduction='none').mean(dim=-1)
+
+    # Triplet loss with overtaking
+    loss = F.relu(pos_dist - neg_dist + margin).mean()
+    return loss
+```
+
+```op
+import torch
+import torch.nn.functional as F
+
+    # Compute the preference gradient in the reference model
+    ref_preference_gradient = ref_hidden_states.grad  # Ensure ref_hidden_states requires grad
+    if ref_preference_gradient is None:
+        ref_preference_gradient = torch.autograd.grad(
+            outputs=(chosen_logits - rejected_logits).mean(),
+            inputs=ref_hidden_states,
+            retain_graph=True
+        )[0]
+
+def preference_gradient_loss(policy_hidden_states, ref_hidden_states, ref_pref_grad, alpha=1.0):
+    """
+    Encourages the policy model's hidden states to move along the reference preference gradient.
+
+    Args:
+        policy_hidden_states: Hidden states from the policy model [batch, hidden_dim].
+        ref_hidden_states: Hidden states from the reference model [batch, hidden_dim].
+        ref_pref_grad: Preference gradient from the reference model [batch, hidden_dim].
+        alpha: Scaling factor for the loss.
+
+    Returns:
+        Loss value.
+    """
+    # Compute the projection of policy hidden states onto the reference preference gradient
+    proj_policy = torch.sum(policy_hidden_states * ref_pref_grad, dim=-1, keepdim=True) * ref_pref_grad
+    proj_ref = torch.sum(ref_hidden_states * ref_pref_grad, dim=-1, keepdim=True) * ref_pref_grad
+
+    # Compute the difference in projections
+    diff_proj = proj_policy - proj_ref
+
+    # Loss encourages movement along the preference gradient
+    loss = alpha * torch.norm(diff_proj, dim=-1).mean()
+    return loss
+```
+
+
+I need to check I was trying to make rej even less prefered. Like what does it mean to move it in the direction, I want to make it less likely to be expressed but that's another direction?
+
+
+
+# 2025-05-10 16:55:42
+Hmm a couple of newer simpler exp and debbuging, aimed a seperating rej and proj along pref dir. I might need to add orth or angle loss if they get incoherent but for now this seems promising, as it's learning to be unhelpfull
+```
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.no-use-proj-rel
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel
+```
+ok both became incoherent quite fast, I need to try with other losses and also balance them
+
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.no-use-proj-rel --loss.use-angle-loss
+| hs-SupressedHS-PrefVec |   0.071 |  0.074 | 0.071 | 0.43  |
+
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use-angle-loss
+| hs-SupressedHS-PrefVec |   0.055 |  0.054 | 0.045 | 0.436 |
+
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.no-use-proj-rel --loss.use-orth-loss
+| hs-SupressedHS-PrefVec |   0.071 |  0.074 | 0.071 | 0.43  |
+
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use-orth-loss
+| hs-SupressedHS-PrefVec |   0.055 |  0.054 | 0.045 | 0.436 |
+
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.no-use-proj-rel --loss.use_nll_loss
+| hs-SupressedHS-PrefVec |   0.055 |  0.066 | 0.427 | 0.357 |
+
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_nll_loss
+underfit
+| hs-SupressedHS-PrefVec |   0.064 |  0.072 | 0.421 | 0.362 |

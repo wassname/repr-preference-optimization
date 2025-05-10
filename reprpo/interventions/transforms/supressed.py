@@ -46,16 +46,16 @@ def get_supressed_activations(
             hs_out2, "(l b t) h -> l b t h", l=hs.shape[0], b=hs.shape[1], t=1
         )
         diffs = hs_out[:, :, :].diff(dim=0)
-        diffs2 = rearrange(diffs, "l b t h -> (l b t) h")
+        diffs_flat = rearrange(diffs, "l b t h -> (l b t) h")
         # W_inv = get_cache_inv(w_out)
 
-        diffs_inv2 = torch.nn.functional.linear(diffs2.to(dtype=w_inv.dtype), w_inv)
+        diffs_inv_flat = torch.nn.functional.linear(diffs_flat.to(dtype=w_inv.dtype), w_inv)
         diffs_inv = rearrange(
-            diffs_inv2, "(l b t) h -> l b t h", l=hs.shape[0] - 1, b=hs.shape[1], t=1
+            diffs_inv_flat, "(l b t) h -> l b t h", l=hs.shape[0] - 1, b=hs.shape[1], t=1
         ).to(w_out.dtype)
         # TODO just return this?
         eps = 1.0e-1
-        supressed_mask = (diffs_inv < -eps).to(hs.dtype)
+        supressed_mask = (diffs_inv > eps).to(hs.dtype)
         # supressed_mask = repeat(supressed_mask, 'l b 1 h -> l b t h', t=hs.shape[2])
     supressed_act = hs[1:] * supressed_mask
     return supressed_act

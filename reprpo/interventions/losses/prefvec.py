@@ -54,9 +54,9 @@ def prefvec_loss(
         pref_dir_ref = hs_ref_cho - hs_ref_rej  # preference vector
         pref_dir_pi = hs_pi_cho - hs_pi_rej  # preference vector
         cho = (
-            hs_pi_cho - hs_ref_cho
+            hs_pi_cho# - hs_ref_cho
         )  # vector describing movement of chosen hidden state compared to base model
-        rej = hs_pi_rej - hs_ref_rej
+        rej = hs_pi_rej #- hs_ref_rej
 
         # pref_dir_ref_unit = pref_dir_ref / pref_dir_ref.norm(dim=-1, keepdim=True).clamp(eps)
         # pref_dir_pi_unit = pref_dir_pi / pref_dir_pi.norm(dim=-1, keepdim=True).clamp(eps)
@@ -80,11 +80,16 @@ def prefvec_loss(
             rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(rej, pref_dir_pi)
             rel_pref, rel_orth, rel_cossim = signed_proj_magnitude(cho-rej, pref_dir_pi)
 
-        # goes down if the hs moves along the direction of the preference vector
-        loss_proj = -cho_pref - rej_pref
+        # goes down if either hs moves along the direction of the preference vector. Note this does not seperate out the preferences
+        # TODO do a whole experiment on this line as it was learning!
+        loss_proj =  -(cho_pref - rej_pref)
 
         # we would also like cho to be preferenced over ref, so make them far away?
-        loss_proj_rel = -(cho_pref - rej_pref)
+        # note is at 0 initially and does not move
+
+        # loss_proj_rel = -(cho_pref - rej_pref)
+        # TODO do exp on this line
+        loss_proj_rel = -rel_pref
 
         # increases with movement of hs orthogonal to the preference vector
         loss_cho_orth = torch.abs(cho_orth) + torch.abs(ref_orth)
@@ -92,7 +97,7 @@ def prefvec_loss(
         # we could also optimize angle, we want it to be close to 1, so we make it negative
         #  cosine sim ranges from -1 meaning exactly opposite, to 1 meaning exactly the same, with 0 indicating orthogonality
         # so we shift it to be a positive loss than approaches zero
-        loss_angle = 3 - cho_cossim - rej_cossim - rel_cossim
+        loss_angle = 3 - cho_cossim + rej_cossim - rel_cossim
 
         return dict(
             loss_proj=loss_proj,
@@ -115,15 +120,19 @@ def prefvec_loss(
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
     if use_proj_rel:
-        loss_reroute = ll["loss_proj_rel"] * 1e6 # a very small number so we make it bigger
+        loss_reroute = ll["loss_proj_rel"] * 1e4 # a very small number so we make it bigger
     else:
-        loss_reroute = ll["loss_proj"]
+        loss_reroute = ll["loss_proj"] * 1e4
+
+    # tgis beeds balance
     if use_orth_loss:
         loss_reroute += β * ll["loss_orth"]
     if use_angle_loss:
         loss_reroute += β * ll["loss_angle"]
+    
     # TODO find better scaling, it needs to be small compared to nll and dpo losses which can be <0.1
-    loss_reroute = torch.tanh(loss_reroute / 3) / 10
+    if use_dpo_loss or use_nll_loss:
+        loss_reroute = torch.tanh(loss_reroute / 3) / 10
 
     # nll loss, to ensure it's punished for less coherent outputs
     nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch["chosen_mask"])
@@ -189,7 +198,7 @@ class PrefVecLossConfig:
     use_orth_loss: bool = False
     """punish movement orthogonal to the preference vector: by distance"""
 
-    use_angle_loss: bool = True
+    use_angle_loss: bool = False
     """punish movement orthogonal to the preference vector: by angle"""
 
     use_dpo_loss: bool = False

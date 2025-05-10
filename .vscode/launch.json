@@ -102,7 +102,7 @@
             "justMyCode": false,
             "env": {
                 "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
-                "CUDA_VISIBLE_DEVICES": "1",
+                // "CUDA_VISIBLE_DEVICES": "1",
                 "TOKENIZERS_PARALLELISM": "false",
                 "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:true",
                 //  "REPR_CONFIG": "./configs/dev.yaml", 
