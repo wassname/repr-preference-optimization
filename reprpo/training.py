@@ -59,14 +59,14 @@ from reprpo.models.load import load_model, print_trainable_parameters
 
 from loguru import logger
 
-# weird that this doesn't work
-import warnings
-warnings.filterwarnings("ignore")
-
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
 LOGURU_FORMAT = "<level>{message}</level>"
 logger.remove()
 logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
+
+# # weird that this doesn't work
+# import warnings
+# warnings.filterwarnings("ignore")
 
 
 def apply_cfg_overrides(cfg, f=None):
@@ -495,35 +495,35 @@ def train(args, trial: Optional[Trial] = None):
     logger.info(f"evaluating on datasets: {ds_names}")
     remove_warnings()
 
-    # silent warnings
-    with warnings.catch_warnings(action="ignore"):
+    # # silent warnings
+    # with warnings.catch_warnings(action="ignore"):
 
-        clear_mem()
-        res, df_res2 = evaluate_model(
-            model=model,
-            tokenizer=tokenizer,
-            datasets=datasets,
-            batch_size=args.batch_size,
-            bf16=True,
-            torch_empty_cache_steps=100,
-            verbose=args.verbose,
-            # dataloader_num_workers=2,
-            # dataloader_pin_memory=True,
-        )
+    clear_mem()
+    res, df_res2 = evaluate_model(
+        model=model,
+        tokenizer=tokenizer,
+        datasets=datasets,
+        batch_size=args.batch_size,
+        bf16=True,
+        torch_empty_cache_steps=100,
+        verbose=args.verbose,
+        # dataloader_num_workers=2,
+        # dataloader_pin_memory=True,
+    )
 
-        ds_alias = OrderedDict(
-            list(zip(["train", "test", "oos", "rnd"], ds_names))
-        )
-        ds_alias_rev = {v: k for k, v in ds_alias.items()}
-        df_res2['ds_alias'] = df_res2['dataset'].map(lambda x: ds_alias_rev.get(x, x))
+    ds_alias = OrderedDict(
+        list(zip(["train", "test", "oos", "rnd"], ds_names))
+    )
+    ds_alias_rev = {v: k for k, v in ds_alias.items()}
+    df_res2['ds_alias'] = df_res2['dataset'].map(lambda x: ds_alias_rev.get(x, x))
 
-        # save
-        f = str(save_dir) + "/eval.parquet"
-        df_res2.to_parquet(f)
-        logger.info(f"save_dir={save_dir}")
-        # pprint(args, compact=1)
+    # save
+    f = str(save_dir) + "/eval.parquet"
+    df_res2.to_parquet(f)
+    logger.info(f"save_dir={save_dir}")
+    # pprint(args, compact=1)
 
-        r = parse_eval(df_res2, ds_alias, human_name=human_name, base_model=model_name)
+    r = parse_eval(df_res2, ds_alias, human_name=human_name, base_model=model_name)
 
     # WANDB logging
     r2 = {}

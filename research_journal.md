@@ -4804,3 +4804,69 @@ python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --l
 python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_nll_loss
 underfit
 | hs-SupressedHS-PrefVec |   0.064 |  0.072 | 0.421 | 0.362 |
+
+
+
+Hm you it occurs to me that just seperating rej and cho doesn't work if they are on wrong sides or in the wrong direction
+ideallty we want DPO and that to be trained at the same time, and we let it flip the direction (e.g. don't use ref). I would hope that is satisfied both by alinging both internal and external states.. and minimal internal states hmme
+specially if we freeze the last layer
+
+so lets run this and check loss balance
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.no-use-proj-rel --loss.use_dpo_loss --loss.no_use_pref_ref
+| hs-SupressedHS-PrefVec |   0.163 |  0.158 | 0.39  | 0.359 |
+https://wandb.ai/wassname/reprpo2/runs/q261qgrx
+
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_dpo_loss --loss.no_use_pref_ref
+| hs-SupressedHS-PrefVec |   0.135 |  0.144 | 0.398 | 0.351 |
+
+
+| adapter/ds             | train |  test |   oos |   rnd |
+| :--------------------- | ----: | ----: | ----: | ----: |
+| base                   | 0.055 | 0.064 | 0.386 | 0.361 |
+| projgrad               | 0.915 | 0.866 | 0.232 | 0.352 |
+| dpo                    | 0.909 | 0.864 | 0.224 | 0.348 |
+
+| hs-SupressedHS-PrefVec |   0.163 |  0.158 | 0.39  | 0.359 |
+
+TODO try a longer run with the new 10x balance on loss_proj
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.no-use-proj-rel --loss.use_dpo_loss --loss.no_use_pref_ref --n_samples=10000
+
+| hs-SupressedHS-PrefVec |   0.155 |  0.156 | 0.366 | 0.357 |
+
+
+ok it kind of levelled off with dpo loss never spiking and reroute from loss just finding a cyclical thing to learn hmm.
+so loss reroute hsoudl be 10a
+nd *10 more
+dpo is also small
+
+
+Ok lets reason about this in plain language loss functions
+
+
+1. make hs_cho far from hs_ref.... but how do we know this is not random and incoherent
+2. make them far, but in the reference models hs, along the original pref_dir
+   1. but pref_dir_ref... how do we know this is not a random direction. It could be -ve, and or unaligned. But we do want internal alignment. So what about DPO but hs must seperate along existing concept directions? yes that could work. So directionless, dpo provides direction.
+3. Improve output preference, but must be in plus or minus of ref pref dir. 
+   1. This would fail if the base model does not have the concept but DPO also assumes that you have SFT on the corpus
+
+use dpo loss for retain
+use ref_pref_dir for direction (otherwise it's just dpo)
+oh orth loss too
+measure hs_cho_pi - hs_ref_pi
+balance
+
+
+
+So to try this idea
+
+- dpo on
+- OR
+  - orth and proj losses on | but ignore +- direction
+  - angle (margin?) on | but ^2 to ignore +- direction (this ignore magnitude)
+- balance
+
+
+
+Wooo good results... what happened commmit
+| hs-SupressedHS-PrefVec |   0.993 |  0.998 | 0.801 | 0.371 |
+Table 2: Absolute accuracy
