@@ -130,9 +130,9 @@ def prefvec_loss(
     # tgis beeds balance
     if use_orth_loss:
         if use_proj_rel:
-            loss_reroute += β * ll["loss_rel_orth"] * 1e5
+            loss_reroute += β * ll["loss_rel_orth"] * 1e6
         else:
-            loss_reroute += β * ll["loss_orth"] * 1e5
+            loss_reroute += β * ll["loss_orth"] * 1e6
     
     if use_angle_loss:
         loss_reroute += β * ll["loss_angle"]
@@ -208,7 +208,7 @@ class PrefVecLossConfig:
     use_orth_loss: bool = True
     """punish movement orthogonal to the preference vector: by distance"""
 
-    use_angle_loss: bool = True
+    use_angle_loss: bool = False
     """punish movement orthogonal to the preference vector: by angle"""
 
     use_dpo_loss: bool = True
@@ -220,7 +220,7 @@ class PrefVecLossConfig:
     weight_tokens: bool = False
     """exp weight tokens along seq"""
 
-    use_proj_rel: bool = True
+    use_proj_rel: bool = False
     """encourage chosen to be more in the pref dir than rejected"""
 
     use_pref_ref: bool = True

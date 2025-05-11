@@ -3,8 +3,7 @@ import logging
 from datasets.utils.logging import disable_progress_bar
 
 import logging
-# silent this warning spam https://github.com/huggingface/transformers/blob/716819b8309324302e00a3488a3c3d6faa427f79/src/transformers/trainer.py#L819
-logging.getLogger("transformers").setLevel(logging.ERROR)
+
 
 def remove_warnings():
     # warnings.simplefilter("ignore")
@@ -35,6 +34,10 @@ def remove_warnings():
     #     ".*Trainer.tokenizer is now deprecated.*",
     # )
     # # Trainer.tokenizer is now deprecated. You should use Trainer.processing_class instead.
+
+    # silence this warning spam https://github.com/huggingface/transformers/blob/716819b8309324302e00a3488a3c3d6faa427f79/src/transformers/trainer.py#L819
+    from transformers.trainer import logger as trainer_logger
+    trainer_logger.setLevel(logging.ERROR)
 
 
 def silence():

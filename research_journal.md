@@ -1543,8 +1543,7 @@ try normal adam
 try grad checkpointing
 
 Here it looked like it was getting worse but after 1k steps it got better!! This is SVD
-![alt text](image.png)
-
+![alt text](files/svd2.png)
 
 ⭐ run=32_reprpo_svd, N=144
 
@@ -1792,7 +1791,7 @@ exp
 
 - lr=1e-3 loss up not spikey good
 - lr=1e-4 spikey
-- without hs_io.detach is actually drops down! so it's important! ![alt text](image-1.png)
+- without hs_io.detach is actually drops down! so it's important! ![alt text](files/hs_io_detach.png)
 
 
 hmm so we are seing something weird where rr starts at zero and can't be improved?
@@ -4867,6 +4866,29 @@ So to try this idea
 
 
 
-Wooo good results... what happened commmit
+Wooo good results... what happened commit 9d18ee7322d8b2da881cec527b8954dadf5de404
+https://wandb.ai/wassname/reprpo2/runs/1si8bcod?nw=nwuserwassname
 | hs-SupressedHS-PrefVec |   0.993 |  0.998 | 0.801 | 0.371 |
+Table 2: Absolute accuracy
+
+- Losses
+  - DPO on and down
+  - orth loss ( loss_rel_orth at 5x!) (up slighly)
+  - use_pref_ref (yes the basis is ref model)
+  - use_proj_rel (so small ignored)
+  - (angle off and went up anyway)
+Huh so what happend is:
+- do DPO, but it must be along this existing preference direction (either forward or flipped) because we will punish you for doing sideways!!
+
+
+/media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/scripts/train.py hs-supr-prefvec --verbose=2 --collection_layers=0.3 --loss.use-proj-rel --loss.use_dpo_loss --loss.use_orth_loss
+
+"PrefVecLossConfig(eps=1e-12, β=5.0, use_orth_loss=True, use_angle_loss=False, use_dpo_loss=True, use_nll_loss=False, weight_tokens=False, use_proj_rel=True, use_pref_ref=True)"
+
+
+Lets confirm
+| adapter/ds             |   train |   test |   oos |   rnd |
+|:-----------------------|--------:|-------:|------:|------:|
+| base                   |   0.055 |  0.064 | 0.386 | 0.361 |
+| hs-SupressedHS-PrefVec |   0.991 |  0.994 | 0.677 | 0.364 |
 Table 2: Absolute accuracy

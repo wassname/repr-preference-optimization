@@ -64,10 +64,6 @@ LOGURU_FORMAT = "<level>{message}</level>"
 logger.remove()
 logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
 
-# # weird that this doesn't work
-# import warnings
-# warnings.filterwarnings("ignore")
-
 
 def apply_cfg_overrides(cfg, f=None):
     proj_root = Path(__file__).parent.parent
@@ -76,14 +72,14 @@ def apply_cfg_overrides(cfg, f=None):
         f = os.environ.get("REPR_CONFIG")
     if f is not None:
         f = proj_root / f
-        print("applying REPR_CONFIG", f)
+        logger.info(f"applying REPR_CONFIG {f}")
         overrides = yaml.safe_load(open(f))
         for k, v in overrides.items():
             if hasattr(cfg, k):
                 setattr(cfg, k, v)
             else:
-                print(f"Warning: {k} not found in training_args")
-        print(f"loaded default config from {f}")
+                logger.warning(f"Warning: {k} not found in training_args")
+        logger.info(f"loaded default config from {f}")
     return cfg
 
 def flatten_dict(d, parent_key='', sep='.'):
