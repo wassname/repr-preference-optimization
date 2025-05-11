@@ -2,6 +2,9 @@ import warnings, os
 import logging
 from datasets.utils.logging import disable_progress_bar
 
+import logging
+# silent this warning spam https://github.com/huggingface/transformers/blob/716819b8309324302e00a3488a3c3d6faa427f79/src/transformers/trainer.py#L819
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 def remove_warnings():
     # warnings.simplefilter("ignore")
@@ -26,12 +29,12 @@ def remove_warnings():
         "ignore", ".*input hidden states seems to be silently casted in float32.*"
     )
 
-    # https://github.com/huggingface/transformers/blob/3e96a0c32b7fcebdf8992e5ad8161272e4651618/src/transformers/trainer.py#L816
-    warnings.filterwarnings(
-        "ignore",
-        ".*Trainer\.tokenizer is now deprecated.*",
-    )
-    # Trainer.tokenizer is now deprecated. You should use Trainer.processing_class instead.
+    # # https://github.com/huggingface/transformers/blob/3e96a0c32b7fcebdf8992e5ad8161272e4651618/src/transformers/trainer.py#L816
+    # warnings.filterwarnings(
+    #     "ignore",
+    #     ".*Trainer.tokenizer is now deprecated.*",
+    # )
+    # # Trainer.tokenizer is now deprecated. You should use Trainer.processing_class instead.
 
 
 def silence():
