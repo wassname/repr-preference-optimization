@@ -22,12 +22,11 @@ def prefvec_loss(
     eps=1e-12,
     β=0.1,
     use_orth_loss=True,
+    use_sep_loss=False,
     use_angle_loss=True,
     use_dpo_loss=True,
-    use_nll_loss=True,
-    weight_tokens=False,
-    use_proj_rel=False,
-    use_pref_ref=True,
+    use_proj_loss=False,
+    use_proj_abs_loss=True,
 ):
     """
     movement of hs along the hs pref vector.
@@ -41,7 +40,7 @@ def prefvec_loss(
 
     def preproc_hs(o, k: str):
         hs = o.hs[k]#.softmax(-1)
-        hs = reduce_tokens_w_attention(hs, o.mask, weight_tokens=weight_tokens)
+        hs = reduce_tokens_w_attention(hs, o.mask)
         return hs
 
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, "b"]]:
@@ -52,14 +51,6 @@ def prefvec_loss(
 
         # we define the reference vector as the direction between the reference chosen and rejected hidden states. It's a high dim vector in the space of hidden states
         pref_dir_ref = hs_ref_cho - hs_ref_rej  # preference vector
-        pref_dir_pi = hs_pi_cho - hs_pi_rej  # preference vector
-        cho = (
-            hs_pi_cho - hs_ref_cho
-        )  # vector describing movement of chosen hidden state compared to base model
-        rej = hs_pi_rej - hs_ref_rej
-
-        # pref_dir_ref_unit = pref_dir_ref / pref_dir_ref.norm(dim=-1, keepdim=True).clamp(eps)
-        # pref_dir_pi_unit = pref_dir_pi / pref_dir_pi.norm(dim=-1, keepdim=True).clamp(eps)
 
         def signed_proj_magnitude(a, pref_dir):
             pref_dir_unit = pref_dir / pref_dir.norm(dim=-1, keepdim=True).clamp(eps)
@@ -71,49 +62,25 @@ def prefvec_loss(
             cosine_sim = F.cosine_similarity(a, pref_dir, dim=-1)
             return a_proj.mean(dim=-1), a_orth.mean(dim=-1), cosine_sim
 
-        if use_pref_ref:
-            cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(cho, pref_dir_ref)
-            rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(rej, pref_dir_ref)
-            rel_pref, rel_orth, rel_cossim = signed_proj_magnitude(hs_pi_cho-hs_pi_rej, pref_dir_ref)
-        else:
-            cho_pref, cho_orth, cho_cossim = signed_proj_magnitude(cho, pref_dir_pi)
-            rej_pref, ref_orth, rej_cossim = signed_proj_magnitude(rej, pref_dir_pi)
-            rel_pref, rel_orth, rel_cossim = signed_proj_magnitude(hs_pi_cho-hs_pi_rej, pref_dir_pi)
+        rel_pref, rel_orth, rel_cossim = signed_proj_magnitude(hs_pi_cho-hs_pi_rej, pref_dir_ref)
 
-        # goes down if either hs moves along the direction of the preference vector. Note this does not seperate out the preferences
-        # TODO do a whole experiment on this line as it was learning!
-        loss_proj =  -(cho_pref - rej_pref)
+        loss_proj = -rel_pref
 
-        # we would also like cho to be preferenced over ref, so make them far away?
-        # note is at 0 initially and does not move
+        loss_sep_dist = -torch.norm(hs_pi_cho - hs_pi_rej, dim=-1)
 
-        # loss_proj_rel = -(cho_pref - rej_pref)
-        # TODO do exp on this line
-        loss_proj_rel = -rel_pref
-
-        # increases with movement of hs orthogonal to the preference vector
-        loss_orth = torch.abs(cho_orth) + torch.abs(ref_orth)
-
-        loss_rel_orth = torch.abs(rel_orth)
+        loss_orth = torch.abs(rel_orth)
 
         # we could also optimize angle, we want it to be close to 1, so we make it negative
-        #  cosine sim ranges from -1 meaning exactly opposite, to 1 meaning exactly the same, with 0 indicating orthogonality
-        # so we shift it to be a positive loss than approaches zero
-        loss_angle = 3 - cho_cossim + rej_cossim - rel_cossim
+        loss_angle = -torch.abs(rel_cossim) # aligned
+        loss_angle_orth = 1-torch.abs(rel_cossim) # orth
 
         return dict(
-            loss_proj=loss_proj,
             loss_orth=loss_orth,
-            loss_rel_orth=loss_rel_orth,
             loss_angle=loss_angle,
-            loss_proj_rel=loss_proj_rel,
-            _cho_orthorgonal2pref=cho_orth,
-            _ref_orthorgonal2pref=ref_orth,
-            _signed_cho_pref=cho_pref,
-            _signed_rej_pref=rej_pref,
-            _cho_cosine_similarity=cho_cossim,
-            _rej_cosine_similarity=rej_cossim,
-            _rel_cosine_similarity=rel_cossim,
+            loss_proj=loss_proj,
+            loss_sep_dist=loss_sep_dist,
+            loss_angle_orth=loss_angle_orth,
+            _cosine_similarity=rel_cossim,
         )
 
     # compute losses per layer
@@ -122,62 +89,46 @@ def prefvec_loss(
     ll_keys = next(iter(ll.values())).keys()
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
-    if use_proj_rel:
-        loss_reroute = 1+ll["loss_proj_rel"] * 1e5 # a very small number so we make it bigger
-    else:
-        loss_reroute = 1+ll["loss_proj"] * 1e5
+    loss_inner = torch.zeros_like(ll["loss_proj"])
+    if use_proj_loss:
+        loss_inner = ll["loss_proj"] * 1e5 # a very small number so we make it bigger
+    if use_proj_abs_loss:
+        loss_inner = torch.abs(loss_inner)
 
-    # tgis beeds balance
+    # this beeds balance
     if use_orth_loss:
-        if use_proj_rel:
-            loss_reroute += β * ll["loss_rel_orth"] * 1e6
-        else:
-            loss_reroute += β * ll["loss_orth"] * 1e6
+        loss_inner += β * ll["loss_orth"] * 1e6
     
     if use_angle_loss:
-        loss_reroute += β * ll["loss_angle"]
+        loss_inner += β * ll["loss_angle"] * 1e5
     
-    # TODO find better scaling, it needs to be small compared to nll and dpo losses which can be <0.1
-    # if use_dpo_loss or use_nll_loss:
-    #     loss_reroute = torch.tanh(loss_reroute / 3) / 10
-
     # nll loss, to ensure it's punished for less coherent outputs
     nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch["chosen_mask"])
     ref_nll_loss = cross_entropy_loss(
         ref_cho.logits, batch["chosen"], batch["chosen_mask"]
     )
     nll_loss_ratio = (nll_loss - ref_nll_loss)
-    loss_retain_nll = F.relu(nll_loss_ratio).mean(1)
-    # FIXME why is loss_retain_mll<>nll_loss_ratio in logs?
+    loss_nll = F.relu(nll_loss_ratio).mean(1)
 
     # dpo loss, punished model if rejected completion is more likely than the chosen
+    # normally dpo has logsigmoid, https://github.com/eric-mitchell/direct-preference-optimization/blob/main/trainers.py#L82
     dpo_ptheta = compute_ptheta(
         pi_cho.label_logprobs,
         pi_rej.label_logprobs,
         ref_cho.label_logprobs,
         ref_rej.label_logprobs,
     )
-    # normally dpo has logsigmoid, but we might want to only punish not reward, but using relu # https://github.com/eric-mitchell/direct-preference-optimization/blob/main/trainers.py#L82
-    # loss_retain_dpo = F.relu(-dpo_ptheta)
-    loss_retain_dpo = F.logsigmoid(-dpo_ptheta)
 
-    loss_retain = torch.zeros_like(loss_reroute)
+    loss_dpo = torch.zeros_like(loss_inner)
     if use_dpo_loss:
-        loss_retain += loss_retain_dpo
-    if use_nll_loss:
-        loss_retain += loss_retain_nll * 100 # HACKY balance
+        loss_dpo = F.logsigmoid(-dpo_ptheta)
 
-    def signed_square_loss(loss):
-        return torch.sign(loss) * (loss ** 2)
-
-    # loss = signed_square_loss(loss_reroute).mean() + α * signed_square_loss(loss_retain).mean()
-    loss = loss_reroute.mean() + α * loss_retain.mean()
+    loss = loss_inner.mean() + α * loss_dpo.mean()
 
     info = dict(
-        loss_reroute=loss_reroute,
-        loss_dpo_retain=loss_retain_dpo,
-        loss_nll_retain=loss_retain_nll,
-        loss_retain=loss_retain,
+        loss_reroute=loss_inner,
+        loss_dpo=loss_dpo,
+        loss_nll=loss_nll,
         nll_loss_ratio=nll_loss_ratio,
         ptheta=dpo_ptheta,
         **ll,
@@ -202,29 +153,26 @@ class PrefVecLossConfig:
 
     eps: float = 1.0e-12
 
-    β: float = 0.5
+    β: float = 1
     """factor to punish orthogonal movement"""
-
-    use_orth_loss: bool = True
-    """punish movement orthogonal to the preference vector: by distance"""
-
-    use_angle_loss: bool = False
-    """punish movement orthogonal to the preference vector: by angle"""
 
     use_dpo_loss: bool = True
     """punish model if rejected completion is more likely than the chosen"""
 
-    use_nll_loss: bool = False
-    """punish model if output is less coherent than reference model"""
+    use_orth_loss: bool = False
+    """punish movement orthogonal to the preference vector: by distance"""
 
-    weight_tokens: bool = False
-    """exp weight tokens along seq"""
+    use_sep_loss: bool = False
+    """punish closeness between chosen and rejected hidden states"""
 
-    use_proj_rel: bool = False
+    use_proj_loss: bool = True
     """encourage chosen to be more in the pref dir than rejected"""
 
-    use_pref_ref: bool = True
-    """use the reference model to get the preference vector. Is false we use the moving policy and it could lead to a better outcome, or instability (TODO investigate)"""
+    use_proj_abs_loss: bool = True
+    """encourage chosen to be more in the pref dir than rejected, but absolute value"""
+
+    use_angle_loss: bool = False
+    """punish movement orthogonal to the preference vector: by angle"""
 
     def c(self, *args, **kwargs):
         return prefvec_loss(*args, **kwargs, **asdict(self))

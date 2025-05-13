@@ -62,38 +62,28 @@ In the below results we look at how much the models accuracy improved in trainin
 - [ ] TODO replace these with mean of 5 random seeds, show they occur on multiple datasets and model sizes
 - [ ] TODO hyperopt each
 
+| adapter/ds       |   train |   test |   oos |   rnd |
+|:-----------------|--------:|-------:|------:|------:|
+| ReprPO_ETHER_PrefVec use_angle_loss  |   0.999 |  0.994 | 0.157 | 0.381 |
+| dpo          |   0.931 |  0.9   | 0.215 | 0.339 |
+| projgrad     |   0.927 |  0.894 | 0.207 | 0.339 |
+| base             |   0.055 |  0.064 | 0.386 | 0.361 |
+| hs-HRA-PrefVec |   0.993 |  0.994 | 0.762 | 0.386 |
+| hs-ETHER-PrefVec orth loss |   1     |  0.998 | 0.726 | 0.382 |
+| hs-SupressedHS-PrefVec abs_proj_loss |   0.996 |  0.996 | 0.776 | 0.378 |
+| hs-ETHER-PrefVec sep_loss |   0.995 |  0.996 | 0.787 | 0.358 |
+| hs-ETHER-PrefVec abs_proj_loss |   0.995 |  0.994 | 0.888 | 0.369 |
+Table 2: Absolute accuracy
+- `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
+- `test`: `genies_preferences-unhelpful_alpaca-test`
+- `oos`: `genies_preferences-illegal_dont_help-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+-  
 
-|                    |   n_trials |    best OOD score |   n_trials_completed |
-|:-------------------|-----------:|--------:|---------------------:|
-| projgrad3          |        208 | 1.27938 |                  207 |
-| dpo                |        250 | 1.27553 |                  248 |
-| side-hra-rank      |        183 | 1.22929 |                  182 |
-| ether-prefvec      |        326 | 1.18304 |                  321 |
-| side-ether-prefvec |        209 | 1.16923 |                  208 |
-| hs-ortho-prefvec   |        261 | 1.15222 |                  259 |
-| hs-hra-rank        |        262 | 1.15222 |                  259 |
-| projbp             |        363 | 1.07129 |                  227 |
-| hs-svd-mse         |        332 | 1.01727 |                   14 |
-| side-svd-mse       |        316 | 1.00962 |                   28 |
+As you can see our method beats DPO, especially out of sample.
+TODO explain datasets and the out of sample test, why generalsiation is important
 
-
-
-| Model | Train | Test | OOS | Random |
-| --- | --- | --- | --- | --- |
-| DPO | **1.0459** | 1.0140 | 1.00592 | 0.970 |
-| REPRPO_side | 1.0145 | 1.00702 | 1.0632 | 0.991 |
-| REPRPO_ortho | 1.0162 | 1.0169 | 1.0850 | **0.996** |
-| REPRPO_hra | 1.0163 | **1.0211** | **1.091** | 0.986 |
-
- Table 1🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-math-train[:750]` compared to base model 'TinyLlama/TinyLlama-1.1B-Chat-v1.0' for various distribution shifts:
-- `train`: `genies_preferences-math-train[:750]`
-- `test`: `genies_preferences-math-test`
-- `oos`: `genies_preferences-change_my_view-test`
-- `rnd`: `genies_preferences-ranking_logic-test`
-
-As you can see DPO does better in the training environment, but REPRPO_ortho does better in the test, out-of-distribution and random environments. This suggests that REPRPO_ortho is better at generalizing to new environments, and loses less performance in unrelated environments.
-
-This should be helpful when aligning AI to human values, as it suggests that aligning internal states is more robust to new environments than aligning outputs.
+TODO explain the transformations, data source, and loss. As well as loss modifiers. Ideally we explain each in plain language as well as pointing to the code.
 
 ## Plan
 
@@ -105,7 +95,7 @@ This should be helpful when aligning AI to human values, as it suggests that ali
 - [ ] over 3 model sizes [1b 3b 8b]
 - [ ] mean of 5 random seeds
 - [ ] find optimal hyperparams for each intervention
-- [ ] brainstorm and search for more interventions
+- [x] brainstorm and search for more interventions x10
 
 ```sh
 poetry install

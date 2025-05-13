@@ -24,7 +24,8 @@ def get_default_layers(N, side_channels=False, stride: Optional[int] = None, inc
     I also want the last two layers to enable supression neurons. 
     
     """
-    layers = list(np.linspace(0, N, 4 if stride is None else stride).astype(int)[1:-1]) # 33% and 66% as in Circuit Breakers
+    N3 = int(N*0.33)
+    layers = list(np.linspace(N3, N, 1 if stride is None else stride).astype(int)[1:-1]) # 33% and 66% as in Circuit Breakers
     if include_last_two:
         layers += [N-2, N-1] # make sure to include last two for supression neurons
     if side_channels:
@@ -153,7 +154,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
 
         N = self._model.config.num_hidden_layers
         if collection_layers is None:
-            collection_layers = get_default_layers(N, side_channels=not collect_hs, include_last_two=type(transform).__name__=='SupressedHSConfig')
+            collection_layers = get_default_layers(N, side_channels=not collect_hs)
             logger.info(
                 f"Using default collection layers: {collection_layers}")
         else:

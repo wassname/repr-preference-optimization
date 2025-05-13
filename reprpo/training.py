@@ -350,7 +350,6 @@ def train(args, trial: Optional[Trial] = None):
     # - https://lightning.ai/docs/pytorch/latest/notebooks/lightning_examples/text-transformers.html
     # - https://gist.github.com/wassname/e29d02b5026a531e13912cf768e6fdc8
 
-    max_steps = args.n_samples // args.batch_size
 
     ideal_batch_size = max(
         16, args.batch_size
@@ -358,15 +357,16 @@ def train(args, trial: Optional[Trial] = None):
     accumulate_grad_batches = np.ceil(
         ideal_batch_size / args.batch_size
     ).astype(int)
+    max_opt_steps = args.n_samples // (args.batch_size * accumulate_grad_batches)
     if args.verbose>1:
         logger.info(
-            f"max optimiser steps {max_steps}",
+            f"max optimiser steps {max_opt_steps}",
         )
         logger.info(
             f"accumulate_grad_batches {accumulate_grad_batches}",
         )
         logger.info(
-            f"accumulated batch size {args.batch_size * accumulate_grad_batches}"
+            f"effective batch size {args.batch_size * accumulate_grad_batches}"
         )
         logger.info(f"epochs {args.n_samples/len(dl_train.dataset)}")
 
@@ -376,7 +376,7 @@ def train(args, trial: Optional[Trial] = None):
         adam8bit=args.load_in_4bit
         or args.load_in_8bit,  # saved mem, but seems unstable?
         schedule="wsd",
-        num_iterations=max_steps,
+        num_iterations=max_opt_steps,
         batch_size=args.batch_size,
         # model args
         **model_kwargs,
@@ -389,7 +389,7 @@ def train(args, trial: Optional[Trial] = None):
     if trial is not None:
         callbacks += [PyTorchLightningPruningCallback(trial, 'val/dpo_acc')]
     if args.verbose>1:
-        callbacks += [GenCallback(every=max_steps // 2 + 1)]
+        callbacks += [GenCallback(every=max_opt_steps // 2 + 1)]
 
 
     model_kwargs = {k: getattr(args, k) for k in args._model_keys}
@@ -397,7 +397,7 @@ def train(args, trial: Optional[Trial] = None):
     if args.wandb:
         loggers.append(pl_wandb_logger)
     trainer = pl.Trainer(
-        max_steps=max_steps,
+        max_steps=max_opt_steps,
         # limit_val_batches=max(6, max_steps//10),
         gradient_clip_val=0.3,
         # accelerator='gpu',
@@ -421,7 +421,11 @@ def train(args, trial: Optional[Trial] = None):
     trainer.logger.log_hyperparams(config)
 
     # train
-    trainer.fit(pl_model, dl_train, dl_val)
+    try:
+        trainer.fit(pl_model, dl_train, dl_val)
+    except KeyboardInterrupt:
+        logger.info("KeyboardInterrupt, stopping training")
+        pass
 
     # save as regular adapter only (small)
     if args.save:
@@ -621,7 +625,7 @@ def key_metrics(df_res2, adapter_name, ds_alias):
     )[["metric", "split", "value", "dataset"]]
     df_metrics = df_metrics.set_index(["metric", "split"])
     df_metrics = df_metrics["value"].unstack()
-    df_metrics.index.name = f"{adapter_name}\ dist shift"
+    df_metrics.index.name = f"{adapter_name} \\ dist shift"
 
     # order cols
     cols = df_metrics.columns.tolist()

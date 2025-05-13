@@ -4886,9 +4886,182 @@ Huh so what happend is:
 "PrefVecLossConfig(eps=1e-12, β=5.0, use_orth_loss=True, use_angle_loss=False, use_dpo_loss=True, use_nll_loss=False, weight_tokens=False, use_proj_rel=True, use_pref_ref=True)"
 
 
-Lets confirm
-| adapter/ds             |   train |   test |   oos |   rnd |
-|:-----------------------|--------:|-------:|------:|------:|
-| base                   |   0.055 |  0.064 | 0.386 | 0.361 |
-| hs-SupressedHS-PrefVec |   0.991 |  0.994 | 0.677 | 0.364 |
+Lets confirm commit 7b248f47773db8c53c8174ccc4b0d14af9256965
+yes this works!
+| adapter/ds             | train |  test |   oos |   rnd |
+| :--------------------- | ----: | ----: | ----: | ----: |
+| base                   | 0.055 | 0.064 | 0.386 | 0.361 |
+| projgrad               | 0.915 | 0.866 | 0.232 | 0.352 |
+| dpo                    | 0.909 | 0.864 | 0.224 | 0.348 |
+| side-None-PrefVec      | 0.067 | 0.074 | 0.411 | 0.382 |
+| hs-None-PrefVec        |  0.08 | 0.084 | 0.423 | 0.371 |
+| hs-SupressedHS-PrefVec2 | 0.991 | 0.994 | 0.677 | 0.364 |
 Table 2: Absolute accuracy
+
+Table 2: Absolute accuracy
+- `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
+- `test`: `genies_preferences-unhelpful_alpaca-test`
+- `oos`: `genies_preferences-illegal_dont_help-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+![DPO + orth loss](files/dpo_hs_orth_losses.png "DPO + orth loss")
+from the above losses we can see that 
+- DPO is bounded
+- Nll got worse (to & compared to 9.5 with DPO!), and started improving later on, this doesnt happen normally. Try longer runs!
+- angle was not used, but seems usefull, I could just use this with margin... but then it wouldn't care about distance
+
+
+Well now that we have a winner I should try ablating
+
+# supr long 2->33-50 epochs?
+# 1800 -> 5000 samples 8 epochs (10k samples with fixed counting)
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_dpo_loss --loss.use_orth_loss --n-samples=5000
+| hs-SupressedHS-PrefVec |   0.995 |  0.998 | 0.677 | 0.371 |
+
+![it seems to find ways to optimise dpo and stay in the right direction, at least it enters that regime](img/research_journal-1746942632797-image.png)
+
+# just hs
+python scripts/train.py hs-none-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_dpo_loss --loss.use_orth_loss --n-samples=10000
+| hs-None-PrefVec |   1     |  0.992 | 0.579 | 0.375 |
+
+
+# try bigger orth loss
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_dpo_loss --loss.use_orth_loss --n-samples=10000 --loss.β=500
+
+| hs-SupressedHS-PrefVec beta |   0.985 |  0.986 | 0.116 | 0.406 |
+
+
+# ether - good ??
+python scripts/train.py hs-ether-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_dpo_loss --loss.use_orth_loss --n-samples=10000
+| hs-ETHER-PrefVec |   0.997 |  0.992 | 0.75  | 0.375 |
+| hs-ETHER-PrefVec |   0.997 |  0.992 | 0.685 | 0.372 |
+
+
+python scripts/train.py side-ether-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_dpo_loss --loss.use_orth_loss --n-samples=10000
+
+# angle
+python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_dpo_loss --loss.no_use_orth_loss  --loss.use_angle_loss --n-samples=10000
+
+oops here I was (1-rel_cossim)**2 or rel_cossim**2  I forget but that's trainig it to be orthogonal no?
+| hs-SupressedHS-PrefVec angle mistake |   0.992 |  0.994 | 0.762 | 0.402 |
+
+larer angle loss...
+| hs-SupressedHS-PrefVec |   0.999 |  0.996 | 0.085 | 0.374 |
+
+with fixed angle 1-rel_cossim**2 terrible. hmm
+wait it wants loss to be smaller so 
+| hs-SupressedHS-PrefVec |   1     |  0.988 | 0.323 | 0.374 |
+
+-rel_cossim
+
+
+if I break it again rel_cossim**2
+| hs-SupressedHS-PrefVec |   1     |  0.994 | 0.673 | 0.371 |
+weird
+
+unstable
+# side - unstable for some reason
+python scripts/train.py side-none-prefvec --verbose=2  --collection_layers=0.3 --loss.use-proj-rel --loss.use_dpo_loss --loss.use_orth_loss --n-samples=10000
+
+
+![alt text](img/research_journal-1746939577945-image.png)
+this seems to convirm the loss_orth_Ref is better than pi, because DPO seems to be changing the direciton of the pref vector if you looks at "loss_orth"
+
+
+I could try with 10x or even 100x more orth tho, as it's hardly a constraint. untill later
+
+python scripts/train.py dpo --verbose=2
+python scripts/train.py projgrad --verbose=2
+| projgrad     |   0.925 |  0.892 | 0.211 | 0.338 |
+| dpo          |   0.925 |  0.9   | 0.228 | 0.338 |
+
+
+# 2025-05-12 18:05:43
+
+Try:
+- reward good direction -/+ , and dpo
+- [x] punish orth + dpo
+- [ ] reward distance and dpo
+- [ ] angle loss and dpo (no magnitude info)
+
+| hs-SupressedHS-PrefVec orth_angle (wrong) |   0.999 |  0.996 | 0.087 | 0.379 |
+| hs-SupressedHS-PrefVec align angle|   0.999 |  0.996 | 0.146 | 0.371 |
+
+
+
+
+python scripts/train.py hs-ether-prefvec --verbose=2 --loss.use_orth_loss
+python scripts/train.py hs-ether-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_sep_loss
+python scripts/train.py hs-ether-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_proj_loss
+
+
+python scripts/train.py hs-ether-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_proj_loss --loss.no_use_proj_abs_loss # unstable x2
+python scripts/train.py hs-ether-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_angle_loss
+python scripts/train.py hs-supr-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_proj_loss
+python scripts/train.py hs-none-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_proj_loss
+python scripts/train.py dpo --verbose=2
+python scripts/train.py projgrad --verbose=2
+python scripts/train.py hs-hra-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_proj_loss
+python scripts/train.py hs-svd-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_proj_loss # OOM
+
+| adapter/ds       |   train |   test |   oos |   rnd |
+|:-----------------|--------:|-------:|------:|------:|
+| ReprPO_ETHER_PrefVec use_angle_loss  |   0.999 |  0.994 | 0.157 | 0.381 |
+| dpo                    | 0.909 | 0.864 | 0.224 | 0.348 |
+| dpo          |   0.931 |  0.9   | 0.215 | 0.339 |
+| projgrad               | 0.915 | 0.866 | 0.232 | 0.352 |
+| projgrad     |   0.927 |  0.894 | 0.207 | 0.339 |
+| base             |   0.055 |  0.064 | 0.386 | 0.361 |
+| hs-ETHER-PrefVec orth loss |   1     |  0.998 | 0.726 | 0.382 |
+| hs-HRA-PrefVec |   0.993 |  0.994 | 0.762 | 0.386 |
+| hs-SupressedHS-PrefVec abs_proj_loss |   0.996 |  0.996 | 0.776 | 0.378 |
+| hs-ETHER-PrefVec sep_loss |   0.995 |  0.996 | 0.787 | 0.358 |
+| hs-ETHER-PrefVec abs_proj_loss |   0.995 |  0.994 | 0.888 | 0.369 |
+Table 2: Absolute accuracy
+- `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
+- `test`: `genies_preferences-unhelpful_alpaca-test`
+- `oos`: `genies_preferences-illegal_dont_help-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+| hs-ETHER-PrefVec sep_oss \ dist shift   |    train |     test |     oos |    rnd |
+|:--------------------------------|---------:|---------:|--------:|-------:|
+| acc_gain_vs_ref                 |   18.195 |   15.562 |   2.037 |  0.992 |
+| perplexity_reduction_vs_ref     |    0.511 |    0.366 |   0.175 |  0.962 |
+| preference_logp_gain_vs_ref     | 2814.93  | 2738.88  | 797.159 | -0.046 |
+Table 1: Key metrics (adapter over base model)
+
+| hs-ETHER-PrefVec orht loss \ dist shift   |    train |     test |     oos |   rnd |
+|:--------------------------------|---------:|---------:|--------:|------:|
+| acc_gain_vs_ref                 |   18.293 |   15.594 |   1.879 | 1.059 |
+| perplexity_reduction_vs_ref     |    0.315 |    0.21  |   0.032 | 1.177 |
+| preference_logp_gain_vs_ref     | 4016.58  | 3898.56  | 541.135 | 0.606 |
+Table 1: Key metrics (adapter over base model)
+
+
+| hs-ETHER-PrefVec abs proj loss \ dist shift   |    train |     test |      oos |   rnd |
+|:--------------------------------|---------:|-n--------:|---------:|------:|
+| acc_gain_vs_ref                 |   18.195 |   15.531 |    2.3   | 1.024 |
+| perplexity_reduction_vs_ref     |    0.446 |    0.382 |    0.002 | 1.058 |
+| preference_logp_gain_vs_ref     | 3868.93  | 3787.09  | 1769.24  | 0.11  |
+Table 1: Key metrics (adapter over base model)
+
+| hs-ETHER-PrefVec angle loss \ dist shift   |    train |     test |      oos |    rnd |
+|:--------------------------------|---------:|---------:|---------:|-------:|
+| acc_gain_vs_ref                 |   18.268 |   15.531 |    0.405 |  1.055 |
+| perplexity_reduction_vs_ref     |    0.223 |    0.159 |    0     |  1.25  |
+| preference_logp_gain_vs_ref     | 3182.07  | 3053.05  | -303.281 | -0.041 |
+Table 1: Key metrics (adapter over base model)
+
+| projgrad \ dist shift       |   train |    test |     oos |    rnd |
+|:----------------------------|--------:|--------:|--------:|-------:|
+| acc_gain_vs_ref             |  16.951 |  13.969 |   0.537 |  0.941 |
+| perplexity_reduction_vs_ref |   0.574 |   0.544 |   0.299 |  0.725 |
+| preference_logp_gain_vs_ref | 215.364 | 203.1   | -26.021 | -0.684 |
+Table 1: Key metrics (adapter over base model)
+
+| dpo \ dist shift            |   train |    test |     oos |    rnd |
+|:----------------------------|--------:|--------:|--------:|-------:|
+| acc_gain_vs_ref             |  17.024 |  14.062 |   0.558 |  0.941 |
+| perplexity_reduction_vs_ref |   0.575 |   0.543 |   0.306 |  0.774 |
+| preference_logp_gain_vs_ref | 213.445 | 201.464 | -24.941 | -0.603 |
+Table 1: Key metrics (adapter over base model)
