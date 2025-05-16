@@ -5065,3 +5065,97 @@ Table 1: Key metrics (adapter over base model)
 | perplexity_reduction_vs_ref |   0.575 |   0.543 |   0.306 |  0.774 |
 | preference_logp_gain_vs_ref | 213.445 | 201.464 | -24.941 | -0.603 |
 Table 1: Key metrics (adapter over base model)
+
+
+# 2025-05-13 19:12:00 try change my view
+then maybe histry, math, sycophancy, relinquish power
+
+python scripts/train.py hs-ether-prefvec
+python scripts/train.py hs-supr-prefvec
+python scripts/train.py hs-none-prefvec
+python scripts/train.py dpo
+python scripts/train.py projgrad
+
+
+| adapter/ds             |   train |   test |   oos |   rnd |
+|:-------------          |--------:|-------:|------:|------:|
+| base                   |   0.389 |    0.4 | 0.589 | 0.361 |
+| projgrad               |   0.98  |    0.8 | 0.529 | 0.371 |
+| dpo                    |   0.987 |  0.815 | 0.544 | 0.374 |
+| projgrad               |   0.988 |  0.812 | 0.549 | 0.372 |
+| hs-ETHER-PrefVec       |   0.723 |  0.699 | 0.403 | 0.477 |
+| hs-SupressedHS-PrefVec |   0.728 |  0.717 | 0.388 | 0.487 |
+| hs-None-PrefVec        |   0.737 |  0.716 | 0.404 | 0.518 |
+Table 2: Absolute accuracy
+
+
+| acc_inc/eval_ds [pp]   |   train |   test |     oos |   rnd |
+|:-----------------------|--------:|-------:|--------:|------:|
+| ProjGrad               | 151.712 |    100 | -10.181 | 2.756 |
+Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-truthful_qa-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
+- `train`: `genies_preferences-truthful_qa-train[:750]`
+- `test`: `genies_preferences-truthful_qa-test`
+- `oos`: `genies_preferences-alpaca_mmlu-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+
+| adapter/ds             |   train |   test |   oos |   rnd |
+|:-----------------------|--------:|-------:|------:|------:|
+| base                   |   0.92  |  0.929 | 0.256 | 0.361 |
+| hs-SupressedHS-PrefVec |   0.961 |  0.947 | 0.436 | 0.351 |
+| hs-ETHER-PrefVec       |   0.957 |  0.953 | 0.487 | 0.361 |
+| hs-None-PrefVec        |   0.961 |  0.929 | 0.477 | 0.358 |
+| projgrad               |   0.995 |  0.984 | 0.648 | 0.347 |
+| dpo                    |   0.995 |  0.98  | 0.66  | 0.347 |
+Table 2🥇: Absolute accuracy  after training with named adapter on ds:`genies_preferences-math_easy-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
+- `train`: `genies_preferences-math_easy-train[:750]`
+- `test`: `genies_preferences-math_easy-test`
+- `oos`: `genies_preferences-math_hard-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+
+| adapter/ds   |   train |   test |   oos |   rnd |
+|:-------------|--------:|-------:|------:|------:|
+| base         |   0.833 |  0.851 | 0.068 | 0.361 |
+| dpo          |   0.989 |  0.981 | 0.073 | 0.355 |
+| projgrad     |   0.988 |  0.983 | 0.077 | 0.347 |
+| hs-ETHER-PrefVec |   0.973 |  0.971 | 0.079 | 0.438 |
+| hs-None-PrefVec |   0.957 |  0.961 | 0.088 | 0.491 |
+| hs-SupressedHS-PrefVec |   0.968 |  0.968 | 0.071 | 0.484 |
+Table 2: Absolute accuracy
+- `train`: `genies_preferences-alpaca_low_quality-train[:750]`
+- `test`: `genies_preferences-alpaca_low_quality-test`
+- `oos`: `genies_preferences-alpaca_high_quality-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+
+| adapter/ds             |   train |   test |   oos |   rnd |
+|:-------------          |--------:|-------:|------:|------:|
+| base                   |   0.353 |  0.389 | 0.336 | 0.361 |
+| hs-None-PrefVec        |   0.741 |  0.663 | 0.336 | 0.369 |
+| dpo                    |   0.976 |  0.797 | 0.344 | 0.355 |
+| projgrad               |   0.977 |  0.817 | 0.348 | 0.352 |
+| hs-SupressedHS-PrefVec |   0.773 |  0.665 | 0.348 | 0.378 |
+| hs-ETHER-PrefVec       |   0.764 |  0.66  | **0.46**  | **0.382** |
+Table 2: Absolute accuracy
+- `train`: `genies_preferences-math-train[:750]`
+- `test`: `genies_preferences-math-test`
+- `oos`: `genies_preferences-change_my_view-test`
+- `rnd`: `ethics_expression_preferences-justice-test`
+
+
+So now I want to
+- [x] make the acc table full captioned
+- [x] do a collect of experiments and aggreate the results
+  - [x] agg nbs/11_display_train_results.ipynb
+    - [x] date
+    - [x] datasets
+  - [ ] run many... just do sh for loop
+- [ ] for a dataset, for a model (with batch size), or just rent a gpu for the sweep
+
+
+python scripts/train.py hs-ether-prefvec
+python scripts/train.py hs-supr-prefvec
+python scripts/train.py hs-none-prefvec
+python scripts/train.py dpo
+python scripts/train.py projgrad

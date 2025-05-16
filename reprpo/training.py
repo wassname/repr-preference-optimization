@@ -36,7 +36,7 @@ from lightning.pytorch.callbacks import LearningRateMonitor
 from reprpo.helpers.pl_gen import GenCallback
 
 from open_pref_eval.datasets import ds2name, load_dataset_n
-from open_pref_eval.datasets.genies import GENIES, dist2datasets
+from open_pref_eval.datasets.genies import GENIES, dist2datasets, GENIES_ALL, GENIES_TEST
 from open_pref_eval.evaluation import evaluate_model
 
 # ML
@@ -320,13 +320,13 @@ def train(args, trial: Optional[Trial] = None):
 
     # do we want to use test or OOS as val? I choose OOS as I want to find the intervention that generalises the best (and then I validate on other distribution shifts to avoid cherry-picking/overfitting)
     ds_val_oos = dist2datasets(
-        GENIES,
+        GENIES_ALL,
         N=150,
         source=[args.dataset],
     )
     if not len(ds_val_oos):
         logger.error(f"{args.dataset} has no OOS dist found in GENIES")
-        # try GENIES_ALL
+    logger.info(f"Using OOS dist `{ds_val_oos[0].info.config_name}`, for `{args.dataset}`")
     ds_val_oos = ds_val_oos[0].map(tokenize_row, batched=False)
     dl_val = ds2dl(
         ds_val_oos
@@ -480,12 +480,12 @@ def train(args, trial: Optional[Trial] = None):
     #     ]
     # ]
 
-    # get the out of distribution set
+    # get the out of distribution set(s)
     datasets += dist2datasets(
-        GENIES,
+        GENIES_ALL,
         # N=N, # can't cheap out on the main metric
         source=[args.dataset],
-    )  # our hard OOS test
+    )[:1]  # our hard OOS test
 
     # our unrelated dataset
     datasets += [
