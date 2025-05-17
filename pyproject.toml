@@ -32,6 +32,9 @@ dependencies = [
     "lightning>=2.4.0",
     "baukit",
     "open-pref-eval",
+    "peft>=0.15.2",
+    "optuna>=4.3.0",
+    "optuna-integration[pytorch-lightning]>=4.3.0",
 ]
 
 [dependency-groups]

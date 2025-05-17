@@ -3,14 +3,14 @@ from reprpo.interventions.losses import Losses, LossesType
 from reprpo.interventions.transforms import Transforms, TransformType
 from dataclasses import dataclass, field
 from reprpo.interventions.reprpo.model import PL_REPRPO_MODEL
-from typing import Optional
+from typing import Optional, Tuple
 
 
 @dataclass
 class ReprPOConfig(ExperimentConfig):
     lr: float = 7e-5
 
-    collection_layers: Optional[tuple] = None
+    collection_layers: Optional[Tuple[int, ...]] = None
     """layers to collect activations from (none means deault 33% to 66% stride 4)."""
 
     collection_keys_in: tuple = (
