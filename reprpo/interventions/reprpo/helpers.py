@@ -3,13 +3,13 @@ from einops import repeat
 
 from torch import Tensor
 from jaxtyping import Float
-
+from typing import List
 from baukit.nethook import get_module
 import itertools
 from reprpo.interventions.types import HS, Mask
 
 
-def get_layer_paths(collection_keys, collection_layers):
+def get_layer_paths(collection_keys:List[str,], collection_layers: List[int,]):
     layer_paths = [
         [p.format(layer=layer) for p in collection_keys]
         for layer in collection_layers

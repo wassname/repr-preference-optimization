@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 class ReprPOConfig(ExperimentConfig):
     lr: float = 7e-5
 
-    collection_layers: Optional[Tuple[int, ...]] = None
+    collection_layers: Optional[str] = None
     """layers to collect activations from (none means deault 33% to 66% stride 4)."""
 
     collection_keys_in: tuple = (

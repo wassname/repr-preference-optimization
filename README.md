@@ -98,9 +98,9 @@ TODO explain the transformations, data source, and loss. As well as loss modifie
 - [x] brainstorm and search for more interventions x10
 
 ```sh
-poetry install
+uv sync
 . ./venv/bin/activate
-pip install flash-attn --no-build-isolation
+uv pip install flash-attn --no-build-isolation
 
 python -u nbs/train.py --help
 

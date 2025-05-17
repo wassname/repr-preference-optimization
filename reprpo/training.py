@@ -265,7 +265,8 @@ def train(args, trial: Optional[Trial] = None):
         use_rslora=True,
         # use_dora=True,
         task_type="CAUSAL_LM",
-        # target_modules=["all-linear"], #  QLoRA-style training
+        target_modules=["q_proj", "v_proj"], # for qwen3
+        # target_modules="all-linear", #  QLoRA-style training
     )
     # if hasattr(PL_MODEL, 'setup_grad_proj'):
     #     peft_config = PL_MODEL.setup_grad_proj(peft_config)

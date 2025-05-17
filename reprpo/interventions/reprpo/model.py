@@ -86,45 +86,59 @@ def reprpo_forward_baukit(
         hs=reprs, logits=outs.logits, label_logprobs=logprobs, mask=attn_mask
     )
 
+from typing import Union, List
+
 def parse_collection_layers(
-    collection_layers: Optional[tuple], num_hidden_layers: int
-):
+    collection_layers: str, num_hidden_layers: int
+) -> List[int]:
     """
-    Parse the collection layers. If they are not provided, use the default ones.
+    Parse the collection layers. Supports various formats:
+    - A comma-separated string like "-2,-1" to collect the last two layers
+    - A string representing a range, e.g., "range(3,10,2)"
+    - A shorthand range with percentages, e.g., "0.5, 0.9, 2" which converts 0.5 to the 50% layer and 0.9 to the 90% layer
+    - A list of integers or floats
     """
-    if len(collection_layers) == 1 and isinstance(collection_layers[0], str):
-        collection_layers = collection_layers[0]
+    # Convert string input to a list 
+    collection_layers = collection_layers.strip()
+    if collection_layers.startswith("range(") and collection_layers.endswith(")"):
+        # FIXME no we need to turn float to ints first?
+        # Safely evaluate the range string
+        method = range
+        collection_layers = collection_layers.split("(", 1)[1].rstrip(")")
+    else:
+        collection_layers = [float(item.strip()) for item in collection_layers.split(",") if item.strip() != ""]
+        method = list
+
+    # now convert negative indices to positive ones
+    collection_layers = [
+        float(layer) if float(layer) >= 0 else num_hidden_layers + int(layer)
+        for layer in collection_layers
+    ]
+    # now float to int
+    collection_layers = [
+        int(layer) if int(layer)== layer else int(layer*num_hidden_layers)
+        for layer in collection_layers
+    ]
     
-    if isinstance(collection_layers, str):
-        collection_layers = [float(i) for i in collection_layers.split(",")]
+    # Check if the collection layers are within the valid range
+    for layer in collection_layers:
+        if layer < 0 or layer >= num_hidden_layers:
+            raise ValueError(
+                f"Invalid collection layer {layer}. Must be between 0 and {num_hidden_layers - 1}."
+            )
+        
+    if method is range:
+        # Convert to a list of integers
+        collection_layers = list(
+            range(
+                collection_layers[0],
+                collection_layers[1],
+                collection_layers[2],
+            )
+        )
     
-    if len(collection_layers) <= 3 and collection_layers[0] < 1:
-        # turn shorthand into full [0.1, 0.9, 2] would be 10% to 90% and 
-        stride = 1
-        if len(collection_layers) == 1:
-            a = collection_layers[0]
-            b = -1
-        elif len(collection_layers) == 2:
-            a, b = collection_layers
-        else:
-            a, b, stride = collection_layers
-
-        
-        if (a>0 and a<1):
-            a = int(a * num_hidden_layers)
-        elif a<0:
-            a = int((a+1) * num_hidden_layers)
-        
-        if (b>0 and b<1):
-            b = int(b * num_hidden_layers)
-        elif b<0:
-            b = int(num_hidden_layers+b+1)
-        collection_layers = list(range(a, b, stride))
-
-    collection_layers = [int(i) for i in collection_layers] # int
-
-    # turn negative numbers into offsets from the end
-    collection_layers = [i if i >= 0 else num_hidden_layers + i for i in collection_layers]
+    # remove duplicates while keeping order
+    collection_layers = list(dict.fromkeys(collection_layers))
     return collection_layers
 
 class PL_REPRPO_MODEL(PL_MODEL):

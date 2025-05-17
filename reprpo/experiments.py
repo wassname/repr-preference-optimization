@@ -119,7 +119,7 @@ experiment_configs.update({
     "hs-supr-prefvec2": ('', 
         ReprPOConfig(
             collect_hs=True,
-            collection_layers=(-2, -1),
+            collection_layers='-2,1',
             transform=Transforms.supr.value(),
             loss=Losses.prefvec.value(),
             # lr=1e-5,
@@ -128,7 +128,7 @@ experiment_configs.update({
     "hs-supr-rank2": ('', 
         ReprPOConfig(
             collect_hs=True,
-            collection_layers=(-2, -1),
+            collection_layers='-2,1',
             transform=Transforms.supr.value(),
             loss=Losses.rank.value(),
         ),
