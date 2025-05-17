@@ -9,11 +9,40 @@ from reprpo.interventions.types import ReprPOModelOutput
 from reprpo.interventions.pl_base import PL_MODEL
 from reprpo.interventions.helpers import compute_logprobs
 import warnings
+from typing import List
+import re
 from typing import Optional
 from .helpers import get_layer_paths, validate_layer_paths
 from ..losses import LossesType
 from ..transforms import TransformType
 from ..dpo import compute_dpo_loss
+
+
+def get_regexp_layers(collection_keys: List[str], model):
+    """
+    Select layers that match a regex pattern e.g.
+    '.*decoder.*(SelfAttention|EncDecAttention).*(q|v)$'
+    or just suffix like ['q', 'v'] or ['q_proj', 'v_proj']
+
+    see how peft does it https://github.com/huggingface/peft/blob/8af29c646860e617b641225caf7ef47f7c3dcd26/src/peft/tuners/tuners_utils.py#L458
+    """
+    lyrs = model.named_modules().keys()
+    out = []
+    for k in collection_keys:
+        if k.startswith(".*") or k.endswith("$"):
+            # regex
+            out += [l for l in lyrs if re.search(k, l)]
+        else:
+            # suffix
+            out += [l for l in lyrs if l.endswith(k)]
+    out = list(set(out))
+    if len(out) == 0:
+        raise ValueError(
+            f"Collection keys {collection_keys} do not match any layers in the model."
+        )
+    return out
+
+
 
 def get_default_layers(N, side_channels=False, stride: Optional[int] = None, include_last_two: bool = True):
     """
@@ -162,6 +191,9 @@ class PL_REPRPO_MODEL(PL_MODEL):
         self.hparams.collect_hs = collect_hs
 
         collection_keys = collection_keys_in if collect_input else collection_keys_out
+        collection_keys = get_regexp_layers(
+            collection_keys, self._model
+        )
 
         # if collection_layers is None we collect the last 50% of layers
 

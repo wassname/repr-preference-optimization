@@ -13,18 +13,20 @@ class ReprPOConfig(ExperimentConfig):
     collection_layers: Optional[str] = None
     """layers to collect activations from (none means deault 33% to 66% stride 4)."""
 
+    # TODO change to regexp like peft
     collection_keys_in: tuple = (
-        "base_model.model.model.layers.{layer}.self_attn.o_proj",
-        "base_model.model.model.layers.{layer}.mlp.down_proj",
+        ".*o_proj$",
+        ".*down_proj$",
     )
     """keys to collect inputs from"""
 
+    # TODO change to regexp like peft
     collection_keys_out: tuple = (
-        "base_model.model.model.layers.{layer}.self_attn.q_proj",
-        "base_model.model.model.layers.{layer}.self_attn.k_proj",
-        "base_model.model.model.layers.{layer}.self_attn.v_proj",
-        "base_model.model.model.layers.{layer}.mlp.gate_proj",
-        "base_model.model.model.layers.{layer}.mlp.up_proj",
+        ".*q_proj$",
+        ".*k_proj$",
+        ".*v_proj$",
+        ".*gate_proj$",
+        ".*up_proj$",
     )
     """keys to collect outputs from."""
 
