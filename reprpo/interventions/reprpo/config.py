@@ -10,8 +10,15 @@ from typing import Optional, Tuple
 class ReprPOConfig(ExperimentConfig):
     lr: float = 7e-5
 
-    collection_layers: Optional[str] = None
-    """layers to collect activations from (none means deault 33% to 66% stride 4)."""
+    collection_layers: Optional[str] = 'range(.3,-2)'
+    """layers to collect activations from (none is parsed by `get_default_layers` which defaults to 33% onwards
+    
+    see `parse_collection_layers` which supports various formats:
+    - A comma-separated string like "-2,-1" to collect the last two layers
+    - A string representing a range, e.g., "range(3,10,2)"
+    - A shorthand range with percentages, e.g., "0.5, 0.9, 2" which converts 0.5 to the 50% layer and 0.9 to the 90% layer
+    - A list of integers or floats
+    """
 
     # TODO change to regexp like peft
     collection_keys_in: tuple = (

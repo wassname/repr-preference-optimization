@@ -26,7 +26,7 @@ def get_regexp_layers(collection_keys: List[str], model):
 
     see how peft does it https://github.com/huggingface/peft/blob/8af29c646860e617b641225caf7ef47f7c3dcd26/src/peft/tuners/tuners_utils.py#L458
     """
-    lyrs = model.named_modules().keys()
+    lyrs = dict(model.named_modules()).keys()
     out = []
     for k in collection_keys:
         if k.startswith(".*") or k.endswith("$"):
@@ -54,7 +54,7 @@ def get_default_layers(N, side_channels=False, stride: Optional[int] = None, inc
     
     """
     N3 = int(N*0.33)
-    layers = list(np.linspace(N3, N, 1 if stride is None else stride).astype(int)[1:-1]) # 33% and 66% as in Circuit Breakers
+    layers = list(np.arange(N3, N, 1 if stride is None else stride).astype(int)[1:-1]) # 33% and 66% as in Circuit Breakers
     if include_last_two:
         layers += [N-2, N-1] # make sure to include last two for supression neurons
     if side_channels:
@@ -135,8 +135,9 @@ def parse_collection_layers(
         method = range
         collection_layers = collection_layers.split("(", 1)[1].rstrip(")")
     else:
-        collection_layers = [float(item.strip()) for item in collection_layers.split(",") if item.strip() != ""]
         method = list
+    
+    collection_layers = [float(item.strip()) for item in collection_layers.split(",") if item.strip() != ""]
 
     # now convert negative indices to positive ones
     collection_layers = [
@@ -162,12 +163,14 @@ def parse_collection_layers(
             range(
                 collection_layers[0],
                 collection_layers[1],
-                collection_layers[2],
+                collection_layers[2] if len(collection_layers) > 2 else 1,
             )
         )
     
     # remove duplicates while keeping order
     collection_layers = list(dict.fromkeys(collection_layers))
+
+    # FIXME unit tests range(0.3, -2, 2), "0.5,-2,-1" "1,2,-1"
     return collection_layers
 
 class PL_REPRPO_MODEL(PL_MODEL):
@@ -200,6 +203,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
 
         N = self._model.config.num_hidden_layers
         if collection_layers is None:
+            # FIXME just use a default string of '.3,-2'
             collection_layers = get_default_layers(N, side_channels=not collect_hs)
             logger.info(
                 f"Using default collection layers: {collection_layers}")

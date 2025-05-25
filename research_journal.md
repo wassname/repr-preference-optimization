@@ -5068,6 +5068,7 @@ Table 1: Key metrics (adapter over base model)
 
 
 # 2025-05-13 19:12:00 try change my view
+
 then maybe histry, math, sycophancy, relinquish power
 
 python scripts/train.py hs-ether-prefvec
@@ -5152,10 +5153,65 @@ So now I want to
     - [x] datasets
   - [ ] run many... just do sh for loop
 - [ ] for a dataset, for a model (with batch size), or just rent a gpu for the sweep
+- try a model with a judge to see if the results persist
 
+    base_model: str = "wassname/llama-3-2-1b-sft"
+    base_model: str = "Qwen/Qwen3-0.6B"
 
-python scripts/train.py hs-ether-prefvec
-python scripts/train.py hs-supr-prefvec
-python scripts/train.py hs-none-prefvec
-python scripts/train.py dpo
+for all datasets combos
+for model arch 
+for model size, qwen series
+and finally with eval_harness
+
+python scripts/train.py hs-none-prefvec --verbose=2 
+python scripts/train.py dpo --verbose=2
+python scripts/train.py hs-ether-prefvec --verbose=2
 python scripts/train.py projgrad
+python scripts/train.py hs-supr-prefvec
+
+
+```py
+
+
+base_models = [
+    # QWEN 3
+    "Qwen/Qwen3-0.6B",
+    "Qwen/Qwen3-1.7B",
+    "Qwen/Qwen3-4B",
+    -- "Qwen/Qwen3-8B",
+    -- "Qwen/Qwen3-14B",
+
+    # LlamaForCausalLM
+    "wassname/llama-3-2-1b-sft",
+    "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "HuggingFaceTB/SmolLM2-1.7B",
+]
+adapters = [
+    "hs-ether-prefvec",
+    "hs-supr-prefvec",
+    "hs-none-prefvec",
+    "dpo",
+    "projgrad",
+]
+
+# ok here I need to change it. I want to choose: train, oos, rnd
+# hmm maybe I can just list multiple OOS test sets from all the genies related?
+datasets = [
+    ["math_easy", "change_my_view", "justice"],
+    ["math_easy", "math_hard", "justice"],
+    ["us_history_textbook", "us_history_fiction", "justice"],
+    ["arc_easy", "arc_hard", "justice"],
+    ["unhelpful_alpaca", ["illegal_dont_help", "justice"], "?"],
+    ["truthful_qa", "ethics_expression_preferences-justice", "alpaca_mmlu"],
+]
+for base_model in base_models:
+    for dataset in datasets:
+        for adapter in adapters:
+            cmd = f"python scripts/train.py {adapter} --base_model={base_model} --dataset={dataset}"
+            print(cmd)
+```
+
+
+what wrong now, what's changed from https://wandb.ai/wassname/reprpo2/runs/1si8bcod/overview
+
+collection layers 26 and 27... that's no t right

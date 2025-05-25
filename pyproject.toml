@@ -35,6 +35,7 @@ dependencies = [
     "peft>=0.15.2",
     "optuna>=4.3.0",
     "optuna-integration[pytorch-lightning]>=4.3.0",
+    "tyro>=0.9.21",
 ]
 
 [dependency-groups]

@@ -55,7 +55,7 @@
             "args": "${command:pickArgs}",
         },
         {
-            "name": "dev",
+            "name": "dev tinymodel",
             "type": "debugpy",
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0",
@@ -76,7 +76,7 @@
             ]
         },
         {
-            "name": "dev1b",
+            "name": "dev 1B",
             "type": "debugpy",
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0",

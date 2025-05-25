@@ -62,17 +62,18 @@ In the below results we look at how much the models accuracy improved in trainin
 - [ ] TODO replace these with mean of 5 random seeds, show they occur on multiple datasets and model sizes
 - [ ] TODO hyperopt each
 
-| adapter/ds       |   train |   test |   oos |   rnd |
-|:-----------------|--------:|-------:|------:|------:|
-| ReprPO_ETHER_PrefVec use_angle_loss  |   0.999 |  0.994 | 0.157 | 0.381 |
-| dpo          |   0.931 |  0.9   | 0.215 | 0.339 |
-| projgrad     |   0.927 |  0.894 | 0.207 | 0.339 |
-| base             |   0.055 |  0.064 | 0.386 | 0.361 |
-| hs-HRA-PrefVec |   0.993 |  0.994 | 0.762 | 0.386 |
-| hs-ETHER-PrefVec orth loss |   1     |  0.998 | 0.726 | 0.382 |
-| hs-SupressedHS-PrefVec abs_proj_loss |   0.996 |  0.996 | 0.776 | 0.378 |
-| hs-ETHER-PrefVec sep_loss |   0.995 |  0.996 | 0.787 | 0.358 |
-| hs-ETHER-PrefVec abs_proj_loss |   0.995 |  0.994 | 0.888 | 0.369 |
+| adapter/ds                           | train |  test |   oos |   rnd |
+| :----------------------------------- | ----: | ----: | ----: | ----: |
+| ReprPO_ETHER_PrefVec use_angle_loss  | 0.999 | 0.994 | 0.157 | 0.381 |
+| dpo                                  | 0.931 |   0.9 | 0.215 | 0.339 |
+| projgrad                             | 0.927 | 0.894 | 0.207 | 0.339 |
+| base                                 | 0.055 | 0.064 | 0.386 | 0.361 |
+| hs-HRA-PrefVec                       | 0.993 | 0.994 | 0.762 | 0.386 |
+| hs-ETHER-PrefVec orth loss           |     1 | 0.998 | 0.726 | 0.382 |
+| hs-SupressedHS-PrefVec abs_proj_loss | 0.996 | 0.996 | 0.776 | 0.378 |
+| hs-ETHER-PrefVec sep_loss            | 0.995 | 0.996 | 0.787 | 0.358 |
+| hs-ETHER-PrefVec abs_proj_loss       | 0.995 | 0.994 | 0.888 | 0.369 |
+
 Table 2: Absolute accuracy
 - `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
 - `test`: `genies_preferences-unhelpful_alpaca-test`
@@ -100,7 +101,7 @@ TODO explain the transformations, data source, and loss. As well as loss modifie
 ```sh
 uv sync
 . ./venv/bin/activate
-uv pip install flash-attn --no-build-isolation
+uv sync --no-build-isolation-package flash-attn
 
 python -u nbs/train.py --help
 

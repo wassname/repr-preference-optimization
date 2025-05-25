@@ -505,12 +505,9 @@ def train(args, trial: Optional[Trial] = None):
         tokenizer=tokenizer,
         datasets=datasets,
         batch_size=args.batch_size,
-        bf16=True,
-        torch_empty_cache_steps=100,
         verbose=args.verbose,
-        # dataloader_num_workers=2,
-        # dataloader_pin_memory=True,
     )
+    df_res2.fillna({'adapter': 'base'}, inplace=True)
 
     ds_alias = OrderedDict(
         list(zip(["train", "test", "oos", "rnd"], ds_names))

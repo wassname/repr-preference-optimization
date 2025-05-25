@@ -60,7 +60,7 @@ def load_model(
     model_name,
     load_in_4bit=True,
     load_in_8bit=False,
-    attn_implementation="flash_attention_2",
+    attn_implementation=None,#"flash_attention_2",
     torch_dtype=torch.bfloat16,
 ):
     model = None

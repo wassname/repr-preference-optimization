@@ -572,6 +572,15 @@ wheels = [
 ]
 
 [[package]]
+name = "docstring-parser"
+version = "0.16"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/12/9c22a58c0b1e29271051222d8906257616da84135af9ed167c9e28f85cb3/docstring_parser-0.16.tar.gz", hash = "sha256:538beabd0af1e2db0146b6bd3caa526c35a34d61af9fd2887f3a8a27a739aa6e", size = 26565 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/7c/e9fcff7623954d86bdc17782036cbf715ecab1bec4847c008557affe1ca8/docstring_parser-0.16-py3-none-any.whl", hash = "sha256:bf0a1387354d3691d102edef7ec124f219ef639982d096e26e3b60aeffa90637", size = 36533 },
+]
+
+[[package]]
 name = "einops"
 version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1747,6 +1756,7 @@ source = { directory = "../open_pref_eval" }
 dependencies = [
     { name = "activation-store" },
     { name = "baukit" },
+    { name = "bitsandbytes" },
     { name = "datasets" },
     { name = "einops" },
     { name = "jaxtyping" },
@@ -1762,6 +1772,7 @@ dependencies = [
 requires-dist = [
     { name = "activation-store", git = "https://github.com/wassname/activation_store.git" },
     { name = "baukit", git = "https://github.com/davidbau/baukit.git" },
+    { name = "bitsandbytes", specifier = ">=0.45.5" },
     { name = "datasets", specifier = ">=3.3" },
     { name = "einops", specifier = ">=0.8" },
     { name = "jaxtyping", specifier = ">=0.2" },
@@ -1770,11 +1781,12 @@ requires-dist = [
     { name = "torch", specifier = ">=2.3" },
     { name = "tqdm", specifier = ">=4.66" },
     { name = "transformers", extras = ["torch"], specifier = ">=4.43.2" },
-    { name = "trl", specifier = ">=0.12" },
+    { name = "trl", specifier = ">=0.17" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "anycache", specifier = ">=2.4.0" },
     { name = "ipykernel", specifier = ">=6.29" },
     { name = "ipywidgets", specifier = ">=8.1" },
     { name = "matplotlib", specifier = ">=3.9" },
@@ -1782,6 +1794,7 @@ dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "tabulate", specifier = ">=0.9" },
 ]
+peft = [{ name = "peft", specifier = ">=0.15.2" }]
 
 [[package]]
 name = "optuna"
@@ -2661,6 +2674,7 @@ dependencies = [
     { name = "torch-optimi" },
     { name = "tqdm" },
     { name = "transformers" },
+    { name = "tyro" },
     { name = "wandb" },
 ]
 
@@ -2701,6 +2715,7 @@ requires-dist = [
     { name = "torch-optimi", specifier = ">=0.2.1" },
     { name = "tqdm", specifier = ">=4.67" },
     { name = "transformers", specifier = ">=4.51.0" },
+    { name = "tyro", specifier = ">=0.9.21" },
     { name = "wandb", specifier = ">=0.18.7" },
 ]
 
@@ -3086,6 +3101,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9e/8b/dc1773e8e5d07fd27c1632c45c1de856ac3dbf09c0147f782ca6d990cf15/setuptools-80.7.1.tar.gz", hash = "sha256:f6ffc5f0142b1bd8d0ca94ee91b30c0ca862ffd50826da1ea85258a06fd94552", size = 1319188 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl", hash = "sha256:ca5cc1069b85dc23070a6628e6bcecb3292acac802399c7f8edc0100619f9009", size = 1200776 },
+]
+
+[[package]]
+name = "shtab"
+version = "1.7.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/3e/837067b970c1d2ffa936c72f384a63fdec4e186b74da781e921354a94024/shtab-1.7.2.tar.gz", hash = "sha256:8c16673ade76a2d42417f03e57acf239bfb5968e842204c17990cae357d07d6f", size = 45751 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/74/03/3271b7bb470fbab4adf5bd30b0d32143909d96f3608d815b447357f47f2b/shtab-1.7.2-py3-none-any.whl", hash = "sha256:858a5805f6c137bb0cda4f282d27d08fd44ca487ab4a6a36d2a400263cd0b5c1", size = 14214 },
 ]
 
 [[package]]
@@ -3505,6 +3529,18 @@ wheels = [
 ]
 
 [[package]]
+name = "typeguard"
+version = "4.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/70/60/8cd6a3d78d00ceeb2193c02b7ed08f063d5341ccdfb24df88e61f383048e/typeguard-4.4.2.tar.gz", hash = "sha256:a6f1065813e32ef365bc3b3f503af8a96f9dd4e0033a02c28c4a4983de8c6c49", size = 75746 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cf/4b/9a77dc721aa0b7f74440a42e4ef6f9a4fae7324e17f64f88b96f4c25cc05/typeguard-4.4.2-py3-none-any.whl", hash = "sha256:77a78f11f09777aeae7fa08585f33b5f4ef0e7335af40005b0c422ed398ff48c", size = 35801 },
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.13.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3523,6 +3559,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/82/5c/e6082df02e215b846b4b8c0b887a64d7d08ffaba30605502639d44c06b82/typing_inspection-0.4.0.tar.gz", hash = "sha256:9765c87de36671694a67904bf2c96e395be9c6439bb6c87b5142569dcdd65122", size = 76222 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/31/08/aa4fdfb71f7de5176385bd9e90852eaf6b5d622735020ad600f2bab54385/typing_inspection-0.4.0-py3-none-any.whl", hash = "sha256:50e72559fcd2a6367a19f7a7e610e6afcb9fac940c650290eed893d61386832f", size = 14125 },
+]
+
+[[package]]
+name = "tyro"
+version = "0.9.21"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "platform_system == 'Windows' and sys_platform != 'linux'" },
+    { name = "docstring-parser" },
+    { name = "rich" },
+    { name = "shtab" },
+    { name = "typeguard" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e4/58/7bf86598954b0406a6217982ee24a2fed18c0cd48af9eb23c89819b69160/tyro-0.9.21.tar.gz", hash = "sha256:b268a7cf5f7ee2d62e125ca49c84db319ce935175562fb90f7403e31cc9b5f4e", size = 283965 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/16/a8/682579d74c49b455916b6832bd94079b3c45ebd7cbb5c530dcff5976df1f/tyro-0.9.21-py3-none-any.whl", hash = "sha256:fc196fe356b5623ffb839e8f1c8550ff1898ef7344c888d808485e8400717c63", size = 125314 },
 ]
 
 [[package]]
