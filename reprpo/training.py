@@ -206,7 +206,6 @@ def train(args, trial: Optional[Trial] = None):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
 
-            wandb.require(experiment="core")
             pl_wandb_logger=WandbLogger(
                 name=run_fname, save_dir=save_dir,
                 project="reprpo2",
@@ -647,28 +646,32 @@ def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
     df_res = df_res.rename(columns=ds_alias_rev)
 
     df_metrics = key_metrics(df_res2, adapter_name, ds_alias)
-    if verbose:
-        logger.info(f"\n{df_metrics.round(3).to_markdown()}")
-        logger.info("""Table 1: Key metrics (adapter over base model)\n""")
-        # TODO reorder cols
 
-    cols = [v.replace("genies_preferences-", "") for v in ds_alias.values()]
     df_res2 = df_res[list(ds_alias.keys())]
     df_res2.index.name = "adapter/ds"
-    if verbose:
-        logger.info(f"\n{df_res2.round(3).to_markdown()}")
-        logger.info("""Table 2: Absolute accuracy\n""")
 
-    df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(human_name).T
-    df_final = df_final * 100 - 100  # percentage points
-    df_final.index.name = "acc_inc/eval_ds [pp]"
-    # TODO reorder cols
-    caption = f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`{ds_alias["train"]}` compared to base model `{base_model}` for various distribution shifts:"""
+    caption = f"""Table 1: Absolute accuracy  after training with named adapter on ds:`{ds_alias["train"]}` compared to base model `{base_model}` for various distribution shifts:\n"""
     for k, v in ds_alias.items():
         caption += f"\n- `{k}`: `{v}`"
+    logger.info(f"\n{df_res2.round(3).to_markdown()}")
+    logger.info(caption)
+
     if verbose:
-        print(f"\n{df_final.round(3).to_markdown()}")
-        logger.info(caption)
+        logger.info(f"\n{df_metrics.round(3).to_markdown()}")
+        logger.info("""Table 2: Key metrics (adapter over base model)\n""")
+        # TODO reorder cols
+
+    if verbose:
+        df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(human_name).T
+        df_final = df_final * 100 - 100  # percentage points
+        df_final.index.name = "acc_inc/eval_ds [pp]"
+        # TODO reorder cols
+        caption = f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`{ds_alias["train"]}` compared to base model `{base_model}` for various distribution shifts:"""
+        for k, v in ds_alias.items():
+            caption += f"\n- `{k}`: `{v}`"
+        if verbose:
+            print(f"\n{df_final.round(3).to_markdown()}")
+            logger.info(caption)
 
 
     if not df_metrics['train']['acc_gain_vs_ref']>=1.0:

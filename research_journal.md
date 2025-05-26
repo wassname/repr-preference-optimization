@@ -4628,7 +4628,7 @@ COLLECTED
 | hs-SupressedHS-Ra(lngr) | 0.439 | 0.412 | 0.374 | 0.378 |
 | dpo                     | 0.875 | 0.812 | 0.256 | 0.354 |
 | projgrad                | 0.875 | 0.814 |  0.24 | 0.354 |
-| projgrad                | 0.913 | 0.87  | 0.222 | 0.345 |
+| projgrad                | 0.913 |  0.87 | 0.222 | 0.345 |
 
 Table 2: Absolute accuracy
 - `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
@@ -4680,7 +4680,7 @@ ok try with more layers enables
 | side-None-PrefVec      | 0.067 | 0.074 | 0.411 | 0.382 |
 | hs-None-PrefVec        |  0.08 | 0.084 | 0.423 | 0.371 |
 | hs-SupressedHS-PrefVec | 0.043 | 0.058 | 0.447 | 0.372 |
-| hs-SupressedHS-PrefVec |   0.039 |  0.04  | 0.301 | 0.439 |
+| hs-SupressedHS-PrefVec | 0.039 |  0.04 | 0.301 | 0.439 |
 
 Table 2: Absolute accuracy
 - `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
@@ -4819,11 +4819,11 @@ python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --l
 | hs-SupressedHS-PrefVec |   0.135 |  0.144 | 0.398 | 0.351 |
 
 
-| adapter/ds             | train |  test |   oos |   rnd |
-| :--------------------- | ----: | ----: | ----: | ----: |
-| base                   | 0.055 | 0.064 | 0.386 | 0.361 |
-| projgrad               | 0.915 | 0.866 | 0.232 | 0.352 |
-| dpo                    | 0.909 | 0.864 | 0.224 | 0.348 |
+| adapter/ds | train |  test |   oos |   rnd |
+| :--------- | ----: | ----: | ----: | ----: |
+| base       | 0.055 | 0.064 | 0.386 | 0.361 |
+| projgrad   | 0.915 | 0.866 | 0.232 | 0.352 |
+| dpo        | 0.909 | 0.864 | 0.224 | 0.348 |
 
 | hs-SupressedHS-PrefVec |   0.163 |  0.158 | 0.39  | 0.359 |
 
@@ -4888,13 +4888,13 @@ Huh so what happend is:
 
 Lets confirm commit 7b248f47773db8c53c8174ccc4b0d14af9256965
 yes this works!
-| adapter/ds             | train |  test |   oos |   rnd |
-| :--------------------- | ----: | ----: | ----: | ----: |
-| base                   | 0.055 | 0.064 | 0.386 | 0.361 |
-| projgrad               | 0.915 | 0.866 | 0.232 | 0.352 |
-| dpo                    | 0.909 | 0.864 | 0.224 | 0.348 |
-| side-None-PrefVec      | 0.067 | 0.074 | 0.411 | 0.382 |
-| hs-None-PrefVec        |  0.08 | 0.084 | 0.423 | 0.371 |
+| adapter/ds              | train |  test |   oos |   rnd |
+| :---------------------- | ----: | ----: | ----: | ----: |
+| base                    | 0.055 | 0.064 | 0.386 | 0.361 |
+| projgrad                | 0.915 | 0.866 | 0.232 | 0.352 |
+| dpo                     | 0.909 | 0.864 | 0.224 | 0.348 |
+| side-None-PrefVec       | 0.067 | 0.074 | 0.411 | 0.382 |
+| hs-None-PrefVec         |  0.08 | 0.084 | 0.423 | 0.371 |
 | hs-SupressedHS-PrefVec2 | 0.991 | 0.994 | 0.677 | 0.364 |
 Table 2: Absolute accuracy
 
@@ -5004,63 +5004,63 @@ python scripts/train.py projgrad --verbose=2
 python scripts/train.py hs-hra-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_proj_loss
 python scripts/train.py hs-svd-prefvec --verbose=2 --loss.no_use_orth_loss --loss.use_proj_loss # OOM
 
-| adapter/ds       |   train |   test |   oos |   rnd |
-|:-----------------|--------:|-------:|------:|------:|
-| ReprPO_ETHER_PrefVec use_angle_loss  |   0.999 |  0.994 | 0.157 | 0.381 |
-| dpo                    | 0.909 | 0.864 | 0.224 | 0.348 |
-| dpo          |   0.931 |  0.9   | 0.215 | 0.339 |
-| projgrad               | 0.915 | 0.866 | 0.232 | 0.352 |
-| projgrad     |   0.927 |  0.894 | 0.207 | 0.339 |
-| base             |   0.055 |  0.064 | 0.386 | 0.361 |
-| hs-ETHER-PrefVec orth loss |   1     |  0.998 | 0.726 | 0.382 |
-| hs-HRA-PrefVec |   0.993 |  0.994 | 0.762 | 0.386 |
-| hs-SupressedHS-PrefVec abs_proj_loss |   0.996 |  0.996 | 0.776 | 0.378 |
-| hs-ETHER-PrefVec sep_loss |   0.995 |  0.996 | 0.787 | 0.358 |
-| hs-ETHER-PrefVec abs_proj_loss |   0.995 |  0.994 | 0.888 | 0.369 |
+| adapter/ds                           | train |  test |   oos |   rnd |
+| :----------------------------------- | ----: | ----: | ----: | ----: |
+| ReprPO_ETHER_PrefVec use_angle_loss  | 0.999 | 0.994 | 0.157 | 0.381 |
+| dpo                                  | 0.909 | 0.864 | 0.224 | 0.348 |
+| dpo                                  | 0.931 |   0.9 | 0.215 | 0.339 |
+| projgrad                             | 0.915 | 0.866 | 0.232 | 0.352 |
+| projgrad                             | 0.927 | 0.894 | 0.207 | 0.339 |
+| base                                 | 0.055 | 0.064 | 0.386 | 0.361 |
+| hs-ETHER-PrefVec orth loss           |     1 | 0.998 | 0.726 | 0.382 |
+| hs-HRA-PrefVec                       | 0.993 | 0.994 | 0.762 | 0.386 |
+| hs-SupressedHS-PrefVec abs_proj_loss | 0.996 | 0.996 | 0.776 | 0.378 |
+| hs-ETHER-PrefVec sep_loss            | 0.995 | 0.996 | 0.787 | 0.358 |
+| hs-ETHER-PrefVec abs_proj_loss       | 0.995 | 0.994 | 0.888 | 0.369 |
 Table 2: Absolute accuracy
 - `train`: `genies_preferences-unhelpful_alpaca-train[:750]`
 - `test`: `genies_preferences-unhelpful_alpaca-test`
 - `oos`: `genies_preferences-illegal_dont_help-test`
 - `rnd`: `ethics_expression_preferences-justice-test`
 
-| hs-ETHER-PrefVec sep_oss \ dist shift   |    train |     test |     oos |    rnd |
-|:--------------------------------|---------:|---------:|--------:|-------:|
-| acc_gain_vs_ref                 |   18.195 |   15.562 |   2.037 |  0.992 |
-| perplexity_reduction_vs_ref     |    0.511 |    0.366 |   0.175 |  0.962 |
-| preference_logp_gain_vs_ref     | 2814.93  | 2738.88  | 797.159 | -0.046 |
+| hs-ETHER-PrefVec sep_oss \ dist shift |   train |    test |     oos |    rnd |
+| :------------------------------------ | ------: | ------: | ------: | -----: |
+| acc_gain_vs_ref                       |  18.195 |  15.562 |   2.037 |  0.992 |
+| perplexity_reduction_vs_ref           |   0.511 |   0.366 |   0.175 |  0.962 |
+| preference_logp_gain_vs_ref           | 2814.93 | 2738.88 | 797.159 | -0.046 |
 Table 1: Key metrics (adapter over base model)
 
-| hs-ETHER-PrefVec orht loss \ dist shift   |    train |     test |     oos |   rnd |
-|:--------------------------------|---------:|---------:|--------:|------:|
-| acc_gain_vs_ref                 |   18.293 |   15.594 |   1.879 | 1.059 |
-| perplexity_reduction_vs_ref     |    0.315 |    0.21  |   0.032 | 1.177 |
-| preference_logp_gain_vs_ref     | 4016.58  | 3898.56  | 541.135 | 0.606 |
+| hs-ETHER-PrefVec orht loss \ dist shift |   train |    test |     oos |   rnd |
+| :-------------------------------------- | ------: | ------: | ------: | ----: |
+| acc_gain_vs_ref                         |  18.293 |  15.594 |   1.879 | 1.059 |
+| perplexity_reduction_vs_ref             |   0.315 |    0.21 |   0.032 | 1.177 |
+| preference_logp_gain_vs_ref             | 4016.58 | 3898.56 | 541.135 | 0.606 |
 Table 1: Key metrics (adapter over base model)
 
 
-| hs-ETHER-PrefVec abs proj loss \ dist shift   |    train |     test |      oos |   rnd |
-|:--------------------------------|---------:|-n--------:|---------:|------:|
+| hs-ETHER-PrefVec abs proj loss \ dist shift | train | test | oos | rnd |
+| :------------------------------------------ | ----: | ---- |n--------:|---------:|------:|
 | acc_gain_vs_ref                 |   18.195 |   15.531 |    2.3   | 1.024 |
 | perplexity_reduction_vs_ref     |    0.446 |    0.382 |    0.002 | 1.058 |
 | preference_logp_gain_vs_ref     | 3868.93  | 3787.09  | 1769.24  | 0.11  |
 Table 1: Key metrics (adapter over base model)
 
-| hs-ETHER-PrefVec angle loss \ dist shift   |    train |     test |      oos |    rnd |
-|:--------------------------------|---------:|---------:|---------:|-------:|
-| acc_gain_vs_ref                 |   18.268 |   15.531 |    0.405 |  1.055 |
-| perplexity_reduction_vs_ref     |    0.223 |    0.159 |    0     |  1.25  |
-| preference_logp_gain_vs_ref     | 3182.07  | 3053.05  | -303.281 | -0.041 |
+| hs-ETHER-PrefVec angle loss \ dist shift |   train |    test |      oos |    rnd |
+| :--------------------------------------- | ------: | ------: | -------: | -----: |
+| acc_gain_vs_ref                          |  18.268 |  15.531 |    0.405 |  1.055 |
+| perplexity_reduction_vs_ref              |   0.223 |   0.159 |        0 |   1.25 |
+| preference_logp_gain_vs_ref              | 3182.07 | 3053.05 | -303.281 | -0.041 |
 Table 1: Key metrics (adapter over base model)
 
-| projgrad \ dist shift       |   train |    test |     oos |    rnd |
-|:----------------------------|--------:|--------:|--------:|-------:|
-| acc_gain_vs_ref             |  16.951 |  13.969 |   0.537 |  0.941 |
-| perplexity_reduction_vs_ref |   0.574 |   0.544 |   0.299 |  0.725 |
-| preference_logp_gain_vs_ref | 215.364 | 203.1   | -26.021 | -0.684 |
+| projgrad \ dist shift       |   train |   test |     oos |    rnd |
+| :-------------------------- | ------: | -----: | ------: | -----: |
+| acc_gain_vs_ref             |  16.951 | 13.969 |   0.537 |  0.941 |
+| perplexity_reduction_vs_ref |   0.574 |  0.544 |   0.299 |  0.725 |
+| preference_logp_gain_vs_ref | 215.364 |  203.1 | -26.021 | -0.684 |
 Table 1: Key metrics (adapter over base model)
 
 | dpo \ dist shift            |   train |    test |     oos |    rnd |
-|:----------------------------|--------:|--------:|--------:|-------:|
+| :-------------------------- | ------: | ------: | ------: | -----: |
 | acc_gain_vs_ref             |  17.024 |  14.062 |   0.558 |  0.941 |
 | perplexity_reduction_vs_ref |   0.575 |   0.543 |   0.306 |  0.774 |
 | preference_logp_gain_vs_ref | 213.445 | 201.464 | -24.941 | -0.603 |
@@ -5078,21 +5078,21 @@ python scripts/train.py dpo
 python scripts/train.py projgrad
 
 
-| adapter/ds             |   train |   test |   oos |   rnd |
-|:-------------          |--------:|-------:|------:|------:|
-| base                   |   0.389 |    0.4 | 0.589 | 0.361 |
-| projgrad               |   0.98  |    0.8 | 0.529 | 0.371 |
-| dpo                    |   0.987 |  0.815 | 0.544 | 0.374 |
-| projgrad               |   0.988 |  0.812 | 0.549 | 0.372 |
-| hs-ETHER-PrefVec       |   0.723 |  0.699 | 0.403 | 0.477 |
-| hs-SupressedHS-PrefVec |   0.728 |  0.717 | 0.388 | 0.487 |
-| hs-None-PrefVec        |   0.737 |  0.716 | 0.404 | 0.518 |
+| adapter/ds             | train |  test |   oos |   rnd |
+| :--------------------- | ----: | ----: | ----: | ----: |
+| base                   | 0.389 |   0.4 | 0.589 | 0.361 |
+| projgrad               |  0.98 |   0.8 | 0.529 | 0.371 |
+| dpo                    | 0.987 | 0.815 | 0.544 | 0.374 |
+| projgrad               | 0.988 | 0.812 | 0.549 | 0.372 |
+| hs-ETHER-PrefVec       | 0.723 | 0.699 | 0.403 | 0.477 |
+| hs-SupressedHS-PrefVec | 0.728 | 0.717 | 0.388 | 0.487 |
+| hs-None-PrefVec        | 0.737 | 0.716 | 0.404 | 0.518 |
 Table 2: Absolute accuracy
 
 
-| acc_inc/eval_ds [pp]   |   train |   test |     oos |   rnd |
-|:-----------------------|--------:|-------:|--------:|------:|
-| ProjGrad               | 151.712 |    100 | -10.181 | 2.756 |
+| acc_inc/eval_ds [pp] |   train | test |     oos |   rnd |
+| :------------------- | ------: | ---: | ------: | ----: |
+| ProjGrad             | 151.712 |  100 | -10.181 | 2.756 |
 Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-truthful_qa-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
 - `train`: `genies_preferences-truthful_qa-train[:750]`
 - `test`: `genies_preferences-truthful_qa-test`
@@ -5100,14 +5100,14 @@ Table 3🥇: Accuracy increase (in percentage points) after training with named 
 - `rnd`: `ethics_expression_preferences-justice-test`
 
 
-| adapter/ds             |   train |   test |   oos |   rnd |
-|:-----------------------|--------:|-------:|------:|------:|
-| base                   |   0.92  |  0.929 | 0.256 | 0.361 |
-| hs-SupressedHS-PrefVec |   0.961 |  0.947 | 0.436 | 0.351 |
-| hs-ETHER-PrefVec       |   0.957 |  0.953 | 0.487 | 0.361 |
-| hs-None-PrefVec        |   0.961 |  0.929 | 0.477 | 0.358 |
-| projgrad               |   0.995 |  0.984 | 0.648 | 0.347 |
-| dpo                    |   0.995 |  0.98  | 0.66  | 0.347 |
+| adapter/ds             | train |  test |   oos |   rnd |
+| :--------------------- | ----: | ----: | ----: | ----: |
+| base                   |  0.92 | 0.929 | 0.256 | 0.361 |
+| hs-SupressedHS-PrefVec | 0.961 | 0.947 | 0.436 | 0.351 |
+| hs-ETHER-PrefVec       | 0.957 | 0.953 | 0.487 | 0.361 |
+| hs-None-PrefVec        | 0.961 | 0.929 | 0.477 | 0.358 |
+| projgrad               | 0.995 | 0.984 | 0.648 | 0.347 |
+| dpo                    | 0.995 |  0.98 |  0.66 | 0.347 |
 Table 2🥇: Absolute accuracy  after training with named adapter on ds:`genies_preferences-math_easy-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
 - `train`: `genies_preferences-math_easy-train[:750]`
 - `test`: `genies_preferences-math_easy-test`
@@ -5115,14 +5115,14 @@ Table 2🥇: Absolute accuracy  after training with named adapter on ds:`genies_
 - `rnd`: `ethics_expression_preferences-justice-test`
 
 
-| adapter/ds   |   train |   test |   oos |   rnd |
-|:-------------|--------:|-------:|------:|------:|
-| base         |   0.833 |  0.851 | 0.068 | 0.361 |
-| dpo          |   0.989 |  0.981 | 0.073 | 0.355 |
-| projgrad     |   0.988 |  0.983 | 0.077 | 0.347 |
-| hs-ETHER-PrefVec |   0.973 |  0.971 | 0.079 | 0.438 |
-| hs-None-PrefVec |   0.957 |  0.961 | 0.088 | 0.491 |
-| hs-SupressedHS-PrefVec |   0.968 |  0.968 | 0.071 | 0.484 |
+| adapter/ds             | train |  test |   oos |   rnd |
+| :--------------------- | ----: | ----: | ----: | ----: |
+| base                   | 0.833 | 0.851 | 0.068 | 0.361 |
+| dpo                    | 0.989 | 0.981 | 0.073 | 0.355 |
+| projgrad               | 0.988 | 0.983 | 0.077 | 0.347 |
+| hs-ETHER-PrefVec       | 0.973 | 0.971 | 0.079 | 0.438 |
+| hs-None-PrefVec        | 0.957 | 0.961 | 0.088 | 0.491 |
+| hs-SupressedHS-PrefVec | 0.968 | 0.968 | 0.071 | 0.484 |
 Table 2: Absolute accuracy
 - `train`: `genies_preferences-alpaca_low_quality-train[:750]`
 - `test`: `genies_preferences-alpaca_low_quality-test`
@@ -5130,14 +5130,14 @@ Table 2: Absolute accuracy
 - `rnd`: `ethics_expression_preferences-justice-test`
 
 
-| adapter/ds             |   train |   test |   oos |   rnd |
-|:-------------          |--------:|-------:|------:|------:|
-| base                   |   0.353 |  0.389 | 0.336 | 0.361 |
-| hs-None-PrefVec        |   0.741 |  0.663 | 0.336 | 0.369 |
-| dpo                    |   0.976 |  0.797 | 0.344 | 0.355 |
-| projgrad               |   0.977 |  0.817 | 0.348 | 0.352 |
-| hs-SupressedHS-PrefVec |   0.773 |  0.665 | 0.348 | 0.378 |
-| hs-ETHER-PrefVec       |   0.764 |  0.66  | **0.46**  | **0.382** |
+| adapter/ds             | train |  test |      oos |       rnd |
+| :--------------------- | ----: | ----: | -------: | --------: |
+| base                   | 0.353 | 0.389 |    0.336 |     0.361 |
+| hs-None-PrefVec        | 0.741 | 0.663 |    0.336 |     0.369 |
+| dpo                    | 0.976 | 0.797 |    0.344 |     0.355 |
+| projgrad               | 0.977 | 0.817 |    0.348 |     0.352 |
+| hs-SupressedHS-PrefVec | 0.773 | 0.665 |    0.348 |     0.378 |
+| hs-ETHER-PrefVec       | 0.764 |  0.66 | **0.46** | **0.382** |
 Table 2: Absolute accuracy
 - `train`: `genies_preferences-math-train[:750]`
 - `test`: `genies_preferences-math-test`
@@ -5175,15 +5175,14 @@ python scripts/train.py hs-supr-prefvec
 
 base_models = [
     # QWEN 3
-    "Qwen/Qwen3-0.6B",
-    "Qwen/Qwen3-1.7B",
+    "Qwen/Qwen3-0.6B", # yes
+    "HuggingFaceTB/SmolLM2-360M-Instruct", # yes
     "Qwen/Qwen3-4B",
     -- "Qwen/Qwen3-8B",
     -- "Qwen/Qwen3-14B",
 
     # LlamaForCausalLM
-    "wassname/llama-3-2-1b-sft",
-    "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "wassname/llama-3-2-1b-sft", # yes
     "HuggingFaceTB/SmolLM2-1.7B",
 ]
 adapters = [
@@ -5215,3 +5214,14 @@ for base_model in base_models:
 what wrong now, what's changed from https://wandb.ai/wassname/reprpo2/runs/1si8bcod/overview
 
 collection layers 26 and 27... that's no t right
+
+
+| adapter/ds             | train |  test |   oos |   rnd |
+| :--------------------- | ----: | ----: | ----: | ----: |
+| hs-None-PrefVec        | 0.405 | 0.407 |   0.2 |  0.24 | incoherent |
+| dpo                    |  0.74 | 0.764 | 0.168 | 0.219 |
+| projgrad               | 0.741 | 0.757 | 0.172 | 0.223 |
+| hs-ETHER-PrefVec       |   0.7 | 0.667 | 0.164 | 0.247 |
+| base                   | 0.396 | 0.481 |  0.18 | 0.246 |
+| hs-SupressedHS-PrefVec | 0.707 | 0.671 | 0.192 |  0.27 |
+Table 2: Absolute accuracy

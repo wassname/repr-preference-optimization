@@ -10,24 +10,22 @@ from typing import Optional, Tuple
 class ReprPOConfig(ExperimentConfig):
     lr: float = 7e-5
 
-    collection_layers: Optional[str] = 'range(.3,-2)'
-    """layers to collect activations from (none is parsed by `get_default_layers` which defaults to 33% onwards
+    collection_layers: Optional[str] = 'range(.3,-1)'
+    """layers to collect activations
     
     see `parse_collection_layers` which supports various formats:
-    - A comma-separated string like "-2,-1" to collect the last two layers
-    - A string representing a range, e.g., "range(3,10,2)"
-    - A shorthand range with percentages, e.g., "0.5, 0.9, 2" which converts 0.5 to the 50% layer and 0.9 to the 90% layer
-    - A list of integers or floats
+    - "-2,-1" A comma-separated string like  to collect the last two layers
+    - "range(3,10,2)" A string representing a range, e.g.,  which collects layers 3, 5, 7, 9
+    - "range(0.5, 0.9, 2)" A shorthand range with fractions, e.g.,  which converts 0.5 to the 50% layer and 0.9 to the 90% layer
+    - "0.3, 0.6, -1" A list of integers or floats
     """
 
-    # TODO change to regexp like peft
     collection_keys_in: tuple = (
         ".*o_proj$",
         ".*down_proj$",
     )
-    """keys to collect inputs from"""
+    """keys to collect inputs from uses regexp e.g. '.*o_proj$'"""
 
-    # TODO change to regexp like peft
     collection_keys_out: tuple = (
         ".*q_proj$",
         ".*k_proj$",
@@ -35,7 +33,7 @@ class ReprPOConfig(ExperimentConfig):
         ".*gate_proj$",
         ".*up_proj$",
     )
-    """keys to collect outputs from."""
+    """keys to collect outputs from regexp."""
 
     collect_input: bool = True
     """use collection_keys_in? else use collection_keys_out."""

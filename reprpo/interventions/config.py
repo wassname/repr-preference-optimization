@@ -24,7 +24,7 @@ class ExperimentConfig:
     load_in_8bit: bool = False
     use_gradient_checkpointing: bool = False
 
-    batch_size: int = 10
+    batch_size: int = 8
 
     n_samples: int = 10000
     eval_samples: Optional[int] = None
