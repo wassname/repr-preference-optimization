@@ -32,15 +32,15 @@ def supr_params(trial):
     return {
     }
 
-def prefvec_params(trial):
+def InnerPO_params(trial):
     return {
-        "β": trial.suggest_float("prefvec.β", 1e-6, 2.0, log=True),
-        "use_orth_loss": trial.suggest_categorical("prefvec.use_orth_loss", [False, True]),
-        "use_angle_loss": trial.suggest_categorical("prefvec.use_angle_loss", [False, True]),
-        "use_dpo_loss": trial.suggest_categorical("prefvec.use_dpo_loss", [False, True]),
-        "use_nll_loss": trial.suggest_categorical("prefvec.use_nll_loss", [False, True]),
-        # "weight_tokens": trial.suggest_categorical("prefvec.weight_tokens", [False, True]),
-        "use_proj_rel": trial.suggest_categorical("prefvec.use_proj_rel", [False, True]),
+        "β": trial.suggest_float("InnerPO.β", 1e-6, 2.0, log=True),
+        "use_orth_loss": trial.suggest_categorical("InnerPO.use_orth_loss", [False, True]),
+        "use_angle_loss": trial.suggest_categorical("InnerPO.use_angle_loss", [False, True]),
+        "use_dpo_loss": trial.suggest_categorical("InnerPO.use_dpo_loss", [False, True]),
+        "use_nll_loss": trial.suggest_categorical("InnerPO.use_nll_loss", [False, True]),
+        # "weight_tokens": trial.suggest_categorical("InnerPO.weight_tokens", [False, True]),
+        "use_proj_rel": trial.suggest_categorical("InnerPO.use_proj_rel", [False, True]),
     }
 
 
@@ -113,10 +113,10 @@ def dpo_params(trial):
 
 ## experiments
 
-def ether_prefvec(trial):
+def ether_InnerPO(trial):
     args = base_reprpo_params(trial)
     # args.update({f"transform.{k}": v for k, v in ether_params(trial).items()})
-    args.update({f"loss.{k}": v for k, v in prefvec_params(trial).items()})
+    args.update({f"loss.{k}": v for k, v in InnerPO_params(trial).items()})
     return args
 
 def hs_ether_rank(trial):
@@ -139,11 +139,11 @@ def hs_ether_mse(trial):
 
 
 
-def hs_ether_prefvec(trial):
+def hs_ether_InnerPO(trial):
     args = base_reprpo_params(trial)
     # args = {"lr": trial.suggest_float("lr", 1e-7, 1e-2, log=True)}
     # args.update({f"transform.{k}": v for k, v in ortho_params(trial).items()})
-    args.update({f"loss.{k}": v for k, v in prefvec_params(trial).items()})
+    args.update({f"loss.{k}": v for k, v in InnerPO_params(trial).items()})
     return args
 
 def hs_supr_mse(trial):
@@ -160,9 +160,9 @@ search_spaces = {
     # number: rougly 50 per float, 10 per bool
     'hs-ether-mse': (150, hs_ether_mse),
     'hs-ether-rank': (150, hs_ether_rank),
-    "hs-ether-prefvec": (550, hs_ether_prefvec), 
+    "hs-ether-InnerPO": (550, hs_ether_InnerPO), 
     "hs-supr-mse": (10, hs_supr_mse), 
-    # 'ether-prefvec': (250, ether_prefvec),
+    # 'ether-InnerPO': (250, ether_InnerPO),
     'projgrad2': (350, projgrad_params),
     # 'projbp': (500, projbp),
     'dpo': (5, dpo_params),
@@ -195,20 +195,20 @@ experiment_configs = {
             loss=Losses.rank.value(),
         ),
     ),
-    "hs-ether-prefvec": (
+    "hs-ether-InnerPO": (
         "",  
         ReprPOConfig(
             collect_hs=True,# OOM on sides, to many layers
             transform=Transforms.ether.value(),
-            loss=Losses.prefvec.value(),
+            loss=Losses.InnerPO.value(),
         ),
     ),
 
-    "ether-prefvec": (
+    "ether-InnerPO": (
         "",  
         ReprPOConfig(
             transform=Transforms.ether.value(),
-            loss=Losses.prefvec.value(),
+            loss=Losses.InnerPO.value(),
         ),
     ),
     "dpo": ("DPO experiment.", DPOConfig()),

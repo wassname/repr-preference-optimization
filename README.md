@@ -1,4 +1,4 @@
-# Representation Preference Optimization
+# Inner Preference Optimization (InnerPO)
 
 Idea:
 
@@ -7,7 +7,7 @@ Idea:
 
 #### Hypothesis Formulation
 
-Ss we do not know how an LLM stores it's internal states, these experiments represent hypotheses about how best to represent and intervene in an tranformers internal states.
+As we do not know how an LLM stores it's internal states, these experiments represent hypotheses about how best to represent and intervene in an transformer's internal states.
 
 What's our technical hypothesis?
 
@@ -15,7 +15,7 @@ What's our technical hypothesis?
 
 #### Thought Experiment
 
-To see why this might be true, let's conduct a short thought experiment. Imagine you are hiring a new engineer, and have two canidated Alice and Bob. 
+To see why this might be true, let's conduct a short thought experiment. Imagine you are hiring a new engineer, and have two candidates Alice and Bob.
 
 - **Alice** aligns closely with core organizational values such as truthfulness, openness, and diligence. She seems to genuinely believes in these principles in a way that would be hard to fake.
 - **Bob**, on the other hand, performs identically to Alice at work. However, his actions are not driven by genuine belief in these values but rather out of professionalism and a desire to do his job.
@@ -157,9 +157,9 @@ pytest
 If this repository is useful in your own research, you can use the following BibTeX entry:
 
 ```
-@software{wassname2024reprpo,
+@software{wassname2024innerpo,
   author = {Clark, M.J.},
-  title = {Representation Preference Optimisation: Aligning internal states generalises better than aligning outputs},
+  title = {Inner Preference Optimisation: Aligning internal states generalises better than aligning outputs},
   year = {2024},
   publisher = {GitHub},
   journal = {GitHub repository},

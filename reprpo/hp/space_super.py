@@ -1,7 +1,7 @@
 from reprpo.interventions import DPOConfig, ReprPOConfig, ProjGradConfig, ProjBPConfig
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
-from .space import base_reprpo_params, ether_params, hra_params, svd_params, supr_params, prefvec_params, rank_params, mse_params, dpo_params, projgrad_params, projbp_params
+from .space import base_reprpo_params, ether_params, hra_params, svd_params, supr_params, InnerPO_params, rank_params, mse_params, dpo_params, projgrad_params, projbp_params
 from .target import override_cfg
 from reprpo.training import train
 import optuna
@@ -37,9 +37,9 @@ def superspace(trial):
             transform_args = supr_params(trial)
         base_args['collect_hs'] = transform != 'none'
 
-        loss = trial.suggest_categorical("loss", ['prefvec', 'rank', 'mse'])
-        if loss == 'prefvec':
-            loss_args = prefvec_params(trial)
+        loss = trial.suggest_categorical("loss", ['InnerPO', 'rank', 'mse'])
+        if loss == 'InnerPO':
+            loss_args = InnerPO_params(trial)
         elif loss == 'rank':
             loss_args = rank_params(trial)
         elif loss == 'mse':

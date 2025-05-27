@@ -8,6 +8,12 @@ export TOKENIZERS_PARALLELISM := "false"
 default:
     @just --list
 
+sweep:
+    #!/usr/bin/zsh
+    rm sweep.sh
+    mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S)
+    python scripts/sweep.py > sweep.sh
+    bash sweep.sh  2>&1 | tee sweep.txt
 
 
 

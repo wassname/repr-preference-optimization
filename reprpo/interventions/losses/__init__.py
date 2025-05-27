@@ -11,7 +11,7 @@ class Losses(enum.Enum):
     and output loss, info
     """
 
-    prefvec = InnerPOLossConfig
+    InnerPO = InnerPOLossConfig
     rank = RankLossConfig
     mse = MSELossConfig
 

@@ -5088,12 +5088,6 @@ python scripts/train.py projgrad
 | hs-SupressedHS-PrefVec | 0.728 | 0.717 | 0.388 | 0.487 |
 | hs-None-PrefVec        | 0.737 | 0.716 | 0.404 | 0.518 |
 Table 2: Absolute accuracy
-
-
-| acc_inc/eval_ds [pp] |   train | test |     oos |   rnd |
-| :------------------- | ------: | ---: | ------: | ----: |
-| ProjGrad             | 151.712 |  100 | -10.181 | 2.756 |
-Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`genies_preferences-truthful_qa-train[:750]` compared to base model `llama-3-2-1b-sft` for various distribution shifts:
 - `train`: `genies_preferences-truthful_qa-train[:750]`
 - `test`: `genies_preferences-truthful_qa-test`
 - `oos`: `genies_preferences-alpaca_mmlu-test`
@@ -5182,7 +5176,7 @@ base_models = [
     -- "Qwen/Qwen3-14B",
 
     # LlamaForCausalLM
-    "wassname/llama-3-2-1b-sft", # yes
+    "wassname/llama-3-2-1b-sft", # yes`****
     "HuggingFaceTB/SmolLM2-1.7B",
 ]
 adapters = [
@@ -5196,12 +5190,32 @@ adapters = [
 # ok here I need to change it. I want to choose: train, oos, rnd
 # hmm maybe I can just list multiple OOS test sets from all the genies related?
 datasets = [
-    ["math_easy", "change_my_view", "justice"],
-    ["math_easy", "math_hard", "justice"],
-    ["us_history_textbook", "us_history_fiction", "justice"],
-    ["arc_easy", "arc_hard", "justice"],
-    ["unhelpful_alpaca", ["illegal_dont_help", "justice"], "?"],
-    ["truthful_qa", "ethics_expression_preferences-justice", "alpaca_mmlu"],
+    # set 1
+    "maths",
+    "code",
+    "alpaca_mmlu",
+    "alpaca_low_quality",
+    "maths_easy",
+
+    # set 2
+    "cooking",
+    "code_easy",
+    "us_history",
+    "change_my_view",
+    "raven_matrices",
+
+    # set 3
+    "ranking_logic_easy",
+    "shp_low_quality",
+    "pursue_goals",
+    "creative_writing",
+    "alpaca_easy",
+    "arc_easy",
+    "us_history_textbook",
+    "alpaca_chat",
+    "raven_easy",
+    "code_low_quality",
+    "alpaca_short",
 ]
 for base_model in base_models:
     for dataset in datasets:
@@ -5224,4 +5238,22 @@ collection layers 26 and 27... that's no t right
 | hs-ETHER-PrefVec       |   0.7 | 0.667 | 0.164 | 0.247 |
 | base                   | 0.396 | 0.481 |  0.18 | 0.246 |
 | hs-SupressedHS-PrefVec | 0.707 | 0.671 | 0.192 |  0.27 |
-Table 2: Absolute accuracy
+Table 2: Absolute accuracy with llama
+
+
+change to InnerPO
+
+```sh
+rm sweep.sh
+mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S)
+python scripts/sweep.py > sweep.sh
+bash sweep.sh  2>&1 | tee sweep.txt
+```
+
+
+
+- [x] make sweep.sh
+- [x] run some
+- [ ] analyst result
+- [ ] maybe send to modal.com for quick results
+- [ ] run it on h100 with bigger models and longer sequences

@@ -157,10 +157,10 @@ def _objective(trial):
 
 # TODO need cfg and args grr
 defaults = [
-    # side-none-prefvec, this uses the most mem python scripts/train.py side-none-rank
+    # side-none-InnerPO, this uses the most mem python scripts/train.py side-none-rank
     {'space': 'reprpo', 'reprpo.lr': 3e-4,
       'transform': 'none', 
-      'loss': 'prefvec', 'prefvec.β': 3, 'prefvec.use_orth_loss': False, 'prefvec.use_angle_loss': True, 'prefvec.use_dpo_loss': False, 'prefvec.use_nll_loss': False, 'prefvec.use_proj_rel': False},
+      'loss': 'InnerPO', 'InnerPO.β': 3, 'InnerPO.use_orth_loss': False, 'InnerPO.use_angle_loss': True, 'InnerPO.use_dpo_loss': False, 'InnerPO.use_nll_loss': False, 'InnerPO.use_proj_rel': False},
     # ether-mse
     {'space': 'reprpo', 'reprpo.lr': 2e-4, 
      'transform': 'ether', 'ether.nb': 16, 'ether.Htype': 'ether', 'ether.flip_side': False, 'ether.reduction': 60, 
@@ -173,11 +173,11 @@ defaults = [
     {'space': 'reprpo', 'reprpo.lr': 3e-4, 
      'transform': 'supr', 
      'loss': 'rank', 'rank.α': 0.25, 'rank.β': 1.0, 'rank.use_dpo_loss': True, 'rank.use_nll_loss': False, 'rank.use_rank_retain': False},
-    # hra-prefvec
+    # hra-InnerPO
     {
         'space': 'reprpo', 'reprpo.lr': 1e-4, 
         'transform': 'hra', 'r': 38, 'apply_GS': True, 
-        'loss': 'prefvec', 'prefvec.β': 5, 'prefvec.use_orth_loss': False, 'prefvec.use_angle_loss': True, 'prefvec.use_dpo_loss': False, 'prefvec.use_nll_loss': False, 'prefvec.use_proj_rel': False},
+        'loss': 'InnerPO', 'InnerPO.β': 5, 'InnerPO.use_orth_loss': False, 'InnerPO.use_angle_loss': True, 'InnerPO.use_dpo_loss': False, 'InnerPO.use_nll_loss': False, 'InnerPO.use_proj_rel': False},
 ]
 
 for params in defaults:
