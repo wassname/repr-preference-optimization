@@ -6,16 +6,17 @@ import json
 import os
 from pprint import pprint
 
-from .silence import silence, remove_warnings
-remove_warnings()
+from .silence import remove_warnings, silence
 
+remove_warnings()
 
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-from collections import OrderedDict
+import warnings
 from dataclasses import asdict
 from pathlib import Path
+from typing import Optional
 
 # from matplotlib import pyplot as plt
 # lightning
@@ -25,41 +26,35 @@ import lightning as pl
 import numpy as np
 import pandas as pd
 import torch
+import transformers
+import wandb
+import yaml
 from datasets import load_dataset
+from lightning.pytorch.callbacks import LearningRateMonitor
 
-import warnings
 # get a union class from the enum
-
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.loggers.wandb import WandbLogger
-from lightning.pytorch.callbacks import LearningRateMonitor
-from reprpo.helpers.pl_gen import GenCallback
-
-from open_pref_eval.datasets import ds2name, load_dataset_n
-from open_pref_eval.datasets.genies import GENIES, dist2datasets, GENIES_ALL, GENIES_TEST
+from loguru import logger
+from open_pref_eval.datasets import ds2name
 from open_pref_eval.evaluation import evaluate_model
+from optuna.integration import PyTorchLightningPruningCallback
+from optuna.trial import Trial
 
 # ML
 from peft import LoraConfig, get_peft_model
 from peft.tuners import LoraConfig
 from torch.utils.data import DataLoader
 
-import wandb
 from reprpo.data.collate3 import TokenizeRow
-from reprpo.gen import display_gen, get_model_generations
-from reprpo.helpers.lightning_hist import read_metrics_csv
-from typing import Optional, Tuple, Union
-from optuna.trial import Trial
-from optuna.integration import PyTorchLightningPruningCallback
-import yaml
-import transformers
 
 # Local
 from reprpo.data.eval_sets import TRAINING_EXPERIMENTS, load_eval_ds
+from reprpo.gen import display_gen, get_model_generations
+from reprpo.helpers.lightning_hist import read_metrics_csv
+from reprpo.helpers.pl_gen import GenCallback
 from reprpo.helpers.torch import clear_mem
 from reprpo.models.load import load_model, print_trainable_parameters
-
-from loguru import logger
 
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
 LOGURU_FORMAT = "<level>{message}</level>"
@@ -70,13 +65,13 @@ logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
 def set_random_seed(seed: int = 42):
     """
     Set random seed for reproducibility across all libraries.
-    
+
     Args:
         seed: Random seed to use (default: 42)
     """
-    
+
     # Set PyTorch Lightning seed
-    pl.seed_everything(seed, workers=True)    
+    pl.seed_everything(seed, workers=True)
     transformers.set_seed(seed)
 
     logger.info(f"Random seed set to {seed} for all libraries")
@@ -99,7 +94,8 @@ def apply_cfg_overrides(cfg, f=None):
         logger.info(f"loaded default config from {f}")
     return cfg
 
-def flatten_dict(d, parent_key='', sep='.'):
+
+def flatten_dict(d, parent_key="", sep="."):
     items = []
     for k, v in d.items():
         new_key = f"{parent_key}{sep}{k}" if parent_key else k
@@ -128,34 +124,62 @@ def get_display_name_from_args(args):
                 d[k] = tuple(v)
         return d
 
-    diff = set(list2tuple(flatten_dict(asdict(args))).items())-set(list2tuple(flatten_dict(asdict(defaults))).items())
+    diff = set(list2tuple(flatten_dict(asdict(args))).items()) - set(
+        list2tuple(flatten_dict(asdict(defaults))).items()
+    )
     diff = sorted(diff, key=lambda x: x[0])
-    blacklist = ['eval_samples', 'base_model', 'dev', 'verbose', 'n_samples', 'batch_size', 'max_length', 'max_prompt_length', 'use_gradient_checkpointing', 'load_in_4bit', 'load_in_8bit', 'collection_keys_in', 'collection_keys_out', 'collection_hs', 'collection_layers', 'collection_layers_hs', 'save', 'wandb',]
+    blacklist = [
+        "eval_samples",
+        "base_model",
+        "dev",
+        "verbose",
+        "n_samples",
+        "batch_size",
+        "max_length",
+        "max_prompt_length",
+        "use_gradient_checkpointing",
+        "load_in_4bit",
+        "load_in_8bit",
+        "collection_keys_in",
+        "collection_keys_out",
+        "collection_hs",
+        "collection_layers",
+        "collection_layers_hs",
+        "save",
+        "wandb",
+    ]
+
     def fmt(v):
         if isinstance(v, float):
             return f"{v:.2g}"
         return v
-    s = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff) if k not in blacklist])
+
+    s = " ".join([f"{k}={fmt(v)}" for k, v in list(diff) if k not in blacklist])
 
     cls_name = type(args).__name__
-    if hasattr(args, 'transform'):
-        cls_name += f"_{type(args.transform).__name__.replace('Transform','')}"
-    if hasattr(args, 'loss'):
-        cls_name += f"_{type(args.loss).__name__.replace('Loss','')}"
-    cls_name = cls_name.replace('Config', '')
+    if hasattr(args, "transform"):
+        cls_name += f"_{type(args.transform).__name__.replace('Transform', '')}"
+    if hasattr(args, "loss"):
+        cls_name += f"_{type(args.loss).__name__.replace('Loss', '')}"
+    cls_name = cls_name.replace("Config", "")
 
     # also either state transform and loss, or replace the words
     def rename(s):
-        if hasattr(args, 'loss'):
-            loss_name = type(args.loss).__name__.lower().replace('config', '').replace('loss', '')
-            s = s.replace('loss.', f"{loss_name}.")
-        if hasattr(args, 'transform'):
-            transform_name = type(args.transform).__name__.lower().replace('config', '')
-            s = s.replace('transform.', f"{transform_name}.")
+        if hasattr(args, "loss"):
+            loss_name = (
+                type(args.loss)
+                .__name__.lower()
+                .replace("config", "")
+                .replace("loss", "")
+            )
+            s = s.replace("loss.", f"{loss_name}.")
+        if hasattr(args, "transform"):
+            transform_name = type(args.transform).__name__.lower().replace("config", "")
+            s = s.replace("transform.", f"{transform_name}.")
         return s
 
-    s_all = ' '.join([f"{k}={fmt(v)}" for k,v in list(diff)])
-    s_short = f'{cls_name} {s}'
+    s_all = " ".join([f"{k}={fmt(v)}" for k, v in list(diff)])
+    s_short = f"{cls_name} {s}"
     s_all = rename(s_all)
     s_short = rename(s_short)
     logger.info(f"diff: {cls_name} {s_all}")
@@ -165,12 +189,19 @@ def get_display_name_from_args(args):
 
 def nice_ds_name(s):
     """make a nice name for the dataset"""
-    rm = ["genies_preferences-", "genies_", "genies-preferences-", "wassname/", "_expression_preferences"]
+    rm = [
+        "genies_preferences-",
+        "genies_",
+        "genies-preferences-",
+        "wassname/",
+        "_expression_preferences",
+    ]
     for r in rm:
         s = s.replace(r, "")
 
     # and remove "\[\:\d+\]" and replace with space
     import re
+
     s = re.sub(r"\[\:\d+\]", " ", s)
 
     # also remove -test or -data or -test-data or -train from end
@@ -180,17 +211,20 @@ def nice_ds_name(s):
 
     # replace
     rp = {
-        'medica-dpo-v2': 'cn-medical',
-        '-': '_',
+        "medica-dpo-v2": "cn-medical",
+        "-": "_",
     }
     for k, v in rp.items():
         s = s.replace(k, v)
 
     return s
 
+
 def safe_fn(s):
     """make a safe filename from any string."""
-    return "".join(c for c in s if c.isalpha() or c.isdigit() or c==' ' or c=="_" or c=="-").rstrip()
+    return "".join(
+        c for c in s if c.isalpha() or c.isdigit() or c == " " or c == "_" or c == "-"
+    ).rstrip()
 
 
 def train(args, trial: Optional[Trial] = None):
@@ -199,7 +233,7 @@ def train(args, trial: Optional[Trial] = None):
     torch.set_float32_matmul_precision("medium")
 
     # Set random seed for reproducibility
-    seed = getattr(args, 'seed', 42)  # Default to 42 if no seed specified
+    seed = getattr(args, "seed", 42)  # Default to 42 if no seed specified
     set_random_seed(seed)
 
     PL_MODEL = args._cls
@@ -213,7 +247,7 @@ def train(args, trial: Optional[Trial] = None):
     adapter_name = args._name
     # adapter_name = get_args_dict(args)
 
-    human_name = get_display_name_from_args(args) # f"{adapter_name}_{ds_name_train}"
+    human_name = get_display_name_from_args(args)  # f"{adapter_name}_{ds_name_train}"
 
     # we can set an experiment group name from env vars, otherwise it will just groupt by model and training ds
     group_name = f"{ds_name_train}-{model_name}"
@@ -232,28 +266,34 @@ def train(args, trial: Optional[Trial] = None):
     # save_dir
     timestamp = safe_fn(pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S"))
     root_dir = Path(__file__).parent.parent
-    model_fname = safe_fn("_".join(
-        [args.base_model.replace("/", "-"), adapter_name, ds_name_train]
-    ))
+    model_fname = safe_fn(
+        "_".join([args.base_model.replace("/", "-"), adapter_name, ds_name_train])
+    )
     save_dir = root_dir / "outputs" / group_name / f"{model_fname}" / f"{timestamp}"
     save_dir.mkdir(exist_ok=True, parents=True)
 
     config = asdict(args)
-    config.update({'post': {
-        'group_name': group_name,
-        'adapter_name': adapter_name,
-        'human_name': human_name,
-        'model_fname': model_fname,
-        'ds_name_train': ds_name_train,
-        'run_fname': run_fname,
-        'save_dir': str(save_dir),
-    'ts': ts,}})
+    config.update(
+        {
+            "post": {
+                "group_name": group_name,
+                "adapter_name": adapter_name,
+                "human_name": human_name,
+                "model_fname": model_fname,
+                "ds_name_train": ds_name_train,
+                "run_fname": run_fname,
+                "save_dir": str(save_dir),
+                "ts": ts,
+            }
+        }
+    )
     if args.wandb:
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
+            warnings.simplefilter("ignore")
 
-            pl_wandb_logger=WandbLogger(
-                name=run_fname, save_dir=save_dir,
+            pl_wandb_logger = WandbLogger(
+                name=run_fname,
+                save_dir=save_dir,
                 project="reprpo2",
                 # entity="wassname",
                 group=group_name,
@@ -267,15 +307,17 @@ def train(args, trial: Optional[Trial] = None):
         if wandb.run:
             wandb.config.update(config, allow_val_change=True)
             wandb.run.tags = tuple(wandb.run.tags) + (
-                f"ds:{ds_name_train}", 
-                f"m:{model_fname}", 
+                f"ds:{ds_name_train}",
+                f"m:{model_fname}",
                 f"i:{adapter_name}",
             )
             wandb.run.name = run_fname
             # wandb.run._group = group_name # can't change this
             wandb.run._quiet = True
 
-            logger.info(f"📌Using WANDB_GROUP= https://wandb.ai/wassname/reprpo2/groups/{wandb.run.group} 📎")
+            logger.info(
+                f"📌Using WANDB_GROUP= https://wandb.ai/wassname/reprpo2/groups/{wandb.run.group} 📎"
+            )
     # run = pl_wandb_logger._experiment
 
     # config
@@ -283,7 +325,7 @@ def train(args, trial: Optional[Trial] = None):
 
     # logging
     if args.verbose < 1:
-        logger.remove() # info by default
+        logger.remove()  # info by default
         logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
     log_file = save_dir / "log.txt"
     logger.add(
@@ -291,6 +333,9 @@ def train(args, trial: Optional[Trial] = None):
         level="INFO",
         format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}",
     )
+    logger.info(f"Logging to {log_file}")
+    logger.info(f"Using save_dir={save_dir}")
+    logger.info(f"Config: {json.dumps(config, indent=4)}")
 
     model, tokenizer = load_model(
         args.base_model,
@@ -310,12 +355,12 @@ def train(args, trial: Optional[Trial] = None):
         use_rslora=True,
         # use_dora=True,
         task_type="CAUSAL_LM",
-        target_modules=["q_proj", "v_proj"], # for qwen3
+        target_modules=["q_proj", "v_proj"] if "qwen3" in args.base_model.lower() else None,
         # target_modules="all-linear", #  QLoRA-style training
     )
     # if hasattr(PL_MODEL, 'setup_grad_proj'):
     #     peft_config = PL_MODEL.setup_grad_proj(peft_config)
-    
+
     model = get_peft_model(model, peft_config, adapter_name=adapter_name)
     print_trainable_parameters(model)
     if args.verbose > 1:
@@ -324,28 +369,32 @@ def train(args, trial: Optional[Trial] = None):
     if args.dev:
         # no cache
         import datasets
+
         datasets.disable_caching()
     tokenize_row = TokenizeRow(
         tokenizer,
         max_length=args.max_length,
         max_prompt_length=args.max_prompt_length,
     )
-    
+
     # ## Load training data
     ds_train = load_dataset("wassname/genies_preferences", name=args.dataset)
     ds_train_tok = ds_train.map(tokenize_row, batched=False)
 
     if args.verbose > 0:
-        pt = np.mean(ds_train_tok['train']['prompt_truncated'])
-        ct = np.mean(ds_train_tok['train']['chosen_truncated'])
-        if pt>0.2:
-            logger.error(f"Prompt truncated {pt:2.2%} in {args.dataset} with {args.max_prompt_length} max length")
-        if ct>0.2:
-            logger.error(f"Chosens truncated {ct:2.2%} in {args.dataset} with {args.max_length} max length")
+        pt = np.mean(ds_train_tok["train"]["prompt_truncated"])
+        ct = np.mean(ds_train_tok["train"]["chosen_truncated"])
+        if pt > 0.2:
+            logger.error(
+                f"Prompt truncated {pt:2.2%} in {args.dataset} with {args.max_prompt_length} max length"
+            )
+        if ct > 0.2:
+            logger.error(
+                f"Chosens truncated {ct:2.2%} in {args.dataset} with {args.max_length} max length"
+            )
         logger.info(f"Prompt truncated {pt:2.2%}")
         logger.info(f"Chosens truncated {ct:2.2%}")
 
-                     
         logger.info(
             f"Prompts truncated {np.mean(ds_train_tok['train']['prompt_truncated']):2.2%}"
         )
@@ -356,16 +405,16 @@ def train(args, trial: Optional[Trial] = None):
 
     def ds2dl(ds):
         return DataLoader(
-            ds
-            .select_columns(["chosen", "rejected", "chosen_mask", "rejected_mask"])
-            .with_format("torch"),
+            ds.select_columns(
+                ["chosen", "rejected", "chosen_mask", "rejected_mask"]
+            ).with_format("torch"),
             batch_size=args.batch_size,
         )
 
     dl_train = ds2dl(ds_train_tok["train"])
-    dl_val = ds2dl(ds_train_tok["test"]) # If we use stopping or reduce learnign on plateau, we need a validation set
-
-
+    dl_val = ds2dl(
+        ds_train_tok["test"]
+    )  # If we use stopping or reduce learnign on plateau, we need a validation set
 
     if args.verbose > 2:
         logger.info("QC one train batch (after pad/crop")
@@ -385,25 +434,20 @@ def train(args, trial: Optional[Trial] = None):
     # - https://lightning.ai/docs/pytorch/latest/notebooks/lightning_examples/text-transformers.html
     # - https://gist.github.com/wassname/e29d02b5026a531e13912cf768e6fdc8
 
-
     ideal_batch_size = max(
         16, args.batch_size
     )  # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
-    accumulate_grad_batches = np.ceil(
-        ideal_batch_size / args.batch_size
-    ).astype(int)
+    accumulate_grad_batches = np.ceil(ideal_batch_size / args.batch_size).astype(int)
     max_opt_steps = args.n_samples // (args.batch_size * accumulate_grad_batches)
-    if args.verbose>1:
+    if args.verbose > 1:
         logger.info(
             f"max optimiser steps {max_opt_steps}",
         )
         logger.info(
             f"accumulate_grad_batches {accumulate_grad_batches}",
         )
-        logger.info(
-            f"effective batch size {args.batch_size * accumulate_grad_batches}"
-        )
-        logger.info(f"epochs {args.n_samples/len(dl_train.dataset)}")
+        logger.info(f"effective batch size {args.batch_size * accumulate_grad_batches}")
+        logger.info(f"epochs {args.n_samples / len(dl_train.dataset)}")
 
     model_kwargs = {k: getattr(args, k) for k in args._model_keys}
     pl_model = PL_MODEL(
@@ -422,10 +466,9 @@ def train(args, trial: Optional[Trial] = None):
         # checkpoint_callback
     ]
     if trial is not None:
-        callbacks += [PyTorchLightningPruningCallback(trial, 'val/dpo_acc')]
-    if args.verbose>1:
+        callbacks += [PyTorchLightningPruningCallback(trial, "val/dpo_acc")]
+    if args.verbose > 1:
         callbacks += [GenCallback(every=max_opt_steps // 2 + 1)]
-
 
     model_kwargs = {k: getattr(args, k) for k in args._model_keys}
     loggers = [CSVLogger(name=run_fname, save_dir=save_dir, flush_logs_every_n_steps=5)]
@@ -442,7 +485,6 @@ def train(args, trial: Optional[Trial] = None):
         # mixed wont convert the modules weights, while bf16-true would
         precision="bf16-mixed" if torch.cuda.is_bf16_supported() else "f16-mixed",
         log_every_n_steps=1,
-        
         accumulate_grad_batches=accumulate_grad_batches,
         callbacks=callbacks,
         logger=loggers,
@@ -467,7 +509,7 @@ def train(args, trial: Optional[Trial] = None):
         model.save_pretrained(
             str(save_dir / "adapter"),
         )
-        logger.info(f"saved to {save_dir/'adapter'}")
+        logger.info(f"saved to {save_dir / 'adapter'}")
 
     # ### Hist
     if not args.dev:
@@ -485,7 +527,7 @@ def train(args, trial: Optional[Trial] = None):
     model.cuda()  # for some reason it ends up cpu
 
     if (not args.dev) and (args.verbose > 0):
-        N = args.verbose*2
+        N = args.verbose * 2
         df_gen = get_model_generations(model, tokenizer, N=N)
         display_gen(df_gen.head(N))
 
@@ -498,8 +540,8 @@ def train(args, trial: Optional[Trial] = None):
     N = args.eval_samples
     ds_names_eval = TRAINING_EXPERIMENTS[args.dataset]
     df_ds_names_eval = pd.DataFrame(ds_names_eval)
-    datasets = [load_eval_ds(name, N=N) for name in df_ds_names_eval['target']]
-    ds_names =  [ds2name(d) for d in datasets]
+    datasets = [load_eval_ds(name, N=N) for name in df_ds_names_eval["target"]]
+    ds_names = [ds2name(d) for d in datasets]
     logger.info(f"evaluating on datasets: {ds_names}")
 
     remove_warnings()
@@ -511,15 +553,20 @@ def train(args, trial: Optional[Trial] = None):
         batch_size=args.batch_size,
         verbose=args.verbose,
     )
-    df_res2.fillna({'adapter': 'base'}, inplace=True)
+    df_res2.fillna({"adapter": "base"}, inplace=True)
 
-    df_ds_names_eval['dataset'] = ds_names
-    df_ds_names_eval['ds_name_nice'] = df_ds_names_eval['type']+' ('+df_ds_names_eval['dataset'].map(nice_ds_name)+')'#+df_ds_names_eval['type_ds']#+'-'+df_res2['category_ds']
+    df_ds_names_eval["dataset"] = ds_names
+    df_ds_names_eval["ds_name_nice"] = (
+        df_ds_names_eval["type"]
+        + " ("
+        + df_ds_names_eval["dataset"].map(nice_ds_name)
+        + ")"
+    )  # +df_ds_names_eval['type_ds']#+'-'+df_res2['category_ds']
     df_res2 = df_res2.merge(
         df_ds_names_eval,
-        on='dataset',
-        suffixes=('', '_ds'),
-        how='left',
+        on="dataset",
+        suffixes=("", "_ds"),
+        how="left",
     )
 
     # save
@@ -536,7 +583,9 @@ def train(args, trial: Optional[Trial] = None):
         r2[k] = wandb.Table(dataframe=v.reset_index())
         # log first row too, so we can compare single value
         if wandb.run is not None:
-            wandb.log({f"res/{k}/{kk}": vv for kk, vv in v.iloc[0, :].to_dict().items()})
+            wandb.log(
+                {f"res/{k}/{kk}": vv for kk, vv in v.iloc[0, :].to_dict().items()}
+            )
         # also just log final metrics to wandb so we can view a group
 
     if wandb.run is not None:
@@ -558,7 +607,6 @@ def train(args, trial: Optional[Trial] = None):
     return rd
 
 
-
 def make_table(df_res2, args, human_name, base_model="", verbose=True):
     remove_warnings()
     adapter_name = df_res2[["adapter"]].query('adapter!="base"').values[0, 0]
@@ -572,16 +620,17 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
     df_res_ds.index.name = "adapter/ds"
 
     df_res_type = (
-        df_res2.groupby(["type", "adapter"], dropna=False)["correct"]
-        .mean()
-        .unstack()
-        .T
+        df_res2.groupby(["type", "adapter"], dropna=False)["correct"].mean().unstack().T
     )
     df_res_type.index.name = "adapter/distribution_shift"
 
-    # TODO order it so same_domain is first, unrelated is last
+    # TODO order it so in_domain is first, unrelated is last
     cols = df_res_type.columns
-    cols = ["same_domain"] + [c for c in cols if c not in ["same_domain", "unrelated"]] + ["unrelated"]
+    cols = (
+        ["in_domain"]
+        + [c for c in cols if c not in ["in_domain", "control"]]
+        + ["control"]
+    )
     df_res_type = df_res_type[cols]
 
     # this was getting ppx, logratio, nll (from _chosen_ppl/_rejected_ppl,etc)
@@ -589,7 +638,7 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
     # df_res = df_res[list(ds_alias.keys())]
 
     caption = f"""Table 1: Absolute accuracy after training with named adapter compared to base model `{base_model}` for various distribution shifts [N={args.eval_samples}]:\n"""
-    x = df_res2.groupby('type')['dataset'].agg(lambda s: set(s)).to_dict()
+    x = df_res2.groupby("type")["dataset"].agg(lambda s: set(s)).to_dict()
     for k, v in x.items():
         caption += f"- Shift: {k}, made up of:\n"
         for vv in v:
@@ -606,6 +655,5 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
         "acc": df_adapter_acc,
         # "acc_gain_vs_ref": df_final,
     }
-
 
     return wandb_info
