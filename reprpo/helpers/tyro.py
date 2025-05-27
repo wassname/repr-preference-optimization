@@ -1,3 +1,8 @@
+from pathlib import Path
+from loguru import logger
+import os
+import yaml
+from dataclasses import asdict, dataclass
 
 def apply_cfg_overrides(cfg, f=None):
     """
@@ -31,7 +36,7 @@ def flatten_dict(d, parent_key="", sep="."):
     return dict(items)
 
 
-def get_display_name_from_args(args):
+def get_display_name_from_args(args: dataclass):
     """extract a human readable name from non-default args"""
     defaults = type(args)()
     # TODO need to init subclasses

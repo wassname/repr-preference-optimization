@@ -4,7 +4,7 @@
 
 import json
 import os
-from pprint import pprint
+from pprint import pprint, pformat
 
 from .silence import remove_warnings, silence
 
@@ -96,13 +96,6 @@ def train(args, trial: Optional[Trial] = None):
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = safe_fn(os.environ.get("WANDB_GROUP") + "-" + group_name)
 
-    if args.verbose > 1:
-        logger.info("args")
-        pprint(args, compact=True)
-        # logger.info("model_kwargs", model_kwargs.keys())
-
-        logger.info(f"Using finetune_name={human_name}")
-
     run_fname = f"{adapter_name}/{ts}"  # short for wandb
 
     # save_dir
@@ -136,6 +129,13 @@ def train(args, trial: Optional[Trial] = None):
         pl_wandb_logger = init_wandb(
             args, str(save_dir), group_name, run_fname, project="reprpo2"
         )
+
+    if args.verbose > 1:
+        logger.info(f"args {pformat(args, compact=True)}")
+        
+        # logger.info("model_kwargs", model_kwargs.keys())
+
+        logger.info(f"Using finetune_name={human_name}")
     # run = pl_wandb_logger._experiment
 
     # config
@@ -373,7 +373,6 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
     )
     df_res_type.index.name = "adapter/distribution_shift"
 
-    # TODO order it so in_domain is first, unrelated is last
     cols = df_res_type.columns
     cols = (
         ["in_domain"]
@@ -381,10 +380,6 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
         + ["orthogonal"]
     )
     df_res_type = df_res_type[cols]
-
-    # this was getting ppx, logratio, nll (from _chosen_ppl/_rejected_ppl,etc)
-
-    # df_res = df_res[list(ds_alias.keys())]
 
     caption = f"""Table 1: Absolute accuracy after training with named adapter compared to base model `{base_model}` for various distribution shifts [N={args.eval_samples}]:\n"""
     x = df_res2.groupby("type")["dataset"].agg(lambda s: set(s)).to_dict()
