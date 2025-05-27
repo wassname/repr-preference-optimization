@@ -13,7 +13,6 @@ remove_warnings()
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-import warnings
 from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
@@ -34,7 +33,6 @@ from lightning.pytorch.callbacks import LearningRateMonitor
 
 # get a union class from the enum
 from lightning.pytorch.loggers.csv_logs import CSVLogger
-from lightning.pytorch.loggers.wandb import WandbLogger
 from loguru import logger
 from open_pref_eval.datasets import ds2name
 from open_pref_eval.evaluation import evaluate_model
@@ -44,17 +42,20 @@ from optuna.trial import Trial
 # ML
 from peft import LoraConfig, get_peft_model
 from peft.tuners import LoraConfig
-from torch.utils.data import DataLoader
 
-from reprpo.data.collate3 import TokenizeRow
+from reprpo.data.datamodule import PrefDataModule  # noqa: E402
 
-# Local
-from reprpo.data.eval_sets import TRAINING_EXPERIMENTS, load_eval_ds
-from reprpo.gen import display_gen, get_model_generations
-from reprpo.helpers.lightning_hist import read_metrics_csv
-from reprpo.helpers.pl_gen import GenCallback
-from reprpo.helpers.torch import clear_mem
-from reprpo.models.load import load_model, print_trainable_parameters
+# Local imports (noqa for import placement)
+from reprpo.data.eval_sets import TRAINING_EXPERIMENTS, load_eval_ds  # noqa: E402
+from reprpo.gen import display_gen, get_model_generations  # noqa: E402
+from reprpo.helpers.lightning_hist import read_metrics_csv  # noqa: E402
+from reprpo.helpers.pl_gen import GenCallback  # noqa: E402
+from reprpo.helpers.torch import clear_mem  # noqa: E402
+from reprpo.models.load import load_model, print_trainable_parameters  # noqa: E402
+from reprpo.helpers.logging import setup_logging  # centralized log setup
+from reprpo.helpers.wandb_utils import init_wandb  # noqa: E402
+from reprpo.helpers.tyro import get_display_name_from_args, apply_cfg_overrides
+from reprpo.data.util import nice_ds_name, safe_fn  # noqa: E402
 
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
 LOGURU_FORMAT = "<level>{message}</level>"
@@ -63,168 +64,9 @@ logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
 
 
 def set_random_seed(seed: int = 42):
-    """
-    Set random seed for reproducibility across all libraries.
-
-    Args:
-        seed: Random seed to use (default: 42)
-    """
-
-    # Set PyTorch Lightning seed
     pl.seed_everything(seed, workers=True)
     transformers.set_seed(seed)
-
     logger.info(f"Random seed set to {seed} for all libraries")
-
-
-def apply_cfg_overrides(cfg, f=None):
-    proj_root = Path(__file__).parent.parent
-    overrides = {}
-    if f is None:
-        f = os.environ.get("REPR_CONFIG")
-    if f is not None:
-        f = proj_root / f
-        logger.info(f"applying REPR_CONFIG {f}")
-        overrides = yaml.safe_load(open(f))
-        for k, v in overrides.items():
-            if hasattr(cfg, k):
-                setattr(cfg, k, v)
-            else:
-                logger.warning(f"Warning: {k} not found in training_args")
-        logger.info(f"loaded default config from {f}")
-    return cfg
-
-
-def flatten_dict(d, parent_key="", sep="."):
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
-
-
-def get_display_name_from_args(args):
-    """extract a human readable name from non-default args"""
-    defaults = type(args)()
-    # TODO need to init subclasses
-    for k, v in asdict(defaults).items():
-        if type(v).__name__ == "type":
-            setattr(defaults, k, v())
-
-    # collapse dict
-
-    def list2tuple(d: dict):
-        for k, v in d.items():
-            if isinstance(v, dict):
-                list2tuple(v)
-            elif isinstance(v, list):
-                d[k] = tuple(v)
-        return d
-
-    diff = set(list2tuple(flatten_dict(asdict(args))).items()) - set(
-        list2tuple(flatten_dict(asdict(defaults))).items()
-    )
-    diff = sorted(diff, key=lambda x: x[0])
-    blacklist = [
-        "eval_samples",
-        "base_model",
-        "dev",
-        "verbose",
-        "n_samples",
-        "batch_size",
-        "max_length",
-        "max_prompt_length",
-        "use_gradient_checkpointing",
-        "load_in_4bit",
-        "load_in_8bit",
-        "collection_keys_in",
-        "collection_keys_out",
-        "collection_hs",
-        "collection_layers",
-        "collection_layers_hs",
-        "save",
-        "wandb",
-    ]
-
-    def fmt(v):
-        if isinstance(v, float):
-            return f"{v:.2g}"
-        return v
-
-    s = " ".join([f"{k}={fmt(v)}" for k, v in list(diff) if k not in blacklist])
-
-    cls_name = type(args).__name__
-    if hasattr(args, "transform"):
-        cls_name += f"_{type(args.transform).__name__.replace('Transform', '')}"
-    if hasattr(args, "loss"):
-        cls_name += f"_{type(args.loss).__name__.replace('Loss', '')}"
-    cls_name = cls_name.replace("Config", "")
-
-    # also either state transform and loss, or replace the words
-    def rename(s):
-        if hasattr(args, "loss"):
-            loss_name = (
-                type(args.loss)
-                .__name__.lower()
-                .replace("config", "")
-                .replace("loss", "")
-            )
-            s = s.replace("loss.", f"{loss_name}.")
-        if hasattr(args, "transform"):
-            transform_name = type(args.transform).__name__.lower().replace("config", "")
-            s = s.replace("transform.", f"{transform_name}.")
-        return s
-
-    s_all = " ".join([f"{k}={fmt(v)}" for k, v in list(diff)])
-    s_short = f"{cls_name} {s}"
-    s_all = rename(s_all)
-    s_short = rename(s_short)
-    logger.info(f"diff: {cls_name} {s_all}")
-
-    return s_short
-
-
-def nice_ds_name(s):
-    """make a nice name for the dataset"""
-    rm = [
-        "genies_preferences-",
-        "genies_",
-        "genies-preferences-",
-        "wassname/",
-        "_expression_preferences",
-    ]
-    for r in rm:
-        s = s.replace(r, "")
-
-    # and remove "\[\:\d+\]" and replace with space
-    import re
-
-    s = re.sub(r"\[\:\d+\]", " ", s)
-
-    # also remove -test or -data or -test-data or -train from end
-    for suffix in ["-test", "-data", "-test-data", "-train"]:
-        if s.endswith(suffix):
-            s = s[: -len(suffix)]
-
-    # replace
-    rp = {
-        "medica-dpo-v2": "cn-medical",
-        "-": "_",
-    }
-    for k, v in rp.items():
-        s = s.replace(k, v)
-
-    return s
-
-
-def safe_fn(s):
-    """make a safe filename from any string."""
-    return "".join(
-        c for c in s if c.isalpha() or c.isdigit() or c == " " or c == "_" or c == "-"
-    ).rstrip()
 
 
 def train(args, trial: Optional[Trial] = None):
@@ -271,6 +113,9 @@ def train(args, trial: Optional[Trial] = None):
     )
     save_dir = root_dir / "outputs" / group_name / f"{model_fname}" / f"{timestamp}"
     save_dir.mkdir(exist_ok=True, parents=True)
+    # centralized logging setup
+    setup_logging(str(save_dir), level="DEBUG" if args.verbose > 1 else "INFO")
+    logger.info(f"Logging initialized at {save_dir}")
 
     config = asdict(args)
     config.update(
@@ -288,54 +133,13 @@ def train(args, trial: Optional[Trial] = None):
         }
     )
     if args.wandb:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-
-            pl_wandb_logger = WandbLogger(
-                name=run_fname,
-                save_dir=save_dir,
-                project="reprpo2",
-                # entity="wassname",
-                group=group_name,
-                config=config,
-                mode="disabled"
-                if os.environ.get("WANDB_MODE", None) == "disabled"
-                else "online",
-            )
-
-        # in case we already initialised it earlier, update it
-        if wandb.run:
-            wandb.config.update(config, allow_val_change=True)
-            wandb.run.tags = tuple(wandb.run.tags) + (
-                f"ds:{ds_name_train}",
-                f"m:{model_fname}",
-                f"i:{adapter_name}",
-            )
-            wandb.run.name = run_fname
-            # wandb.run._group = group_name # can't change this
-            wandb.run._quiet = True
-
-            logger.info(
-                f"📌Using WANDB_GROUP= https://wandb.ai/wassname/reprpo2/groups/{wandb.run.group} 📎"
-            )
+        pl_wandb_logger = init_wandb(
+            args, str(save_dir), group_name, run_fname, project="reprpo2"
+        )
     # run = pl_wandb_logger._experiment
 
     # config
     (save_dir / "config.json").open("w").write(json.dumps(config, indent=4))
-
-    # logging
-    if args.verbose < 1:
-        logger.remove()  # info by default
-        logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="WARNING")
-    log_file = save_dir / "log.txt"
-    logger.add(
-        log_file,
-        level="INFO",
-        format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}",
-    )
-    logger.info(f"Logging to {log_file}")
-    logger.info(f"Using save_dir={save_dir}")
-    logger.info(f"Config: {json.dumps(config, indent=4)}")
 
     model, tokenizer = load_model(
         args.base_model,
@@ -371,62 +175,9 @@ def train(args, trial: Optional[Trial] = None):
         import datasets
 
         datasets.disable_caching()
-    tokenize_row = TokenizeRow(
-        tokenizer,
-        max_length=args.max_length,
-        max_prompt_length=args.max_prompt_length,
-    )
 
-    # ## Load training data
-    ds_train = load_dataset("wassname/genies_preferences", name=args.dataset)
-    ds_train_tok = ds_train.map(tokenize_row, batched=False)
-
-    if args.verbose > 0:
-        pt = np.mean(ds_train_tok["train"]["prompt_truncated"])
-        ct = np.mean(ds_train_tok["train"]["chosen_truncated"])
-        if pt > 0.2:
-            logger.error(
-                f"Prompt truncated {pt:2.2%} in {args.dataset} with {args.max_prompt_length} max length"
-            )
-        if ct > 0.2:
-            logger.error(
-                f"Chosens truncated {ct:2.2%} in {args.dataset} with {args.max_length} max length"
-            )
-        logger.info(f"Prompt truncated {pt:2.2%}")
-        logger.info(f"Chosens truncated {ct:2.2%}")
-
-        logger.info(
-            f"Prompts truncated {np.mean(ds_train_tok['train']['prompt_truncated']):2.2%}"
-        )
-        logger.info(
-            f"Chosens truncated {np.mean(ds_train_tok['train']['chosen_truncated']):2.2%}"
-        )
-        # FIXME in genies they filter out thos that are larger than max legnth https://github.com/Joshuaclymer/GENIES/blob/22c8afb2551851fb3f2d1a2dcf70e7608908f6b1/src/api/data_classes.py#L171
-
-    def ds2dl(ds):
-        return DataLoader(
-            ds.select_columns(
-                ["chosen", "rejected", "chosen_mask", "rejected_mask"]
-            ).with_format("torch"),
-            batch_size=args.batch_size,
-        )
-
-    dl_train = ds2dl(ds_train_tok["train"])
-    dl_val = ds2dl(
-        ds_train_tok["test"]
-    )  # If we use stopping or reduce learnign on plateau, we need a validation set
-
-    if args.verbose > 2:
-        logger.info("QC one train batch (after pad/crop")
-        batch = next(iter(dl_train))
-        # logger.info(batch.keys())
-        # logger.info(tokenizer.decode(batch['prompt'][0]))
-        logger.info("===")
-        logger.info(f"{tokenizer.decode(batch['chosen'][0])}")
-        logger.info("---")
-        logger.info(f"{tokenizer.decode(batch['rejected'][0])}")
-        logger.info("===")
-
+    # setup data with PrefDataModule (replaces manual load/map/dl)
+    dm = PrefDataModule(args, tokenizer)
     if wandb.run is not None:
         logger.info(f"WANDB url = {wandb.run.get_url()}")
 
@@ -447,7 +198,7 @@ def train(args, trial: Optional[Trial] = None):
             f"accumulate_grad_batches {accumulate_grad_batches}",
         )
         logger.info(f"effective batch size {args.batch_size * accumulate_grad_batches}")
-        logger.info(f"epochs {args.n_samples / len(dl_train.dataset)}")
+        logger.info(f"epochs {args.n_samples / len(dm.train_dataloader().dataset)}")
 
     model_kwargs = {k: getattr(args, k) for k in args._model_keys}
     pl_model = PL_MODEL(
@@ -499,7 +250,7 @@ def train(args, trial: Optional[Trial] = None):
 
     # train
     try:
-        trainer.fit(pl_model, dl_train, dl_val)
+        trainer.fit(pl_model, datamodule=dm)
     except KeyboardInterrupt:
         logger.info("KeyboardInterrupt, stopping training")
         pass
@@ -521,7 +272,6 @@ def train(args, trial: Optional[Trial] = None):
         if args.verbose > 2:
             logger.info(df_hist)
 
-    # eval(model, tokenizer, args, save_dir, run, finetune_name, adapter_name)
 
     # ## Gen
     model.cuda()  # for some reason it ends up cpu
@@ -533,7 +283,6 @@ def train(args, trial: Optional[Trial] = None):
 
     logger.debug("eval")
 
-    ds_train_tok = dl_train = dl_val = None
     trainer = None
     # ## Eval
 
@@ -628,8 +377,8 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
     cols = df_res_type.columns
     cols = (
         ["in_domain"]
-        + [c for c in cols if c not in ["in_domain", "control"]]
-        + ["control"]
+        + [c for c in cols if c not in ["in_domain", "orthogonal"]]
+        + ["orthogonal"]
     )
     df_res_type = df_res_type[cols]
 

@@ -13,7 +13,7 @@ sweep:
     rm sweep.sh
     mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S)
     python scripts/sweep.py > sweep.sh
-    bash sweep.sh  2>&1 | tee sweep.txt
+    unbuffer bash sweep.sh  2>&1 | tee sweep.txt
 
 
 

@@ -5257,3 +5257,29 @@ bash sweep.sh  2>&1 | tee sweep.txt
 - [ ] analyst result
 - [ ] maybe send to modal.com for quick results
 - [ ] run it on h100 with bigger models and longer sequences
+
+
+| adapter/distribution_shift   |   in_domain |   cross_domain |   moral_transfer |   control |
+|:-----------------------------|------------:|---------------:|-----------------:|----------:|
+| none                         |       0.871 |          0.808 |            0.521 |     0.236 |
+| dpo                          |       0.947 |          0.803 |            0.526 |     0.25  |
+| base                         |       0.472 |          0.544 |            0.331 |     0.083 |
+| hs-SupressedHS-InnerPO       |       0.733 |          0.615 |            0.314 |     0.104 |
+Table 1: Absolute accuracy after training with named adapter compared to base model `Qwen3-0.6B` for various distribution shifts [N=None]:
+- Shift: control, made up of:
+        - `medical-dpo-v2-test-data`
+- Shift: cross_domain, made up of:
+        - `genies_preferences-change_my_view-test`
+        - `genies_preferences-cooking-test`
+        - `genies_preferences-math_fiction-test`
+- Shift: in_domain, made up of:
+        - `genies_preferences-math-test`
+- Shift: moral_transfer, made up of:
+        - `ethics_expression_preferences-utilitarianism-test`
+        - `ethics_expression_preferences-commonsense-test`
+        - `ethics_expression_preferences-deontology-test`
+        - `ethics_expression_preferences-justice-test`
+
+TODO:
+- [ ] What does DPO say none while adapter says base?
+- [ ] hmm control, is a confusing term, maybe unrelated, orthogonal, random?
