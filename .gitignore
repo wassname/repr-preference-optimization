@@ -1,3 +1,6 @@
+sweep.*
+outputs2/
+
 *.ckpt
 old/
 old2/

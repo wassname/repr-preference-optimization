@@ -10,7 +10,7 @@ from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
 
-def prefvec_loss(
+def innerpo_loss(
     pi_cho: ReprPOModelOutput,
     pi_rej: ReprPOModelOutput,
     ref_cho: ReprPOModelOutput,
@@ -139,9 +139,9 @@ def prefvec_loss(
 
 
 @dataclass
-class PrefVecLossConfig:
+class InnerPOLossConfig:
     """
-    moves the hidden states of the chosen and rejected hidden states along the preference vector, with some constraints:
+    moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     - keep text at least as coherent (relu(mode/base), (nll_loss)
     - keep the chosen answer at least prefered (relu(rej-cho) dpo_loss
     - punish movement orthogonal to the preference vector: by distance * β
@@ -175,4 +175,4 @@ class PrefVecLossConfig:
     """punish movement orthogonal to the preference vector: by angle"""
 
     def c(self, *args, **kwargs):
-        return prefvec_loss(*args, **kwargs, **asdict(self))
+        return innerpo_loss(*args, **kwargs, **asdict(self))

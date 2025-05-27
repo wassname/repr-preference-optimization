@@ -38,7 +38,7 @@ def get_regexp_layers(collection_keys: List[str], model):
     out = list(set(out))
     if len(out) == 0:
         raise ValueError(
-            f"Collection keys {collection_keys} do not match any layers in the model."
+            f"Collection keys {collection_keys} do not match any layers in the model. Layers found: {lyrs}"
         )
     return out
 

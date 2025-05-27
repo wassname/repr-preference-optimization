@@ -53,7 +53,7 @@ def peft_module_casting_to_bf16(model):
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.LayerNorm) or "norm" in name:
             module = module.to(torch.float32)
-            print(f"casting {name} to bf16")
+            logger.debug(f"casting {name} to bf16")
 
 
 def load_model(
@@ -72,8 +72,8 @@ def load_model(
         tokenizer.pad_token = tokenizer.eos_token
 
     if tokenizer.chat_template is None:
-        print(
-            f"Not default chat template for {model_name}. Setting to ALPACA_CHAT_TEMPLATE"
+        logger.warning(
+            f"No default chat template for {model_name}. Setting to ALPACA_CHAT_TEMPLATE"
         )
         tokenizer.chat_template = ALPACA_CHAT_TEMPLATE
 

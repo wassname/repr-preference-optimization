@@ -16,6 +16,7 @@ class ExperimentConfig:
     # TODO manually set the ood and rnd datasets, or else hard code sets
 
     verbose: int = 1
+    seed: int = 42
 
     dev: bool = False
     """fast run"""

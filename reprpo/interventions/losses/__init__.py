@@ -1,7 +1,7 @@
 import enum
 from typing import Union
 from .rank import RankLossConfig
-from .prefvec import PrefVecLossConfig
+from .innerpo import InnerPOLossConfig
 from .mse import MSELossConfig
 
 
@@ -11,7 +11,7 @@ class Losses(enum.Enum):
     and output loss, info
     """
 
-    prefvec = PrefVecLossConfig
+    prefvec = InnerPOLossConfig
     rank = RankLossConfig
     mse = MSELossConfig
 

@@ -22,6 +22,7 @@ class ReprPOConfig(ExperimentConfig):
 
     collection_keys_in: tuple = (
         ".*o_proj$",
+        ".*out_proj$",
         ".*down_proj$",
     )
     """keys to collect inputs from uses regexp e.g. '.*o_proj$'"""
@@ -30,6 +31,7 @@ class ReprPOConfig(ExperimentConfig):
         ".*q_proj$",
         ".*k_proj$",
         ".*v_proj$",
+        ".*qkv_proj$",
         ".*gate_proj$",
         ".*up_proj$",
     )

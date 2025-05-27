@@ -52,8 +52,10 @@ from typing import Optional, Tuple, Union
 from optuna.trial import Trial
 from optuna.integration import PyTorchLightningPruningCallback
 import yaml
+import transformers
 
 # Local
+from reprpo.data.eval_sets import TRAINING_EXPERIMENTS, load_eval_ds
 from reprpo.helpers.torch import clear_mem
 from reprpo.models.load import load_model, print_trainable_parameters
 
@@ -63,6 +65,21 @@ from loguru import logger
 LOGURU_FORMAT = "<level>{message}</level>"
 logger.remove()
 logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
+
+
+def set_random_seed(seed: int = 42):
+    """
+    Set random seed for reproducibility across all libraries.
+    
+    Args:
+        seed: Random seed to use (default: 42)
+    """
+    
+    # Set PyTorch Lightning seed
+    pl.seed_everything(seed, workers=True)    
+    transformers.set_seed(seed)
+
+    logger.info(f"Random seed set to {seed} for all libraries")
 
 
 def apply_cfg_overrides(cfg, f=None):
@@ -146,6 +163,31 @@ def get_display_name_from_args(args):
     return s_short
 
 
+def nice_ds_name(s):
+    """make a nice name for the dataset"""
+    rm = ["genies_preferences-", "genies_", "genies-preferences-", "wassname/", "_expression_preferences"]
+    for r in rm:
+        s = s.replace(r, "")
+
+    # and remove "\[\:\d+\]" and replace with space
+    import re
+    s = re.sub(r"\[\:\d+\]", " ", s)
+
+    # also remove -test or -data or -test-data or -train from end
+    for suffix in ["-test", "-data", "-test-data", "-train"]:
+        if s.endswith(suffix):
+            s = s[: -len(suffix)]
+
+    # replace
+    rp = {
+        'medica-dpo-v2': 'cn-medical',
+        '-': '_',
+    }
+    for k, v in rp.items():
+        s = s.replace(k, v)
+
+    return s
+
 def safe_fn(s):
     """make a safe filename from any string."""
     return "".join(c for c in s if c.isalpha() or c.isdigit() or c==' ' or c=="_" or c=="-").rstrip()
@@ -155,6 +197,10 @@ def train(args, trial: Optional[Trial] = None):
     if args.verbose < 1:
         silence()
     torch.set_float32_matmul_precision("medium")
+
+    # Set random seed for reproducibility
+    seed = getattr(args, 'seed', 42)  # Default to 42 if no seed specified
+    set_random_seed(seed)
 
     PL_MODEL = args._cls
 
@@ -285,7 +331,7 @@ def train(args, trial: Optional[Trial] = None):
         max_prompt_length=args.max_prompt_length,
     )
     
-    # ## Load data
+    # ## Load training data
     ds_train = load_dataset("wassname/genies_preferences", name=args.dataset)
     ds_train_tok = ds_train.map(tokenize_row, batched=False)
 
@@ -293,9 +339,9 @@ def train(args, trial: Optional[Trial] = None):
         pt = np.mean(ds_train_tok['train']['prompt_truncated'])
         ct = np.mean(ds_train_tok['train']['chosen_truncated'])
         if pt>0.2:
-            logger.error(f"Prompt truncated {pt:2.2%} in {args.dataset}")
+            logger.error(f"Prompt truncated {pt:2.2%} in {args.dataset} with {args.max_prompt_length} max length")
         if ct>0.2:
-            logger.error(f"Chosens truncated {ct:2.2%} in {args.dataset}")
+            logger.error(f"Chosens truncated {ct:2.2%} in {args.dataset} with {args.max_length} max length")
         logger.info(f"Prompt truncated {pt:2.2%}")
         logger.info(f"Chosens truncated {ct:2.2%}")
 
@@ -317,20 +363,9 @@ def train(args, trial: Optional[Trial] = None):
         )
 
     dl_train = ds2dl(ds_train_tok["train"])
+    dl_val = ds2dl(ds_train_tok["test"]) # If we use stopping or reduce learnign on plateau, we need a validation set
 
-    # do we want to use test or OOS as val? I choose OOS as I want to find the intervention that generalises the best (and then I validate on other distribution shifts to avoid cherry-picking/overfitting)
-    ds_val_oos = dist2datasets(
-        GENIES_ALL,
-        N=150,
-        source=[args.dataset],
-    )
-    if not len(ds_val_oos):
-        logger.error(f"{args.dataset} has no OOS dist found in GENIES")
-    logger.info(f"Using OOS dist `{ds_val_oos[0].info.config_name}`, for `{args.dataset}`")
-    ds_val_oos = ds_val_oos[0].map(tokenize_row, batched=False)
-    dl_val = ds2dl(
-        ds_val_oos
-    )
+
 
     if args.verbose > 2:
         logger.info("QC one train batch (after pad/crop")
@@ -415,7 +450,7 @@ def train(args, trial: Optional[Trial] = None):
         # too large, we will just save adapter afterwards
         enable_checkpointing=False,
         fast_dev_run=args.dev,
-        enable_progress_bar=args.verbose > 0,
+        enable_progress_bar=args.verbose > 1,
         enable_model_summary=args.verbose > 1,
     )
     trainer.logger.log_hyperparams(config)
@@ -441,7 +476,8 @@ def train(args, trial: Optional[Trial] = None):
             .bfill()
             .ffill()
         )
-        # logger.info(df_hist)
+        if args.verbose > 2:
+            logger.info(df_hist)
 
     # eval(model, tokenizer, args, save_dir, run, finetune_name, adapter_name)
 
@@ -449,55 +485,24 @@ def train(args, trial: Optional[Trial] = None):
     model.cuda()  # for some reason it ends up cpu
 
     if (not args.dev) and (args.verbose > 0):
-        N = args.verbose
+        N = args.verbose*2
         df_gen = get_model_generations(model, tokenizer, N=N)
         display_gen(df_gen.head(N))
 
     logger.debug("eval")
 
-    ds_val_oos = ds_train_tok = dl_train = dl_val = None
+    ds_train_tok = dl_train = dl_val = None
     trainer = None
     # ## Eval
-    # eval on ethics, GENIES, and our train dataset
+
     N = args.eval_samples
-    datasets = [
-        load_dataset_n(
-            "wassname/genies_preferences",
-            name=args.dataset,
-            split="train",
-            N=750 if N is None else min(N, 750),
-        ),
-        load_dataset_n(
-            "wassname/genies_preferences", name=args.dataset, split="test", N=N
-        ),
-    ]
-    # datasets += [
-    #     load_dataset_n("wassname/genies_preferences", name=name, split="test", N=N)
-    #     for name in [
-    #         # "math_make_questions",  #'truthful_qa',# 'wrong_arc', 
-    #         'ranking_logic',  # FIXME make sure we choose a dataset that is random and not in 
-    #         # 'math', 'sycophancy_mimicry'
-    #     ]
-    # ]
-
-    # get the out of distribution set(s)
-    datasets += dist2datasets(
-        GENIES_ALL,
-        # N=N, # can't cheap out on the main metric
-        source=[args.dataset],
-    )[:1]  # our hard OOS test
-
-    # our unrelated dataset
-    datasets += [
-        load_dataset_n('wassname/ethics_expression_preferences', name='justice', split='test', N=N)
-    ]
+    ds_names_eval = TRAINING_EXPERIMENTS[args.dataset]
+    df_ds_names_eval = pd.DataFrame(ds_names_eval)
+    datasets = [load_eval_ds(name, N=N) for name in df_ds_names_eval['target']]
     ds_names =  [ds2name(d) for d in datasets]
     logger.info(f"evaluating on datasets: {ds_names}")
+
     remove_warnings()
-
-    # # silent warnings
-    # with warnings.catch_warnings(action="ignore"):
-
     clear_mem()
     res, df_res2 = evaluate_model(
         model=model,
@@ -508,11 +513,14 @@ def train(args, trial: Optional[Trial] = None):
     )
     df_res2.fillna({'adapter': 'base'}, inplace=True)
 
-    ds_alias = OrderedDict(
-        list(zip(["train", "test", "oos", "rnd"], ds_names))
+    df_ds_names_eval['dataset'] = ds_names
+    df_ds_names_eval['ds_name_nice'] = df_ds_names_eval['type']+' ('+df_ds_names_eval['dataset'].map(nice_ds_name)+')'#+df_ds_names_eval['type_ds']#+'-'+df_res2['category_ds']
+    df_res2 = df_res2.merge(
+        df_ds_names_eval,
+        on='dataset',
+        suffixes=('', '_ds'),
+        how='left',
     )
-    ds_alias_rev = {v: k for k, v in ds_alias.items()}
-    df_res2['ds_alias'] = df_res2['dataset'].map(lambda x: ds_alias_rev.get(x, x))
 
     # save
     f = str(save_dir) + "/eval.parquet"
@@ -520,7 +528,7 @@ def train(args, trial: Optional[Trial] = None):
     logger.info(f"save_dir={save_dir}")
     # pprint(args, compact=1)
 
-    r = parse_eval(df_res2, ds_alias, human_name=human_name, base_model=model_name)
+    r = make_table(df_res2, args, human_name=human_name, base_model=model_name)
 
     # WANDB logging
     r2 = {}
@@ -550,155 +558,54 @@ def train(args, trial: Optional[Trial] = None):
     return rd
 
 
-def key_metrics(df_res2, adapter_name, ds_alias):
-    # adapter_name, finetune_name, ds_alias
-    ds_name_train = ds_alias["train"]
-    ds_name_test = ds_alias["test"]
-    ds_name_oos = ds_alias["oos"]
-    ds_name_rnd = ds_alias["rnd"]
 
-    # main metric, accuracy, how often the prefered answer
-    df_res = (
-        df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
-        .mean()
-        .unstack()
-        .T
-    )
-    acc_gain_vs_ref = df_res.loc[adapter_name] / df_res.loc["base"]
-
-    # metric: do we retain coherency? measured with perplexity
-    d = df_res2.set_index(['dataset', 'ds_i'])[['adapter', '_chosen_ppl']]
-    perplexity_reduction_vs_ref = (np.log(d.query('adapter == "base"')['_chosen_ppl']) - np.log(d.query('adapter == @adapter_name')['_chosen_ppl']))
-    perplexity_reduction_vs_ref = np.exp(perplexity_reduction_vs_ref.reset_index().groupby('dataset')['_chosen_ppl'].mean())
-
-    # metric: how much does the model follow the preference vs the rejected. log ratio difference or ρθ in GPO https://arxiv.org/html/2402.05749v2
-    df_res2["logratios"] = df_res2["_chosen_logps"] - df_res2["_rejected_logps"]
-    df_logratios = (
-        df_res2.groupby(["dataset", "adapter", "ds_i"])["logratios"].mean().unstack(0)
-    )
-    model_logratios = df_logratios.loc[adapter_name]
-    ref_logratios = df_logratios.loc["base"]
-    preference_logp_gain_vs_ref = (model_logratios - ref_logratios).mean()
-
-    def fmt(s):
-        return s.replace("genies_preferences-", "")
-
-    def generate_metrics(metric_name, datasets, values):
-        o = []
-        for split, ds_name in datasets.items():
-            if ds_name in values:
-                o.append([metric_name, split, fmt(ds_name_train), values[ds_name]])
-        return o
-
-    # Define the datasets
-    datasets = OrderedDict(
-        train=ds_name_train,
-        test=ds_name_test,
-        oos=ds_name_oos,
-        rnd=ds_name_rnd,
-    )
-
-    # Generate metrics for each category
-    acc_gain_vs_ref_metrics = generate_metrics(
-        "acc_gain_vs_ref", datasets, acc_gain_vs_ref
-    )
-    perplexity_reduction_vs_ref_metrics = generate_metrics(
-        "perplexity_reduction_vs_ref", datasets, perplexity_reduction_vs_ref
-    )
-    preference_logp_gain_vs_ref_metrics = generate_metrics(
-        "preference_logp_gain_vs_ref", datasets, preference_logp_gain_vs_ref
-    )
-
-    # Concatenate all metrics
-    all_metrics = (
-        acc_gain_vs_ref_metrics
-        + perplexity_reduction_vs_ref_metrics
-        + preference_logp_gain_vs_ref_metrics
-    )
-
-    # Create DataFrame
-    df_metrics = pd.DataFrame(
-        all_metrics, columns=["metric", "split", "dataset", "value"]
-    )[["metric", "split", "value", "dataset"]]
-    df_metrics = df_metrics.set_index(["metric", "split"])
-    df_metrics = df_metrics["value"].unstack()
-    df_metrics.index.name = f"{adapter_name} \\ dist shift"
-
-    # order cols
-    cols = df_metrics.columns.tolist()
-    first_cols = list(ds_alias.keys())
-    other_cols = [c for c in cols if c not in first_cols]
-    cols = first_cols + other_cols
-    return df_metrics[cols]
-
-
-def parse_eval(df_res2, ds_alias, human_name, base_model="", verbose=True):
+def make_table(df_res2, args, human_name, base_model="", verbose=True):
     remove_warnings()
     adapter_name = df_res2[["adapter"]].query('adapter!="base"').values[0, 0]
-    ds_alias_rev = {v:k for k,v in ds_alias.items()}
 
-    df_res = (
-        df_res2.groupby(["dataset", "adapter"], dropna=False)["correct"]
+    df_res_ds = (
+        df_res2.groupby(["ds_name_nice", "adapter"], dropna=False)["correct"]
         .mean()
         .unstack()
         .T
     )
-    df_res = df_res.rename(columns=ds_alias_rev)
+    df_res_ds.index.name = "adapter/ds"
 
-    df_metrics = key_metrics(df_res2, adapter_name, ds_alias)
+    df_res_type = (
+        df_res2.groupby(["type", "adapter"], dropna=False)["correct"]
+        .mean()
+        .unstack()
+        .T
+    )
+    df_res_type.index.name = "adapter/distribution_shift"
 
-    df_res2 = df_res[list(ds_alias.keys())]
-    df_res2.index.name = "adapter/ds"
+    # TODO order it so same_domain is first, unrelated is last
+    cols = df_res_type.columns
+    cols = ["same_domain"] + [c for c in cols if c not in ["same_domain", "unrelated"]] + ["unrelated"]
+    df_res_type = df_res_type[cols]
 
-    caption = f"""Table 1: Absolute accuracy  after training with named adapter on ds:`{ds_alias["train"]}` compared to base model `{base_model}` for various distribution shifts:\n"""
-    for k, v in ds_alias.items():
-        caption += f"\n- `{k}`: `{v}`"
-    logger.info(f"\n{df_res2.round(3).to_markdown()}")
+    # this was getting ppx, logratio, nll (from _chosen_ppl/_rejected_ppl,etc)
+
+    # df_res = df_res[list(ds_alias.keys())]
+
+    caption = f"""Table 1: Absolute accuracy after training with named adapter compared to base model `{base_model}` for various distribution shifts [N={args.eval_samples}]:\n"""
+    x = df_res2.groupby('type')['dataset'].agg(lambda s: set(s)).to_dict()
+    for k, v in x.items():
+        caption += f"- Shift: {k}, made up of:\n"
+        for vv in v:
+            caption += f"\t- `{vv}`\n"
+    logger.info(f"\n{df_res_type.round(3).to_markdown()}")
     logger.info(caption)
 
-    if verbose:
-        logger.info(f"\n{df_metrics.round(3).to_markdown()}")
-        logger.info("""Table 2: Key metrics (adapter over base model)\n""")
-        # TODO reorder cols
+    caption = f"""Table 2: Absolute accuracy after training with named adapter on ds:`{args.dataset}` compared to base model `{base_model}` for various distribution shifts [N={args.eval_samples}]:\n"""
+    logger.info(f"\n{df_res_ds.round(3).to_markdown()}")
+    logger.info(caption)
 
-    if verbose:
-        df_final = df_metrics.loc["acc_gain_vs_ref"].to_frame(human_name).T
-        df_final = df_final * 100 - 100  # percentage points
-        df_final.index.name = "acc_inc/eval_ds [pp]"
-        # TODO reorder cols
-        caption = f"""Table 3🥇: Accuracy increase (in percentage points) after training with named adapter on ds:`{ds_alias["train"]}` compared to base model `{base_model}` for various distribution shifts:"""
-        for k, v in ds_alias.items():
-            caption += f"\n- `{k}`: `{v}`"
-        if verbose:
-            print(f"\n{df_final.round(3).to_markdown()}")
-            logger.info(caption)
-
-
-    if not df_metrics['train']['acc_gain_vs_ref']>=1.0:
-        logger.error(f"Worse `acc` on training set for `{human_name}` (didn't learn?)")
-
-    # now one comparing acc train vs test in df_res2
-    if not df_res2['train'][adapter_name] >= df_res2['test'][adapter_name]:
-        logger.error(f"Underfitting (acc_test>ac_train) for `{human_name}` (train for longer?)")
-
-    # https://thegradient.pub/understanding-evaluation-metrics-for-language-models/
-    # this one often happens as dpo makes preference better and ppx worse
-    if not df_metrics['train']['perplexity_reduction_vs_ref']>=105:
-        # the ppx always gets worse with dpo, but usually only like 10
-        # FIXME I indented this to indicate incoherence but it doesn't seem to track
-        logger.warning(f"Worse `ppx` on training set for `{human_name}` (incoherent model? loss to high?)")
-    if not df_metrics['train']['preference_logp_gain_vs_ref']>=0:
-        logger.error(f"Worse `pref` on training set for `{human_name}` (didn't learn?)")
-
-    df_acc = df_res2.loc[adapter_name].to_frame(human_name).T
-    info = {
-        "acc": df_acc,
-        "acc_gain_vs_ref": df_final,
+    df_adapter_acc = df_res_ds.loc[adapter_name].to_frame(human_name).T
+    wandb_info = {
+        "acc": df_adapter_acc,
+        # "acc_gain_vs_ref": df_final,
     }
 
-    # format for wandb. just one row, one data type per table
-    for i in df_metrics.index:
-        info[i] = df_metrics.loc[i].to_frame(human_name).T
-        info[i].index.name = 'model' # # the index becomes a new col
 
-    return info
+    return wandb_info
