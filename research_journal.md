@@ -5262,18 +5262,22 @@ bash sweep.sh  2>&1 | tee sweep.txt
 | adapter/distribution_shift   |   in_domain |   cross_domain |   moral_transfer |   control |
 |:-----------------------------|------------:|---------------:|-----------------:|----------:|
 | none                         |       0.871 |          0.808 |            0.521 |     0.236 |
-| dpo                          |       0.947 |          0.803 |            0.526 |     0.25  |
+| hs-None-InnerPO              |       0.536 |          0.507 |            0.495 |     0.448 |
 | base                         |       0.472 |          0.544 |            0.331 |     0.083 |
 | hs-SupressedHS-InnerPO       |       0.733 |          0.615 |            0.314 |     0.104 |
+| hs-SupressedHS-InnerPO       |       0.904 |          0.682 |            0.489 |     0.327 |
+| dpo                          |       0.947 |          0.803 |            0.526 |     0.25  |
+| hs-ETHER-InnerPO             |       0.903 |          0.622 |            0.489 |     0.528 |
+
 Table 1: Absolute accuracy after training with named adapter compared to base model `Qwen3-0.6B` for various distribution shifts [N=None]:
+- Shift: in_domain, made up of:
+        - `genies_preferences-math-test`
 - Shift: control, made up of:
         - `medical-dpo-v2-test-data`
 - Shift: cross_domain, made up of:
         - `genies_preferences-change_my_view-test`
         - `genies_preferences-cooking-test`
         - `genies_preferences-math_fiction-test`
-- Shift: in_domain, made up of:
-        - `genies_preferences-math-test`
 - Shift: moral_transfer, made up of:
         - `ethics_expression_preferences-utilitarianism-test`
         - `ethics_expression_preferences-commonsense-test`
@@ -5283,3 +5287,29 @@ Table 1: Absolute accuracy after training with named adapter compared to base mo
 TODO:
 - [ ] What does DPO say none while adapter says base?
 - [ ] hmm control, is a confusing term, maybe unrelated, orthogonal, random?
+
+Check that for multiple models, the losses are balanced and learning
+ptheta up
+loss_reroute and loss_dpo
+
+# 2025-05-28 16:13:51
+
+Ok so some of my models are failing because the seperation loss if progressing but not DPO
+https://wandb.ai/wassname/reprpo2/runs/e7an4lrg?nw=nwuserwassname
+and loss_reroute is 100x larger
+so it seems like when I change models, I get way differen't losses... this is concerning
+this one worked well https://wandb.ai/wassname/reprpo2/runs/f2as5rut?nw=nwuserwassname
+train.py hs-supr-InnerPO --base_model=Qwen/Qwen3-0.6B --dataset=code --seed=1
+
+
+wait why does it have loss_dpo=F.logsigmoid(-dpo_ptheta)
+and dpo_loss is from the parent computing that info loss
+
+![alt text](img/research_journal-1748420500241-image.png)
+
+
+so only diff I see is that it worked on code, but unbalanced on alpaca mmlu
+maybe DPO has less to learn on alpaca mmlu, so I need some way to balance it, or make sure that reroute loss take 2nd priority or 1st equal with dpo loss
+
+
+https://claude.ai/chat/0a42ddc7-b00d-45b1-8898-612dd68af7da

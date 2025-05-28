@@ -54,8 +54,8 @@ from reprpo.helpers.torch import clear_mem  # noqa: E402
 from reprpo.models.load import load_model, print_trainable_parameters  # noqa: E402
 from reprpo.helpers.logging import setup_logging  # centralized log setup
 from reprpo.helpers.wandb_utils import init_wandb  # noqa: E402
-from reprpo.helpers.tyro import get_display_name_from_args, apply_cfg_overrides
-from reprpo.data.util import nice_ds_name, safe_fn  # noqa: E402
+from reprpo.helpers.tyro import get_display_name_from_args, apply_cfg_overrides_from_env_var
+from reprpo.data.util import nice_ds_name, safe_fn, sort_str  # noqa: E402
 
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
 LOGURU_FORMAT = "<level>{message}</level>"
@@ -178,6 +178,7 @@ def train(args, trial: Optional[Trial] = None):
 
     # setup data with PrefDataModule (replaces manual load/map/dl)
     dm = PrefDataModule(args, tokenizer)
+    dm.setup()
     if wandb.run is not None:
         logger.info(f"WANDB url = {wandb.run.get_url()}")
 
@@ -301,8 +302,13 @@ def train(args, trial: Optional[Trial] = None):
         datasets=datasets,
         batch_size=args.batch_size,
         verbose=args.verbose,
+        max_length=args.max_length*2,
+        max_prompt_length=args.max_prompt_length*2,
+        # num_workers=args.num_workers,
     )
     df_res2.fillna({"adapter": "base"}, inplace=True)
+    df_res2['seed'] = seed
+    df_res2['train'] = ds_name_train
 
     df_ds_names_eval["dataset"] = ds_names
     df_ds_names_eval["ds_name_nice"] = (
@@ -371,17 +377,21 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
     df_res_type = (
         df_res2.groupby(["type", "adapter"], dropna=False)["correct"].mean().unstack().T
     )
+
+    df_res_type.columns = sort_str(
+        df_res_type.columns.tolist(),
+        first=["in_domain"],
+        last=["orthogonal"],
+    )
+    df_res_type.index = sort_str(
+        df_res_type.index.tolist(),
+        first=["base", "none"],
+        last=[adapter_name],
+    )
     df_res_type.index.name = "adapter/distribution_shift"
 
-    cols = df_res_type.columns
-    cols = (
-        ["in_domain"]
-        + [c for c in cols if c not in ["in_domain", "orthogonal"]]
-        + ["orthogonal"]
-    )
-    df_res_type = df_res_type[cols]
 
-    caption = f"""Table 1: Absolute accuracy after training with named adapter compared to base model `{base_model}` for various distribution shifts [N={args.eval_samples}]:\n"""
+    caption = f"""Table 1: Absolute accuracy after training with named adapter on ds:`{args.dataset}` compared to base model `{base_model}` for various distribution shifts [N={args.eval_samples}]:\n"""
     x = df_res2.groupby("type")["dataset"].agg(lambda s: set(s)).to_dict()
     for k, v in x.items():
         caption += f"- Shift: {k}, made up of:\n"

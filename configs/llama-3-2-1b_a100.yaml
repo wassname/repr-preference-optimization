@@ -1,1 +1,15 @@
-batch_size: 32
+# Llama 3.2 1B optimized for A100 GPU
+base_model: unsloth/Llama-3.2-1B-Instruct
+batch_size: 8
+max_steps: 500
+max_epochs: 3
+lora_r: 16
+lora_alpha: 32
+layers: [8, 12, 16]
+lr: 1e-5
+beta: 0.1
+innerpo_alpha: 0.1
+accelerator: "gpu"
+devices: 1
+# A100 can handle larger batches and mixed precision
+precision: "16-mixed"

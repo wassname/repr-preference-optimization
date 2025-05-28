@@ -17,7 +17,7 @@ def setup_logging(save_dir: str, level: str = "INFO"):
     # remove default handler
     logger.remove()
     # console logger
-    logger.add(sys.stderr, level=level, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>")
+    logger.add(sys.stderr, level=level, format="<green>{time:YYMMDD HH:mm:ss}</green>|<level>{level: <4}</level>|<cyan>{name}</cyan>:<cyan>{function}</cyan>#<cyan>{line}</cyan> - <level>{message}</level>")
     # ensure save_dir exists
     Path(save_dir).mkdir(parents=True, exist_ok=True)
     # file logger with time and level

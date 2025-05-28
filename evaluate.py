@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from typing import List, Dict, Tuple, Optional
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from .data_loader import load_preference_dataset
+from data_loader import load_preference_dataset
 
 # Import open_pref_eval for comprehensive evaluation
 try:
@@ -44,8 +44,8 @@ def compute_preference_accuracy(model, ref_model, tokenizer, eval_data: List[Dic
             chosen_text = prompt + chosen
             rejected_text = prompt + rejected
             
-            chosen_tokens = tokenizer(chosen_text, return_tensors="pt", truncation=True, max_length=512)
-            rejected_tokens = tokenizer(rejected_text, return_tensors="pt", truncation=True, max_length=512)
+            chosen_tokens = tokenizer(chosen_text, return_tensors="pt", truncate=True, max_length=512)
+            rejected_tokens = tokenizer(rejected_text, return_tensors="pt", truncate=True, max_length=512)
             
             chosen_ids = chosen_tokens["input_ids"].to(device)
             rejected_ids = rejected_tokens["input_ids"].to(device)

@@ -37,3 +37,19 @@ def nice_ds_name(s):
         s = s.replace(k, v)
 
     return s
+
+
+def sort_str(cols, first:list=[], last:list=[], sort_middle=False) -> list:
+    """
+    Util function for sorting a list of strings, making sure some items appear first and last and the rest sorted in the middle.
+
+    Usage:
+    >>> sort_str(['banana', 'apple', 'cherry', 'date', 'cantelope'], ['apple', 'banana'], ['date'])
+    ['apple', 'banana',  'cantelope', 'cherry', 'date']
+    """
+    middle = [x for x in cols if (x not in first) and (x not in last)]
+    if sort_middle:
+        middle.sort()
+    first = [x for x in first if x in cols]
+    last = [x for x in last if x in cols]
+    return first + middle + last

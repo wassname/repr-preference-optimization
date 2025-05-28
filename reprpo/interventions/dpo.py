@@ -43,13 +43,13 @@ def compute_dpo_loss(
 
     # .mean() to average over the samples in the batch
     return losses.mean(), dict(
-        chosen_rewards=chosen_rewards.mean(),
-        rejected_rewards=rejected_rewards.mean(),
-        dpo_loss=losses.mean(),
-        model_logratios=model_logratios.mean(),
-        reference_logratios=reference_logratios.mean(),
-        logits=logits.mean(),
-        dpo_acc=dpo_acc.mean(),
+        _chosen_rewards=chosen_rewards.mean(),
+        _rejected_rewards=rejected_rewards.mean(),
+        _dpo_loss=losses.mean(),
+        _model_logratios=model_logratios.mean(),
+        _reference_logratios=reference_logratios.mean(),
+        _logits=logits.mean(),
+        _dpo_acc=dpo_acc.mean(),
     )
 
 

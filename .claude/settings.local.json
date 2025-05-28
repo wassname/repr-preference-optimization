@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(mv:*)",
+      "Bash(python:*)",
+      "Bash(touch:*)",
+      "Bash(timeout 60 python -m reprpo.simple_cli:*)",
+      "Bash(timeout * python -m reprpo.simple_cli:*)"
+    ],
+    "deny": []
+  }
+}

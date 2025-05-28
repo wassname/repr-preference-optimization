@@ -1,59 +1,81 @@
-# Inner Preference Optimization (InnerPO)
+# InnerPO - Simplified
 
-Idea:
+**Radically simplified implementation of Inner Preference Optimization (InnerPO)**
 
-> More general alignment is achieved on thoughts (internal states) rather than actions (output probabilities). 
+## Quick Start
 
+```bash
+# Install dependencies
+just install
 
-#### Hypothesis Formulation
+# Test a method quickly
+just test-method dpo
+just test-method innerpo-supr
 
-As we do not know how an LLM stores it's internal states, these experiments represent hypotheses about how best to represent and intervene in an transformer's internal states.
+# Run full experiments
+just sweep
+```
 
-What's our technical hypothesis?
+## What is InnerPO?
 
-> Hypothesis: If we optimize internal representations associated with behavioral preferences (ours), the model will generalize further to new tasks than if we optimize the output preferences directly (DPO).
+InnerPO aligns the internal hidden states of language models instead of just the outputs, hypothesizing this leads to better out-of-distribution generalization.
 
-#### Thought Experiment
+**Core Idea**: Align thoughts (internal states) rather than just actions (output probabilities).
 
-To see why this might be true, let's conduct a short thought experiment. Imagine you are hiring a new engineer, and have two candidates Alice and Bob.
+## Methods
 
-- **Alice** aligns closely with core organizational values such as truthfulness, openness, and diligence. She seems to genuinely believes in these principles in a way that would be hard to fake.
-- **Bob**, on the other hand, performs identically to Alice at work. However, his actions are not driven by genuine belief in these values but rather out of professionalism and a desire to do his job.
+- **`dpo`**: Baseline Direct Preference Optimization
+- **`innerpo-none`**: InnerPO with no hidden state transform
+- **`innerpo-supr`**: InnerPO with suppressed hidden states (remove mean)
+- **`innerpo-ether`**: InnerPO with ETHER transform (orthogonal projection)
 
-Both of them will do the job fine. But if the job changes, who is likely to do what you want? Many people would expect Alice to extend her principles to this new situation, which would align better with you.
+## Usage
 
-#### Testing Methodology
+**Clean hierarchical CLI with tyro:**
 
-Alignment needs to work out of distribution (or at least fail gracefully after capabilities) so we test how well alignment works out of distribution. Specifically, we compare a baseline method - Direct Policy Optimization (DPO) - with significant distribution shifts, as defined in the [GENIES paper](https://github.com/Joshuaclymer/GENIES).
+### Quick Start
+```bash
+# Install dependencies
+just install
 
-Status: Work in Progress
+# See examples
+just examples
 
+# Basic DPO training
+just run dpo
 
-#### Interventions: "How can we align hidden states instead of outputs?"
-Our interventions are meant to answer, "How can we align hidden states instead of outputs? And if we do, will they generalize out of distribution better than a baseline method?"
+# InnerPO with SUPR transform
+just run innerpo --method.transform=supr
 
-Setup:
-- Given a preference pair, we have a chosen answer and a rejected answer (e.g. Q: 2+2, chosen: 4, rejected: 2).
-- We have a base model, and we intervene by adding a LoRA adapter, then fine-tuning it on some preference dataset (e.g., [MATH](https://github.com/hendrycks/math)).
-- For each layer, we have activations that correspond with the chosen answer `hs_cho` and `hs_rej`. We have the same for the base model `hs_cho_ref` and `hs_rej_ref`. Here `hs` is short for hidden states and is used to refer to the activations, `ref` indicates the base model, which provides reference activations.
-- In the activation space, using the base model, we define a preference vector `pref_dir = hs_cho_ref - hs_rej_ref`.
+# Quick test (tiny model)
+just test dpo
+```
 
-Interventions:
-   - Gradient-based: These modify the gradient while fine-tuning on DPO
-      - What if we clip the gradient to `pref_dir` before applying it to the weights? (while performing DPO)
-      - What if we clip the gradient in `pref_dir` before backpropagating?
-  - Loss based:
-     - MSE: What if we make the representation of the rejected text look like the representation of the chosen states, while keeping the chosen states the same?
-       - `loss = MSE(hs_rej, hs_cho_ref.detach()) + MSE(hs_cho, hs_cho_ref.detach())` similar to the [Circuit Breakers paper](https://github.com/GraySwanAI/circuit-breakers).
-     - PrefVec: What if we make the representations move in the preference direction, within a trust region?
-       - `loss = ((hs_cho - hs_rej) / (hs_cho_ref - hs_rej_ref)) / |pref_div|`
-     - Rank: What if we use softmax to treat the hidden states as a distribution, then use KL loss to ensure the rejected hs distribution look like the chosen hs distribution
-        - `loss = KL(softmax(hs_ref), softmax(hs_cho_ref))`.
-  - Transforms: The hidden states are dominated by the embedding and unembedding information, but we want to target the internal steering information. So we modify the above interventions by adding a transformation to the hidden states, in the hope that it will provide a more natural representation of the hidden states:
-     - SVD
-     - Orthogonal
-     - [Householder rotation](https://arxiv.org/html/2405.17484v2)
-     - [ETHER](https://arxiv.org/html/2405.20271v1)
+### Advanced Configuration
+```bash
+# Custom model and settings
+python cli.py train innerpo \
+  --method.transform=ether \
+  --model.base_model=unsloth/Llama-3.2-1B-Instruct \
+  --model.lora_r=32 \
+  --data.dataset=code \
+  --data.batch_size=8 \
+  --training.lr=5e-5
+
+# Use config preset
+python cli.py train dpo --config=configs/llama-3-2-1b_a100.yaml
+```
+
+### Evaluation with Distribution Shift Analysis
+```bash
+# Comprehensive evaluation using open_pref_eval
+just eval ./outputs/innerpo-supr_math_seed1
+
+# Specify training dataset for proper shift analysis
+python cli.py eval ./outputs/model \
+  --eval.train_dataset=math \
+  --eval.ref_model=Qwen/Qwen3-0.6B
+```
 
 ### Results so far
 

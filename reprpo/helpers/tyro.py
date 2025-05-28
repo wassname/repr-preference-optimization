@@ -4,7 +4,7 @@ import os
 import yaml
 from dataclasses import asdict, dataclass
 
-def apply_cfg_overrides(cfg, f=None):
+def apply_cfg_overrides_from_env_var(cfg, f=None):
     """
     Load a yaml, and override the tyro cfg
     """

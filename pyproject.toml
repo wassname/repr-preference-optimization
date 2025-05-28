@@ -1,51 +1,36 @@
 [project]
-name = "reprpo"
+name = "innerpo"
 version = "0.1.0"
-description = ""
+description = "Inner Preference Optimization - Aligning hidden states for better generalization"
 readme = "README.md"
 requires-python = ">=3.10"
-urls = { Repository = "https://github.com/wassname/repr-preference-optimization" }
+urls = { Repository = "https://github.com/wassname/innerpo" }
 
 dependencies = [
-    # tensor-parallel
-    "accelerate>=1.3.0",
-    "bitsandbytes>=0.45.0",
-    "datasets>=3.3.0",
-    "einops>=0.8.1",
-    "jaxtyping>=0.2.36",
-    "loguru>=0.7.3",
-    "numpy>=2.1.3",
-    "pandas>=2.2",
-    "tabulate>=0.9",
-    "torch-optimi>=0.2.1",
-    "torch>=2.5",
-    "tqdm>=4.67",
-    "transformers>=4.51.0",
-    "wandb>=0.18.7",
-    #"trl>=0.17.0",
-    "omegaconf>=2.3.0",
-    "strictyaml>=1.7.3",
-    "matplotlib>=3.10.3",
-    "seaborn>=0.13.2",
-    "toml>=0.10.2",
-    "pydantic>=2.11.4",
-    "lightning>=2.4.0",
-    "baukit",
-    "open-pref-eval",
-    "peft>=0.15.2",
-    "optuna>=4.3.0",
-    "optuna-integration[pytorch-lightning]>=4.3.0",
-    "tyro>=0.9.21",
+    # Core ML libraries
+    "torch>=2.0",
+    "transformers>=4.30.0",
+    "peft>=0.4.0",
+    "datasets>=2.0.0",
+    
+    # Utilities
+    "numpy>=1.20.0",
+    "tqdm>=4.60.0",
+    "wandb>=0.15.0",
+    
+    # Optional acceleration
+    "accelerate>=0.20.0",
+    "bitsandbytes>=0.40.0",
 ]
 
 [dependency-groups]
 dev = [
-    "ipykernel>=6.29.5",
-    "ipywidgets>=8.1.5",
-    "nbstripout>=0.8.1",
-    "pytest>=8.0.2",
-    "ruff>=0.8.3",
-    "pytest-beartype>=0.1.0",
+    "jupyter>=1.0.0",
+    "pytest>=7.0.0",
+    "ruff>=0.1.0",
+]
+lightning = [
+    "lightning>=2.0.0",
 ]
 
 
