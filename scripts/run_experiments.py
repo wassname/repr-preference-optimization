@@ -1,7 +1,7 @@
 """run over all experimental configs."""
 from reprpo.experiments import experiment_configs
 import torch
-from reprpo.training import train, apply_cfg_overrides
+from reprpo.training import train, apply_cfg_overrides_from_env_var
 import os
 import gc
 from loguru import logger
@@ -33,7 +33,7 @@ print(" ".join(keys))  # Print keys as a comma-separated string
 # random.shuffle(keys)
 for i, name in enumerate(keys):
     training_args = experiment_configs[name][1]
-    training_args = apply_cfg_overrides(training_args)
+    training_args = apply_cfg_overrides_from_env_var(training_args)
     print(f"Running experiment {i} {name}")
 
     if i == 0:
@@ -65,7 +65,7 @@ for ds in datasets:
     os.environ["WANDB_GROUP"] = f"exp-{timestamp}-{ds}"
     for i, (name, (_, training_args)) in enumerate(main_experiments):
         print(f"Running experiment {i} {name} on {ds}")
-        training_args = apply_cfg_overrides(training_args)
+        training_args = apply_cfg_overrides_from_env_var(training_args)
         training_args.dataset = ds
         if i == 0:
             training_args.verbose = 3

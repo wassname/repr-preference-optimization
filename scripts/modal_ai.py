@@ -1,4 +1,8 @@
 import modal
+
+
+
+
 cuda_version = "12.6.0"  # should be no greater than host CUDA version
 flavor = "devel"  #  includes full CUDA toolkit
 operating_sys = "ubuntu22.04"
@@ -26,6 +30,8 @@ volume = modal.Volume.from_name(
 )
 MODEL_DIR = "/root/repr-preference-optimization/outputs"
 
+app = modal.App()
+
 @app.function(gpu="A100-80GB", 
               volumes={MODEL_DIR: volume},  # stores fine-tuned model
               image=image, timeout=60 * 60,
@@ -34,8 +40,17 @@ MODEL_DIR = "/root/repr-preference-optimization/outputs"
 def run_flash_attn():
     import torch
     from flash_attn import flash_attn_func
+    import tyro
+    from repr_preference_optimization.train import train
+    from reprpo.training import train, apply_cfg_overrides_from_env_var
+    from reprpo.experiments import experiment_configs
 
-    train()
+    training_args = tyro.extras.overridable_config_cli(experiment_configs)
+
+    # apply H100, and model specific overrides
+    training_args = apply_cfg_overrides_from_env_var(training_args, f="../repr_config.yaml")
+
+    train(training_args)
     # The trained model information has been output to the volume mounted at `MODEL_DIR`.
     # To persist this data for use in our web app, we 'commit' the changes
     # to the volume.
