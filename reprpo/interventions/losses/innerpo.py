@@ -44,9 +44,9 @@ def innerpo_loss(
         ref_rej.hs = transforms(ref_rej.hs)
 
     def preproc_hs(o, k: str):
-        hs = o.hs[k]#.softmax(-1)
+        hs = o.hs[k].log_softmax(-1)
+        # hs = F.normalize(hs, p=2, dim=-1)    # <<< unit length in hidden-state space
         hs = reduce_tokens_w_attention(hs, o.mask)
-        hs = F.normalize(hs, p=2, dim=-1)    # <<< unit length in hidden-state space
         return hs
 
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, "b"]]:
@@ -60,8 +60,12 @@ def innerpo_loss(
 
         # model preference direction
         pref_dir_pi = hs_pi_cho - hs_pi_rej
+
         # shift relative to reference
         delta = pref_dir_pi - pref_dir_ref
+
+        # Could then use logsigmoid like DPO
+        # loss = -F.logsigmoid(β * delta.sum(dim=-1)).mean()
 
         # magnitude shift
         # mag_shift = delta.norm(dim=-1, keepdim=True)  # how far we moved
@@ -72,7 +76,7 @@ def innerpo_loss(
         proj_vec = (delta * unit).sum(dim=-1, keepdim=True) * unit
         orth_vec = delta - proj_vec
 
-        rel_proj = proj_vec.norm(dim=-1) / (ref_mag + eps)    # ∈ [0,∞)
+        rel_proj = proj_vec.norm(dim=-1) / (ref_mag + eps)    # distance ratios ∈ [0,∞)
         rel_orth = orth_vec.norm(dim=-1) / (ref_mag + eps)
 
         # normalize into bounded ratios in [0,1]
@@ -86,6 +90,10 @@ def innerpo_loss(
         # Try to put those in the same domain as DPO
         loss_logsigmoid_proj = -F.logsigmoid(β * torch.abs(log_rel_pref)).mean()
         loss_logsigmoid_orth = -F.logsigmoid(β * (-log_rel_orth)).mean()
+
+        # # Try to put those in the same domain as DPO
+        # loss_logsigmoid_proj = -F.logsigmoid(β * torch.abs(rel_proj)).mean()
+        # loss_logsigmoid_orth = -F.logsigmoid(β * -rel_orth).mean()
 
         return dict(
             loss_logsigmoid_orth=loss_logsigmoid_orth,
@@ -177,16 +185,16 @@ class InnerPOLossConfig:
     use_dpo_loss: bool = True
     """punish model if rejected completion is more likely than the chosen"""
 
-    use_orth_loss: bool = True
+    use_orth_loss: bool = False
     """punish movement orthogonal to the preference vector: by distance"""
 
-    use_proj_loss: bool = False
+    use_proj_loss: bool = True
     """encourage chosen to be more in the pref dir than rejected"""
 
     use_proj_abs_loss: bool = True
     """use absolute value of the projection loss, otherwise use relative"""
 
-    use_logsigmoid: bool = False
+    use_logsigmoid: bool = True
 
     use_policy_weights: bool = False
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
