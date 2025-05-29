@@ -5328,3 +5328,6 @@ Start again lol
 
 
 TODO I also need a loss mask
+
+
+I did something to break the grad?

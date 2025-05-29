@@ -33,10 +33,11 @@ def compute_logprobs(logits, labels, selection_mask=None, type="ipo"):
         input=log_probs, dim=-1, index=labels.unsqueeze(-1)
     ).squeeze(-1)
 
+
     if selection_mask is not None:
         mask = selection_mask[:, 1:].clone()
-
         # Apply the mask to filter out padding tokens
+        # selected_log_probs[~mask] = 0
         selected_log_probs = selected_log_probs * mask
 
         if type == "dpo":
@@ -51,7 +52,7 @@ def compute_logprobs(logits, labels, selection_mask=None, type="ipo"):
     else:
         output["label_logp"] = selected_log_probs.mean(-1)
 
-    selected_log_probs[~mask] = 0
+    
     
 
     # return a dict and also compute [WPO](https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L1240)

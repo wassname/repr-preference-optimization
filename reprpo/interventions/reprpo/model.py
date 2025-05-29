@@ -91,7 +91,7 @@ def reprpo_forward_baukit(
             ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
 
     if prompt_mask is not None:
-        attn_mask = attn_mask * prompt_mask
+        attn_mask = attn_mask * ~prompt_mask
 
     out_lp = compute_logprobs(
         logits=outs.logits, labels=input_ids, selection_mask=attn_mask
@@ -115,8 +115,6 @@ def parse_collection_layers(
     # Convert string input to a list 
     collection_layers = collection_layers.strip()
     if collection_layers.startswith("range(") and collection_layers.endswith(")"):
-        # FIXME no we need to turn float to ints first?
-        # Safely evaluate the range string
         method = range
         collection_layers = collection_layers.split("(", 1)[1].rstrip(")")
     else:
@@ -155,7 +153,7 @@ def parse_collection_layers(
     # remove duplicates while keeping order
     collection_layers = list(dict.fromkeys(collection_layers))
 
-    # FIXME unit tests range(0.3, -2, 2), "0.5,-2,-1" "1,2,-1"
+    # TODO unit tests range(0.3, -2, 2), "0.5,-2,-1" "1,2,-1"
     return collection_layers
 
 class PL_REPRPO_MODEL(PL_MODEL):

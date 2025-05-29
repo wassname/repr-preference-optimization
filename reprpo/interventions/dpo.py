@@ -58,7 +58,7 @@ def compute_dpo_loss(
     )
 
 
-def compute_dpo_loss_batch(batch, model, β=0.1):
+def compute_dpo_loss_batch(batch, model, β=0.1, use_policy_weights=False):
     """Compute the DPO loss on an input batch"""
 
     model_kwargs = dict(
@@ -73,43 +73,51 @@ def compute_dpo_loss_batch(batch, model, β=0.1):
             ref_cho = model(
                 batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs
             )
-            ref_chosen_log_probas = compute_logprobs(
+            ref_cho_logp = compute_logprobs(
                 logits=ref_cho.logits,
                 labels=batch["chosen"],
-                selection_mask=batch["chosen_mask"] * batch['prompt_mask'],
+                selection_mask=batch["chosen_mask"] * ~batch['prompt_mask'],
             )
             ref_rej = model(
                 batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
             )
-            ref_rejected_log_probas = compute_logprobs(
+            ref_rej_logp = compute_logprobs(
                 logits=ref_rej.logits,
                 labels=batch["rejected"],
-                selection_mask=batch["rejected_mask"]*batch['prompt_mask'],
+                selection_mask=batch["rejected_mask"]*~batch['prompt_mask'],
             )
 
     model.train()
     pi_cho = model(batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs)
-    policy_chosen_log_probas = compute_logprobs(
+    pi_cho_logp = compute_logprobs(
         logits=pi_cho.logits,
         labels=batch["chosen"],
-        selection_mask=batch["chosen_mask"]*batch['prompt_mask'],
+        selection_mask=batch["chosen_mask"] * ~batch['prompt_mask'],
     )
     pi_rej = model(
         batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
     )
-    policy_rejected_log_probas = compute_logprobs(
+    pi_rej_logp = compute_logprobs(
         logits=pi_rej.logits,
         labels=batch["rejected"],
-        selection_mask=batch["rejected_mask"]*batch['prompt_mask'],
+        selection_mask=batch["rejected_mask"] * ~batch['prompt_mask'],
     )
 
     loss, info = compute_dpo_loss(
-        model_chosen_logprobs=policy_chosen_log_probas,
-        model_rejected_logprobs=policy_rejected_log_probas,
-        reference_chosen_logprobs=ref_chosen_log_probas,
-        reference_rejected_logprobs=ref_rejected_log_probas,
+        model_chosen_logprobs=pi_cho_logp['label_logp'],
+        model_rejected_logprobs=pi_rej_logp['label_logp'],
+        reference_chosen_logprobs=ref_cho_logp['label_logp'],
+        reference_rejected_logprobs=ref_rej_logp['label_logp'],
         β=β,
     )
+
+    if use_policy_weights:
+        policy_weights = torch.clamp(
+            pi_cho_logp['policy_weights'] + pi_rej_logp['policy_weights'],
+            max=1
+        )
+
+        loss = loss * policy_weights
 
     # def cosine_on_keys(hs1, hs2):
     #     hs1 = collect_hs(hs1)
@@ -133,7 +141,7 @@ def compute_dpo_loss_batch(batch, model, β=0.1):
 
 class PL_DPO_MODEL(PL_MODEL):
     def _loss_fn(self, batch, model):
-        return compute_dpo_loss_batch(batch, model)
+        return compute_dpo_loss_batch(batch, model, use_policy_weights=self.use_policy_weights)
 
 
 @dataclass
@@ -145,6 +153,9 @@ class DPOConfig(ExperimentConfig):
     _cls = PL_DPO_MODEL
 
     _model_keys = ["lr"]
+
+    use_policy_weights: bool = False
+    """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
 
     @property
     def _name(self):

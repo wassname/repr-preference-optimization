@@ -31,6 +31,7 @@ def innerpo_loss(
     use_proj_loss=False,
     use_proj_abs_loss=True,
     use_logsigmoid=True,
+    use_policy_weights: bool = False,
 ):
     """
     movement of hs along the hs pref vector.
@@ -115,6 +116,7 @@ def innerpo_loss(
     )
     dpo_prob  = torch.sigmoid(β * dpo_ptheta)
     loss_dpo_prob_term  = (1.0 - dpo_prob)
+    loss_logsigmoid_dpo = -F.logsigmoid(β * (1.0 - dpo_prob)).mean() 
 
     # collect and average whatever terms are enabled
     terms = []
@@ -128,11 +130,17 @@ def innerpo_loss(
         terms.append(loss_dpo_prob_term)
     loss = torch.stack(terms, dim=0).mean()
 
-    loss_logsigmoid_dpo = -F.logsigmoid(β * (1.0 - dpo_prob)).mean()
 
     # Or logsigmoid style
     if use_logsigmoid:
         loss = loss_logsigmoid_dpo.mean() + ll['loss_logsigmoid_proj'].mean() + ll['loss_logsigmoid_orth'].mean()
+    
+    if use_policy_weights:
+        policy_weights = torch.clamp(
+            pi_cho['policy_weights'] + pi_rej['policy_weights'],
+            max=1
+        )
+        loss = loss * policy_weights
 
     ll = {k:v.mean() for k, v in ll.items()}
     info = dict(
@@ -175,7 +183,11 @@ class InnerPOLossConfig:
     use_proj_loss: bool = False
     """encourage chosen to be more in the pref dir than rejected"""
 
-    use_logsigmoid: bool = True
+    use_logsigmoid: bool = False
+
+    use_policy_weights: bool = False
+    """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
+
 
     def c(self, *args, **kwargs):
         return innerpo_loss(*args, **kwargs, **asdict(self))
