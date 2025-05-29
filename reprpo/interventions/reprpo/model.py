@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-
+from typing import Union, List
 import os
 from baukit.nethook import TraceDict, get_module
 import numpy as np
@@ -42,24 +42,6 @@ def get_regexp_layers(collection_keys: List[str], model):
         )
     return out
 
-
-
-# def get_default_layers(N, side_channels=False, stride: Optional[int] = None, include_last_two: bool = True):
-#     """
-#     Which layers to use? If we use all of them it will take lots of memory. For hidden space ones we don't need many. But for side channel ones we typically need many.
-
-#     Simialr to [Circuit Breakers](https://arxiv.org/html/2406.04313v4), we use the layers at 33% and 66%. 
-    
-#     I also want the last two layers to enable supression neurons. 
-    
-#     """
-#     N3 = int(N*0.33)
-#     layers = list(np.arange(N3, N, 1 if stride is None else stride).astype(int)[1:-1]) # 33% and 66% as in Circuit Breakers
-#     if include_last_two:
-#         layers += [N-2, N-1] # make sure to include last two for supression neurons
-#     if side_channels:
-#         layers += list(range(int(N*0.33),int(N*0.66), 2 if stride is None else stride)) # for side channels we every 2nd use the middle 33% similar to the RepE setup in Circuit Breakers
-#     return sorted(set(layers))
 
 def reprpo_forward_baukit(
     model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False, prompt_mask=None
@@ -110,14 +92,15 @@ def reprpo_forward_baukit(
 
     if prompt_mask is not None:
         attn_mask = attn_mask * prompt_mask
-    logprobs = compute_logprobs(
+
+    out_lp = compute_logprobs(
         logits=outs.logits, labels=input_ids, selection_mask=attn_mask
     )
     return ReprPOModelOutput(
-        hs=reprs, logits=outs.logits, label_logprobs=logprobs, mask=attn_mask
+        hs=reprs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attn_mask, policy_weights=out_lp['policy_weights'],
     )
 
-from typing import Union, List
+
 
 def parse_collection_layers(
     collection_layers: str, num_hidden_layers: int

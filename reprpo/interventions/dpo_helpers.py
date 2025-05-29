@@ -51,7 +51,7 @@ def compute_logprobs(logits, labels, selection_mask=None, type="ipo"):
     else:
         output["label_logp"] = selected_log_probs.mean(-1)
 
-        selected_log_probs[~selection_mask] = 0
+    selected_log_probs[~mask] = 0
     
 
     # return a dict and also compute [WPO](https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L1240)
@@ -59,7 +59,7 @@ def compute_logprobs(logits, labels, selection_mask=None, type="ipo"):
         # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
         weights_adjustment_factor = torch.logsumexp(2 * log_probs, dim=-1)  # same as sum(probs**2) in log space
         per_token_logps_adjusted = selected_log_probs - weights_adjustment_factor
-        weights = (per_token_logps_adjusted * selection_mask).sum(-1) / selection_mask.sum(-1)
+        weights = (per_token_logps_adjusted * mask).sum(-1) / mask.sum(-1)
         output["policy_weights"] =  torch.clamp(torch.exp(weights), max=1)
 
     return output

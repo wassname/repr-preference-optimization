@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 from dataclasses import dataclass, asdict
-from .helpers import cross_entropy_loss, compute_ptheta
+from ..dpo_helpers import cross_entropy_loss, compute_ptheta
 from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
