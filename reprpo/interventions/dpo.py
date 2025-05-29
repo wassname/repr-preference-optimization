@@ -3,9 +3,7 @@ import torch.nn.functional as F
 from reprpo.interventions.pl_base import PL_MODEL
 from dataclasses import dataclass
 from reprpo.interventions.config import ExperimentConfig
-from .losses.helpers import cross_entropy_loss
-from .helpers import compute_logprobs
-from reprpo.interventions.losses.helpers import compute_ptheta
+from .dpo_helpers import cross_entropy_loss, compute_ptheta, compute_logprobs
 
 
 def compute_dpo_loss(
@@ -69,8 +67,6 @@ def compute_dpo_loss_batch(batch, model, β=0.1):
         output_hidden_states=True,
     )
 
-    # FIXME: I need to mask out the prompt?
-
     model.eval()
     with torch.no_grad():
         with model.disable_adapter():
@@ -80,7 +76,7 @@ def compute_dpo_loss_batch(batch, model, β=0.1):
             ref_chosen_log_probas = compute_logprobs(
                 logits=ref_cho.logits,
                 labels=batch["chosen"],
-                selection_mask=batch["chosen_mask"],
+                selection_mask=batch["chosen_mask"] * batch['prompt_mask'],
             )
             ref_rej = model(
                 batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
@@ -88,7 +84,7 @@ def compute_dpo_loss_batch(batch, model, β=0.1):
             ref_rejected_log_probas = compute_logprobs(
                 logits=ref_rej.logits,
                 labels=batch["rejected"],
-                selection_mask=batch["rejected_mask"],
+                selection_mask=batch["rejected_mask"]*batch['prompt_mask'],
             )
 
     model.train()
@@ -96,7 +92,7 @@ def compute_dpo_loss_batch(batch, model, β=0.1):
     policy_chosen_log_probas = compute_logprobs(
         logits=pi_cho.logits,
         labels=batch["chosen"],
-        selection_mask=batch["chosen_mask"],
+        selection_mask=batch["chosen_mask"]*batch['prompt_mask'],
     )
     pi_rej = model(
         batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
@@ -104,7 +100,7 @@ def compute_dpo_loss_batch(batch, model, β=0.1):
     policy_rejected_log_probas = compute_logprobs(
         logits=pi_rej.logits,
         labels=batch["rejected"],
-        selection_mask=batch["rejected_mask"],
+        selection_mask=batch["rejected_mask"]*batch['prompt_mask'],
     )
 
     loss, info = compute_dpo_loss(

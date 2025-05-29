@@ -16,8 +16,8 @@ from torch import Tensor
 
 from reprpo.interventions.pl_base import PL_MODEL
 from reprpo.interventions.config import ExperimentConfig
-from .losses.helpers import cross_entropy_loss
-from .helpers import compute_logprobs
+from .dpo_helpers import cross_entropy_loss
+from .dpo_helpers import compute_logprobs
 from .dpo import compute_dpo_loss
 
 
@@ -128,7 +128,7 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
                 ref_chosen_log_probas = compute_logprobs(
                     logits=ref_cho.logits,
                     labels=batch["chosen"],
-                    selection_mask=batch["chosen_mask"],
+                    selection_mask=batch["chosen_mask"] * batch['prompt_mask'],
                 )
     with projgrad.set_projgrad_mode("ref_rej", batch["rejected_mask"]):
         with model.disable_adapter():
@@ -139,7 +139,7 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
                 ref_rejected_log_probas = compute_logprobs(
                     logits=ref_rej.logits,
                     labels=batch["rejected"],
-                    selection_mask=batch["rejected_mask"],
+                    selection_mask=batch["rejected_mask"] * batch['prompt_mask'],
                 )
 
     model.train()
@@ -148,7 +148,7 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
     policy_chosen_log_probas = compute_logprobs(
         logits=pi_cho.logits,
         labels=batch["chosen"],
-        selection_mask=batch["chosen_mask"],
+        selection_mask=batch["chosen_mask"] * batch['prompt_mask'],
     )
     with projgrad.set_projgrad_mode("rej", batch["rejected_mask"]):
         pi_rej = model(
@@ -157,7 +157,7 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1):
     policy_rejected_log_probas = compute_logprobs(
         logits=pi_rej.logits,
         labels=batch["rejected"],
-        selection_mask=batch["rejected_mask"],
+        selection_mask=batch["rejected_mask"] * batch['prompt_mask'],
     )
 
 

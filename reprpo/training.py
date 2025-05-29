@@ -55,7 +55,7 @@ from reprpo.models.load import load_model, print_trainable_parameters  # noqa: E
 from reprpo.helpers.logging import setup_logging  # centralized log setup
 from reprpo.helpers.wandb_utils import init_wandb  # noqa: E402
 from reprpo.helpers.tyro import get_display_name_from_args, apply_cfg_overrides_from_env_var
-from reprpo.data.util import nice_ds_name, safe_fn, sort_str  # noqa: E402
+from reprpo.data.util import nice_ds_name, safe_fn, df_sort_cols  # noqa: E402
 
 # LOGURU_FORMAT='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
 LOGURU_FORMAT = "<level>{message}</level>"
@@ -378,16 +378,15 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
         df_res2.groupby(["type", "adapter"], dropna=False)["correct"].mean().unstack().T
     )
 
-    df_res_type.columns = sort_str(
-        df_res_type.columns.tolist(),
+    df_res_type = df_sort_cols(df_res_type,
         first=["in_domain"],
         last=["orthogonal"],
     )
-    df_res_type.index = sort_str(
-        df_res_type.index.tolist(),
+    df_res_type = df_sort_cols(
+        df_res_type.T,
         first=["base", "none"],
         last=[adapter_name],
-    )
+    ).T
     df_res_type.index.name = "adapter/distribution_shift"
 
 

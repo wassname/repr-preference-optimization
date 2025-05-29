@@ -5323,14 +5323,8 @@ the best ideas seem to be:
 
 # 2025-05-29 11:24:12
 
-Ok moving everything out of log seemed to work
-
-250529 11:17:44|INFO|reprpo.training:make_table#404 - 
-| adapter/ds       |   cross_domain (change_my_view) |   cross_domain (counterfactual_python) |   cross_domain (us_history) |   in_domain (code) |   orthogonal (medical_dpo_v2_test) |
-|:-----------------|--------------------------------:|---------------------------------------:|----------------------------:|-------------------:|-----------------------------------:|
-| hs-ETHER-InnerPO |                           0.512 |                                  0.812 |                       0.88  |              0.943 |                              0.197 |
-| none             |                           0.528 |                                  0.773 |                       0.856 |              0.929 |                              0.195 |
-250529 11:17:44|INFO|reprpo.training:make_table#405 - Table 2: Absolute accuracy a
+Start again lol
 
 
-Note this was in the SFT model this time. Next I will try with code, and with log
+
+TODO I also need a loss mask

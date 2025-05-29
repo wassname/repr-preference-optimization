@@ -3,16 +3,11 @@ import torch.nn.functional as F
 from reprpo.interventions.pl_base import PL_MODEL
 from dataclasses import dataclass
 from reprpo.interventions.config import ExperimentConfig
-from .losses.helpers import cross_entropy_loss
-from .helpers import compute_logprobs
-from .dpo import compute_dpo_loss
 
 # https://huggingface.co/docs/peft/developer_guides/custom_models
 from torch import nn
 from typing import Optional
 from loguru import logger
-from peft.tuners.lora.config import LoraConfig
-from peft.tuners.lora.layer import Linear as LoraLinear
 
 from torch.autograd import Function
 from .dpo_projgrad import hs_norm, ProjGradHooks, compute_gradproj_loss_batch

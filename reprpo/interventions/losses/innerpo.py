@@ -5,7 +5,7 @@ from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
 
-from .helpers import cross_entropy_loss, compute_ptheta
+from ..dpo_helpers import cross_entropy_loss, compute_ptheta
 from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
@@ -27,11 +27,10 @@ def innerpo_loss(
     eps=1e-12,
     β=1,
     use_orth_loss=True,
-    use_sep_loss=False,
-    use_angle_loss=True,
     use_dpo_loss=True,
     use_proj_loss=False,
     use_proj_abs_loss=True,
+    use_logsigmoid=True,
 ):
     """
     movement of hs along the hs pref vector.
@@ -115,16 +114,16 @@ def innerpo_loss(
         ref_rej.label_logprobs,
     )
     dpo_prob  = torch.sigmoid(β * dpo_ptheta)
-    loss_dpo_prob_term  = (1.0 - dpo_prob) if use_dpo_loss else None
+    loss_dpo_prob_term  = (1.0 - dpo_prob)
 
     # collect and average whatever terms are enabled
     terms = []
     if use_proj_loss:
         if use_proj_abs_loss:
             loss_proj_term = loss_proj_term.abs()
-        terms.append(loss_proj_term)
+        terms.append(loss_proj_term.mean(1))
     if use_orth_loss:
-        terms.append(loss_orth_term)
+        terms.append(loss_orth_term.mean(1))
     if use_dpo_loss:
         terms.append(loss_dpo_prob_term)
     loss = torch.stack(terms, dim=0).mean()
@@ -132,7 +131,8 @@ def innerpo_loss(
     loss_logsigmoid_dpo = -F.logsigmoid(β * (1.0 - dpo_prob)).mean()
 
     # Or logsigmoid style
-    # loss = -F.logsigmoid(β * (1.0 - dpo_prob)).mean() + ll['loss_logsigmoid_proj'] + ll['loss_logsigmoid_orth']
+    if use_logsigmoid:
+        loss = loss_logsigmoid_dpo.mean() + ll['loss_logsigmoid_proj'].mean() + ll['loss_logsigmoid_orth'].mean()
 
     ll = {k:v.mean() for k, v in ll.items()}
     info = dict(
@@ -141,7 +141,7 @@ def innerpo_loss(
         loss_dpo_term=loss_dpo_prob_term.mean(),
         dpo_prob=dpo_prob.mean(),
         dpo_ptheta=dpo_ptheta.mean(),
-        loss_logsigmoid_dpo=loss_logsigmoid_dpo,
+        loss_logsigmoid_dpo=loss_logsigmoid_dpo.mean(),
         **ll,
     )
 
@@ -163,7 +163,7 @@ class InnerPOLossConfig:
 
     eps: float = 1.0e-12
 
-    β: float = 1
+    β: float = 1.
     """factor to punish orthogonal movement"""
 
     use_dpo_loss: bool = True
@@ -174,6 +174,8 @@ class InnerPOLossConfig:
 
     use_proj_loss: bool = False
     """encourage chosen to be more in the pref dir than rejected"""
+
+    use_logsigmoid: bool = True
 
     def c(self, *args, **kwargs):
         return innerpo_loss(*args, **kwargs, **asdict(self))

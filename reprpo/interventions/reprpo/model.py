@@ -7,7 +7,7 @@ import numpy as np
 from loguru import logger
 from reprpo.interventions.types import ReprPOModelOutput
 from reprpo.interventions.pl_base import PL_MODEL
-from reprpo.interventions.helpers import compute_logprobs
+from reprpo.interventions.dpo_helpers import compute_logprobs
 import warnings
 from typing import List
 import re
@@ -62,7 +62,7 @@ def get_regexp_layers(collection_keys: List[str], model):
 #     return sorted(set(layers))
 
 def reprpo_forward_baukit(
-    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False
+    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False, prompt_mask=None
 ):
     # if the layer paths are just str(ints) then just collect the hidden states
     if collect_hs:
@@ -108,6 +108,8 @@ def reprpo_forward_baukit(
                 reprs[p]
             ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
 
+    if prompt_mask is not None:
+        attn_mask = attn_mask * prompt_mask
     logprobs = compute_logprobs(
         logits=outs.logits, labels=input_ids, selection_mask=attn_mask
     )
@@ -252,6 +254,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     layer_paths=h.layer_paths,
                     collect_input=h.collect_input,
                     collect_hs=h.collect_hs,
+                    prompt_mask=batch["prompt_mask"],
                 )
                 ref_rej = reprpo_forward_baukit(
                     model=model,
@@ -260,6 +263,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     layer_paths=h.layer_paths,
                     collect_input=h.collect_input,
                     collect_hs=h.collect_hs,
+                    prompt_mask=batch["prompt_mask"]
                 )
 
         model.train()
@@ -270,6 +274,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
             collect_hs=h.collect_hs,
+            prompt_mask=batch["prompt_mask"]
         )
         pi_rej = reprpo_forward_baukit(
             model=model,
@@ -278,6 +283,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
             collect_hs=h.collect_hs,
+            prompt_mask=batch["prompt_mask"]
         )
 
         # run loss function

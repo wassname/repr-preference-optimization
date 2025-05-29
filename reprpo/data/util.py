@@ -53,3 +53,14 @@ def sort_str(cols, first:list=[], last:list=[], sort_middle=False) -> list:
     first = [x for x in first if (x in cols) and (x not in last)]
     last = [x for x in last if x in cols]
     return first + middle + last
+
+
+def df_sort_cols(df, first:list=[], last:list=[], sort_middle=False) -> list:
+    """
+    Sorts the columns of a DataFrame, making sure some items appear first and last and the rest optionally sorted in the middle.
+    
+    Usage:
+    >>> df_sort_cols(df, ['col1', 'col2'], ['col3'])
+    """
+    sorted_cols = sort_str(list(df.columns), first=first, last=last, sort_middle=sort_middle)
+    return df[sorted_cols]
