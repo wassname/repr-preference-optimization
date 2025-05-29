@@ -5331,3 +5331,13 @@ TODO I also need a loss mask
 
 
 I did something to break the grad?
+Ah prompt mask
+
+ok so
+- test:
+  1. use_orth_loss=True, use_logsigmoid=False, t not log ... incoherent. dpo down 0.5->0. proj down 0.95->0.6. orth up 0->0.1.
+  2. test log
+1. I want results, and losses to go down
+2. then test with qwen, out of curiosity
+3. oh also proj vs orth
+4. and consider margin or multipler on proj or orth

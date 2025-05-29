@@ -1,4 +1,4 @@
-from reprpo.gen import get_model_generations, display_gen
+from reprpo.eval.gen import get_model_generations, display_gen
 from lightning.pytorch.callbacks import Callback
 
 

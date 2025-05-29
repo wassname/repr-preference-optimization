@@ -44,7 +44,7 @@ def get_regexp_layers(collection_keys: List[str], model):
 
 
 def reprpo_forward_baukit(
-    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False, prompt_mask=None
+    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False, prompt_mask=None, agg_type='ipo'
 ):
     # if the layer paths are just str(ints) then just collect the hidden states
     if collect_hs:
@@ -94,7 +94,7 @@ def reprpo_forward_baukit(
         attn_mask = attn_mask * ~prompt_mask
 
     out_lp = compute_logprobs(
-        logits=outs.logits, labels=input_ids, selection_mask=attn_mask
+        logits=outs.logits, labels=input_ids, selection_mask=attn_mask, agg_type='ipo'
     )
     return ReprPOModelOutput(
         hs=reprs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attn_mask, policy_weights=out_lp['policy_weights'],
@@ -165,6 +165,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
         collect_hs,
         collection_keys_in: tuple = None,
         collection_keys_out: tuple = None,
+        dpo_agg_type: str = "ipo",
         loss: LossesType,
         transform: TransformType,
         **kwargs,
@@ -175,6 +176,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
         self.hparams.collection_layers = collection_layers
         self.hparams.collect_input = collect_input
         self.hparams.collect_hs = collect_hs
+        self.hparams.dpo_agg_type = dpo_agg_type
 
         collection_keys = collection_keys_in if collect_input else collection_keys_out
         collection_keys = get_regexp_layers(
@@ -236,6 +238,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     collect_input=h.collect_input,
                     collect_hs=h.collect_hs,
                     prompt_mask=batch["prompt_mask"],
+                    agg_type=h.dpo_agg_type,
                 )
                 ref_rej = reprpo_forward_baukit(
                     model=model,
@@ -244,7 +247,8 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     layer_paths=h.layer_paths,
                     collect_input=h.collect_input,
                     collect_hs=h.collect_hs,
-                    prompt_mask=batch["prompt_mask"]
+                    prompt_mask=batch["prompt_mask"],
+                    agg_type=h.dpo_agg_type,
                 )
 
         model.train()
@@ -255,7 +259,8 @@ class PL_REPRPO_MODEL(PL_MODEL):
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
             collect_hs=h.collect_hs,
-            prompt_mask=batch["prompt_mask"]
+            prompt_mask=batch["prompt_mask"],
+            agg_type=h.dpo_agg_type,
         )
         pi_rej = reprpo_forward_baukit(
             model=model,
@@ -264,7 +269,8 @@ class PL_REPRPO_MODEL(PL_MODEL):
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
             collect_hs=h.collect_hs,
-            prompt_mask=batch["prompt_mask"]
+            prompt_mask=batch["prompt_mask"],
+            agg_type=h.dpo_agg_type,
         )
 
         # run loss function

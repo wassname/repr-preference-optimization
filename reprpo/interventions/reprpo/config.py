@@ -49,6 +49,9 @@ class ReprPOConfig(ExperimentConfig):
     transform: TransformType = field(default_factory=lambda: Transforms.ether.value())
     """transform function"""
 
+    dpo_agg_type: str = "ipo"
+    """DPO aggregation type, e.g., 'ipo'/'dpo'"""
+
     _cls = PL_REPRPO_MODEL
 
     _model_keys = [

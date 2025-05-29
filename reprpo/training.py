@@ -47,9 +47,9 @@ from reprpo.data.datamodule import PrefDataModule  # noqa: E402
 
 # Local imports (noqa for import placement)
 from reprpo.data.eval_sets import TRAINING_EXPERIMENTS, load_eval_ds  # noqa: E402
-from reprpo.gen import display_gen, get_model_generations  # noqa: E402
-from reprpo.helpers.lightning_hist import read_metrics_csv  # noqa: E402
-from reprpo.helpers.pl_gen import GenCallback  # noqa: E402
+from reprpo.eval.gen import display_gen, get_model_generations  # noqa: E402
+from reprpo.lightning.lightning_hist import read_metrics_csv  # noqa: E402
+from reprpo.lightning.pl_gen import GenCallback  # noqa: E402
 from reprpo.helpers.torch import clear_mem  # noqa: E402
 from reprpo.models.load import load_model, print_trainable_parameters  # noqa: E402
 from reprpo.helpers.logging import setup_logging  # centralized log setup

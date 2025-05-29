@@ -183,11 +183,14 @@ class InnerPOLossConfig:
     use_proj_loss: bool = False
     """encourage chosen to be more in the pref dir than rejected"""
 
+    use_proj_abs_loss: bool = True
+    """use absolute value of the projection loss, otherwise use relative"""
+
     use_logsigmoid: bool = False
 
     use_policy_weights: bool = False
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
-
+   
 
     def c(self, *args, **kwargs):
         return innerpo_loss(*args, **kwargs, **asdict(self))
