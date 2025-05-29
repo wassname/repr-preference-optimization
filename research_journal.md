@@ -5313,3 +5313,24 @@ maybe DPO has less to learn on alpaca mmlu, so I need some way to balance it, or
 
 
 https://claude.ai/chat/0a42ddc7-b00d-45b1-8898-612dd68af7da
+
+Hmm so I had it good, but needed to balance the losses.
+the best ideas seem to be:
+- still use dpo and inner_seperation
+- but make them both ratios, or log ratios
+- or make it easy to satisfy the inner one, but this is hard as sometimes DPO goes down 0.5 sometimes 5000. So I might want to use a differen't DPO formulation. Like IPO for a start as long sequences might mean diff DPO scores
+
+
+# 2025-05-29 11:24:12
+
+Ok moving everything out of log seemed to work
+
+250529 11:17:44|INFO|reprpo.training:make_table#404 - 
+| adapter/ds       |   cross_domain (change_my_view) |   cross_domain (counterfactual_python) |   cross_domain (us_history) |   in_domain (code) |   orthogonal (medical_dpo_v2_test) |
+|:-----------------|--------------------------------:|---------------------------------------:|----------------------------:|-------------------:|-----------------------------------:|
+| hs-ETHER-InnerPO |                           0.512 |                                  0.812 |                       0.88  |              0.943 |                              0.197 |
+| none             |                           0.528 |                                  0.773 |                       0.856 |              0.929 |                              0.195 |
+250529 11:17:44|INFO|reprpo.training:make_table#405 - Table 2: Absolute accuracy a
+
+
+Note this was in the SFT model this time. Next I will try with code, and with log

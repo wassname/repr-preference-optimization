@@ -44,14 +44,6 @@ class PL_MODEL(pl.LightningModule):
             prog_bar=True,
             batch_size=self.hparams.batch_size,
         )
-        self.log(
-            f"{phase}/dpo_acc",
-            info.pop(f"dpo_acc"),
-            on_epoch=True,
-            on_step=True,
-            prog_bar=True,
-            batch_size=self.hparams.batch_size,
-        )
 
         self.log_dict(
             {f"{phase}/{k}": v for k, v in info.items()},

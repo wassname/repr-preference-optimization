@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from reprpo.interventions.config import ExperimentConfig
 from .losses.helpers import cross_entropy_loss
 from .helpers import compute_logprobs
+from reprpo.interventions.losses.helpers import compute_ptheta
 
 
 def compute_dpo_loss(
@@ -30,7 +31,13 @@ def compute_dpo_loss(
 
     model_logratios = model_chosen_logprobs - model_rejected_logprobs
     reference_logratios = reference_chosen_logprobs - reference_rejected_logprobs
-    logits = model_logratios - reference_logratios
+    # logits = model_logratios - reference_logratios
+    logits = compute_ptheta(
+        model_chosen_logprobs=model_chosen_logprobs,
+        model_rejected_logprobs=model_rejected_logprobs,
+        reference_chosen_logprobs=reference_chosen_logprobs,
+        reference_rejected_logprobs=reference_rejected_logprobs,
+    )
 
     # DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
     losses = -F.logsigmoid(β * logits)

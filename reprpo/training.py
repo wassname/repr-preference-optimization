@@ -364,7 +364,7 @@ def train(args, trial: Optional[Trial] = None):
 
 def make_table(df_res2, args, human_name, base_model="", verbose=True):
     remove_warnings()
-    adapter_name = df_res2[["adapter"]].query('adapter!="base"').values[0, 0]
+    adapter_name = df_res2[["adapter"]].query('adapter!="base" & adapter!="none"').values[0, 0]
 
     df_res_ds = (
         df_res2.groupby(["ds_name_nice", "adapter"], dropna=False)["correct"]

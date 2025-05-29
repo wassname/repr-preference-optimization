@@ -10,7 +10,7 @@ class ExperimentConfig:
     """
 
 
-    dataset: str = "math"
+    dataset: str = "code"
     """train dataset."""
 
     # TODO manually set the ood and rnd datasets, or else hard code sets
@@ -34,7 +34,7 @@ class ExperimentConfig:
 
     
     base_model: str = "wassname/llama-3-2-1b-sft"
-    base_model: str = "Qwen/Qwen3-0.6B"
+    # base_model: str = "Qwen/Qwen3-0.6B"
 
     save: bool = True
     wandb: bool = True

@@ -301,10 +301,10 @@ class PL_REPRPO_MODEL(PL_MODEL):
             )
 
             # measures preference for cho>ref compared to base model. Should increase
-            info["logits"] = info_dpo["logits"]
+            info["logits"] = info_dpo["_logits"]
 
             # measures if coherence has increased over ref model. Should be increase
-            info["chosen_rewards"] = info_dpo["chosen_rewards"]
+            info["chosen_rewards"] = info_dpo["_chosen_rewards"]
 
             def cosine_on_keys(hs1, hs2):
                 return torch.stack(

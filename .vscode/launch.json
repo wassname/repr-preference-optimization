@@ -125,12 +125,8 @@
                 "enable": true
             },
             "args": [
-                "hs-supr-prefvec",
-                "--collection_layers=0.3",
-                // "projgrad",
-                // "--dev",
+                "hs-ether-InnerPO",
                 "--verbose=2",
-                "--batch-size=2",
             ]
         },
         {

@@ -50,6 +50,6 @@ def sort_str(cols, first:list=[], last:list=[], sort_middle=False) -> list:
     middle = [x for x in cols if (x not in first) and (x not in last)]
     if sort_middle:
         middle.sort()
-    first = [x for x in first if x in cols]
+    first = [x for x in first if (x in cols) and (x not in last)]
     last = [x for x in last if x in cols]
     return first + middle + last
