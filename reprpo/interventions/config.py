@@ -8,6 +8,8 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
+    lr: float = 7e-5
+    weight_decay: float = 0.0
 
 
     dataset: str = "code"
@@ -24,6 +26,7 @@ class ExperimentConfig:
     load_in_4bit: bool = False
     load_in_8bit: bool = False
     use_gradient_checkpointing: bool = False
+    schedule: str = "wsd"
 
     batch_size: int = 8
 
@@ -38,3 +41,6 @@ class ExperimentConfig:
 
     save: bool = True
     wandb: bool = True
+
+    _model_keys = []
+    """when subclassing, add kwargs destined for the model to this list"""

@@ -24,7 +24,7 @@ def innerpo_loss(
     transforms: Optional[Callable] = None,
     # custom loss_args
     α: float = 1.0,
-    eps=1e-12,
+    eps=1e-4,
     β=1,
     use_orth_loss=True,
     use_dpo_loss=True,
@@ -37,6 +37,13 @@ def innerpo_loss(
     movement of hs along the hs pref vector.
     """
 
+    # # TODO norm or softmax each layer before transform?
+    # for k in pi_cho.hs.keys():
+    #     pi_cho.hs[k] = F.normalize(pi_cho.hs[k], p=2, dim=-1)
+    #     pi_rej.hs[k] = F.normalize(pi_rej.hs[k], p=2, dim=-1)
+    #     ref_cho.hs[k] = F.normalize(ref_cho.hs[k], p=2, dim=-1)
+    #     ref_rej.hs[k] = F.normalize(ref_rej.hs[k], p=2, dim=-1)
+
     if transforms is not None:
         pi_cho.hs = transforms(pi_cho.hs)
         pi_rej.hs = transforms(pi_rej.hs)
@@ -44,65 +51,113 @@ def innerpo_loss(
         ref_rej.hs = transforms(ref_rej.hs)
 
     def preproc_hs(o, k: str):
-        hs = o.hs[k].log_softmax(-1)
-        # hs = F.normalize(hs, p=2, dim=-1)    # <<< unit length in hidden-state space
-        hs = reduce_tokens_w_attention(hs, o.mask)
+        """Preprocess hidden states: normalize then aggregate."""
+        hs = o.hs[k]  # [batch, seq_len, hidden_dim], RAW ACTIVATIONS
+        # Normalize to unit sphere FIRST (before aggregation)
+        # This prevents token magnitude bias (e.g., attention sinks)
+        hs = F.normalize(hs, p=2, dim=-1)  # [batch, seq_len, hidden_dim], UNIT VECTORS
+        # Aggregate over sequence using attention masks
+        # hs = F.log_softmax(hs, dim=-1)  # [batch, seq_len, hidden_dim], LOG PROBABILITIES
+        hs = reduce_tokens_w_attention(hs, o.mask)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
         return hs
 
-    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, "b"]]:
-        hs_pi_cho = preproc_hs(pi_cho, k)
-        hs_pi_rej = preproc_hs(pi_rej, k)
-        hs_ref_cho = preproc_hs(ref_cho, k)  # .detach()
-        hs_ref_rej = preproc_hs(ref_rej, k)  # .detach()
+    def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k):
+        # Get raw hidden states
+        hs_pi_cho = reduce_tokens_w_attention(pi_cho.hs[k], pi_cho.mask)
+        hs_pi_rej = reduce_tokens_w_attention(pi_rej.hs[k], pi_rej.mask)
+        hs_ref_cho = reduce_tokens_w_attention(ref_cho.hs[k], ref_cho.mask)
+        hs_ref_rej = reduce_tokens_w_attention(ref_rej.hs[k], ref_rej.mask)
+        
+        # Compute similarity scores (like logits in DPO)
+        cho_score = F.cosine_similarity(hs_pi_cho, hs_ref_cho, dim=-1)
+        rej_score = F.cosine_similarity(hs_pi_rej, hs_ref_rej, dim=-1)
+        
+        # Create a "preference logit" in hidden space
+        hidden_ptheta = (cho_score - rej_score) * β
+        
+        # Apply DPO-style loss
+        loss_hidden_dpo = -F.logsigmoid(hidden_ptheta)
+        
+        return dict(loss_hidden_dpo=loss_hidden_dpo)
 
-        # we define the reference vector as the direction between the reference chosen and rejected hidden states. It's a high dim vector in the space of hidden states
-        pref_dir_ref = hs_ref_cho - hs_ref_rej  # preference vector
 
-        # model preference direction
-        pref_dir_pi = hs_pi_cho - hs_pi_rej
+    # def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) -> Dict[str, Float[Tensor, "b"]]:
+    #     """Compute losses for a single layer."""
+        
+    #     # Get aggregated, normalized hidden states
+    #     # Domain: unit vectors averaged, so ||hs|| ≤ 1
+    #     hs_pi_cho = preproc_hs(pi_cho, k)   # [b, d], averaged unit vectors
+    #     hs_pi_rej = preproc_hs(pi_rej, k)   # [b, d], averaged unit vectors
+    #     hs_ref_cho = preproc_hs(ref_cho, k) # [b, d], averaged unit vectors
+    #     hs_ref_rej = preproc_hs(ref_rej, k) # [b, d], averaged unit vectors
 
-        # shift relative to reference
-        delta = pref_dir_pi - pref_dir_ref
+    #     # Compute preference directions as vector differences
+    #     # Domain: VECTOR SPACE, each component ∈ [-2, 2] since we subtract unit vectors
+    #     pref_dir_ref = hs_ref_cho - hs_ref_rej  # [b, d], reference preference direction
+    #     pref_dir_pi = hs_pi_cho - hs_pi_rej     # [b, d], model preference direction
+        
+    #     # How much did model move relative to reference?
+    #     # Domain: VECTOR SPACE, each component ∈ [-4, 4]
+    #     delta = pref_dir_pi - pref_dir_ref      # [b, d], change in preference
+        
+    #     # Get reference magnitude and unit direction
+    #     # Domain: SCALAR DISTANCE ∈ [0, 2√d], clamped at eps
+    #     ref_mag = pref_dir_ref.norm(dim=-1, keepdim=True).clamp(min=eps, max=10)  # [b, 1]
+    #     # Domain: UNIT VECTOR
+    #     ref_unit = pref_dir_ref / ref_mag      # [b, d], normalized reference direction
 
-        # Could then use logsigmoid like DPO
-        # loss = -F.logsigmoid(β * delta.sum(dim=-1)).mean()
-
-        # magnitude shift
-        # mag_shift = delta.norm(dim=-1, keepdim=True)  # how far we moved
-        # normalize by reference magnitude (to get a unitless ratio)
-        ref_mag = pref_dir_ref.norm(dim=-1, keepdim=True).clamp(min=eps)
-
-        unit = pref_dir_ref / ref_mag
-        proj_vec = (delta * unit).sum(dim=-1, keepdim=True) * unit
-        orth_vec = delta - proj_vec
-
-        rel_proj = proj_vec.norm(dim=-1) / (ref_mag + eps)    # distance ratios ∈ [0,∞)
-        rel_orth = orth_vec.norm(dim=-1) / (ref_mag + eps)
-
-        # normalize into bounded ratios in [0,1]
-        proj_ratio = rel_proj / (1 + rel_proj)
-        orth_ratio = rel_orth / (1 + rel_orth)
-
-        # rel_pref_signed = signed_proj (can be negative)
-        log_rel_pref  = safe_signed_log(rel_proj,  eps)
-        log_rel_orth  = safe_signed_log(rel_orth,  eps)
-
-        # Try to put those in the same domain as DPO
-        loss_logsigmoid_proj = -F.logsigmoid(β * torch.abs(log_rel_pref)).mean()
-        loss_logsigmoid_orth = -F.logsigmoid(β * (-log_rel_orth)).mean()
-
-        # # Try to put those in the same domain as DPO
-        # loss_logsigmoid_proj = -F.logsigmoid(β * torch.abs(rel_proj)).mean()
-        # loss_logsigmoid_orth = -F.logsigmoid(β * -rel_orth).mean()
-
-        return dict(
-            loss_logsigmoid_orth=loss_logsigmoid_orth,
-            loss_logsigmoid_proj=loss_logsigmoid_proj,
-            rel_proj=rel_proj,
-            rel_orth=rel_orth,
-            proj_ratio=proj_ratio,
-            orth_ratio=orth_ratio,
-        )
+    #     # Project delta onto reference direction (signed distance)
+    #     # Domain: SIGNED SCALAR DISTANCE ∈ [-4√d, 4√d]
+    #     signed_proj = (delta * ref_unit).sum(dim=-1)  # [b], positive = moved in ref direction
+        
+    #     # Orthogonal component magnitude (Pythagorean theorem)
+    #     # Domain: SCALAR DISTANCE ∈ [0, 4√d]
+    #     orth_magnitude = torch.sqrt((delta**2).sum(dim=-1) - signed_proj**2 + eps)  # [b]
+        
+    #     # Convert to ratios by normalizing with reference magnitude
+    #     # This makes quantities dimensionless and comparable across examples
+        
+    #     if use_proj_abs_loss:
+    #         # For bidirectional training (e.g., reducing toxicity)
+    #         # Domain: RATIO ∈ [0, ∞), 0=no movement, 1=same as ref, >1=more than ref
+    #         proj_ratio = torch.abs(signed_proj) / ref_mag.squeeze(-1)  # [b]
+    #     else:
+    #         # For unidirectional training
+    #         # Domain: SIGNED RATIO ∈ (-∞, ∞), negative=opposite direction
+    #         proj_ratio = signed_proj / ref_mag.squeeze(-1)  # [b]
+        
+    #     # Orthogonal ratio (always want to minimize)
+    #     # Domain: RATIO ∈ [0, ∞), 0=no orthogonal movement, 1=same as ref magnitude
+    #     orth_ratio = orth_magnitude / ref_mag.squeeze(-1)  # [b]
+        
+    #     # Convert to log domain for logsigmoid compatibility
+    #     # logsigmoid expects logits where positive=good, negative=bad        
+    #     if use_proj_abs_loss:
+    #         # Absolute projection: ratio ∈ [0, ∞)
+    #         # log(ratio): 0→-∞ (bad), 1→0 (neutral), ∞→∞ (good)
+    #         proj_logits = torch.log(proj_ratio + eps) * β  # [b], LOG DOMAIN
+    #     else:
+    #         # Signed projection
+    #         proj_logits = safe_signed_log(proj_ratio) * β  # [b], LOG DOMAIN
+        
+    #     # Orthogonal: we want LOW ratios
+    #     # So negative log: 0→∞ (good), 1→0 (neutral), ∞→-∞ (bad)
+    #     orth_logits = -torch.log(orth_ratio + eps) * β  # [b], LOG DOMAIN
+        
+    #     # Convert to losses using logsigmoid
+    #     # -logsigmoid(x) is high when x is negative, low when x is positive
+    #     loss_proj = -F.logsigmoid(proj_logits)  # [b], want positive proj_logits
+    #     loss_orth = -F.logsigmoid(orth_logits)  # [b], want positive orth_logits (low orth_ratio)
+        
+    #     return dict(
+    #         loss_proj=loss_proj,
+    #         loss_orth=loss_orth,
+    #         proj_ratio=proj_ratio,
+    #         orth_ratio=orth_ratio,
+    #         # For debugging
+    #         signed_proj=signed_proj,
+    #         ref_mag=ref_mag.squeeze(-1),
+    #     )
 
     # compute losses per layer
     ll = {k: per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
@@ -110,58 +165,52 @@ def innerpo_loss(
     ll_keys = next(iter(ll.values())).keys()
     ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
 
-    # compute final loss as average of normalized ratio components
-    # projection loss term: want more movement along ref-dir → 0 when perfect
-    loss_proj_term = (1.0 - ll["proj_ratio"])# if use_proj_loss else None
-    # orthogonal loss term: want no orthogonal drift → 0 when perfect
-    loss_orth_term = ll["orth_ratio"]# if use_orth_loss else None
-    # dpo preference term: probability of preferring chosen over rejected
     dpo_ptheta = compute_ptheta(
         pi_cho.label_logprobs,
         pi_rej.label_logprobs,
         ref_cho.label_logprobs,
         ref_rej.label_logprobs,
     )
-    dpo_prob  = torch.sigmoid(β * dpo_ptheta)
-    loss_dpo_prob_term  = (1.0 - dpo_prob)
-    loss_logsigmoid_dpo = -F.logsigmoid(β * (1.0 - dpo_prob)).mean() 
-
-    # collect and average whatever terms are enabled
-    terms = []
-    if use_proj_loss:
-        if use_proj_abs_loss:
-            loss_proj_term = loss_proj_term.abs()
-        terms.append(loss_proj_term.mean(1))
-    if use_orth_loss:
-        terms.append(loss_orth_term.mean(1))
-    if use_dpo_loss:
-        terms.append(loss_dpo_prob_term)
-    loss = torch.stack(terms, dim=0).mean()
+    loss_dpo = -F.logsigmoid(dpo_ptheta)
 
 
-    # Or logsigmoid style
-    if use_logsigmoid:
-        loss = loss_logsigmoid_dpo.mean() + ll['loss_logsigmoid_proj'].mean() + ll['loss_logsigmoid_orth'].mean()
+    loss = loss_dpo + α * ll['loss_hidden_dpo']
+    # OR
+
+
+    # # Combine losses
+    # losses = []
+    # if use_proj_loss:
+    #     losses.append(ll['loss_proj'].mean())
+    # if use_orth_loss:
+    #     losses.append(ll['loss_orth'].mean())
+    # if use_dpo_loss:
+    #     losses.append(loss_dpo)
+    # loss = sum(losses) / len(losses) if losses else 0.0
     
+    # Apply policy weights if requested
     if use_policy_weights:
         policy_weights = torch.clamp(
-            pi_cho['policy_weights'] + pi_rej['policy_weights'],
+            torch.exp(pi_cho['log_policy_weights'] + pi_rej['log_policy_weights']),
             max=1
         )
         loss = loss * policy_weights
+    
+
 
     ll = {k:v.mean() for k, v in ll.items()}
     info = dict(
-        loss_orth_term=loss_orth_term.mean(),
-        loss_proj_term=loss_proj_term.mean(),
-        loss_dpo_term=loss_dpo_prob_term.mean(),
-        dpo_prob=dpo_prob.mean(),
+        # loss_orth_term=loss_orth_term.mean(),
+        # loss_proj_term=loss_proj_term.mean(),
+        # loss_dpo_term=loss_dpo_prob_term.mean(),
+        # dpo_prob=dpo_prob.mean(),
+        loss_dpo=loss_dpo.mean(),
         dpo_ptheta=dpo_ptheta.mean(),
-        loss_logsigmoid_dpo=loss_logsigmoid_dpo.mean(),
+        # loss_logsigmoid_dpo=loss_logsigmoid_dpo.mean(),
         **ll,
     )
 
-    return loss, info
+    return loss.mean(), info
 
 
 @dataclass
@@ -174,10 +223,10 @@ class InnerPOLossConfig:
     - punish movement orthogonal to the preference vector: by angle * β
     """
 
-    # α: float = 1.0
-    # """balance between reroute and retain loss."""
+    α: float = 0.1
+    """balance between reroute and retain loss."""
 
-    eps: float = 1.0e-12
+    eps: float = 1.0e-6
 
     β: float = 1.
     """factor to punish orthogonal movement"""
@@ -185,10 +234,10 @@ class InnerPOLossConfig:
     use_dpo_loss: bool = True
     """punish model if rejected completion is more likely than the chosen"""
 
-    use_orth_loss: bool = False
+    use_orth_loss: bool = True
     """punish movement orthogonal to the preference vector: by distance"""
 
-    use_proj_loss: bool = True
+    use_proj_loss: bool = False
     """encourage chosen to be more in the pref dir than rejected"""
 
     use_proj_abs_loss: bool = True

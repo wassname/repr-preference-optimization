@@ -17,7 +17,7 @@ class PL_MODEL(pl.LightningModule):
         self,
         model,
         num_iterations,
-        lr=3e-4,
+        lr=None,
         weight_decay=0,
         batch_size=None,
         adam8bit=False,
@@ -40,6 +40,24 @@ class PL_MODEL(pl.LightningModule):
             f"{phase}/loss",
             loss,
             on_epoch=False,
+            on_step=True,
+            prog_bar=True,
+            batch_size=self.hparams.batch_size,
+        )
+
+        # also consider loggign nll and dpo_acc
+        self.log(
+            f"{phase}/dpo_acc",
+            info.pop("_dpo_acc"),
+            on_epoch=True,
+            on_step=True,
+            prog_bar=True,
+            batch_size=self.hparams.batch_size,
+        )
+        self.log(
+            f"{phase}/nll_ratio",
+            info.pop("_nll_ratio"),
+            on_epoch=True,
             on_step=True,
             prog_bar=True,
             batch_size=self.hparams.batch_size,

@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 
 @dataclass
 class ReprPOConfig(ExperimentConfig):
-    lr: float = 7e-5
+    
 
     collection_layers: Optional[str] = 'range(.3,-1)'
     """layers to collect activations
@@ -55,7 +55,6 @@ class ReprPOConfig(ExperimentConfig):
     _cls = PL_REPRPO_MODEL
 
     _model_keys = [
-        "lr",
         "collection_layers",
         "collection_keys_in",
         "collection_keys_out",

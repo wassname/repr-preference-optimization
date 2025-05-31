@@ -59,5 +59,6 @@ build-backend = "hatchling.build"
 [tool.uv.sources]
 baukit = { git = "https://github.com/davidbau/baukit.git" }
 open-pref-eval = { path = "../open_pref_eval" }
+# open-pref-eval = { path = "../open_pref_eval" }
 # baukit = { git = "https://github.com/wassname/baukit.git" }
 #open-pref-eval = { git = "https://github.com/wassname/open_pref_eval" }

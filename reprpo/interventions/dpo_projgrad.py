@@ -127,8 +127,8 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weigh
                 )
                 ref_cho_logp = compute_logprobs(
                     logits=ref_cho.logits,
-                    labels=batch["chosen"],
-                    selection_mask=batch["chosen_mask"] * ~batch['prompt_mask'],
+                    input_ids=batch["chosen"],
+                    selection_mask=batch["chosen_mask"] * (1-batch['prompt_mask']),
                 )
     with projgrad.set_projgrad_mode("ref_rej", batch["rejected_mask"]):
         with model.disable_adapter():
@@ -138,8 +138,8 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weigh
                 )
                 ref_rej_logp = compute_logprobs(
                     logits=ref_rej.logits,
-                    labels=batch["rejected"],
-                    selection_mask=batch["rejected_mask"] * ~batch['prompt_mask'],
+                    input_ids=batch["rejected"],
+                    selection_mask=batch["rejected_mask"] * (1-batch['prompt_mask']),
                 )
 
     model.train()
@@ -147,8 +147,8 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weigh
         pi_cho = model(batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs)
     pi_cho_logp = compute_logprobs(
         logits=pi_cho.logits,
-        labels=batch["chosen"],
-        selection_mask=batch["chosen_mask"] * ~batch['prompt_mask'],
+        input_ids=batch["chosen"],
+        selection_mask=batch["chosen_mask"] * (1-batch['prompt_mask']),
     )
     with projgrad.set_projgrad_mode("rej", batch["rejected_mask"]):
         pi_rej = model(
@@ -156,23 +156,31 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weigh
         )
     pi_rej_logp = compute_logprobs(
         logits=pi_rej.logits,
-        labels=batch["rejected"],
-        selection_mask=batch["rejected_mask"] * ~batch['prompt_mask'],
+        input_ids=batch["rejected"],
+        selection_mask=batch["rejected_mask"] * (1-batch['prompt_mask']),
     )
 
+    # loss, info = compute_dpo_loss(
+    #     model_chosen_logprobs=pi_cho_logp['label_logp'],
+    #     model_rejected_logprobs=pi_rej_logp['label_logp'],
+    #     reference_chosen_logprobs=ref_cho_logp['label_logp'],
+    #     reference_rejected_logprobs=ref_rej_logp['label_logp'],
+    #     β=β,
+    # )
 
-
-    loss, info = compute_dpo_loss(
-        model_chosen_logprobs=pi_cho_logp['label_logp'],
-        model_rejected_logprobs=pi_rej_logp['label_logp'],
-        reference_chosen_logprobs=ref_cho_logp['label_logp'],
-        reference_rejected_logprobs=ref_rej_logp['label_logp'],
+    loss, info = compute_dpo_loss_batch_plus(
+        batch,
+        pi_cho,
+        pi_rej,
+        ref_cho,
+        ref_rej,
         β=β,
+        use_policy_weights=use_policy_weights,
     )
 
     if use_policy_weights:
         policy_weights = torch.clamp(
-            pi_cho_logp['policy_weights'] + pi_rej_logp['policy_weights'],
+            torch.exp(pi_cho_logp['log_policy_weights'] + pi_rej_logp['log_policy_weights']),
             max=1
         )
 

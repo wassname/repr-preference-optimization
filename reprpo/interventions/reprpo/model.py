@@ -15,7 +15,7 @@ from typing import Optional
 from .helpers import get_layer_paths, validate_layer_paths
 from ..losses import LossesType
 from ..transforms import TransformType
-from ..dpo import compute_dpo_loss
+from ..dpo import calc_dpo_loss_w_metrics
 
 
 def get_regexp_layers(collection_keys: List[str], model):
@@ -91,13 +91,13 @@ def reprpo_forward_baukit(
             ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
 
     if prompt_mask is not None:
-        attn_mask = attn_mask * ~prompt_mask
+        attn_mask = attn_mask * (1-prompt_mask)
 
     out_lp = compute_logprobs(
-        logits=outs.logits, labels=input_ids, selection_mask=attn_mask, dpo_agg_type=dpo_agg_type
+        logits=outs.logits, input_ids=input_ids, selection_mask=attn_mask, dpo_agg_type=dpo_agg_type
     )
     return ReprPOModelOutput(
-        hs=reprs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attn_mask, policy_weights=out_lp['policy_weights'],
+        hs=reprs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attn_mask, log_policy_weights=out_lp['log_policy_weights'],
     )
 
 
@@ -283,33 +283,14 @@ class PL_REPRPO_MODEL(PL_MODEL):
             transforms=self.transforms,
         )
 
-        # collect extra metrics
         with torch.no_grad():
-            # get the dpo metrics for comparison
-            _, info_dpo = compute_dpo_loss(
-                pi_cho.label_logprobs,
-                pi_rej.label_logprobs,
-                ref_cho.label_logprobs,
-                ref_rej.label_logprobs,
+            # get the dpo metrics for comparison, this also has nll, and cosine
+            _, info_dpo = calc_dpo_loss_w_metrics(
+                batch,
+                pi_cho,
+                pi_rej,
+                ref_cho,
+                ref_rej,
             )
-
-            # measures preference for cho>ref compared to base model. Should increase
-            info["logits"] = info_dpo["_logits"]
-
-            # measures if coherence has increased over ref model. Should be increase
-            info["chosen_rewards"] = info_dpo["_chosen_rewards"]
-
-            def cosine_on_keys(hs1, hs2):
-                return torch.stack(
-                    [
-                        F.cosine_similarity(hs1[k], hs2[k], dim=-1).nanmean()
-                        for k in hs1.keys()
-                    ]
-                ).nanmean()
-
-            # measure if chosen models are still close to the ref model, should stay at 1
-            info["retain_cosine"] = cosine_on_keys(pi_cho.hs, ref_cho.hs)
-            # measures if refject hs are getting close to cho, should rise towards 1
-            info["rr_cosine"] = cosine_on_keys(pi_rej.hs, ref_cho.hs)
 
         return loss, {**info, **info_dpo}

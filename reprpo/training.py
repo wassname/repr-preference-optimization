@@ -167,7 +167,7 @@ def train(args, trial: Optional[Trial] = None):
 
     model = get_peft_model(model, peft_config, adapter_name=adapter_name)
     print_trainable_parameters(model)
-    if args.verbose > 1:
+    if args.verbose > 2:
         logger.info(f"{model}")
 
     if args.dev:
@@ -206,9 +206,11 @@ def train(args, trial: Optional[Trial] = None):
         model,
         adam8bit=args.load_in_4bit
         or args.load_in_8bit,  # saved mem, but seems unstable?
-        schedule="wsd",
+        schedule=args.schedule,
         num_iterations=max_opt_steps,
         batch_size=args.batch_size,
+        lr=args.lr,
+        weight_decay=args.weight_decay,
         # model args
         **model_kwargs,
     )
@@ -328,9 +330,13 @@ def train(args, trial: Optional[Trial] = None):
     f = str(save_dir) + "/eval.parquet"
     df_res2.to_parquet(f)
     logger.info(f"save_dir={save_dir}")
+    logger.info(f"Human name: {human_name}")
     # pprint(args, compact=1)
 
     r = make_table(df_res2, args, human_name=human_name, base_model=model_name)
+    # also print config
+    # and human_name
+    # and wandb url
 
     # WANDB logging
     r2 = {}

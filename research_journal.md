@@ -5341,3 +5341,100 @@ ok so
 2. then test with qwen, out of curiosity
 3. oh also proj vs orth
 4. and consider margin or multipler on proj or orth
+
+
+# 2025-05-29 19:06:05
+
+Little blurb on orthogonal vs alignmed directions and absolute vs not
+
+### Geometric Considerations in High-Dimensional Hidden States
+
+When aligning hidden state representations, it is crucial to consider the geometry of high-dimensional spaces. For a model with hidden dimension $d = 4096$, the preference direction $\mathbf{v}_\text{pref} = \mathbf{h}_\text{chosen} - \mathbf{h}_\text{rejected}$ defines a single direction in this space. However, there exist $d-1 = 4095$ orthogonal dimensions.
+
+This creates a fundamental asymmetry: given any movement $\Delta\mathbf{h}$ in hidden state space, the probability that this movement aligns with the preference direction is vanishingly small. Specifically, for random unit vectors in high dimensions, the expected absolute cosine similarity approaches zero as $\mathbb{E}[|\cos\theta|] \approx \sqrt{\frac{2}{\pi d}}$. For $d = 4096$, this yields $\mathbb{E}[|\cos\theta|] \approx 0.02$, meaning random movements are approximately 98% orthogonal to any fixed direction.
+
+**Bidirectional Preference Alignment**: Furthermore, the desired alignment direction is task-dependent. For some objectives, we want the model to strengthen existing preferences (e.g., making helpful responses more helpful), yielding positive cosine similarity. For others, we want to reverse preferences (e.g., reducing toxic outputs that the base model prefers), yielding negative cosine similarity. Since we often train on mixed objectives within a single dataset, we cannot assume a priori whether positive or negative alignment is optimal.
+
+This geometric reality has important implications for loss design:
+
+1. **Orthogonal penalties are overly restrictive**: Penalizing all movement orthogonal to the preference direction effectively constrains optimization to a 1-dimensional subspace, preventing the model from discovering beneficial representations in the remaining 4095 dimensions.
+
+2. **Natural gradient descent is mostly orthogonal**: Even when optimizing for preference alignment, most parameter updates will have substantial orthogonal components simply due to dimensionality, not misalignment.
+
+3. **Projection-based losses with absolute cosine similarity**: By using the absolute value of cosine similarity, we encourage movement along the preference axis in either direction:
+   $$\mathcal{L}_\text{proj} = -\log\sigma(\beta \cdot |\cos(\mathbf{v}_\pi, \mathbf{v}_\text{ref})|)$$
+   This allows the model to learn whether to strengthen ($\cos > 0$) or reverse ($\cos < 0$) the reference preference based on the training signal, while treating both as valid alignment.
+
+This approach balances the need for preference alignment with the geometric reality of high-dimensional optimization, allowing the model to find representations that are both aligned with human preferences and computationally effective.
+
+
+# 2025-05-30 08:41:55
+
+TODO try this cross similarity, question is, coherence?
+
+```py
+# How much does chosen look like reference chosen vs reference rejected?
+cho_to_ref_cho = F.cosine_similarity(hs_pi_cho, hs_ref_cho, dim=-1)
+cho_to_ref_rej = F.cosine_similarity(hs_pi_cho, hs_ref_rej, dim=-1)
+cho_preference = cho_to_ref_cho - cho_to_ref_rej
+
+# How much does rejected look like reference chosen vs reference rejected?  
+rej_to_ref_cho = F.cosine_similarity(hs_pi_rej, hs_ref_cho, dim=-1)
+rej_to_ref_rej = F.cosine_similarity(hs_pi_rej, hs_ref_rej, dim=-1)
+rej_preference = rej_to_ref_cho - rej_to_ref_rej
+
+# Chosen should prefer "chosen-like" more than rejected does
+hidden_ptheta = (cho_preference - rej_preference) * β
+```
+
+and this, single cosin, to log ods then logsimdoi, question is, doest it move like dpo in the training curve
+```py
+def per_layer_simple(pi_cho, pi_rej, ref_cho, ref_rej, k):
+    # Get states
+    hs_pi_cho = preproc_hs(pi_cho, k)
+    hs_pi_rej = preproc_hs(pi_rej, k)
+    hs_ref_cho = preproc_hs(ref_cho, k)
+    hs_ref_rej = preproc_hs(ref_rej, k)
+
+    # Compute preference directions
+    pref_dir_ref = hs_ref_cho - hs_ref_rej
+    pref_dir_pi = hs_pi_cho - hs_pi_rej
+    
+    # Alignment score [-1, 1]
+    alignment = F.cosine_similarity(pref_dir_pi, pref_dir_ref, dim=-1)
+    
+    # Convert to log-odds (proper log ratio)
+    # Map [-1,1] to [0,1] then to log-odds
+    prob = (alignment + 1) / 2  # [-1,1] -> [0,1]
+    prob = torch.clamp(prob, 1e-6, 1-1e-6)  # Avoid log(0)
+    log_odds = torch.log(prob / (1 - prob))  # [0,1] -> [-∞,∞]
+    
+    # This is now a proper log ratio!
+    hidden_ptheta = β * log_odds
+    loss_hidden_dpo = -F.logsigmoid(hidden_ptheta)
+    
+    return dict(loss_hidden_dpo=loss_hidden_dpo, alignment=alignment)
+```
+
+
+WANDB_GROUP=innerDPO2
+python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=angle_mag # coherent, performance meh, loss_hidden dpo didn't seem to learn
+python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=parrel_orthogonal
+python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=direct_projection
+python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=log_ratio
+python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=cosine_similarity # nan
+python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=abs
+python scripts/train.py dpo
+
+
+| adapter/distribution_shift   |   in_domain |   cross_domain |   orthogonal |
+|:-----------------------------|------------:|---------------:|-------------:|
+| none                         |       0.929 |          0.774 |        0.195 |
+| hs-None-InnerDPO direct_projectedion            |       0.845 |          0.787 |        0.187 |
+| dpo                          |       0.887 |          0.75  |        0.214 |
+| dpo wit policy weight but it's coherent wow |       0.803 |          0.765 |        0.178 |
+finetune_name=ReprPO_None_InnerDPO collect_hs=True innerdpo.align_method=direct_projection innerdpo.eps=1e-05 innerdpo.use_policy_weights=True
+
+
+huh even dpo doesn't work?? I tried without policy weights, and with IPO.
+Or could it just be code... I need to measure dataset cropping. Maybe I should just pretokenize

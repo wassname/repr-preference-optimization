@@ -18,5 +18,6 @@ def init_wandb(args, save_dir, group_name, run_name, project="reprpo2"):
     if wandb.run:
         wandb.config.update(config, allow_val_change=True)
         wandb.run.name = run_name
+        wandb.settings.quiet=True
         # add whatever tags you need
     return logger

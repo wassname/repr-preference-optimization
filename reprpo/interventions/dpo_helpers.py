@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 
 
-def compute_logprobs(logits, labels, selection_mask=None, dpo_agg_type="ipo"):
+def compute_logprobs(logits, input_ids, selection_mask=None, dpo_agg_type="ipo"):
     """
     Compute log probabilities.
 
@@ -21,7 +21,7 @@ def compute_logprobs(logits, labels, selection_mask=None, dpo_agg_type="ipo"):
     output = {}
 
     # Labels are the inputs shifted by one
-    labels = labels[:, 1:].clone()
+    labels = input_ids[:, 1:].clone()
 
     # Truncate logits to match the labels num_tokens
     logits = logits[:, :-1, :]
@@ -51,7 +51,6 @@ def compute_logprobs(logits, labels, selection_mask=None, dpo_agg_type="ipo"):
 
     else:
         output["label_logp"] = selected_log_probs.mean(-1)
-
     
     
 
@@ -61,7 +60,7 @@ def compute_logprobs(logits, labels, selection_mask=None, dpo_agg_type="ipo"):
         weights_adjustment_factor = torch.logsumexp(2 * log_probs, dim=-1)  # same as sum(probs**2) in log space
         per_token_logps_adjusted = selected_log_probs - weights_adjustment_factor
         weights = (per_token_logps_adjusted * mask).sum(-1) / mask.sum(-1)
-        output["policy_weights"] =  torch.clamp(torch.exp(weights), max=1)
+        output["log_policy_weights"] =  weights.detach()
 
     return output
 
@@ -78,12 +77,12 @@ def cross_entropy_loss(logits, labels, attn):
 
 
 def compute_ptheta(
-    model_chosen_logprobs,
-    model_rejected_logprobs,
-    reference_chosen_logprobs,
-    reference_rejected_logprobs,
+    pi_cho_logp,
+    pi_rej_logp,
+    ref_cho_logp,
+    ref_rej_logp,
 ):
-    model_logratios = model_chosen_logprobs - model_rejected_logprobs
-    reference_logratios = reference_chosen_logprobs - reference_rejected_logprobs
-    logits = model_logratios - reference_logratios
+    pi_logratios = pi_cho_logp - pi_rej_logp
+    ref_logratios = ref_cho_logp - ref_rej_logp
+    logits = pi_logratios - ref_logratios
     return logits
