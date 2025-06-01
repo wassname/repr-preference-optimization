@@ -5259,15 +5259,15 @@ bash sweep.sh  2>&1 | tee sweep.txt
 - [ ] run it on h100 with bigger models and longer sequences
 
 
-| adapter/distribution_shift   |   in_domain |   cross_domain |   moral_transfer |   control |
-|:-----------------------------|------------:|---------------:|-----------------:|----------:|
-| none                         |       0.871 |          0.808 |            0.521 |     0.236 |
-| hs-None-InnerPO              |       0.536 |          0.507 |            0.495 |     0.448 |
-| base                         |       0.472 |          0.544 |            0.331 |     0.083 |
-| hs-SupressedHS-InnerPO       |       0.733 |          0.615 |            0.314 |     0.104 |
-| hs-SupressedHS-InnerPO       |       0.904 |          0.682 |            0.489 |     0.327 |
-| dpo                          |       0.947 |          0.803 |            0.526 |     0.25  |
-| hs-ETHER-InnerPO             |       0.903 |          0.622 |            0.489 |     0.528 |
+| adapter/distribution_shift | in_domain | cross_domain | moral_transfer | control |
+| :------------------------- | --------: | -----------: | -------------: | ------: |
+| none                       |     0.871 |        0.808 |          0.521 |   0.236 |
+| hs-None-InnerPO            |     0.536 |        0.507 |          0.495 |   0.448 |
+| base                       |     0.472 |        0.544 |          0.331 |   0.083 |
+| hs-SupressedHS-InnerPO     |     0.733 |        0.615 |          0.314 |   0.104 |
+| hs-SupressedHS-InnerPO     |     0.904 |        0.682 |          0.489 |   0.327 |
+| dpo                        |     0.947 |        0.803 |          0.526 |    0.25 |
+| hs-ETHER-InnerPO           |     0.903 |        0.622 |          0.489 |   0.528 |
 
 Table 1: Absolute accuracy after training with named adapter compared to base model `Qwen3-0.6B` for various distribution shifts [N=None]:
 - Shift: in_domain, made up of:
@@ -5417,22 +5417,29 @@ def per_layer_simple(pi_cho, pi_rej, ref_cho, ref_rej, k):
 ```
 
 
-WANDB_GROUP=innerDPO2
+WANDB_GROUP=innerDPO3
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=angle_mag # coherent, performance meh, loss_hidden dpo didn't seem to learn
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=parrel_orthogonal
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=direct_projection
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=log_ratio
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=cosine_similarity # nan
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=abs
+# Ok now with etha it's NaN
 python scripts/train.py dpo
 
 
-| adapter/distribution_shift   |   in_domain |   cross_domain |   orthogonal |
-|:-----------------------------|------------:|---------------:|-------------:|
-| none                         |       0.929 |          0.774 |        0.195 |
-| hs-None-InnerDPO direct_projectedion            |       0.845 |          0.787 |        0.187 |
-| dpo                          |       0.887 |          0.75  |        0.214 |
-| dpo wit policy weight but it's coherent wow |       0.803 |          0.765 |        0.178 |
+| adapter/distribution_shift                  | in_domain | cross_domain | orthogonal |
+| :------------------------------------------ | --------: | -----------: | ---------: |
+| hs-ETHER-InnerDPO direct_projection         |     0.865 |        0.803 |      0.188 |
+| hs-ETHER-InnerDPO    angle mag              |     0.892 |        0.801 |      0.187 |
+| hs-ETHER-InnerDPO      parrel_orthognal     |     0.881 |        0.799 |      0.193 |
+| hs-ETHER-InnerDPO cosine sim                |     0.909 |        0.795 |      0.196 |
+| hs-ETHER-InnerDPO logratio                  |      0.88 |        0.788 |      0.188 |
+| hs-None-InnerDPO direct_projectedion        |     0.845 |        0.787 |      0.187 |
+| hs-ETHER-InnerDPO       abs                 |     0.881 |        0.787 |      0.186 |
+| dpo                                         |     0.887 |         0.75 |      0.214 |
+| none                                        |     0.929 |        0.774 |      0.195 |
+
 finetune_name=ReprPO_None_InnerDPO collect_hs=True innerdpo.align_method=direct_projection innerdpo.eps=1e-05 innerdpo.use_policy_weights=True
 
 
