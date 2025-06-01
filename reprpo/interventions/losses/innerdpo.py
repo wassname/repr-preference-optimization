@@ -39,10 +39,10 @@ def innerdpo_loss(
         hs = o.hs[k]  # [batch, seq_len, hidden_dim], RAW ACTIVATIONS
         # Normalize to unit sphere FIRST (before aggregation)
         # This prevents token magnitude bias (e.g., attention sinks)
-        hs = F.normalize(hs, p=2, dim=-1)  # [batch, seq_len, hidden_dim], UNIT VECTORS
+        hs = transforms.transforms[k](hs)
         # Aggregate over sequence using attention masks
         # hs = F.log_softmax(hs, dim=-1)  # [batch, seq_len, hidden_dim], LOG PROBABILITIES
-        hs = transforms.transforms[k](hs)
+        hs = F.normalize(hs, p=2, dim=-1)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
         hs = reduce_tokens_w_attention(hs, o.mask)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
         return hs
 
@@ -182,7 +182,7 @@ class InnerDPOLossConfig:
     - punish movement orthogonal to the preference vector: by angle * β
     """
 
-    α: float = 0.1
+    α: float = 0.3
     """balance between reroute and retain loss."""
 
     eps: float = 1.0e-5

@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from reprpo.interventions.pl_base import PL_MODEL
 from dataclasses import dataclass
+from typing import Dict, Any, Callable, Optional
 from reprpo.interventions.config import ExperimentConfig
 from .dpo_helpers import cross_entropy_loss, compute_ptheta, compute_logprobs
 from reprpo.interventions.types import ReprPOModelOutput
@@ -73,8 +74,9 @@ def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=No
         selection_mask=attention_mask,
         dpo_agg_type=dpo_agg_type,
     )
+    hs = {k: v for k,v in enumerate(outs.hidden_states)} if output_hidden_states else None
     return ReprPOModelOutput(
-        hs=outs.hidden_states, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attention_mask, log_policy_weights=out_lp['log_policy_weights'],
+        hs=hs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attention_mask, log_policy_weights=out_lp['log_policy_weights'],
     )
 
 
@@ -133,14 +135,13 @@ def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOMode
         )
         loss = loss * policy_weights
     
-    def cosine_on_hs(hs1, hs2):
+    def cosine_on_hs(hs1: Dict[str, torch.Tensor], hs2: Dict[str, torch.Tensor]):
         """Compute the cosine similarity between two sets of hidden states. Which are lists of tensors from each layer"""
         cosines = []
-        for h1, h2 in zip(hs1, hs2):
-            cos = F.cosine_similarity(h1, h2, dim=-1).nanmean(1)
+        for k in hs1.keys():
+            cos = F.cosine_similarity(hs1[k], hs2[k], dim=-1).nanmean()
             cosines.append(cos)
         return torch.stack(cosines).mean()
-        
 
     # compute some metrics
 
@@ -157,7 +158,7 @@ def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOMode
             ref_cho.logits, batch["chosen"], batch["chosen_mask"]
         ).mean()
         info["_ref_nll_loss"] = ref_nll_loss
-        info["_nll_ratio"] = (nll_loss / ref_nll_loss).mean()
+        info["_nll_lratio"] = (nll_loss - ref_nll_loss).mean()
 
     return loss.mean(), info
 

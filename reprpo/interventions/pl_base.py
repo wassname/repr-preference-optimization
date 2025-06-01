@@ -55,8 +55,8 @@ class PL_MODEL(pl.LightningModule):
             batch_size=self.hparams.batch_size,
         )
         self.log(
-            f"{phase}/nll_ratio",
-            info.pop("_nll_ratio"),
+            f"{phase}/nll_rat",
+            info.pop("_nll_lratio"),
             on_epoch=True,
             on_step=True,
             prog_bar=True,
