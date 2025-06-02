@@ -5437,11 +5437,48 @@ python scripts/train.py dpo
 | hs-ETHER-InnerDPO logratio                  |      0.88 |        0.788 |      0.188 |
 | hs-None-InnerDPO direct_projectedion        |     0.845 |        0.787 |      0.187 |
 | hs-ETHER-InnerDPO       abs                 |     0.881 |        0.787 |      0.186 |
-| dpo                                         |     0.887 |         0.75 |      0.214 |
+| dpo           run again                     |     0.887 |         0.75 |      0.214 |
 | none                                        |     0.929 |        0.774 |      0.195 |
+
+ok without trunc it's better
+| adapter/distribution_shift   |   in_domain |   cross_domain |   orthogonal |
+|:-----------------------------|------------:|---------------:|-------------:|
+| none                         |       0.935 |          0.771 |        0.199 |
+| hs-ETHER-InnerDPO  abs       |       0.891 |          0.797 |        0.186 |
+| hs-ETHER-InnerDPO  angle mag |       0.841 |           0.79 |        0.19  |
+|hs-ETHER-InnerDPO  parr orth  |       0.885 |          0.775 |        0.204 |
+| hs-ETHER-InnerDPO lograt     |       0.861 |          0.802 |        0.188 |
+| dpo                          |       0.797 |          0.769 |        0.182 |
 
 finetune_name=ReprPO_None_InnerDPO collect_hs=True innerdpo.align_method=direct_projection innerdpo.eps=1e-05 innerdpo.use_policy_weights=True
 
 
 huh even dpo doesn't work?? I tried without policy weights, and with IPO.
 Or could it just be code... I need to measure dataset cropping. Maybe I should just pretokenize
+
+
+So
+- [ ] using vast, train some SFT models
+- [ ] run same one with code but no truncation
+ 
+
+- [ ] code is too hard, try code_easy?
+- [ ] or is it truncated, check this too... yes it is
+
+
+
+see my justfile
+SFT models
+- wassname/llama-3-2-1b-sft
+- allenai/OLMo-2-0425-1B-SFT
+- allenai/OLMo-7B-SFT-hf
+- princeton-nlp/Llama-3-Base-8B-SFT
+
+I will train:
+- [ ] HuggingFaceTB/SmolLM2-135M
+- [ ] HuggingFaceTB/SmolLM2-360M
+- [ ] Qwen/Qwen3-0.6B-Base
+- [ ] HuggingFaceTB/SmolLM2-1.7B
+- [ ] Qwen/Qwen2-4B-Base
+- [x] https://huggingface.co/wassname/llama-3-2-1b-sft
+

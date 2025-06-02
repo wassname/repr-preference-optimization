@@ -28,12 +28,12 @@ class ExperimentConfig:
     use_gradient_checkpointing: bool = False
     schedule: str = "wsd"
 
-    batch_size: int = 8
+    batch_size: int = 5
 
     n_samples: int = 10000
     eval_samples: Optional[int] = None
-    max_length: int = 256
-    max_prompt_length: int = 128
+    max_length: int = 512
+    max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long
 
     
     base_model: str = "wassname/llama-3-2-1b-sft"

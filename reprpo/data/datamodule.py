@@ -3,9 +3,7 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader
 from .collate3 import TokenizeRow
 import numpy as np
-import logging
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 class PrefDataModule(LightningDataModule):
     """DataModule for preference datasets using a central ExperimentConfig."""
