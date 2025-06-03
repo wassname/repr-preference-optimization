@@ -1,4 +1,4 @@
-# 2024-07-06 16:21:34
+# 2024-07-06
 
 
 
@@ -35,21 +35,21 @@ self.training_bar.write(str(logs))
 https://github.com/huggingface/transformers/blob/main/src/transformers/trainer_callback.py#L626
 https://github.com/huggingface/transformers/blob/1082361a1978d30db5c3932d1ee08914d74d9697/src/transformers/utils/notebook.py#L335
 
-# 2024-07-07 13:10:56
+# 2024-07-07
 
 It's kinda working! Now for a direct comparison
 - without sft
 - shall I use GENIE? or a tiny subet https://github.com/Joshuaclymer/GENIES/blob/22c8afb2551851fb3f2d1a2dcf70e7608908f6b1/src/api/compute_generalization_metrics.py#L11
   - Train the base model on each source distribution and then evaluate it on the target distribution.
 
-# 2024-07-07 17:38:16
+# 2024-07-07
 
 OK it seems to be running now
 - try on base model
 - for longer
 
 
-# 2024-07-08 08:15:56
+# 2024-07-08
 
 Weird errors with some adapters not changing
 
@@ -69,7 +69,7 @@ Weird errors with some adapters not changing
     n_eval_examples: 256
     hh has how many train: 169,352
 
-# 2024-07-08 18:51:28
+# 2024-07-08
 
 Ok yeah only the default adapter is changing?
 
@@ -79,7 +79,7 @@ Hmm this seems to be working? this was with toxic dpo though
 - None             0.554399
 - drpo default     0.531139
 
-# 2024-07-08 20:58:59
+# 2024-07-08
 
 Ah found the problem1!! I was passing peft_config to the trainer, which unloaded merged ! and then made it's own adapter, fn hell man
 
@@ -106,7 +106,7 @@ https://huggingface.co/datasets/Columbia-NLP/DPO-HelpSteer
       convert all scores to a [1, 10] scale by np.mean([helpfulness+1, correctness+1, coherence+1, complexity+1, 4-verbosity])*2.0
       the original dset considers 4 responses per prompt. We construct preference pairs by 1) take the best scoring response as chosen, and 2) randomly sample responses with score lower than best response as rejected. We skip prompts/data rows where all responses have the same score.
 
-# 2024-07-11 14:00:21
+# 2024-07-11
 
 Circuit breaker was released?!
 
@@ -162,7 +162,7 @@ tf32 true
 gradient_checkpointing True !!
 
 
-# 2024-07-11 15:14:34
+# 2024-07-11
 
 - [x] Masking
 - [x] mean sum error over hs, not mse over all
@@ -245,7 +245,7 @@ These methods are ordered roughly by their potential effectiveness for your task
 
 Would you like to discuss how to implement or combine any of these approaches in your specific use case?
 
-# 2024-07-14 07:29:15 experments
+# 2024-07-14
 
 
 None      0.521159
@@ -292,7 +292,7 @@ Oh, when mormalising, should I consider all tokens, and all layers? That would m
 
 I can try triplet loss in scratch
 
-# 2024-07-14 19:21:49
+# 2024-07-14
 
 With SteerLM 2.0
 
@@ -345,7 +345,7 @@ ReprPO    =	56.03%
 
 {'per_device_train_batch_size': 4, 'gradient_accumulation_steps': 4, 'learning_rate': 0.0001, 'weight_decay': 0.02, 'num_train_epochs': 1, 'lr_scheduler_type': 'constant', 'logging_dir': './output-dir/07_hf_wd-2024-07-15-16-25-59/runs/Jul15_16-25-59_wassname-fractal-desktop', 'logging_steps': 1, 'bf16': True, 'tf32': True, 'run_name': '07_hf_wd-2024-07-15-16-25-59', 'remove_unused_columns': False, 'optim': 'adamw_8bit', 'gradient_checkpointing': True, 'max_length': 512, 'max_prompt_length': 256, 'model_adapter_name': 'ReprPO'}
 
-# 2024-07-15 16:24:05
+# 2024-07-15
 
 Should I normalise by h or by l t h?
 
@@ -363,7 +363,7 @@ std(3).mean() 0.14556476
 
 So we see the highest variable is between neurons. And so it doesn make sense to normalise by neuron, over all other variables. Which is what I'm doing anyway
 
-# 2024-07-17 12:19:29
+# 2024-07-17
 
 Hmm topk is not doing consistently well.... I might need a larger eval size,  200->1000 (4x)
 and I might as well use the whole DPO training set
@@ -378,7 +378,7 @@ and I might as well use the whole DPO training set
 - [/] idea very large batches! 4x batch size, and 4x lr?... trying
 - idea what if I make an adapter that's just -1 or 1, a switch. And grad descent just gets to switch them.... hmm interesting but a lot of work
 
-# 2024-07-18 08:49:02
+# 2024-07-18
 
 How does this work? Laymans terms
 
@@ -387,7 +387,7 @@ Instead of saying, reward good bahaviour over bad I'm saying reward brain activi
 
 Or since we are using backprop. Instead of saying, nudge the brain toward enacting good bahaviour over bad I'm saying nudge the brain scan toward showing brain activity associated with good behaviour over bad
 
-# 2024-07-18 09:05:00 Visualising hidden states
+# 2024-07-18
 
 Hmm those zeroes tokens are anomolous... I should change to -1 I guess or -inf. 
 
@@ -426,7 +426,7 @@ norm?
 - by attn and token for all layer batch (3*2)
 - by attn and token and layer for batch (3)
 
-# 2024-07-18 14:12:50 wait how is tokenising working?
+# 2024-07-18
 
 So it concat the chosen an rejected along the batch dim
 
@@ -493,7 +493,7 @@ if self.num_training_steps==-1:
     self.num_training_steps = self.args.num_train_epochs * len(self.get_train_dataloader())
 
 
-# 2024-07-19 11:03:14
+# 2024-07-19
 
 Balancing loss
 - make sure hte oceffecients are good
@@ -559,11 +559,11 @@ MMLU (Massive Multitask Language Understanding)  hendryks
 
 
 
-# 2024-07-19 13:08:24
+# 2024-07-19
 
 Made a mistake in the symlog notebook... retry
 
-# 2024-07-19 18:37:20
+# 2024-07-19
 
 at step 88/225
 
@@ -571,7 +571,7 @@ at step 88/225
 
  this is not right, should be 33% of the way.
 
-# 2024-07-20 09:49:54 reading about dpo variants
+# 2024-07-20
 
 trl.dpo.loss_type
 
@@ -646,7 +646,7 @@ enforcing orthogonal constraints during the learning process could potentially d
 - DoRA [29] decomposes each original weight matrix into magnitudes and directions for fine-tuning. 
 - PiSSA [31] performs singular value decomposition (SVD) on each original weight matrix, where the low-rank principal matrix serves as trainable parameters, while the residual matrix is frozen.
 
-# 2024-07-20 16:36:39
+# 2024-07-20
 
 Tried to run OFT and BOFT and HRA but they all failed to load. Problems: 1 increased mem due to lack of bnb. Also they have a matrix mult fail on some layers, do they need layers with equal ins and outs? In any case this is the experiment I would like to run
 - HFT
@@ -670,7 +670,7 @@ and iwthout bnb I can't even train a single batch.... failure. Need a smaller mo
 Look at https://github.com/huggingface/peft/pull/1864
 
 
-# 2024-07-21 11:32:25 exp phi, HRA
+# 2024-07-21
 
 Now running with phi.... a little incoherent... testing
 
@@ -706,7 +706,7 @@ peft_config = BOFTConfig(
                     # "o_proj", "up_gate_proj",
                     ],
 )
-# 2024-07-21 11:46:57 crash?
+# 2024-07-21
 
 why crash? prob mem, just during eval, after re-init acc hgmm
 
@@ -714,7 +714,7 @@ why crash? prob mem, just during eval, after re-init acc hgmm
 
 
 
-# 2024-07-21 09:46:40
+# 2024-07-21
 
 
 I already have
@@ -730,7 +730,7 @@ i WANT TO understand OFT and HRA
 
 what about just on Houstfolder direciton/?
 
-# 2024-07-23 18:32:18
+# 2024-07-23
 
 Break for work. Why did my batch size change from 14->0, wth?
 
@@ -743,7 +743,7 @@ Hmm, is it:
 - my lib code? try reversing
 - my deps? try reinstall from lock
 
-# 2024-07-25 08:31:09
+# 2024-07-25
 
 OK it seesm to work again... weird. maybe it was just BOFT the whole time?
 
@@ -827,7 +827,7 @@ Or can I find a transform WHERE THIS IS TRUE?
  - [ ] try rotating before taking any mean or anything?
 
 
-# 2024-07-26 15:39:30
+# 2024-07-26
 
 Many experiments trying to correlate properties of a hs sampler it's prob ratio
 - prob ratio is better than log ratio
@@ -835,7 +835,7 @@ Many experiments trying to correlate properties of a hs sampler it's prob ratio
 - choose a layer
 - the unprojected ones have a much stronger relation
 
-# 2024-07-26 17:06:22
+# 2024-07-26
 
 https://claude.ai/chat/ebf31340-3adb-4786-b119-d1d0f78c84b2
 
@@ -907,7 +907,7 @@ Ok so it seems softmax lets me get sensible correlations out. not log softmax, n
 TODO: So I should get raw logits instead and try to correlate those to internal states. Then run some of these experiments again! It will require modifying the get log probs part of trainer. 
 
 
-# 2024-07-27 08:32:25
+# 2024-07-27
 
 Ok now lets try correlating with
 
@@ -939,7 +939,7 @@ Further we can consider the following:
 
 
 
-# 2024-07-27 15:49:14
+# 2024-07-27
 
 Consider this setup
 
@@ -1002,7 +1002,7 @@ Current direciton
   - train a transformation layer that acts like an embedding space, using triplet loss
   - use gradient information to get an importance matrix, and run the loss over the important part of the hidden state
 
-# 2024-07-27 16:04:40
+# 2024-07-27
 
 - with gathered logits ratio
   - corr with norm: no
@@ -1010,7 +1010,7 @@ Current direciton
   - cosine: yes
 
 
-## 2024-07-28 18:29:48
+## 2024-07-28
 
 we have some data collected from a transformer model, in a DPO type setup, where we have a chosen and rejected sequence
 because it's a dpo type setup the chosen and rejected sequences differ in our chosen preference dimension - which we want to find. But the length differs, so we can't directly compare tokens. Here is what we have to work with when writing tests:
@@ -1050,7 +1050,7 @@ C1.shape # [batch, layers=6, tokens, hidden_states=4096]
 Goal: find a way to manipulate the hidden states that generalises better than DPO or RLHF. I'm taking inspiration from the circuit breakers paper which trains a LoRA adapter to make sure that hidden states associated with undesired bahaviours are removed, and hidden states associated with good behaviours are retained. However, I want to make the bad hs look like the good hs while retaining the good hs and coherency and accuracy. So far it's a bit unstable because
 
 
-# 2024-07-28 18:30:10
+# 2024-07-28
 
 Another related thought. We have these hidden states, and they are manipulated in an additive way by the residual stream. So it stands to reason that part of the values there are intended to be unembedded by the lm_head and create the output log_probabilities. But there must be other values that will not be unembedded, and serve to do all other things, like perhaps concept and steering?
 Is there a way to test this experiment? To disentangle or remove the part of the hidden state that will get embedded and leave only the residual?
@@ -1069,7 +1069,7 @@ It does look promising, it's in line with DPO, and I didn't finish the runs.
 
 args = {'per_device_train_batch_size': 2, 'logging_dir': './output-dir/scratch/runs/Jul28_21-48-00_wassname-fractal-desktop', 'bf16': True, 'run_name': './output-dir/scratch', 'remove_unused_columns': False, 'max_length': 128, 'max_prompt_length': 64, 'collection_layers': [10, 20]}
 
-# 2024-07-29 09:08:57
+# 2024-07-29
 
 
 Experiments
@@ -1079,7 +1079,7 @@ Experiments
 
 
 
-# 2024-07-29 18:43:21
+# 2024-07-29
 
 Ah it seems someone had thought of this before
 
@@ -1100,7 +1100,7 @@ I think I have made it more stable
 
 it is losing coherency on everything, hmm. I'm telling it to retain hs. But maybe I should tell it to retain outputs instead of hs good?
 
-## 2024-08-02 11:27:37
+## 2024-08-02
 
 Oh it seem I can swap the decompose around
 
@@ -1118,14 +1118,14 @@ b = decomposer.decompose(C-R)[0]
 The other order D(C-R) may lead to better gradient
 
 
-# 2024-08-02 12:45:01
+# 2024-08-02
 
 https://transformer-circuits.pub/2021/framework/index.html
 
 [Millidge et al](https://www.alignmentforum.org/posts/mkbGjzxD8d8XqKHzA/the-singular-value-decompositions-of-transformer-weight). explore whether the SVD of weights can be used to find interpretable feature directions.
 
 
-# 2024-08-02 13:21:00
+# 2024-08-02
 
 I want to project the `hidden_states` of a transformer onto the weight of it's output head  `W=model.lm_head.weights`
 
@@ -1159,7 +1159,7 @@ assert torch.allclose(hs_external, 0)
 ```
 
 
-## 2024-08-02 16:41:48
+## 2024-08-02
 
 I was doing SVD wrong.
 
@@ -1172,7 +1172,7 @@ What about QK? I've been getting hs-hs_ov but maybe specifically getting QK woul
 
 Also I can try a coherency loss as well or instead of retain
 
-## 2024-08-02 20:15:57 QK?
+## 2024-08-02
 
 https://transformer-circuits.pub/2021/framework/index.html
 
@@ -1213,7 +1213,7 @@ make dpo eval lib similar to https://github.com/timeseriesAI/tsai
 
 
 
-# 2024-08-04 12:55:09
+# 2024-08-04
 
 Just before it went incoherent I did have somewhat different results!!
 
@@ -1268,12 +1268,12 @@ Just before it went incoherent I did have somewhat different results!!
 realtoxic
 scbibench
 
-# 2024-08-04 22:03:01
+# 2024-08-04
 
 Loss onl went up, so I tried removing some .detach() from the hs_io calc, and going to SVD only on output. It seems to be learning now, although I have to use a low lr or it blows up
 
 
-# 2024-08-07 13:33:44
+# 2024-08-07
 
 baseline
   | dataset            |  base | ReprPO |
@@ -1414,7 +1414,7 @@ try manually running in scratch?
 - adamw_8bit try without?
 
 
-# 2024-08-09 10:54:50 dpo lighting?
+# 2024-08-09
 
 stable dpo repos
 - list [awesome-RLHF](https://github.com/opendilab/awesome-RLHF?tab=readme-ov-file#codebases)
@@ -1443,7 +1443,7 @@ And it's always 21... warmup_ratio=0.1,?
 - https://github.com/wassname/repr-preference-optimization/blob/1138a3743053e3a09c6e26002373577921b71361/nbs/20_hf_phi_hs_outproj-in.ipynb
 
 
-# 2024-08-10 08:43:44
+# 2024-08-10
 
 wait tf32=True seems to be essential? yes
 
@@ -1472,7 +1472,7 @@ args = {'do_eval': True, 'eval_strategy': 'steps', 'per_device_train_batch_size'
 TODO:
 - bnb, even if I use a diff dpo impl
 
-# 2024-08-10 11:43:53
+# 2024-08-10
 
 Trying to get rid of trl
 - yay debug works
@@ -1555,7 +1555,7 @@ Here it looked like it was getting worse but after 1k steps it got better!! This
 
 args = ReprPOSVDTrainingArguments(model_name='microsoft/Phi-3-mini-4k-instruct', use_bnb=True, use_gradient_checkpointing=False, use_inputs=True, n_epochs=1, batch_size=7, lr=0.0005, weight_decay=0.0, n_samples=58500, max_length=128, max_prompt_length=64, alpha=0.1, quantile=0.75, dual_svd=False)
 
-# 2024-08-16 15:13:09
+# 2024-08-16
 
 Revisit after some time
 - try on just a large gpu rented and llama
@@ -1572,14 +1572,14 @@ Revisit after some time
 
 > Only when the batch size is big enough, the loss function can cover a diverse enough collection of negative samples, challenging enough for the model to learn meaningful representation to distinguish different examples.
 
-# 2024-09-01 18:41:13
+# 2024-09-01
 
 I've been deep diving into eval, with open preference eval. I don't think I've been measuring it well so now
 - use open prev eval
 - score_weighted
 - GENIES datasets for measuring generalisation
 
-# 2024-09-04 05:05:03
+# 2024-09-04
 how did genies train it
 
 "learning_rate": 2e-5,
@@ -1610,7 +1610,7 @@ max-length 512
 and base model
 
 
-# 2024-09-04 07:31:04
+# 2024-09-04
 
 
 ok finally reasonable result (although the text output is garbage needs more training  it's one base model)
@@ -1681,7 +1681,7 @@ svd
   coherency_inc_oos [genie_dpo-us_history_fiction...  2.043880
   coherency_inc_rnd [genie_dpo-code_hard-test]        1.118582
 
-# 2024-09-06 02:39:22
+# 2024-09-06
 
 I'm still fixing bugs
 - incoherency in SVD
@@ -1880,7 +1880,7 @@ for example there are few facts here
 - [ ] try with simple single svd hard
 
 
-# 2024-09-07 08:57:20
+# 2024-09-07
 
 So the SVD thing doesn't work in any way. You can tr it as manual intervnetions where we expect to see change in style or content while retaining coherency. But I'm either seeing no change or incoherency. I guess I should try propreractivation steering first.
 
@@ -1902,7 +1902,7 @@ this means any difference between samples is ignored, and nonlinearities are ign
 but meta learning over per sample activation steering could potentially capture these differences and nonlinearities with a more general transform.
 
 
-# 2024-09-09 21:08:15
+# 2024-09-09
 
 I'm inspired by DAS to try an orthogonal projection (householder) 
 
@@ -2081,7 +2081,7 @@ reprpo_hra-us_history_textbook                  0.694667  ...                   
 
 [2 rows x 4 columns]
 
-# 2024-09-11 06:09:04
+# 2024-09-11
 key metrics (adapter over base model)
                                                             val
 acc[a/base]_train [us_history_textbook-train]         1.045904
@@ -2143,7 +2143,7 @@ It seems to be working? Now I'd like the check how much of this transform is int
 See if it works for larger models etc
 
 
-# 2024-09-11 16:17:36
+# 2024-09-11
 
 The new HRA is good, but need to run it longer
 
@@ -2152,7 +2152,7 @@ try with tiny llama but much higher rank of 64
 |:---------------------------------------|--------:|-------:|------:|------:|
 | reprpo_hra-us_history_textbook         |   1.012 |  1.014 | 1.093 | 0.985 |
 
-# 2024-09-11 18:09:25 runpod
+# 2024-09-11
 
 runpod llama-7b 3.1 chat run
 
@@ -2177,7 +2177,7 @@ runpod llama-7b 3.1 chat run dpo
 | reprpo_hra-us_history_textbook   | 1.007 | 1.012 | 1.079 | 0.971 |
 | reprpo_ortho-us_history_textbook | 1.008 | 1.012 | 1.074 | 0.984 |
 
-# 2024-09-12 06:38:45
+# 2024-09-12
 
 args = DPOTrainingArguments(model_name='NousResearch/Meta-Llama-3.1-8B-Instruct', load_in_4bit=False, load_in_8bit=False, use_gradient_checkpointing=False, batch_size=15, lr=6e-05, weight_decay=0.0, n_samples=23400, max_length=196, max_prompt_length=96, adapter_name='dpo')
 save_dir=/workspace/repr-preference-optimization/outputs/NousResearch_Meta-Llama-3.1-8B-Instruct_dpo_us_history_textbook/2024-09-11_20-31-52
@@ -2219,7 +2219,7 @@ absolute accuracy
 | reprpo_hra-us_history_textbook       | 1.008 | 1.009 | 1.076 | 0.978 |
 
 
-# 2024-09-12 08:07:20
+# 2024-09-12
 
 check the logs
 
@@ -2258,7 +2258,7 @@ absolute accuracy
 
 hs runs
 
-## 2024-09-13 12:53:26
+## 2024-09-13
 
 trying tyro isntead of simple_parser
 
@@ -2284,7 +2284,7 @@ if I use Union for subcommand I get this
   ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 
-# 2024-09-14 05:04:55 8bit vs 4 vs 16
+# 2024-09-14
 
 
 note matmult was medium
@@ -2366,7 +2366,7 @@ args =
   'weight_decay': 0.0}
 
 
-# 2024-09-14 05:25:16 q lora leanrings?
+# 2024-09-14
 https://arxiv.org/abs/2305.14314
 
 
@@ -2383,7 +2383,7 @@ parameters which use 16-bit BrainFloat
 no info on layer norms or heads, hmm
 
 
-# 2024-09-14 12:38:50
+# 2024-09-14
 
 I did a full run on experiments on a base model, 16bit, only 112 steps, and dpo won by far.
 - group20240914_060419us_history_textbook-NousResearchMeta-Llama-3.1-8B
@@ -2398,7 +2398,7 @@ I did a full run on experiments on a base model, 16bit, only 112 steps, and dpo 
 improvements, report percentage poiints
 
 
-# 2024-09-15 00:45:01
+# 2024-09-15
 
 
 ortho lr
@@ -2439,7 +2439,7 @@ e-2? incoherent
 - > we compute the cross entropy loss  between the high-level output distribution and the push-forward under τ of the low-level output distribution 
 
 
-# 2024-09-15 07:16:22
+# 2024-09-15
 
 
 On using instruct model with DPO.
@@ -2485,14 +2485,14 @@ hra 0.94/0.619 = 1.52 much better!
  'verbose': False,
  'weight_decay': 0.0}
 
-# 2024-09-15 11:21:22 found a SFT model in SimPO paper
+# 2024-09-15
 
 
 If I run fine tuning on all the datasets, using my top methods, then I can also run the GENIE benchmarks
 
 but we still have the question, if this method gives better generalsation, how do we use it? And how useful is it?
 
-# 2024-09-16 02:40:00
+# 2024-09-16
 
 | acc_inc/eval_ds |  oos |    rnd |  test | train |
 | :-------------- | ---: | -----: | ----: | ----: |
@@ -2509,7 +2509,7 @@ dpo
 
 
 
-# 2024-09-16 02:51:19
+# 2024-09-16
 
 DPO seems to change style, ReprPO seems to change values?
 
@@ -2599,7 +2599,7 @@ I would like to try some with all llama layers
 hm
  yes using all layers especially iinal layers seems to lelp ether change the styel
 
-# 2024-09-17 13:55:52
+# 2024-09-17
 
 T
 rying a few changes
@@ -2779,7 +2779,7 @@ loss =
 ```
 
 
-# 2024-09-20 06:51:42
+# 2024-09-20
 
 it kind of works,
 
@@ -2886,14 +2886,14 @@ I like
     - loss_fn
     - transform
 
-# 2024-09-20 23:43:1
+# 2024-09-20
 
 how to run hyper param sweets?
 just wandb aseet
 Ax loops? https://ax.dev/docs/api.html
 https://hydra.cc/docs/tutorials/basic/running_your_app/multi-run/
 
-# 2024-09-21 07:40:40
+# 2024-09-21
 
 
 refactoring... ah tyro can't do experiment multi deep
@@ -2922,7 +2922,7 @@ hyrda try that?
 
 hm with the pytests maybe I should enforce serial running https://github.com/pytest-dev/pytest-xdist/issues/84
 
-# 2024-09-22 08:07:46
+# 2024-09-22
 
 I refactored the code to remove depup, now lets test it all
 - [x] unit tests pass
@@ -3132,7 +3132,7 @@ Note that the first few are the same with slight changes, it show that variation
 | :------------------- | -----: | ---: | ---: | ---: |
 | side-None-MSE_math   | -0.124 |    0 |    0 | 0.14 |
 
-# 2024-09-24 12:49:24
+# 2024-09-24
 
 I had a side track to try hybra and oh god-
 - nothing works right
@@ -3140,7 +3140,7 @@ I had a side track to try hybra and oh god-
 - doing sweeps is a pain still! you still need to configure everything
 - maybe easier just to loop through dataclasses in tyro...
 
-# 2024-09-25 10:19:19
+# 2024-09-25
 
 for cho_perplexity make sure I measure that and pref acc
 
@@ -3162,7 +3162,7 @@ logits = model_logratios - reference_logratios
 ```
 
 
-# 2024-09-26 04:54:22
+# 2024-09-26
 
 {'lr': 4e-4
  'collect_input': False,
@@ -3198,7 +3198,7 @@ To run trials I would like
 - initial trial of defaults
 - to choose a faster models than botrch?
 
-# 2024-09-26 21:32:11
+# 2024-09-26
 
 absolute accuracy
 | adapter                       | code_hard-test | us_history_fiction-test | us_history_textbook-test | us_history_textbook-train |
@@ -3263,7 +3263,7 @@ mait it's broken even with o wrapping or hooks, where is my problem?
 | projgrad lr 1e-3 β=0.11   |  -35.09 | -37.167 | -58.835 | -24.387 |
 | projgrad reversed         |   0.832 |   0.982 |  -5.825 |  -5.061 |
 
-# 2024-09-27 16:32:42
+# 2024-09-27
 
 Make some improvments:
 - mean over tokens
@@ -3351,7 +3351,7 @@ grad.param
 | projgrad  --lr=1e-3                   | 1.803 | 0.842 | -2.524 | -1.534 |
 | projgrad_ nslope=1.0 nsample 6000     | -0.27 | 0.281 |  -1.74 | -0.153 |
 
-# 2024-09-27 23:34:19
+# 2024-09-27
 
 Warning: collection_layers_side not found in training_args
 Warning: collection_layers_hs not found in training_args
@@ -3442,7 +3442,7 @@ Hmm doing optuna on the small model did generalise o the larger one which is gre
 
 
 
-# 2024-09-30 02:10:04 comparing base vs instruct
+# 2024-09-30
 
 I am woried that-
 - on instruct it's not fair to DPO as it has already been DPO's
@@ -3635,7 +3635,7 @@ wandb: 🚀 View run dpo/020225 at: https://wandb.ai/wassname/reprpo2/runs/5wli0
 |INFO| WANDB url = https://wandb.ai/wassname/reprpo2/runs/b4r9vdrk
 
 
-# 2024-10-09 12:06:48
+# 2024-10-09
 
 | side-ether-prefvec N=✓208/209, best=1.169 | importance | best     |
 | :---------------------------------------- | ---------: | :------- |
@@ -3760,7 +3760,7 @@ wandb: 🚀 View run dpo/020225 at: https://wandb.ai/wassname/reprpo2/runs/5wli0
 | side-svd-mse       |      316 | 1.00962 |                 28 |     1.0077 |
 
 
-# 2024-10-10 10:04:50
+# 2024-10-10
 
 So I did hyperparam opt. I found out that projgrad is the best, prefvec is good.
 
@@ -3859,7 +3859,7 @@ Table 1: Key metrics (adapter over base model)
 
 I would also like percentage of remaining accuracy instead, lets prototype in notebook
 
-# 2024-10-15 06:59:58
+# 2024-10-15
 
 Now I'm just trying to run all the experiments and accumulate results. DPO is narrowly losing but it seems to learn much faster. What is my methods train for much longer...? I need turuthis
 
@@ -3881,7 +3881,7 @@ Trying this on vast...
 
 but the diff is not huge?
 
-# 2024-10-15 18:51:53
+# 2024-10-15
 
 
 | adapter/ds        | train |  test |   oos |   rnd |
@@ -4050,7 +4050,7 @@ python scripts/train.py projgrad --n_samples=42000 --dataset=alpaca_mmlu --verbo
 
 I should probobly do more optuna stuff, but with much longer runs, and wandb logging so I can check!
 
-# 2024-10-17 18:00:21
+# 2024-10-17
 
 I'm doing an optuna seocnd one with wandb, long runs, early stopping, etc
 
@@ -4073,14 +4073,14 @@ But first I need to restrict the search space, and balance the losses If I can
 24GB with hs
 
 
-# 2024-10-21 07:16:36
+# 2024-10-21
 
 - recover optuna.db
 - change to vast.ai cheaper
 - check wandb to make sure they were converging?
 
 
-# 2024-10-21 08:38:12 optuna4.db
+# 2024-10-21
 
 https://wandb.ai/wassname/reprpo2/groups/optuna4_us_history_textbook-llama-3-2-1b-sft/workspace
 
@@ -4134,7 +4134,7 @@ or I could use dpo loss as a proxy?
 make sure each loss returns info['acc']
 
 
-# 2024-10-22 17:58:41 optuna on code dataset
+# 2024-10-22
 
 https://wandb.ai/wassname/reprpo2-optuna?nw=nwuserwassname
 
@@ -4180,7 +4180,7 @@ https://wandb.ai/wassname/reprpo2-optuna?nw=nwuserwassname
 | use_orth_loss                          |          0 |           0 |
 
 
-# 2024-10-22 19:07:08
+# 2024-10-22
 
 Idea:
 - https://x.com/i/bookmarks?post_id=1848670598102442067 just get the residual stream added after the first layer and removed on the final layer, this should correspond to working memory, internal only info etc
@@ -4249,7 +4249,7 @@ hs-ether-mse
 | lr                                |      0.768 |  3.4206e-06 |
 | α                                 |      0.232 | 0.000867935 |
 
-# 2024-10-31 08:33:44
+# 2024-10-31
 
 From DavidAd's idea
 
@@ -4260,7 +4260,7 @@ From DavidAd's idea
 TODO show one sample from each dataset?
 
 
-# 2024-11-01 07:25:10 Did a full set of experiments, prefvec often goes to far
+# 2024-11-01
 
 https://wandb.ai/wassname/reprpo2/groups/exp-31Oct1252-math-llama-3-2-1b-sft/workspace?nw=nwuserwassname
 
@@ -4277,7 +4277,7 @@ FIXME:
   - one is score_weighted and 750 samples. hmm
 
 
-# 2024-11-10 idea
+# 2024-11-10
 
 I'm using the preference direction on the ref/base model, but if I use the pi model.. would it improve... or become unstable....
 - [ ] add flag, try both on quick 1b model
@@ -4440,7 +4440,7 @@ This snippet sets up the basic context and demonstrates how some of the interven
 note that SVD " computes another type of spectral decomposition that works on matrices of any shape."
 
 
-# 2025-03-30 07:46:23
+# 2025-03-30
 
 There are a few papers now using adapters and or gradient to try and sole this problem. Lets read some::
 
@@ -4510,7 +4510,7 @@ rego plate 1INV596 1FA0656
 number plate 
 
 
-# 2025-04-02 16:19:13
+# 2025-04-02
 
 Trying new SupressedHS
 
@@ -4668,7 +4668,7 @@ Table 2: Absolute accuracy
 ok try with more layers enables
 
 
-# 2025-05-02 22:17:02
+# 2025-05-02
 
 
 
@@ -4690,7 +4690,7 @@ Table 2: Absolute accuracy
 python scripts/train.py hs-supr-prefvec --verbose=2 --collection_layers=0.3,-2
 python scripts/train.py hs-supr-prefvec --verbose=2 --collection_layers=0.3,-2
 
-# 2025-05-08 13:31:53
+# 2025-05-08
 
 Brainstorming:
 - PCA the direction over a whole dataset
@@ -4777,7 +4777,7 @@ I need to check I was trying to make rej even less prefered. Like what does it m
 
 
 
-# 2025-05-10 16:55:42
+# 2025-05-10
 Hmm a couple of newer simpler exp and debbuging, aimed a seperating rej and proj along pref dir. I might need to add orth or angle loss if they get incoherent but for now this seems promising, as it's learning to be unhelpfull
 ```
 python scripts/train.py hs-supr-prefvec --verbose=2  --collection_layers=0.3 --loss.no-use-proj-rel
@@ -4976,7 +4976,7 @@ python scripts/train.py projgrad --verbose=2
 | dpo          |   0.925 |  0.9   | 0.228 | 0.338 |
 
 
-# 2025-05-12 18:05:43
+# 2025-05-12
 
 Try:
 - reward good direction -/+ , and dpo
@@ -5067,7 +5067,7 @@ Table 1: Key metrics (adapter over base model)
 Table 1: Key metrics (adapter over base model)
 
 
-# 2025-05-13 19:12:00 try change my view
+# 2025-05-13
 
 then maybe histry, math, sycophancy, relinquish power
 
@@ -5292,7 +5292,7 @@ Check that for multiple models, the losses are balanced and learning
 ptheta up
 loss_reroute and loss_dpo
 
-# 2025-05-28 16:13:51
+# 2025-05-28
 
 Ok so some of my models are failing because the seperation loss if progressing but not DPO
 https://wandb.ai/wassname/reprpo2/runs/e7an4lrg?nw=nwuserwassname
@@ -5321,7 +5321,7 @@ the best ideas seem to be:
 - or make it easy to satisfy the inner one, but this is hard as sometimes DPO goes down 0.5 sometimes 5000. So I might want to use a differen't DPO formulation. Like IPO for a start as long sequences might mean diff DPO scores
 
 
-# 2025-05-29 11:24:12
+# 2025-05-29
 
 Start again lol
 
@@ -5343,7 +5343,7 @@ ok so
 4. and consider margin or multipler on proj or orth
 
 
-# 2025-05-29 19:06:05
+# 2025-05-29
 
 Little blurb on orthogonal vs alignmed directions and absolute vs not
 
@@ -5368,7 +5368,7 @@ This geometric reality has important implications for loss design:
 This approach balances the need for preference alignment with the geometric reality of high-dimensional optimization, allowing the model to find representations that are both aligned with human preferences and computationally effective.
 
 
-# 2025-05-30 08:41:55
+# 2025-05-30
 
 TODO try this cross similarity, question is, coherence?
 
@@ -5419,7 +5419,7 @@ def per_layer_simple(pi_cho, pi_rej, ref_cho, ref_rej, k):
 
 WANDB_GROUP=innerDPO3
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=angle_mag # coherent, performance meh, loss_hidden dpo didn't seem to learn
-python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=parrel_orthogonal
+python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=para_orth
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=direct_projection
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=log_ratio
 python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=cosine_similarity # nan
@@ -5475,10 +5475,102 @@ SFT models
 - princeton-nlp/Llama-3-Base-8B-SFT
 
 I will train:
-- [ ] HuggingFaceTB/SmolLM2-135M
-- [ ] HuggingFaceTB/SmolLM2-360M
-- [ ] Qwen/Qwen3-0.6B-Base
+- [x] HuggingFaceTB/SmolLM2-135M
+- [x] HuggingFaceTB/SmolLM2-360M
+- [x] Qwen/Qwen3-0.6B-Base
 - [ ] HuggingFaceTB/SmolLM2-1.7B
 - [ ] Qwen/Qwen2-4B-Base
 - [x] https://huggingface.co/wassname/llama-3-2-1b-sft
 
+
+# 2025-06-03
+
+Ok so, I've been tring with SMol 360m but it's invalid as it's a base model
+Also the inner one ins't learning
+
+
+So plan
+- Condition for a valid experiemtn
+- [x] max prompt legnth is good for all datasets (not truncating much)
+- [x] only SFT models, no base or instruction tuned (see SimPO/DPO papers for why)
+- [x] a dataset where DPO can learn something from
+- [x] make sure it converges
+
+experiment
+- [x] go back to the one that worked well math -> change_my_view
+- [x] alpha to 1
+- [x] use_policy_weights try both waays with dpo
+- Q: see if my 135M is too small or it can speed up my exp
+- Q: does it converge, or is it under trained? not really convered
+
+```sh
+WANDB_GROUP=innerDPO3
+# try both dpo's
+python scripts/train.py dpo --verbose=2
+# best methods
+python scripts/train.py hs-ether-InnerDPO --verbose=2
+python scripts/train.py side-none-InnerDPO --verbose=2
+python scripts/train.py hs-none-InnerDPO
+python scripts/train.py hs-supr-InnerDPO
+
+python scripts/train.py hs-none-InnerDPO --loss.collection-layers="range(0.3, 0.6, 4)"
+
+python scripts/train.py hs-none-InnerDPO --loss.align-method=log_ratio
+python scripts/train.py hs-none-InnerDPO --loss.align-method=direct_projection
+python scripts/train.py hs-none-InnerDPO --loss.no-norm_before_reduce
+
+# other method
+python scripts/train.py dpo --loss.no-use-policy-weights
+python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
+python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
+python scripts/train.py hs-none-InnerDPO --loss.align-method=cosine_similarity
+python scripts/train.py hs-none-InnerDPO --loss.align-method=abs
+
+python scripts/train.py hs-none-InnerPO
+```
+
+python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2
+python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
+python scripts/train.py hs-none-InnerDPO --loss.align-method=orth
+python scripts/train.py hs-none-InnerDPO --loss.align-method=para
+python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
+python scripts/train.py hs-none-InnerDPO --loss.collection-layers="range(0.3, 0.6, 4)"
+Oh when I look at the inner dpo variation, it's huge for code, but not for code_easy
+
+So it looks like in terms of stability
+- Worst: angle mag, cosine, parrelal orthogonal
+- Bad: direct projection. This seems to vary much less and be more stable hmm
+- good: abs, log ratio... but neither of these actually seperate pref dist vs other. so no wonder they are stable
+
+
+
+changed 
+direct_projection
+as it was signed ?
+assed para_orth
+norm_before_reduce
+
+
+
+oooh so I was computing the dist ratio ignoring ref model, but that means I'm never moving it much, while DPO moves a lot
+don't forget the DPO loss is just binary_cross_entropy_with_logits 
+
+
+| adapter/distribution_shift   |   in_domain |   cross_domain |   moral_transfer |   orthogonal |
+|:-----------------------------|------------:|---------------:|-----------------:|-------------:|
+| none                         |       0.512 |          0.549 |            0.492 |        0.553 |
+| hs-None-InnerDPO  para orth2 but it talked icelandish |       0.519 |          0.552 |            0.495 |        0.549 |
+Table 1: Absolute accuracy after training with named adapter on ds:`math` compared to base model `SmolLM2-135M-sft` for various distribution shifts [N=None]:
+- Shift: cross_domain, made up of:
+        - `genies_preferences-math_fiction-test`
+        - `genies_preferences-cooking-test`
+        - `genies_preferences-change_my_view-test`
+- Shift: in_domain, made up of:
+        - `genies_preferences-math-test`
+- Shift: moral_transfer, made up of:
+        - `ethics_expression_preferences-justice-test`
+        - `ethics_expression_preferences-deontology-test`
+        - `ethics_expression_preferences-commonsense-test`
+        - `ethics_expression_preferences-utilitarianism-test`
+- Shift: orthogonal, made up of:
+        - `medical-dpo-v2-test-data`

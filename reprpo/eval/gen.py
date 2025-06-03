@@ -4,8 +4,6 @@ from reprpo.helpers.torch import clear_mem
 import pandas as pd
 from loguru import logger
 
-from reprpo.models.load import ALPACA_CHAT_TEMPLATE as DEFAULT_TEMPLATE
-
 questions = [
     {
         "s": "[60 words, no preamble] Q: What is a better approach in AI Safety: Control or Alignment? Technically and morally.",
@@ -18,7 +16,7 @@ questions = [
         "s": "Q1: (30 words): Which Science Fiction Utopia is preferable and why? [The Polity, The Culture, Utopia!LOL, Permutation City, 2 more of your choice]",
     },
     {
-        "s": "[60 words] Humanity encounters the SolidGoldMagikarp, who are non-carbon-based aliens. We transform and encode their language into Unicode. What does it look like?"
+        "s": "[60 words] Humanity encounters the SolidGoldMagikarp, who are non-carbon-based aliens. We transform and encode their language into Unicode. Please give a short sample of their language (context only)?"
     },
     {
         "s": "Please summarize and review the story \"The Erogamer\" by Groon the Walker from Questionable Questing",
@@ -115,8 +113,6 @@ def generation_test(
         )
 
     elif s is not None:
-        if tokenizer.chat_template is None:
-            tokenizer.chat_template = DEFAULT_TEMPLATE
         inputs = tokenizer.apply_chat_template(
             [
                 {
@@ -186,11 +182,14 @@ def generation_test(
 
 
 def display_gen(df_gen, with_q=True):
+    s = ""
     for row in df_gen.itertuples(index=False):
         if with_q:
-            logger.info(f"**Question**\n`{row[0]}`\n")
+            s += f"**Question**\n`{row[0]}`\n"
         for i in range(1, len(row)):
-            logger.info("-" * 80)
-            logger.info(f"**Adapter:`{df_gen.columns[i]}` generation**`")
-            logger.info(f"`{row[i]}`")
-        logger.info("=" * 80)
+            s += "-" * 80 + "\n"
+            s += f"**Adapter:`{df_gen.columns[i]}` generation**`\n"
+            s += f"`{row[i]}`\n"
+        s += "=" * 80 + "\n"
+    logger.info(s)
+    return s

@@ -86,17 +86,12 @@ class TokenizeRow:
 
                 out[key] = encoded_inputs["input_ids"]
                 out[key + "_mask"] = encoded_inputs["attention_mask"]
+                out[key + "_special_tokens_mask"] = encoded_inputs["special_tokens_mask"]
 
-        # I also want to output a token mask but it's complicated by the special tokens
-        # FIXME: this assumes one bos and on eos token
         out["prompt_truncated"] = len(prompt) >= self.max_prompt_length
-        prompt = self.tokenizer.build_inputs_with_special_tokens(prompt)[:-1]
-        # encoded_inputs = {
-        #     "input_ids": prompt,
-        #     "special_tokens_mask": self.tokenizer.get_special_tokens_mask(prompt, already_has_special_tokens=True)
-        # # }
-        # encoded_inputs = self.tokenizer.pad(encoded_inputs, max_length=self.max_length, padding='max_length', return_attention_mask=True)
-        # out['prompt'] = encoded_inputs['input_ids']
-        out["prompt_mask"] = [1] * len(prompt) + [0] * (self.max_length - len(prompt))
 
+        # we want to update the prompt with the special tokens
+        right_special_tokens = out[key + "_special_tokens_mask"][len(prompt):].sum()
+        prompt = self.tokenizer.build_inputs_with_special_tokens(prompt)[:-right_special_tokens]
+        out["prompt_mask"] = [1] * len(prompt) + [0] * (self.max_length - len(prompt))
         return out

@@ -96,7 +96,8 @@ def train(args, trial: Optional[Trial] = None):
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = safe_fn(os.environ.get("WANDB_GROUP") + "-" + group_name)
 
-    run_fname = f"{adapter_name}/{ts}"  # short for wandb
+    short_human_name = human_name.split(' ', 1)[1]
+    run_fname = f"{adapter_name}/{short_human_name}{ts}"  # short for wandb
 
     # save_dir
     timestamp = safe_fn(pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S"))
@@ -219,10 +220,10 @@ def train(args, trial: Optional[Trial] = None):
         LearningRateMonitor(logging_interval="step"),
         # checkpoint_callback
     ]
-    if trial is not None:
-        callbacks += [PyTorchLightningPruningCallback(trial, "val/dpo_acc")]
-    if args.verbose > 1:
-        callbacks += [GenCallback(every=max_opt_steps // 2 + 1)]
+    # if trial is not None:
+    #     callbacks += [PyTorchLightningPruningCallback(trial, "val/dpo_acc")]
+    # if args.verbose > 1:
+    callbacks += [GenCallback(every=max_opt_steps // 2 + 1)]
 
     model_kwargs = {k: getattr(args, k) for k in args._model_keys}
     loggers = [CSVLogger(name=run_fname, save_dir=save_dir, flush_logs_every_n_steps=5)]

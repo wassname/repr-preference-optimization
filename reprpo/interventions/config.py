@@ -9,10 +9,10 @@ class ExperimentConfig:
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
     lr: float = 7e-5
-    weight_decay: float = 0.0
+    weight_decay: float = 0.01
 
 
-    dataset: str = "code"
+    dataset: str = "math"
     """train dataset."""
 
     # TODO manually set the ood and rnd datasets, or else hard code sets
@@ -24,20 +24,27 @@ class ExperimentConfig:
     """fast run"""
 
     load_in_4bit: bool = False
-    load_in_8bit: bool = False
+    load_in_8bit: bool = True
     use_gradient_checkpointing: bool = False
     schedule: str = "wsd"
 
-    batch_size: int = 5
-
-    n_samples: int = 10000
+    n_samples: int = 20000
     eval_samples: Optional[int] = None
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long
 
     
-    base_model: str = "wassname/llama-3-2-1b-sft"
-    # base_model: str = "Qwen/Qwen3-0.6B"
+    # # base_model: str = "wassname/llama-3-2-1b-sft"
+    # batch_size: int = 5
+
+    # # base_model: str = "Qwen/Qwen3-0.6B"
+    # batch_size: int = 7
+
+    # # base_model: str = "wassname/SmolLM2-360M-sft"
+    # batch_size: int = 10
+
+    base_model: str = "wassname/SmolLM2-135M-sft"
+    batch_size: int = 14
 
     save: bool = True
     wandb: bool = True

@@ -31,11 +31,14 @@ class PrefDataModule(LightningDataModule):
         if getattr(self.args, 'verbose', 0) > 0:
             pt = np.mean(self.train_ds['prompt_truncated'])
             ct = np.mean(self.train_ds['chosen_truncated'])
+            rt = np.mean(self.train_ds['rejected_truncated'])
             if pt > 0.2:
-                logger.error(f"Prompt truncated {pt:2.2%} > {self.args.max_prompt_length}")
+                logger.error(f"Prompt truncated {pt:2.2%} > {self.args.max_prompt_length}. Experiment may be invalid.")
             if ct > 0.2:
-                logger.error(f"Chosen truncated {ct:2.2%} > {self.args.max_length}")
-            logger.info(f"Prompts truncated {pt:2.2%}, Chosen truncated {ct:2.2%}")
+                logger.error(f"Chosen truncated {ct:2.2%} > {self.args.max_length}. Experiment may be invalid.")
+            if rt > 0.2:
+                logger.error(f"Rejected truncated {rt:2.2%} > {self.args.max_length}. Experiment may be invalid.")
+            logger.info(f"Prompts truncated {pt:2.2%}, Chosen truncated {ct:2.2%}, Rejected truncated {rt:2.2%}")
         # QC sample decode when verbose
         if getattr(self.args, 'verbose', 0) > 2:
             dl = DataLoader(self.train_ds.with_format('torch'), batch_size=self.args.batch_size)

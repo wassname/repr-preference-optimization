@@ -24,10 +24,11 @@ def innerdpo_loss(
     transforms: Optional[Callable] = None,
     # custom loss_args
     α: float = 1.0,
-    eps=1e-4,
+    eps=1e-6,
     β=1,
     use_policy_weights: bool = False,
     align_method: str = 'direct_projection',
+    norm_before_reduce: bool = True,
 ):
     """
     movement of hs along the hs pref vector.
@@ -42,7 +43,8 @@ def innerdpo_loss(
         hs = transforms.transforms[k](hs)
         # Aggregate over sequence using attention masks
         # hs = F.log_softmax(hs, dim=-1)  # [batch, seq_len, hidden_dim], LOG PROBABILITIES
-        hs = F.normalize(hs, p=2, dim=-1)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
+        if norm_before_reduce:
+            hs = F.normalize(hs, p=2, dim=-1)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
         hs = reduce_tokens_w_attention(hs, o.mask)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
         return hs
 
@@ -57,6 +59,46 @@ def innerdpo_loss(
         cho_score = F.cosine_similarity(hs_pi_cho, hs_ref_cho, dim=-1).abs()  # How similar chosen is to ref_chosen
         rej_score = F.cosine_similarity(hs_pi_rej, hs_ref_rej, dim=-1).abs()  # How similar rejected is to ref_rejected
 
+        pref_dir_ref = hs_ref_cho - hs_ref_rej
+        pref_dir_pi = hs_pi_cho - hs_pi_rej
+
+        # Decompose pi into parallel and orthogonal components
+        pref_dir_ref_unit = F.normalize(pref_dir_ref, p=2, dim=-1)
+        par_comp_pi = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1, keepdim=True) * pref_dir_ref_unit
+        orth_comp_pi = pref_dir_pi - par_comp_pi
+        par_comp_ref = torch.sum(pref_dir_ref * pref_dir_ref_unit, dim=-1, keepdim=True) * pref_dir_ref_unit
+        orth_comp_ref = pref_dir_ref - par_comp_ref
+
+
+        def safe_log(x: Float[Tensor, "batch"], eps=eps):
+            """Safe log function to avoid log(0) issues."""
+            # return torch.log(x.clamp(min=eps))
+            return torch.log(x+eps)
+
+        # Magnitudes
+        par_pi = torch.norm(par_comp_pi, p=1, dim=-1)
+        ort_pi = torch.norm(orth_comp_pi, p=1, dim=-1)
+        log_par = safe_signed_log(par_pi, eps=eps)
+        log_ort = safe_signed_log(ort_pi, eps=eps)
+        logodds_pi = log_par - log_ort
+        par_ref = torch.norm(par_comp_ref, p=1, dim=-1)
+        ort_ref = torch.norm(orth_comp_ref, p=1, dim=-1)
+        log_par_ref = safe_signed_log(par_ref, eps=eps)
+        log_ort_ref = safe_signed_log(ort_ref, eps=eps)
+        logodds_ref = log_par_ref - log_ort_ref
+
+        # # δ is a hyperparameter that controls the sensitivity of the tanh gate
+        # δ = 0.1  # Hyperparameter for tanh gate, can be tuned
+        # tot_mag = par_pi + ort_pi                     # how big was the movement?
+        # mag_logit = torch.log(tot_mag + eps)   
+        # gate = torch.clamp(torch.tanh(torch.norm(pref_dir_pi, p=2, dim=-1) / δ), min=0.1)
+
+        # Make weights simialr to # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
+        scores = torch.stack([log_par, log_ort], dim=-1)    # shape [B,2]
+        log_hidden_probs = F.log_softmax(scores, dim=-1)   # [B,2]
+        w_adj = torch.logsumexp(2 * log_hidden_probs, dim=-1)  # [B]
+        pseudo_lp = log_hidden_probs[...,0] - w_adj     # “chosen” class
+        hidden_weight = torch.clamp(torch.exp(pseudo_lp), max=1.0).detach()  # [B]
 
         match align_method:
             case 'abs':
@@ -65,8 +107,6 @@ def innerdpo_loss(
             case 'cosine_similarity':
                 # GIVES INCOHERENT OUTPUTS QUICKLY, this is a directional loss that is balanced with DPO
                 # Compute preference directions
-                pref_dir_ref = hs_ref_cho - hs_ref_rej
-                pref_dir_pi = hs_pi_cho - hs_pi_rej
 
                 # Alignment score [-1, 1]
                 alignment = F.cosine_similarity(pref_dir_pi, pref_dir_ref, dim=-1)
@@ -86,37 +126,32 @@ def innerdpo_loss(
             case 'log_ratio':
                 # log ratio
                 hidden_ptheta = (torch.log(cho_score.abs()) - torch.log(rej_score.abs())) * β  # Difference of log similarities
-            case 'direct_projection':
-                # Compute preference directions
-                pref_dir_ref = hs_ref_cho - hs_ref_rej  # [batch, hidden_dim]
-                pref_dir_pi = hs_pi_cho - hs_pi_rej     # [batch, hidden_dim]
-                
-                # Normalize reference direction to unit vector
-                pref_dir_ref_unit = F.normalize(pref_dir_ref, p=2, dim=-1)
-                
+            case 'direct_projection':                
                 # Project pi direction onto ref direction (signed distance)
-                projection = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)  # [batch]
+                projection = (pref_dir_pi * pref_dir_ref_unit)  # [batch]
+                proj_dist = torch.norm(projection, p=1, dim=-1)  # Magnitude of projection
+                # normalise per layer?
                 
-                hidden_ptheta = β * projection
-            case 'parrel_orthogonal':
-                pref_dir_ref = hs_ref_cho - hs_ref_rej
-                pref_dir_pi = hs_pi_cho - hs_pi_rej
-                
-                # Decompose pi into parallel and orthogonal components
-                ref_unit = F.normalize(pref_dir_ref, p=2, dim=-1)
-                parallel_component = torch.sum(pref_dir_pi * ref_unit, dim=-1, keepdim=True) * ref_unit
-                orthogonal_component = pref_dir_pi - parallel_component
-                
-                # Magnitudes
-                parallel_mag = torch.norm(parallel_component, p=2, dim=-1)
-                orthogonal_mag = torch.norm(orthogonal_component, p=2, dim=-1)
-                
+                hidden_ptheta = β * F.log(proj_dist+eps)  # Log of projection magnitude, scaled by β
+                hidden_weight = 1  # No additional weight scaling
+            case 'para_orth':
+                # Preference for parallel over orthogonal, compared to base model
+                hidden_ptheta = β * (logodds_pi - logodds_ref)
+            case 'para_orth2':
+                # DPO‐style log‐odds in log-domain (stable)
+                odds = (par_pi - par_ref)  - (ort_pi-ort_ref)  # no ratios, no logs
+
                 # Preference for parallel over orthogonal
-                hidden_ptheta = β * (torch.log(parallel_mag + eps) - torch.log(orthogonal_mag + eps))
+                hidden_ptheta = β * odds
+            case 'orth':                
+                # Preference for parallel over orthogonal
+                hidden_ptheta = - β * torch.log(ort_pi + eps)
+                hidden_weight = 1
+            case 'para':
+                # Preference for parallel over orthogonal
+                hidden_ptheta = β * torch.log(par_pi + eps)
+                hidden_weight = 1
             case 'angle_mag':
-                pref_dir_ref = hs_ref_cho - hs_ref_rej
-                pref_dir_pi = hs_pi_cho - hs_pi_rej
-                
                 # Standard alignment
                 alignment = F.cosine_similarity(pref_dir_pi, pref_dir_ref, dim=-1)
                 prob = torch.abs(alignment)
@@ -130,7 +165,7 @@ def innerdpo_loss(
                 hidden_ptheta = β * magnitude_weight * log_odds  # Magnitude-weighted log-odds
         
         # Apply DPO-style loss
-        loss_hidden_dpo = -F.logsigmoid(hidden_ptheta)
+        loss_hidden_dpo = -F.logsigmoid(hidden_ptheta) * hidden_weight
         
         return dict(loss_hidden_dpo=loss_hidden_dpo)
 
@@ -176,18 +211,14 @@ def innerdpo_loss(
 class InnerDPOLossConfig:
     """
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
-    - keep text at least as coherent (relu(mode/base), (nll_loss)
-    - keep the chosen answer at least prefered (relu(rej-cho) dpo_loss
-    - punish movement orthogonal to the preference vector: by distance * β
-    - punish movement orthogonal to the preference vector: by angle * β
     """
 
-    α: float = 0.3
+    α: float = 1
     """balance between reroute and retain loss."""
 
     eps: float = 1.0e-5
 
-    β: float = 1.
+    β: float = 1
     """factor to punish orthogonal movement"""
 
     use_policy_weights: bool = True
@@ -196,6 +227,9 @@ class InnerDPOLossConfig:
 
     align_method: str = 'direct_projection'
     """Method to compute alignment between chosen and rejected hidden states."""
+
+    norm_before_reduce: bool = True
+    """Whether to normalize hidden states before reducing them to a single vector."""
    
 
     def c(self, *args, **kwargs):
