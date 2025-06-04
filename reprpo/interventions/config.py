@@ -24,7 +24,7 @@ class ExperimentConfig:
     """fast run"""
 
     load_in_4bit: bool = False
-    load_in_8bit: bool = True
+    load_in_8bit: bool = False
     use_gradient_checkpointing: bool = False
     schedule: str = "wsd"
 
@@ -33,12 +33,25 @@ class ExperimentConfig:
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long
 
+    # 80GB gpu
+    base_model: str = "princeton-nlp/Llama-3-Base-8B-SFT"
+    batch_size: int = 6
+
+    # allenai/Llama-3.1-Tulu-3-8B-SFT
+
+
+    # wassname/llama-3.2-3b-sft
+
+    # allenai/OLMo-2-0425-1B-SFT
+
+    # 24GB gpu
+
     
     # # base_model: str = "wassname/llama-3-2-1b-sft"
     # batch_size: int = 5
 
-    base_model: str = "wassname/Qwen3-0.6B-sft"
-    batch_size: int = 5
+    # base_model: str = "wassname/Qwen3-0.6B-sft"
+    # batch_size: int = 5
 
     # # base_model: str = "wassname/SmolLM2-360M-sft"
     # batch_size: int = 10

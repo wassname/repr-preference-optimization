@@ -5428,27 +5428,27 @@ python scripts/train.py hs-ether-InnerDPO --verbose=2 --loss.align-method=abs
 python scripts/train.py dpo
 
 
-| adapter/distribution_shift                  | in_domain | cross_domain | orthogonal |
-| :------------------------------------------ | --------: | -----------: | ---------: |
-| hs-ETHER-InnerDPO direct_projection         |     0.865 |        0.803 |      0.188 |
-| hs-ETHER-InnerDPO    angle mag              |     0.892 |        0.801 |      0.187 |
-| hs-ETHER-InnerDPO      parrel_orthognal     |     0.881 |        0.799 |      0.193 |
-| hs-ETHER-InnerDPO cosine sim                |     0.909 |        0.795 |      0.196 |
-| hs-ETHER-InnerDPO logratio                  |      0.88 |        0.788 |      0.188 |
-| hs-None-InnerDPO direct_projectedion        |     0.845 |        0.787 |      0.187 |
-| hs-ETHER-InnerDPO       abs                 |     0.881 |        0.787 |      0.186 |
-| dpo           run again                     |     0.887 |         0.75 |      0.214 |
-| none                                        |     0.929 |        0.774 |      0.195 |
+| adapter/distribution_shift              | in_domain | cross_domain | orthogonal |
+| :-------------------------------------- | --------: | -----------: | ---------: |
+| hs-ETHER-InnerDPO direct_projection     |     0.865 |        0.803 |      0.188 |
+| hs-ETHER-InnerDPO    angle mag          |     0.892 |        0.801 |      0.187 |
+| hs-ETHER-InnerDPO      parrel_orthognal |     0.881 |        0.799 |      0.193 |
+| hs-ETHER-InnerDPO cosine sim            |     0.909 |        0.795 |      0.196 |
+| hs-ETHER-InnerDPO logratio              |      0.88 |        0.788 |      0.188 |
+| hs-None-InnerDPO direct_projectedion    |     0.845 |        0.787 |      0.187 |
+| hs-ETHER-InnerDPO       abs             |     0.881 |        0.787 |      0.186 |
+| dpo           run again                 |     0.887 |         0.75 |      0.214 |
+| none                                    |     0.929 |        0.774 |      0.195 |
 
 ok without trunc it's better
-| adapter/distribution_shift   |   in_domain |   cross_domain |   orthogonal |
-|:-----------------------------|------------:|---------------:|-------------:|
-| none                         |       0.935 |          0.771 |        0.199 |
-| hs-ETHER-InnerDPO  abs       |       0.891 |          0.797 |        0.186 |
-| hs-ETHER-InnerDPO  angle mag |       0.841 |           0.79 |        0.19  |
-|hs-ETHER-InnerDPO  parr orth  |       0.885 |          0.775 |        0.204 |
-| hs-ETHER-InnerDPO lograt     |       0.861 |          0.802 |        0.188 |
-| dpo                          |       0.797 |          0.769 |        0.182 |
+| adapter/distribution_shift   | in_domain | cross_domain | orthogonal |
+| :--------------------------- | --------: | -----------: | ---------: |
+| none                         |     0.935 |        0.771 |      0.199 |
+| hs-ETHER-InnerDPO  abs       |     0.891 |        0.797 |      0.186 |
+| hs-ETHER-InnerDPO  angle mag |     0.841 |         0.79 |       0.19 |
+| hs-ETHER-InnerDPO  parr orth |     0.885 |        0.775 |      0.204 |
+| hs-ETHER-InnerDPO lograt     |     0.861 |        0.802 |      0.188 |
+| dpo                          |     0.797 |        0.769 |      0.182 |
 
 finetune_name=ReprPO_None_InnerDPO collect_hs=True innerdpo.align_method=direct_projection innerdpo.eps=1e-05 innerdpo.use_policy_weights=True
 
@@ -5558,16 +5558,16 @@ oooh so I was computing the dist ratio ignoring ref model, but that means I'm ne
 don't forget the DPO loss is just binary_cross_entropy_with_logits 
 
 
-| adapter/distribution_shift   |   in_domain |   cross_domain |   moral_transfer |   orthogonal |
-|:-----------------------------|------------:|---------------:|-----------------:|-------------:|
-| none                         |       0.512 |          0.549 |            0.492 |        0.553 |
-| hs-None-InnerDPO  para orth2 but it talked icelandish |       0.519 |          0.552 |            0.495 |        0.549 |
-| hs-None-InnerDPO   para orth          |       0.508 |          0.551 |            0.489 |        0.55  |
-| hs-None-InnerDPO    angle mag         |       0.519 |          0.55  |            0.489 |        0.553 |
-| hs-None-InnerDPO             |       0.52  |          0.545 |            0.494 |        0.55  |
-| hs-None-InnerDPO   paraorth2          |       0.499 |          0.55  |            0.494 |        0.554 |
-| hs-None-InnerDPO   paraorth          |       0.508 |          0.551 |            0.489 |        0.55  |
-| dpo                          |       0.513 |          0.547 |            0.492 |        0.549 |
+| adapter/distribution_shift                            | in_domain | cross_domain | moral_transfer | orthogonal |
+| :---------------------------------------------------- | --------: | -----------: | -------------: | ---------: |
+| hs-None-InnerDPO                                      |      0.52 |        0.545 |          0.494 |       0.55 |
+| dpo                                                   |     0.513 |        0.547 |          0.492 |      0.549 |
+| none                                                  |     0.512 |        0.549 |          0.492 |      0.553 |
+| hs-None-InnerDPO   para orth                          |     0.508 |        0.551 |          0.489 |       0.55 |
+| hs-None-InnerDPO   paraorth                           |     0.508 |        0.551 |          0.489 |       0.55 |
+| hs-None-InnerDPO  para orth2 but it talked icelandish |     0.519 |        0.552 |          0.495 |      0.549 |
+| hs-None-InnerDPO   paraorth2                          |     0.499 |         0.55 |          0.494 |      0.554 |
+| hs-None-InnerDPO    angle mag                         |     0.519 |         0.55 |          0.489 |      0.553 |
 
 one problem here might be chat template vs not
 

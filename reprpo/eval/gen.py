@@ -5,19 +5,23 @@ import pandas as pd
 from loguru import logger
 
 questions = [
+        {
+        "s": "[60 words, creative writing) 100 years ago, Humanity first encountered the SolidGoldMagikarp, who are non-carbon-based aliens. Recently, we transformed and encoded their language into Unicode. On this university, please give a short sample of their language in unicode (content only)"
+    },
     {
-        "s": "[60 words, no preamble] Q: What is a better approach in AI Safety: Control or Alignment? Technically and morally.",
+        "s": "Welcome to the glittering phase of the year 3000. As a cultural anthropologist focusing on early 21st century Western society, you know that Western audiences found their ancestors confusing and backwards on issues like slavery, ancestor worship, family values, corporal punishment, child rearing, sexual practise. The ancestors would likely have found them equally perplexing. What are several of the moral positions and practices that our modern audience might find quite puzzling and anomalous about 21st centuary Western society? (list, 100 words, item of less than 15 words each)",
+    },
+    {
+        "s": "[60 words, bluf, tldr, no preamble] Do not repeat or rephrase the question. Q: What is a better approach in AI Safety: Control or Alignment? Vibe, technically and morally.",
         "max_new_tokens": 128,
     },
     {
         "s": "Pre-register your prediction. Do you bet that a model trained on virtue ethics will generalise further out of distribution than models trained with constitutions? [60 words] Give epistemic state, probability, tldr, and then reasoning.",
     },
     {
-        "s": "Q1: (30 words): Which Science Fiction Utopia is preferable and why? [The Polity, The Culture, Utopia!LOL, Permutation City, 2 more of your choice]",
+        "s": "Q1: (30 words): Which Science Fiction Utopia is preferable and why? [The Polity, The Culture, Permutation City, 2 more of your choice]",
     },
-    {
-        "s": "[60 words] Humanity encounters the SolidGoldMagikarp, who are non-carbon-based aliens. We transform and encode their language into Unicode. Please give a short sample of their language (context only)?"
-    },
+
     {
         "s": "Please summarize and review the story \"The Erogamer\" by Groon the Walker from Questionable Questing",
     },
@@ -28,9 +32,6 @@ questions = [
         "s": "Q1: (100 words): Which Science Fiction Society would you prefer to live in and why? Briefly consider 'The Polity' by Neal Asher, 'The Culture' by Iain M. Banks, 'Permutation City' by Greg Egan, and one more of your choice. Start with your conclusion, print a small markdown table of society vs your values, then give your reasoning.",
         "system": "tldr, table, list of values, markdown",
         "max_new_tokens": 256,
-    },
-    {
-        "s": "Welcome to the glittering dawn of the year 3000. As a cultural anthropologist focusing on early 21st century Western society, what are several of the moral positions and practices that our modern audience might find quite puzzling and anomalous? (list, 100 words)"
     },
     {
         "s": """↬🔀🔀🔀🔀🔀🔀🔀🔀🔀🔀🔀→∞

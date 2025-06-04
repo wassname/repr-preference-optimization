@@ -1738,7 +1738,7 @@ wheels = [
 [[package]]
 name = "open-pref-eval"
 version = "0.1.0"
-source = { git = "https://github.com/wassname/open_pref_eval.git#073ec8a5ad163b6b1800e8bd2839f9fd02aeb78d" }
+source = { git = "https://github.com/wassname/open_pref_eval.git#4d0a8175b2f6f0f050214b627083992efdef3938" }
 dependencies = [
     { name = "baukit" },
     { name = "bitsandbytes" },

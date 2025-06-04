@@ -65,5 +65,6 @@ open-pref-eval = { git = "https://github.com/wassname/open_pref_eval.git" }
 # baukit = { git = "https://github.com/wassname/baukit.git" }
 #open-pref-eval = { git = "https://github.com/wassname/open_pref_eval" }
 
-[tool.uv.pip]
+
+[tool.uv]
 no-build-isolation-package = ["flash-attn"]

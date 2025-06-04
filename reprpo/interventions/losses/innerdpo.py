@@ -165,7 +165,9 @@ def innerdpo_loss(
                 hidden_ptheta = β * magnitude_weight * log_odds  # Magnitude-weighted log-odds
         
         # Apply DPO-style loss
-        loss_hidden_dpo = -F.logsigmoid(hidden_ptheta) * hidden_weight
+        loss_hidden_dpo = -F.logsigmoid(hidden_ptheta)
+        if use_policy_weights:
+            loss_hidden_dpo = loss_hidden_dpo * hidden_weight
         
         return dict(loss_hidden_dpo=loss_hidden_dpo, hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta)
 

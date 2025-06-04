@@ -139,14 +139,24 @@ scratch2:
     # export ARGS='--batch-size=10'
     # baseline
     # what if both?
-    python scripts/train.py dpo
-    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2
-    python scripts/train.py dpo --no-use-policy-weights
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2 --verbose=2
+    python scripts/train.py dpo --verbose=2
     python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
+    python scripts/train.py dpo --no-use-policy-weights
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
     python scripts/train.py hs-none-InnerDPO --collection-layers='range(0.3, 0.6, 4)'
     python scripts/train.py hs-none-InnerDPO --loss.align-method=orth
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para
 
+    python scripts/train.py hs-none-InnerDPO --loss.no-norm-before-reduce  --no-use-policy-weights
+
+    python scripts/train.py side-none-InnerDPO 
+    python scripts/train.py hs-ether-InnerDPO
+    python scripts/train.py hs-surp-InnerDPO
+
+    python scripts/train.py hs-ether-rank
+    python scripts/train.py hs-ether-mse
+
     python scripts/train.py projgrad --no-use-pref-ref
     python scripts/train.py projgrad
+    python scripts/train.py projbp
