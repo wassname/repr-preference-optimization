@@ -4,6 +4,7 @@ import torch
 # from peft import prepare_model_for_kbit_training
 from reprpo.helpers.torch import clear_mem
 from loguru import logger
+from open_pref_eval.helpers.load_model import load_hf_or_peft_model
 
 
 def print_trainable_parameters(model):
@@ -30,7 +31,7 @@ def peft_module_casting_to_bf16(model):
             module = module.to(torch.float32)
             logger.debug(f"casting {name} to bf16")
 
-
+# fix me just replace with the one from open_pref_eval
 def load_model(
     model_name,
     load_in_4bit=True,
@@ -41,7 +42,14 @@ def load_model(
     model = None
     clear_mem()
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model, tokenizer = load_hf_or_peft_model(
+        model_name,
+        model=model,
+        load_in_4bit=load_in_4bit,
+        load_in_8bit=load_in_8bit,
+        attn_implementation=attn_implementation,
+        torch_dtype=torch_dtype,
+    )
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -49,30 +57,8 @@ def load_model(
     if tokenizer.chat_template is None:
         raise ValueError("This model does not have a chat template set. It might be a base model, but this method works on SFT models, not base or instruction/RLHF models.")
 
-    if load_in_4bit:
-        quantization_config = BitsAndBytesConfig(
-            # https://huggingface.co/docs/transformers/v4.43.2/quantization/bitsandbytes#4-bit-qlora-algorithm
-            load_in_4bit=True,
-            bnb_4bit_use_double_quant=True,
-            bnb_4bit_compute_dtype=torch_dtype,  # faster
-            bnb_4bit_quant_type="nf4",  # for training  normalized float 4 bit data type
-            # skip_modules=[], # by default the head is kept in original precision
-        )
-    elif load_in_8bit:
-        quantization_config = BitsAndBytesConfig(
-            load_in_8bit=True,
-        )
-    else:
-        quantization_config = None
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        #  low_cpu_mem_usage=True,
-        quantization_config=quantization_config,
-        torch_dtype=torch_dtype,
-        device_map="auto",
-        attn_implementation=attn_implementation,
-    )
-    model.resize_token_embeddings(len(tokenizer))
+    
+    # model.resize_token_embeddings(len(tokenizer))
     model.config.pad_token_id = tokenizer.pad_token_id
     model.config.use_cache = False
     model.tokenizer = tokenizer

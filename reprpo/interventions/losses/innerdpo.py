@@ -133,7 +133,7 @@ def innerdpo_loss(
                 # normalise per layer?
                 
                 hidden_ptheta = β * torch.log(proj_dist+eps)  # Log of projection magnitude, scaled by β
-                hidden_weight = 1  # No additional weight scaling
+                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
             case 'para_orth':
                 # Preference for parallel over orthogonal, compared to base model
                 hidden_ptheta = β * (logodds_pi - logodds_ref)
@@ -146,11 +146,11 @@ def innerdpo_loss(
             case 'orth':                
                 # Preference for parallel over orthogonal
                 hidden_ptheta = - β * torch.log(ort_pi + eps)
-                hidden_weight = 1
+                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
             case 'para':
                 # Preference for parallel over orthogonal
                 hidden_ptheta = β * torch.log(par_pi + eps)
-                hidden_weight = 1
+                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
             case 'angle_mag':
                 # Standard alignment
                 alignment = F.cosine_similarity(pref_dir_pi, pref_dir_ref, dim=-1)
