@@ -37,6 +37,7 @@ dependencies = [
     "optuna-integration[pytorch-lightning]>=4.3.0",
     "tyro>=0.9.21",
     "polars>=1.30.0",
+    "flash-attn>=2.7.4",
 ]
 
 [dependency-groups]
@@ -58,7 +59,11 @@ build-backend = "hatchling.build"
 
 [tool.uv.sources]
 baukit = { git = "https://github.com/davidbau/baukit.git" }
-open-pref-eval = { path = "../open_pref_eval" }
+open-pref-eval = { git = "https://github.com/wassname/open_pref_eval.git" }
+# open-pref-eval = { path = "../open_pref_eval" }
 # open-pref-eval = { path = "../open_pref_eval" }
 # baukit = { git = "https://github.com/wassname/baukit.git" }
 #open-pref-eval = { git = "https://github.com/wassname/open_pref_eval" }
+
+[tool.uv.pip]
+no-build-isolation-package = ["flash-attn"]
