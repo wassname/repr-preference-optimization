@@ -407,7 +407,7 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
     logger.info(caption)
 
     caption = f"""Table 2: Absolute accuracy after training with named adapter on ds:`{args.dataset}` compared to base model `{base_model}` for various distribution shifts [N={args.eval_samples}]:\n"""
-    logger.info(f"\n{df_res_ds.round(3).to_markdown()}")
+    logger.info(f"\n{df_res_ds.T.round(3).to_markdown()}")
     logger.info(caption)
 
     df_adapter_acc = df_res_ds.loc[adapter_name].to_frame(human_name).T
