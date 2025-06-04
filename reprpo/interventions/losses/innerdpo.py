@@ -132,7 +132,7 @@ def innerdpo_loss(
                 proj_dist = torch.norm(projection, p=1, dim=-1)  # Magnitude of projection
                 # normalise per layer?
                 
-                hidden_ptheta = β * F.log(proj_dist+eps)  # Log of projection magnitude, scaled by β
+                hidden_ptheta = β * torch.log(proj_dist+eps)  # Log of projection magnitude, scaled by β
                 hidden_weight = 1  # No additional weight scaling
             case 'para_orth':
                 # Preference for parallel over orthogonal, compared to base model
@@ -167,7 +167,7 @@ def innerdpo_loss(
         # Apply DPO-style loss
         loss_hidden_dpo = -F.logsigmoid(hidden_ptheta) * hidden_weight
         
-        return dict(loss_hidden_dpo=loss_hidden_dpo)
+        return dict(loss_hidden_dpo=loss_hidden_dpo, hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta)
 
 
     # compute losses per layer

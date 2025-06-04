@@ -139,27 +139,14 @@ scratch2:
     # export ARGS='--batch-size=10'
     # baseline
     # what if both?
-    python scripts/train.py side-none-prefvec --loss.no-use-proj-rel --loss.no-use-pref-ref --loss.use-nll-loss --loss.use-dpo-loss  --verbose=2
-    python scripts/train.py side-none-prefvec --loss.no-use-pref-ref --loss.use-nll-loss --loss.use-dpo-loss 
-    python scripts/train.py side-none-prefvec --loss.use-nll-loss --loss.use-dpo-loss  --verbose=2
-    python scripts/train.py side-none-prefvec --loss.no-use-proj-rel --loss.no-use-pref-ref  --verbose=2
-    python scripts/train.py side-none-prefvec --verbose=2
-    # what if we use the pref vec on pi model?
-    python scripts/train.py side-none-prefvec --loss.no-use-pref-ref
-    # what if we make the rejected string less preferred
-    python scripts/train.py side-none-prefvec --loss.no-use-proj-rel
-
-    python scripts/train.py side-none-prefvec --loss.use-dpo-loss 
-    python scripts/train.py side-none-prefvec --loss.no-use-pref-ref --loss.use-dpo-loss
-
-    python scripts/train.py hs-ether-prefvec --loss.no-use-proj-rel --loss.no-use-pref-ref --loss.use-nll-loss --loss.use-dpo-loss  --verbose=2
-    python scripts/train.py hs-ether-prefvec --loss.use-nll-loss --loss.use-dpo-loss  --verbose=2
-    python scripts/train.py hs-ether-prefvec --loss.no-use-proj-rel --loss.no-use-pref-ref  --verbose=2
-    python scripts/train.py hs-ether-prefvec --verbose=2
-    # what if we use the pref vec on pi model?
-    python scripts/train.py hs-ether--prefvec --loss.no-use-pref-ref
-    # what if we make the rejected string less preferred
-    python scripts/train.py hs-ether--prefvec --loss.no-use-proj-rel
+    python scripts/train.py dpo
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2
+    python scripts/train.py dpo --no-use-policy-weights
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
+    python scripts/train.py hs-none-InnerDPO --collection-layers='range(0.3, 0.6, 4)'
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=orth
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para
 
     python scripts/train.py projgrad --no-use-pref-ref
     python scripts/train.py projgrad

@@ -14,6 +14,8 @@ from transformers import PreTrainedTokenizerBase
 from typing import Any, Dict
 from datasets.formatting.formatting import LazyRow
 from dataclasses import dataclass
+from open_pref_eval.trainer import apply_chat_template_to_completion, FALCAN_CHAT_TEMPLATE
+from loguru import logger
 
 
 @contextmanager
@@ -31,6 +33,7 @@ def tok_setings(tokenizer: PreTrainedTokenizerBase, **kwargs):
             setattr(tokenizer, k, v)
 
 
+# TODO replace with the open_pref_eval version. I would need to change this, and also use their collator, and then change forward to take 3 seperate inputs, so use concatednate input
 @dataclass
 class TokenizeRow:
     tokenizer: PreTrainedTokenizerBase
@@ -39,6 +42,16 @@ class TokenizeRow:
 
     def __call__(self, batch: LazyRow) -> Dict[str, Any]:
         out = {}
+
+        if self.tokenizer.chat_template is None:
+            logger.warning(
+                "No chat template set for tokenizer, using default FALCAN INSTRUCTR template."
+            )
+            self.tokenizer.chat_template = FALCAN_CHAT_TEMPLATE
+        
+        # TODO handle both being messages
+        batch['prompt'], batch['chosen'] = apply_chat_template_to_completion(self.tokenizer, batch["prompt"], batch["chosen"])
+        batch['rejected'] = apply_chat_template_to_completion(self.tokenizer, batch["prompt"], batch["rejected"])[1]
 
         # encode and truncate prompt
         with tok_setings(self.tokenizer, truncation_side="left"):
@@ -50,7 +63,7 @@ class TokenizeRow:
                 max_length=self.max_prompt_length,
             )["input_ids"]
         max_ans_length = (
-            self.max_length - len(prompt) - self.tokenizer.num_special_tokens_to_add()
+            self.max_length - len(prompt)
         )
 
         with tok_setings(self.tokenizer, padding_side="right", truncation_side="right"):
@@ -67,8 +80,6 @@ class TokenizeRow:
 
                 ids = prompt + ans
 
-                # add special tokens
-                ids = self.tokenizer.build_inputs_with_special_tokens(ids)
                 encoded_inputs = {
                     "input_ids": ids,
                     "special_tokens_mask": self.tokenizer.get_special_tokens_mask(
@@ -76,6 +87,7 @@ class TokenizeRow:
                     ),
                 }
 
+                # FIXME do I want to pad here or later? replace with open_pref_eval version
                 # pad and attention mask
                 encoded_inputs = self.tokenizer.pad(
                     encoded_inputs,
@@ -91,7 +103,5 @@ class TokenizeRow:
         out["prompt_truncated"] = len(prompt) >= self.max_prompt_length
 
         # we want to update the prompt with the special tokens
-        right_special_tokens = out[key + "_special_tokens_mask"][len(prompt):].sum()
-        prompt = self.tokenizer.build_inputs_with_special_tokens(prompt)[:-right_special_tokens]
         out["prompt_mask"] = [1] * len(prompt) + [0] * (self.max_length - len(prompt))
         return out

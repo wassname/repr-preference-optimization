@@ -5531,10 +5531,12 @@ python scripts/train.py hs-none-InnerPO
 
 python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2
 python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
-python scripts/train.py hs-none-InnerDPO --loss.align-method=orth
-python scripts/train.py hs-none-InnerDPO --loss.align-method=para
 python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
-python scripts/train.py hs-none-InnerDPO --loss.collection-layers="range(0.3, 0.6, 4)"
+python scripts/train.py hs-none-InnerDPO --collection-layers='range(0.3, 0.6, 4)'
+python scripts/train.py hs-none-InnerDPO --loss.align-method=orth
+python scripts/train.py dpo --no-use-policy-weights
+python scripts/train.py hs-none-InnerDPO --loss.align-method=para
+python scripts/train.py dpo
 Oh when I look at the inner dpo variation, it's huge for code, but not for code_easy
 
 So it looks like in terms of stability
@@ -5560,6 +5562,16 @@ don't forget the DPO loss is just binary_cross_entropy_with_logits
 |:-----------------------------|------------:|---------------:|-----------------:|-------------:|
 | none                         |       0.512 |          0.549 |            0.492 |        0.553 |
 | hs-None-InnerDPO  para orth2 but it talked icelandish |       0.519 |          0.552 |            0.495 |        0.549 |
+| hs-None-InnerDPO   para orth          |       0.508 |          0.551 |            0.489 |        0.55  |
+| hs-None-InnerDPO    angle mag         |       0.519 |          0.55  |            0.489 |        0.553 |
+| hs-None-InnerDPO             |       0.52  |          0.545 |            0.494 |        0.55  |
+| hs-None-InnerDPO   paraorth2          |       0.499 |          0.55  |            0.494 |        0.554 |
+| hs-None-InnerDPO   paraorth          |       0.508 |          0.551 |            0.489 |        0.55  |
+| dpo                          |       0.513 |          0.547 |            0.492 |        0.549 |
+
+one problem here might be chat template vs not
+
+
 Table 1: Absolute accuracy after training with named adapter on ds:`math` compared to base model `SmolLM2-135M-sft` for various distribution shifts [N=None]:
 - Shift: cross_domain, made up of:
         - `genies_preferences-math_fiction-test`
@@ -5574,3 +5586,6 @@ Table 1: Absolute accuracy after training with named adapter on ds:`math` compar
         - `ethics_expression_preferences-utilitarianism-test`
 - Shift: orthogonal, made up of:
         - `medical-dpo-v2-test-data`
+
+
+well that latest two run of orthpara2, and angle_mag seem to have loss_hidden_dpo going down steadily. Soe weird things but lets see

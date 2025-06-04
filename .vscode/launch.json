@@ -127,6 +127,8 @@
             "args": [
                 "hs-ether-InnerDPO",
                 // "dpo",
+                "--loss.align-method=orth",
+
                 "--verbose=2",
             ]
         },

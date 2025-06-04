@@ -20,9 +20,11 @@ class GenCallback(Callback):
             print(f"\nGenerated on batch {batch_idx}")
             df_gen, s = self.do_gen(trainer.model._model)
             for logger in trainer.loggers:
-                logger.log_text(s, step=trainer.fit_loop.epoch_loop._batches_that_stepped)
+                # logger.log_text(s, step=trainer.fit_loop.epoch_loop._batches_that_stepped)
+                logger.log_metrics({'gen': s}, step=trainer.fit_loop.epoch_loop._batches_that_stepped)
 
     def on_train_epoch_end(self, trainer, pl_module):
         df_gen, s = self.do_gen(trainer.model._model)
         for logger in trainer.loggers:
-            logger.log_text(s, step=trainer.fit_loop.epoch_loop._batches_that_stepped)
+            # logger.log_text(s, step=trainer.fit_loop.epoch_loop._batches_that_stepped)
+            logger.log_metrics({'gen': s}, step=trainer.fit_loop.epoch_loop._batches_that_stepped)

@@ -37,14 +37,14 @@ class ExperimentConfig:
     # # base_model: str = "wassname/llama-3-2-1b-sft"
     # batch_size: int = 5
 
-    # # base_model: str = "Qwen/Qwen3-0.6B"
-    # batch_size: int = 7
+    base_model: str = "wassname/Qwen3-0.6B-sft"
+    batch_size: int = 7
 
     # # base_model: str = "wassname/SmolLM2-360M-sft"
     # batch_size: int = 10
 
-    base_model: str = "wassname/SmolLM2-135M-sft"
-    batch_size: int = 14
+    # base_model: str = "wassname/SmolLM2-135M-sft"
+    # batch_size: int = 14
 
     save: bool = True
     wandb: bool = True
