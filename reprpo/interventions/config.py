@@ -9,7 +9,7 @@ class ExperimentConfig:
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
     lr: float = 7e-5
-    weight_decay: float = 0.01
+    weight_decay: float = 1e-4
 
 
     dataset: str = "math"
@@ -38,7 +38,7 @@ class ExperimentConfig:
     # batch_size: int = 5
 
     base_model: str = "wassname/Qwen3-0.6B-sft"
-    batch_size: int = 7
+    batch_size: int = 5
 
     # # base_model: str = "wassname/SmolLM2-360M-sft"
     # batch_size: int = 10

@@ -3,7 +3,7 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader
 import numpy as np
 from loguru import logger
-from open_pref_eval.trainer import DataCollatorForPreference, tokenize_dataset
+from open_pref_eval.data import tokenize_dataset
 
 class PrefDataModule(LightningDataModule):
     """DataModule for preference datasets using a central ExperimentConfig."""
@@ -32,10 +32,6 @@ class PrefDataModule(LightningDataModule):
         self.train_ds = tokenized_ds['train']
         self.val_ds = tokenized_ds['test']
 
-        self.data_collator = DataCollatorForPreference(
-            tokenizer=self.tokenizer,
-            pad_token_id=self.tokenizer.pad_token_id,
-        )
 
     def train_dataloader(self):
         return DataLoader(

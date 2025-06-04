@@ -109,7 +109,7 @@ class ProjBPConfig(ExperimentConfig):
     """
     Project gradient onto a preference direction during backprop. This means that later layer will change the gradint for earleir layers.
     """
-    lr: float = 1e-5
+    # lr: float = 1e-5
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
@@ -137,7 +137,7 @@ class ProjBPConfig(ExperimentConfig):
 
     _cls = PL_GradBP_MODEL
 
-    _model_keys = ["lr", "β", "reverse_pref", "scale_orth", "neg_slope", "mag_clip",]
+    _model_keys = ["β", "reverse_pref", "scale_orth", "neg_slope", "mag_clip",]
 
     @property
     def _name(self):

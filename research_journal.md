@@ -5589,3 +5589,11 @@ Table 1: Absolute accuracy after training with named adapter on ds:`math` compar
 
 
 well that latest two run of orthpara2, and angle_mag seem to have loss_hidden_dpo going down steadily. Soe weird things but lets see
+
+
+# 2025-06-04 16:11:32
+
+So a note on formatting. The DRL library seperates prompt and completion, then concants has a complex collator then, and concats the completions in the. It's get rather complex and it's all in the names of speed (only one forward pass) and memory (only pad as much as the batch needs). But I disagree
+- I would rather just pad to max and find out about a out of GPU memory issues immediatly, rather than an hour into a run
+- I need 2 or 4 forward passes anyoay if I use a reference model. In fact models often have mutliple and it's not that big a deal
+- I don't think the extra complexity is worth it for the marginal gains in speed and memory usage.

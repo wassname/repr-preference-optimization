@@ -73,9 +73,9 @@ def rank_loss(
     loss_reroute = ll["loss_reroute"]
 
 
-    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen"], batch["chosen_mask"])
+    nll_loss = cross_entropy_loss(pi_cho.logits, batch["chosen_ids"], batch["chosen_mask"])
     ref_nll_loss = cross_entropy_loss(
-        ref_cho.logits, batch["chosen"], batch["chosen_mask"]
+        ref_cho.logits, batch["chosen_ids"], batch["chosen_mask"]
     )
     nll_loss_ratio = (nll_loss - ref_nll_loss).mean(1)
     dpo_ptheta = compute_ptheta(

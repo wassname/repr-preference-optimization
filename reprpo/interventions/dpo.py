@@ -59,13 +59,16 @@ def compute_dpo_loss(
         _dpo_acc=dpo_acc.mean(),
     )
 
-def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=None, dpo_agg_type="ipo", return_dict=True, output_hidden_states=True, **kwargs):
+def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=None, special_tokens_mask=None, dpo_agg_type="ipo", return_dict=True, output_hidden_states=True, **kwargs):
     """Forward pass through the model that returns extras."""
     outs = model(input_ids, attention_mask=attention_mask, return_dict=return_dict,
             output_hidden_states=output_hidden_states, **kwargs)
 
     if prompt_mask is not None:
         attention_mask = attention_mask * (1-prompt_mask)
+
+    if special_tokens_mask is not None:
+        attention_mask = attention_mask * (1-special_tokens_mask)
 
     # Compute log probabilities
     out_lp = compute_logprobs(
@@ -93,20 +96,20 @@ def dpo_forward_batch(batch, model, β=0.1, use_policy_weights=False, dpo_agg_ty
     with torch.no_grad():
         with model.disable_adapter():
             ref_cho = model_forward_with_logprobs(
-                model, input_ids=batch["chosen"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+                model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
             )
             ref_rej = model_forward_with_logprobs(
-                model, input_ids=batch["rejected"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+                model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
             )
 
     model.train()
     pi_cho = model_forward_with_logprobs(
-        model, input_ids=batch["chosen"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+        model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
     )
     pi_rej = model_forward_with_logprobs(
-        model, input_ids=batch["rejected"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+        model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
     )
-    
+
     return calc_dpo_loss_w_metrics(
         batch,
         pi_cho,
@@ -152,10 +155,10 @@ def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOMode
         info['_cosine_pi_cho_2_ref_rej'] = cosine_on_hs(pi_cho.hs, ref_rej.hs)
 
         nll_loss = info["_nll_loss"] = cross_entropy_loss(
-            pi_cho.logits, batch["chosen"], batch["chosen_mask"]
+            pi_cho.logits, batch["chosen_ids"], batch["chosen_mask"]
         ).mean()
         ref_nll_loss = info["_ref_nll_loss"] = cross_entropy_loss(
-            ref_cho.logits, batch["chosen"], batch["chosen_mask"]
+            ref_cho.logits, batch["chosen_ids"], batch["chosen_mask"]
         ).mean()
         info["_ref_nll_loss"] = ref_nll_loss
         info["_nll_lratio"] = (nll_loss - ref_nll_loss).mean()

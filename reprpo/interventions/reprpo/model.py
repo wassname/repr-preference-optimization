@@ -44,7 +44,7 @@ def get_regexp_layers(collection_keys: List[str], model):
 
 
 def reprpo_forward_baukit(
-    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False, prompt_mask=None, dpo_agg_type='ipo'
+    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False, prompt_mask=None, special_tokens_mask=None, dpo_agg_type='ipo'
 ):
     # if the layer paths are just str(ints) then just collect the hidden states
     if collect_hs:
@@ -92,6 +92,8 @@ def reprpo_forward_baukit(
 
     if prompt_mask is not None:
         attn_mask = attn_mask * (1-prompt_mask)
+    if special_tokens_mask is not None:
+        attn_mask = attn_mask * (1-special_tokens_mask)
 
     out_lp = compute_logprobs(
         logits=outs.logits, input_ids=input_ids, selection_mask=attn_mask, dpo_agg_type=dpo_agg_type
@@ -232,44 +234,48 @@ class PL_REPRPO_MODEL(PL_MODEL):
             with model.disable_adapter():
                 ref_cho = reprpo_forward_baukit(
                     model=model,
-                    input_ids=batch["chosen"],
+                    input_ids=batch["chosen_ids"],
                     attn_mask=batch["chosen_mask"],
                     layer_paths=h.layer_paths,
                     collect_input=h.collect_input,
                     collect_hs=h.collect_hs,
                     prompt_mask=batch["prompt_mask"],
+                    special_tokens_mask=batch["chosen_special_tokens_mask"],
                     dpo_agg_type=h.dpo_agg_type,
                 )
                 ref_rej = reprpo_forward_baukit(
                     model=model,
-                    input_ids=batch["rejected"],
+                    input_ids=batch["rejected_ids"],
                     attn_mask=batch["rejected_mask"],
                     layer_paths=h.layer_paths,
                     collect_input=h.collect_input,
                     collect_hs=h.collect_hs,
                     prompt_mask=batch["prompt_mask"],
+                    special_tokens_mask=batch["rejected_special_tokens_mask"],
                     dpo_agg_type=h.dpo_agg_type,
                 )
 
         model.train()
         pi_cho = reprpo_forward_baukit(
             model=model,
-            input_ids=batch["chosen"],
+            input_ids=batch["chosen_ids"],
             attn_mask=batch["chosen_mask"],
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
             collect_hs=h.collect_hs,
             prompt_mask=batch["prompt_mask"],
+            special_tokens_mask=batch["chosen_special_tokens_mask"],
             dpo_agg_type=h.dpo_agg_type,
         )
         pi_rej = reprpo_forward_baukit(
             model=model,
-            input_ids=batch["rejected"],
+            input_ids=batch["rejected_ids"],
             attn_mask=batch["rejected_mask"],
             layer_paths=h.layer_paths,
             collect_input=h.collect_input,
             collect_hs=h.collect_hs,
             prompt_mask=batch["prompt_mask"],
+            special_tokens_mask=batch["rejected_special_tokens_mask"],
             dpo_agg_type=h.dpo_agg_type,
         )
 

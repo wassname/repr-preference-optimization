@@ -18,7 +18,7 @@ from reprpo.interventions.pl_base import PL_MODEL
 from reprpo.interventions.config import ExperimentConfig
 from .dpo_helpers import cross_entropy_loss
 from .dpo_helpers import compute_logprobs
-from .dpo import compute_dpo_loss
+from .dpo import calc_dpo_loss_w_metrics, model_forward_with_logprobs
 
 
 def _norm(x, dims):
@@ -107,7 +107,7 @@ class ProjGradHooks:
             module._mode = module._old_mode
             module._mask = None
 
-def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weights=False):
+def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weights=False, dpo_agg_type="ipo"):
     """Compute the DPO loss on an input batch"""
 
     model_kwargs = dict(
@@ -122,41 +122,43 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weigh
     with projgrad.set_projgrad_mode("ref_cho", batch["chosen_mask"]):
         with model.disable_adapter():
             with torch.no_grad():
-                ref_cho = model(
-                    batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs
+                ref_cho = model_forward_with_logprobs(
+                    model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
                 )
+                selection_mask=batch["chosen_mask"] * (1-batch['prompt_mask']) * (1-batch['chosen_special_tokens_mask'])
                 ref_cho_logp = compute_logprobs(
                     logits=ref_cho.logits,
-                    input_ids=batch["chosen"],
-                    selection_mask=batch["chosen_mask"] * (1-batch['prompt_mask']),
+                    input_ids=batch["chosen_ids"],
+                    selection_mask=selection_mask,
                 )
     with projgrad.set_projgrad_mode("ref_rej", batch["rejected_mask"]):
         with model.disable_adapter():
             with torch.no_grad():
-                ref_rej = model(
-                    batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
+                ref_rej = model_forward_with_logprobs(
+                    model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
                 )
+                selection_mask=batch["rejected_mask"] * (1-batch['prompt_mask']) * (1-batch['rejected_special_tokens_mask'])
                 ref_rej_logp = compute_logprobs(
                     logits=ref_rej.logits,
-                    input_ids=batch["rejected"],
-                    selection_mask=batch["rejected_mask"] * (1-batch['prompt_mask']),
+                    input_ids=batch["rejected_ids"],
+                    selection_mask=selection_mask,
                 )
 
     model.train()
     with projgrad.set_projgrad_mode("cho", batch["chosen_mask"]):
-        pi_cho = model(batch["chosen"], attention_mask=batch["chosen_mask"], **model_kwargs)
+        pi_cho = model_forward_with_logprobs(
+            model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+        )
     pi_cho_logp = compute_logprobs(
         logits=pi_cho.logits,
-        input_ids=batch["chosen"],
+        input_ids=batch["chosen_ids"],
         selection_mask=batch["chosen_mask"] * (1-batch['prompt_mask']),
     )
     with projgrad.set_projgrad_mode("rej", batch["rejected_mask"]):
-        pi_rej = model(
-            batch["rejected"], attention_mask=batch["rejected_mask"], **model_kwargs
-        )
+        pi_rej = model_forward_with_logprobs(model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type,**model_kwargs)
     pi_rej_logp = compute_logprobs(
         logits=pi_rej.logits,
-        input_ids=batch["rejected"],
+        input_ids=batch["rejected_ids"],
         selection_mask=batch["rejected_mask"] * (1-batch['prompt_mask']),
     )
 
@@ -168,7 +170,7 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weigh
     #     β=β,
     # )
 
-    loss, info = compute_dpo_loss_batch_plus(
+    loss, info = calc_dpo_loss_w_metrics(
         batch,
         pi_cho,
         pi_rej,
@@ -189,10 +191,10 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weigh
     with torch.no_grad():
 
         nll_loss = info["nll_loss"] = cross_entropy_loss(
-            pi_cho.logits, batch["chosen"], batch["chosen_mask"]
+            pi_cho.logits, batch["chosen_ids"], batch["chosen_mask"]
         ).mean()
         ref_nll_loss = info["ref_nll_loss"] = cross_entropy_loss(
-            ref_cho.logits, batch["chosen"], batch["chosen_mask"]
+            ref_cho.logits, batch["chosen_ids"], batch["chosen_mask"]
         ).mean()
         info["nll_loss_ratio"] = (nll_loss / ref_nll_loss).mean()
 
@@ -307,7 +309,7 @@ class ProjGradConfig(ExperimentConfig):
     It takes all the Lora layers, and on the backward pass it clip the gradient to only move in the cho_hs-ref_hs vector
     """
 
-    lr: float = 6e-5
+    # lr: float = 6e-5
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
 
@@ -347,7 +349,7 @@ class ProjGradConfig(ExperimentConfig):
 
     _cls = PL_ProjGrad_MODEL
 
-    _model_keys = ["lr", "β", "reverse_pref", "scale_orth", "neg_slope", "mag_clip", "weight_dim", "use_pref_ref"]
+    _model_keys = ["β", "reverse_pref", "scale_orth", "neg_slope", "mag_clip", "weight_dim", "use_pref_ref", "use_policy_weights"]
 
     @property
     def _name(self):

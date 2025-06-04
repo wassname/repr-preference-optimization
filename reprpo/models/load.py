@@ -39,12 +39,10 @@ def load_model(
     attn_implementation=None,#"flash_attention_2",
     torch_dtype=torch.bfloat16,
 ):
-    model = None
     clear_mem()
 
     model, tokenizer = load_hf_or_peft_model(
         model_name,
-        model=model,
         load_in_4bit=load_in_4bit,
         load_in_8bit=load_in_8bit,
         attn_implementation=attn_implementation,

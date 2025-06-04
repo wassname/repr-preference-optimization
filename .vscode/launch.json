@@ -25,9 +25,9 @@
             //     "enable": true
             // },
             "args": [
-                "hs-ether-InnerDPO",
+                "projgrad",
                 "--dev",
-                "--verbose=2",
+                "--verbose=3",
             ]
         },
         {
@@ -48,21 +48,6 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": false
-        },
-        {
-            "name": "tinyllama",
-            "type": "debugpy",
-            "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
-                "TOKENIZERS_PARALLELISM": "false"
-            },
-            "pythonArgs": [
-                "-Xfrozen_modules=off"
-            ],
-            "request": "launch",
-            "program": "${workspaceFolder}/scripts/train.py",
-            "console": "integratedTerminal",
-            "args": "${command:pickArgs}",
         },
         {
             "name": "llama a100",
