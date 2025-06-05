@@ -134,19 +134,20 @@ cp:
 
 scratch2:
     #!/usr/bin/zsh
+    set -x
     export CUDA_VISIBLE_DEVICES=0
     export WANDB_GROUP=${WANDB_GROUP:-prefvecexp-$(date +%y%m%d_%H%M)}
     # export ARGS='--batch-size=10'
     # baseline
     # what if both?
-    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2 --verbose=2
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag --verbose=2
     python scripts/train.py dpo --verbose=2
-    python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
     python scripts/train.py dpo --no-use-policy-weights
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
     python scripts/train.py hs-none-InnerDPO --collection-layers='range(0.3, 0.6, 4)'
     python scripts/train.py hs-none-InnerDPO --loss.align-method=orth
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2 --verbose=2
 
     python scripts/train.py hs-none-InnerDPO --loss.no-norm-before-reduce  --no-use-policy-weights
 
@@ -160,3 +161,5 @@ scratch2:
     python scripts/train.py projgrad --no-use-pref-ref
     python scripts/train.py projgrad
     python scripts/train.py projbp
+
+    just sweep

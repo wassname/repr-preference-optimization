@@ -28,14 +28,14 @@ class ExperimentConfig:
     use_gradient_checkpointing: bool = False
     schedule: str = "wsd"
 
-    n_samples: int = 20000
+    n_samples: int = 12000
     eval_samples: Optional[int] = None
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long
 
     # 80GB gpu
     base_model: str = "princeton-nlp/Llama-3-Base-8B-SFT"
-    batch_size: int = 6
+    batch_size: int = 7
 
     # allenai/Llama-3.1-Tulu-3-8B-SFT
 

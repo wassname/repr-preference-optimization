@@ -166,8 +166,8 @@ def innerdpo_loss(
         
         # Apply DPO-style loss
         loss_hidden_dpo = -F.logsigmoid(hidden_ptheta)
-        if use_policy_weights:
-            loss_hidden_dpo = loss_hidden_dpo * hidden_weight
+        # if use_policy_weights: # I'm not sure this is helping
+        #     loss_hidden_dpo = loss_hidden_dpo * hidden_weight
         
         return dict(loss_hidden_dpo=loss_hidden_dpo, hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta)
 
@@ -215,12 +215,12 @@ class InnerDPOLossConfig:
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     """
 
-    α: float = 1
+    α: float = 1.
     """balance between reroute and retain loss."""
 
     eps: float = 1.0e-5
 
-    β: float = 1
+    β: float = 1.
     """factor to punish orthogonal movement"""
 
     use_policy_weights: bool = True

@@ -86,17 +86,17 @@ def train(args, trial: Optional[Trial] = None):
     model_name = args.base_model.split("/")[-1]
 
     ts = pd.Timestamp.now().strftime("%H%M%S")
-    adapter_name = args._name
+    long_name, human_name, short_name = get_display_name_from_args(args)  # f"{adapter_name}_{ds_name_train}"
+    adapter_name = args._name # pytorch module name, so cannot have a dot 
     # adapter_name = get_args_dict(args)
 
-    human_name = get_display_name_from_args(args)  # f"{adapter_name}_{ds_name_train}"
 
     # we can set an experiment group name from env vars, otherwise it will just groupt by model and training ds
     group_name = f"{ds_name_train}-{model_name}"
     if os.environ.get("WANDB_GROUP", None) is not None:
         group_name = safe_fn(os.environ.get("WANDB_GROUP") + "-" + group_name)
 
-    short_human_name = human_name.split(' ', 1)[1]
+    short_human_name = short_name.split(' ', 1)[-1][:80] # safe_fn ?
     run_fname = f"{adapter_name}/{short_human_name}{ts}"  # short for wandb
 
     # save_dir
@@ -335,14 +335,12 @@ def train(args, trial: Optional[Trial] = None):
     # pprint(args, compact=1)
 
     r = make_table(df_res2, args, human_name=human_name, base_model=model_name)
-    # also print config
-    # and human_name
     # and wandb url
 
     # WANDB logging
-    r2 = {}
+    wandb_tables = {}
     for k, v in r.items():
-        r2[k] = wandb.Table(dataframe=v.reset_index())
+        wandb_tables[k] = wandb.Table(dataframe=v.reset_index())
         # log first row too, so we can compare single value
         if wandb.run is not None:
             wandb.log(
@@ -353,7 +351,7 @@ def train(args, trial: Optional[Trial] = None):
     if wandb.run is not None:
         if (not args.dev) and (args.verbose > 0):
             df_gen_w = wandb.Table(dataframe=df_gen)
-            wandb.log({"generations": df_gen_w, **r2})
+            wandb.log({"generations": df_gen_w, **wandb_tables})
 
         logger.info(f"WANDB url = {wandb.run.get_url()}")
 

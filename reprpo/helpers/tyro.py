@@ -37,7 +37,10 @@ def flatten_dict(d, parent_key="", sep="."):
 
 
 def get_display_name_from_args(args: dataclass):
-    """extract a human readable name from non-default args"""
+    """
+    extract a human readable name from non-default args
+    TODO make this unit tested or tidier
+    """
     defaults = type(args)()
     # TODO need to init subclasses
     for k, v in asdict(defaults).items():
@@ -77,12 +80,30 @@ def get_display_name_from_args(args: dataclass):
         "collection_layers_hs",
         "save",
         "wandb",
+        "lr",
+        "weight_decay",
+        'eps',
+        'collect_hs', # covered in name
+        'α',
+
     ]
 
     def fmt(v):
         if isinstance(v, float):
             return f"{v:.2g}"
         return v
+
+    
+    # filter
+    diff2 = []
+    for k, v in diff:
+        if k in blacklist:
+            continue
+        if any(
+            k.endswith(bl) for bl in blacklist
+        ):
+            continue
+     
 
     s = " ".join([f"{k}={fmt(v)}" for k, v in list(diff) if k not in blacklist])
 
@@ -114,4 +135,29 @@ def get_display_name_from_args(args: dataclass):
     s_short = rename(s_short)
     logger.info(f"diff: {cls_name} {s_all}")
 
-    return s_short
+    def short_hand(s):
+        """
+        e.g. ReprPO_ETH collect_hs=True innerdpo.align_method=orth innerdpo.eps=1e-05 innerdpo.norm_before_reduce=True innerdpo.use_policy_weights=True innerdpo.α=1 verbose=2
+        to ReprPO_ETH CoHs=1 AlMe=orth eps=1e-05 NoBeR=1 UsPoW=1 α=1
+        """
+        # rm everything after the first dot
+        sl = [ss.split('.', 1)[-1] for ss in s.split()]
+        # now for the part before an =
+        sl2 = []
+        for ss in sl:
+            if '=' in ss:
+                k, v = ss.split('=', 1)
+                if len(k) >5:
+                    # take the first letter of underscored or dash keys
+                    k = ''.join([ll[:2].capitalize() for ll in k.replace('-', '_').split('_')])
+                k = k[:5]
+                v = v[:5]
+                if k not in blacklist:
+                    sl2.append(f"{k}={v}")
+            else:
+                sl2.append(ss[:10])  # take the first 5 chars
+
+        return " ".join(sl2).replace('True', '1').replace('False', '0')
+    s2 = short_hand(s_short)
+
+    return s_all, s_short, s2

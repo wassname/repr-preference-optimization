@@ -6,6 +6,7 @@
     "configurations": [
 
         {
+            // tiny random model, only a few steps, 0 epochs
             "name": "dev tinymodel",
             "type": "debugpy",
             "env": {
@@ -30,24 +31,31 @@
                 "--verbose=3",
             ]
         },
-        {
-            "name": "Python Debugger: Current File",
+        {   
+            // This is a small non trivial run
+            "name": "quick small model",
             "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": false
-        },
-        {
-            "name": "Python: Debug Tests",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "purpose": [
-                "debug-test"
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false",
+                "REPR_CONFIG": "../configs/smol.yaml",
+                "WANDB_MODE": "offline"
+            },
+            "pythonArgs": [
+                "-Xfrozen_modules=off"
             ],
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
-            "justMyCode": false
+            "justMyCode": false,
+            // "autoReload": {
+            //     "enable": true
+            // },
+            "args": [
+                "hs-none-InnerDPO",
+                "--dev",
+                "--verbose=3",
+            ]
         },
         {
             "name": "llama a100",

@@ -8,29 +8,34 @@ class GenCallback(Callback):
 
     def __init__(self, every=50):
         self.every = every
-        self.text_table = wandb.Table(columns=["epoch", "text"])
+        self.text_table = wandb.Table(columns=["epoch", "text"], log_mode="INCREMENTAL")
 
-    def do_gen(self, model):
+    def do_gen(self, trainer):
+        step=trainer.fit_loop.epoch_loop._batches_that_stepped
+        epoch=trainer.current_epoch
+        model = trainer.model._model
+
         df_gen = get_model_generations(model, model.tokenizer, max_new_tokens=64, N=1)
-        s = display_gen(df_gen, with_q=False)
-        return df_gen, s
+        gen_s = display_gen(df_gen, with_q=False)
+        for _logger in trainer.loggers:
+            # if hasattr(_logger, 'log_text'):
+            #     _logger.log_text(gen_s, step=step) # fail artifact nam is longer than 128 chars
+            _logger.log_metrics({'gen': gen_s}, step=step)
+
+        if wandb.run:
+            self.text_table.add_data(epoch, gen_s)
+            wandb.log({"training_table": self.text_table}, step=step)
+        return df_gen, gen_s
         # can log?
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         n = batch_idx + 1
+        
         if n % self.every == 0:
             logger.info(f"\nGenerated on batch {batch_idx}")
-            df_gen, s = self.do_gen(trainer.model._model)
-            for _logger in trainer.loggers:
-                # logger.log_text(s, step=trainer.fit_loop.epoch_loop._batches_that_stepped)
-                _logger.log_metrics({'gen': s}, step=trainer.fit_loop.epoch_loop._batches_that_stepped)
+            df_gen, s = self.do_gen(trainer)
 
     def on_train_epoch_end(self, trainer, pl_module):
         logger.info(f"\nGenerated at end of epoch {trainer.current_epoch}")
-        df_gen, s = self.do_gen(trainer.model._model)
-        for _logger in trainer.loggers:
-            # logger.log_text(s, step=trainer.fit_loop.epoch_loop._batches_that_stepped)
-            _logger.log_metrics({'gen': s}, step=trainer.fit_loop.epoch_loop._batches_that_stepped)
-
-        if wandb.run:
-            self.text_table.add_data(epoch, s)
+        step=trainer.fit_loop.epoch_loop._batches_that_stepped
+        df_gen, gen_s = self.do_gen(trainer)
