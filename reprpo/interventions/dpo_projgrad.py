@@ -186,7 +186,8 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weigh
             max=1
         )
 
-        loss = loss * policy_weights
+        loss = loss * policy_weights.detach()
+        info["policy_weights"] = policy_weights.mean()
 
     with torch.no_grad():
 

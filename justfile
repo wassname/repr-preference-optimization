@@ -139,9 +139,12 @@ scratch2:
     export WANDB_GROUP=${WANDB_GROUP:-prefvecexp-$(date +%y%m%d_%H%M)}
     # export ARGS='--batch-size=10'
     # baseline
-    # what if both?
-    python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag --verbose=2
-    python scripts/train.py dpo --verbose=2
+    # couple of quick ones to test
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag --verbose=2 --n_samples=4000
+    python scripts/train.py dpo --verbose=2 --n_samples=4000
+
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
+    python scripts/train.py dpo
     python scripts/train.py dpo --no-use-policy-weights
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
     python scripts/train.py hs-none-InnerDPO --collection-layers='range(0.3, 0.6, 4)'

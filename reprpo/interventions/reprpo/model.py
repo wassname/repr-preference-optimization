@@ -185,12 +185,9 @@ class PL_REPRPO_MODEL(PL_MODEL):
             collection_keys, self._model
         )
 
-        # if collection_layers is None we collect the last 50% of layers
-
-
         N = self._model.config.num_hidden_layers
         if collection_layers is None:
-            collection_layers = "range(0.3, 1)"
+            collection_layers = "range(0.3, -2)"
         collection_layers = parse_collection_layers(
             collection_layers, num_hidden_layers=N
         )

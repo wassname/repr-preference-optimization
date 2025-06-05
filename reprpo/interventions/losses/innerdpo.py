@@ -195,7 +195,8 @@ def innerdpo_loss(
             torch.exp(pi_cho.log_policy_weights + pi_rej.log_policy_weights),
             max=1
         )
-        loss = loss * policy_weights.mean()
+        loss = loss * policy_weights.detach()
+        ll['policy_weights'] = policy_weights.mean()
     
 
 

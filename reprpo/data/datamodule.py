@@ -27,8 +27,6 @@ class PrefDataModule(LightningDataModule):
             max_length=self.args.max_length,
             verbose=self.args.verbose,
         )
-        
-        # tok = self.ds.map(self.tokenize, batched=False)
         self.train_ds = tokenized_ds['train']
         self.val_ds = tokenized_ds['test']
 

@@ -136,7 +136,8 @@ def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOMode
             torch.exp(pi_cho.log_policy_weights + pi_rej.log_policy_weights),
             max=1
         )
-        loss = loss * policy_weights
+        loss = loss * policy_weights.detach()
+        info["policy_weights"] = policy_weights.mean()
     
     def cosine_on_hs(hs1: Dict[str, torch.Tensor], hs2: Dict[str, torch.Tensor]):
         """Compute the cosine similarity between two sets of hidden states. Which are lists of tensors from each layer"""

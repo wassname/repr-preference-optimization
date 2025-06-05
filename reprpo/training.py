@@ -97,7 +97,7 @@ def train(args, trial: Optional[Trial] = None):
         group_name = safe_fn(os.environ.get("WANDB_GROUP") + "-" + group_name)
 
     short_human_name = short_name.split(' ', 1)[-1][:80] # safe_fn ?
-    run_fname = f"{adapter_name}/{short_human_name}{ts}"  # short for wandb
+    run_fname = f"{adapter_name}/{short_human_name}/{ts}"  # short for wandb
 
     # save_dir
     timestamp = safe_fn(pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S"))

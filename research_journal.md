@@ -5597,3 +5597,31 @@ So a note on formatting. The DRL library seperates prompt and completion, then c
 - I would rather just pad to max and find out about a out of GPU memory issues immediatly, rather than an hour into a run
 - I need 2 or 4 forward passes anyoay if I use a reference model. In fact models often have mutliple and it's not that big a deal
 - I don't think the extra complexity is worth it for the marginal gains in speed and memory usage.
+
+# 
+Table 1
+https://wandb.ai/wassname/reprpo2/runs/ert6nu3z/overview
+
+- so  did an angle run and it ignore the inner dpo loss, which went up from 0.45 yo 0.62. Dpo loss went from 0.7  to .5. So why... because angle is harder to optimize? unclear. but actaul rain loss went to near 0... what's going on? Ohhh policy weights. I neded to detah
+
+
+| adapter/distribution_shift   |   in_domain |   cross_domain |   moral_transfer |   orthogonal |
+|:-----------------------------|------------:|---------------:|-----------------:|-------------:|
+| none                         |       0.883 |          0.673 |            0.413 |        0.428 |
+| hs-None-InnerDPO             |       0.929 |          0.798 |            0.39  |        0.403 |
+
+250605 07:37:27|INFO|reprpo.training:make_table#405 - Table 1: Absolute accuracy after training with named adapter on ds:`math` compared to base model `Llama-3-Base-8B-SFT` for various distribution shifts [N=None]:
+
+- Shift: cross_domain, made up of:
+        - `genies_preferences-math_fiction-test`
+        - `genies_preferences-change_my_view-test`
+        - `genies_preferences-cooking-test`
+- Shift: in_domain, made up of:
+        - `genies_preferences-math-test`
+- Shift: moral_transfer, made up of:
+        - `ethics_expression_preferences-deontology-test`
+        - `ethics_expression_preferences-utilitarianism-test`
+        - `ethics_expression_preferences-commonsense-test`
+        - `ethics_expression_preferences-justice-test`
+- Shift: orthogonal, made up of:
+        - `medical-dpo-v2-test-data`
