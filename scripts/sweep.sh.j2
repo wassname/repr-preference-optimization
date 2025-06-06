@@ -1,0 +1,24 @@
+#!/usr/bin/bash
+set -xuo pipefail
+
+# quick dev run for GPU
+{% for model, bs in batch_sizes.items() %}
+python scripts/train.py side-none-InnerDPO \
+  --base_model={{ model }} --dataset=math \
+  --batch_size={{ bs }} --dev --verbose=0
+{% endfor %}
+
+{% set i = 0 %}
+{% for model in batch_sizes.keys() %}
+{%   for seed in seeds %}
+{%     for ds in datasets %}
+{%       for adapter in adapters %}
+python scripts/train.py {{ adapter }} \
+  --base_model={{ model }} --dataset={{ ds }} \
+  --seed={{ seed }} --batch_size={{ batch_sizes.get(model, default_bs) }} \
+  {{ "--verbose=2" if i == 0 else "" }}
+{%       set i = i + 1 %}
+{%       endfor %}
+{%     endfor %}
+{%   endfor %}
+{% endfor %}

@@ -4,7 +4,7 @@ from reprpo.interventions.pl_base import PL_MODEL
 from dataclasses import dataclass
 from typing import Dict, Any, Callable, Optional
 from reprpo.interventions.config import ExperimentConfig
-from .dpo_helpers import cross_entropy_loss, compute_ptheta, compute_logprobs
+from .dpo_helpers import cross_entropy_loss, compute_ptheta, compute_logprobs, compute_policy_weights
 from reprpo.interventions.types import ReprPOModelOutput
 
 def compute_dpo_loss(
@@ -131,13 +131,10 @@ def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOMode
         β=β,
     )
 
+    policy_weights = compute_policy_weights(pi_cho, pi_rej)
+    info["policy_weights"] = policy_weights.mean()
     if use_policy_weights:
-        policy_weights = torch.clamp(
-            torch.exp(pi_cho.log_policy_weights + pi_rej.log_policy_weights),
-            max=1
-        )
         loss = loss * policy_weights.detach()
-        info["policy_weights"] = policy_weights.mean()
     
     def cosine_on_hs(hs1: Dict[str, torch.Tensor], hs2: Dict[str, torch.Tensor]):
         """Compute the cosine similarity between two sets of hidden states. Which are lists of tensors from each layer"""
@@ -185,7 +182,8 @@ class PL_DPO_MODEL(PL_MODEL):
 class DPOConfig(ExperimentConfig):
     # 5e-5 https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/04_preference-tuning-with-dpo/dpo-from-scratch.ipynb
     # 5e-7 https://github.com/eric-mitchell/direct-preference-optimization/blob/main/config/config.yaml
-    use_policy_weights: bool = True
+    
+    use_policy_weights: bool = False
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
 
     _cls = PL_DPO_MODEL

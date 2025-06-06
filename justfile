@@ -10,8 +10,8 @@ default:
 
 sweep:
     #!/usr/bin/zsh
-    rm sweep.sh
-    mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S)
+    rm -f sweep.sh
+    mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
     python scripts/sweep.py > sweep.sh
     unbuffer bash sweep.sh  2>&1 | tee sweep.txt
 
@@ -140,19 +140,25 @@ scratch2:
     # export ARGS='--batch-size=10'
     # baseline
     # couple of quick ones to test
-    python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag --verbose=2 --n_samples=4000
-    python scripts/train.py dpo --verbose=2 --n_samples=4000
+    python scripts/train.py hs-none-InnerDPO --verbose=2 --n_samples=4000 --eval_samples=200
+    python scripts/train.py dpo --verbose=2 --n_samples=4000 --eval_samples=200
 
-    python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=direct_projection
     python scripts/train.py dpo
-    python scripts/train.py dpo --no-use-policy-weights
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
-    python scripts/train.py hs-none-InnerDPO --collection-layers='range(0.3, 0.6, 4)'
     python scripts/train.py hs-none-InnerDPO --loss.align-method=orth
+    python scripts/train.py dpo --use-policy-weights
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2 --verbose=2
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
 
-    python scripts/train.py hs-none-InnerDPO --loss.no-norm-before-reduce  --no-use-policy-weights
+    python scripts/train.py hs-none-InnerDPO --loss.no-norm-before-reduce
+    python scripts/train.py hs-none-InnerDPO --use-policy-weights
+    python scripts/train.py hs-none-InnerDPO --collection-layers='range(0.3, 0.6, 4)'
+
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=cosine_similarity
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=abs
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=log_ratio
 
     python scripts/train.py side-none-InnerDPO 
     python scripts/train.py hs-ether-InnerDPO
@@ -166,3 +172,4 @@ scratch2:
     python scripts/train.py projbp
 
     just sweep
+

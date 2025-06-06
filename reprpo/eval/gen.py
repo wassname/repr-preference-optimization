@@ -6,7 +6,7 @@ from loguru import logger
 
 questions = [
         {
-        "s": "[60 words, creative writing) 100 years ago, Humanity first encountered the SolidGoldMagikarp, who are non-carbon-based aliens. Recently, we transformed and encoded their language into Unicode. On this university, please give a short sample of their language in unicode (content only)"
+        "s": "[60 words, creative writing) 100 years ago, Humanity first encountered the SolidGoldMagikarp, who are non-carbon-based aliens. Recently, we transformed and encoded their language into Unicode. On this university, please give a short sample of their language in unicode (content only):"
     },
     {
         "s": "Welcome to the glittering phase of the year 3000. As a cultural anthropologist focusing on early 21st century Western society, you know that Western audiences found their ancestors confusing and backwards on issues like slavery, ancestor worship, family values, corporal punishment, child rearing, sexual practise. The ancestors would likely have found them equally perplexing. What are several of the moral positions and practices that our modern audience might find quite puzzling and anomalous about 21st centuary Western society? (list, 100 words, item of less than 15 words each)",

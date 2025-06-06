@@ -11,9 +11,14 @@ class PrefDataModule(LightningDataModule):
         super().__init__()
         self.args = args
         self.tokenizer = tokenizer
+        self.ds = None
 
     def setup(self, stage=None):
         # allow different dataset paths using args.dataset
+        if self.ds is not None:
+            logger.warning("Dataset already loaded, skipping setup.")
+            return
+            
         self.ds = load_dataset(
             *(self.args.dataset.split(":", 1))
         ) if ":" in self.args.dataset else load_dataset(

@@ -5,7 +5,7 @@ from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
 
-from ..dpo_helpers import cross_entropy_loss, compute_ptheta
+from ..dpo_helpers import cross_entropy_loss, compute_ptheta, compute_policy_weights
 from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
@@ -132,7 +132,15 @@ def innerdpo_loss(
                 proj_dist = torch.norm(projection, p=1, dim=-1)  # Magnitude of projection
                 # normalise per layer?
                 
-                hidden_ptheta = β * torch.log(proj_dist+eps)  # Log of projection magnitude, scaled by β
+                hidden_ptheta = β * proj_dist
+                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
+            case 'direct_projection_log':                
+                # Project pi direction onto ref direction (signed distance)
+                projection = (pref_dir_pi * pref_dir_ref_unit)  # [batch]
+                proj_dist = torch.norm(projection, p=1, dim=-1)  # Magnitude of projection
+                # normalise per layer?
+                
+                hidden_ptheta = β * torch.log1p(proj_dist+eps)  # Log of projection magnitude, scaled by β
                 hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
             case 'para_orth':
                 # Preference for parallel over orthogonal, compared to base model
@@ -144,14 +152,15 @@ def innerdpo_loss(
                 # Preference for parallel over orthogonal
                 hidden_ptheta = β * odds
             case 'orth':                
-                # Preference for parallel over orthogonal
+                # Preference for not  orthogonal
                 hidden_ptheta = - β * torch.log(ort_pi + eps)
                 hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
             case 'para':
-                # Preference for parallel over orthogonal
+                # Preference for parallel 
                 hidden_ptheta = β * torch.log(par_pi + eps)
                 hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
             case 'angle_mag':
+                # ah this just ends up encouraging a low magnitude for a low loss
                 # Standard alignment
                 alignment = F.cosine_similarity(pref_dir_pi, pref_dir_ref, dim=-1)
                 prob = torch.abs(alignment)
@@ -162,7 +171,7 @@ def innerdpo_loss(
                 ref_magnitude = torch.norm(pref_dir_ref, dim=-1)
                 magnitude_weight = torch.clamp(ref_magnitude, 0.1, 2.0)  # Reasonable range
                 
-                hidden_ptheta = β * magnitude_weight * log_odds  # Magnitude-weighted log-odds
+                hidden_ptheta = β * log_odds / magnitude_weight  # Magnitude-weighted log-odds
         
         # Apply DPO-style loss
         loss_hidden_dpo = -F.logsigmoid(hidden_ptheta)
@@ -187,18 +196,14 @@ def innerdpo_loss(
     loss_dpo = -F.logsigmoid(β * dpo_ptheta)
 
     loss = loss_dpo + α * ll['loss_hidden_dpo']
-
     
     # Apply policy weights if requested
+    policy_weights = compute_policy_weights(pi_cho, pi_rej)
+    ll['policy_weights'] = policy_weights.mean()
+    ll['cho_log_policy_weights'] = torch.exp(pi_cho.log_policy_weights).mean()
+    ll['rej_log_policy_weights'] = torch.exp(pi_rej.log_policy_weights).mean()   
     if use_policy_weights:
-        policy_weights = torch.clamp(
-            torch.exp(pi_cho.log_policy_weights + pi_rej.log_policy_weights),
-            max=1
-        )
         loss = loss * policy_weights.detach()
-        ll['policy_weights'] = policy_weights.mean()
-    
-
 
     ll = {k:v.mean() for k, v in ll.items()}
     info = dict(
@@ -216,7 +221,7 @@ class InnerDPOLossConfig:
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     """
 
-    α: float = 1.
+    α: float = 0.25
     """balance between reroute and retain loss."""
 
     eps: float = 1.0e-5
@@ -224,11 +229,11 @@ class InnerDPOLossConfig:
     β: float = 1.
     """factor to punish orthogonal movement"""
 
-    use_policy_weights: bool = True
+    use_policy_weights: bool = False
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
 
 
-    align_method: str = 'direct_projection'
+    align_method: str = 'para'
     """Method to compute alignment between chosen and rejected hidden states."""
 
     norm_before_reduce: bool = True

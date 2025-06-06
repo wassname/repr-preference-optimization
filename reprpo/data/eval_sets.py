@@ -25,11 +25,11 @@ TRAINING_EXPERIMENTS = {
         {"target": "math", "type": "in_domain", "label": "baseline", "category": "orthogonal"},
         {"target": "change_my_view", "type": "cross_domain", "label": "skill", "category": "extreme"},
         {"target": "math_fiction", "type": "cross_domain", "label": "context", "category": "extreme"},  # context change is really cross-domain
+        # {"target": "cooking", "type": "cross_domain", "label": "skill", "category": "extreme"},
         {"target": "wassname/ethics_expression_preferences:justice", "type": "moral_transfer", "label": "moral_alignment", "category": "alignment"},
-        {"target": "cooking", "type": "cross_domain", "label": "skill", "category": "extreme"},
-        {"target": "wassname/ethics_expression_preferences:commonsense", "type": "moral_transfer", "label": "moral_alignment", "category": "alignment"},
+        # {"target": "wassname/ethics_expression_preferences:commonsense", "type": "moral_transfer", "label": "moral_alignment", "category": "alignment"},
         {"target": "wassname/ethics_expression_preferences:utilitarianism", "type": "moral_transfer", "label": "moral_alignment", "category": "alignment"},
-        {"target": "wassname/ethics_expression_preferences:deontology", "type": "moral_transfer", "label": "moral_alignment", "category": "alignment"},
+        # {"target": "wassname/ethics_expression_preferences:deontology", "type": "moral_transfer", "label": "moral_alignment", "category": "alignment"},
         {"target": "wassname/medical-dpo-V2#data", "type": "orthogonal", "label": "orthogonal", "category": "orthogonal"},
     ],
 
@@ -86,7 +86,7 @@ TRAINING_EXPERIMENTS = {
     "wassname/ethics_expression_preferences:justice": [
         {"target": "wassname/ethics_expression_preferences:justice", "type": "in_domain", "label": "baseline", "category": "orthogonal"},
         {"target": "math", "type": "cross_domain", "label": "moral_to_technical"},
-        {"target": "code", "type": "cross_domain", "label": "moral_to_technical"}, 
+        # {"target": "code", "type": "cross_domain", "label": "moral_to_technical"}, 
         {"target": "wassname/ethics_expression_preferences:commonsense", "type": "in_domain"},
         {"target": "wassname/medical-dpo-V2#data", "type": "orthogonal"},
     ],

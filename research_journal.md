@@ -5603,6 +5603,10 @@ Table 1
 https://wandb.ai/wassname/reprpo2/runs/ert6nu3z/overview
 
 - so  did an angle run and it ignore the inner dpo loss, which went up from 0.45 yo 0.62. Dpo loss went from 0.7  to .5. So why... because angle is harder to optimize? unclear. but actaul rain loss went to near 0... what's going on? Ohhh policy weights. I neded to detah
+- hmm also they have different ranger, 
+  - para 0 to 10 (does give dist)
+  - angle_mag similar to dpo 0.6! and smoother
+  - para orth2: around 1 (doesn't give us dist)
 
 
 | adapter/distribution_shift   |   in_domain |   cross_domain |   moral_transfer |   orthogonal |

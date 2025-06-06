@@ -5,7 +5,7 @@ from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
 
-from ..dpo_helpers import cross_entropy_loss, compute_ptheta
+from ..dpo_helpers import cross_entropy_loss, compute_ptheta, compute_policy_weights
 from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
@@ -189,13 +189,10 @@ def innerpo_loss(
     # loss = sum(losses) / len(losses) if losses else 0.0
     
     # Apply policy weights if requested
+    policy_weights = compute_policy_weights(pi_cho, pi_rej)
+    ll['policy_weights'] = policy_weights.mean()
     if use_policy_weights:
-        policy_weights = torch.clamp(
-            torch.exp(pi_cho['log_policy_weights'] + pi_rej['log_policy_weights']),
-            max=1
-        )
         loss = loss * policy_weights.detach()
-        ll['policy_weights'] = policy_weights.mean()
     
 
 

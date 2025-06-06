@@ -86,3 +86,14 @@ def compute_ptheta(
     ref_logratios = ref_cho_logp - ref_rej_logp
     logits = pi_logratios - ref_logratios
     return logits
+
+
+def compute_policy_weights(pi_cho, pi_rej, T=3):
+    # Here we deviate from the WPO paper for stability
+    policy_weights = torch.exp(pi_cho.log_policy_weights + pi_rej.log_policy_weights)
+    # OR
+    policy_weights = torch.sigmoid((pi_cho.log_policy_weights + pi_rej.log_policy_weights)/T)
+
+    # balance them
+    policy_weights = policy_weights /(policy_weights.sum() + 1e-9)
+    return policy_weights

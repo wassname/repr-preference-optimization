@@ -9,7 +9,7 @@ class ExperimentConfig:
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
     lr: float = 7e-5
-    weight_decay: float = 1e-4
+    weight_decay: float = 0
 
 
     dataset: str = "math"
@@ -28,8 +28,8 @@ class ExperimentConfig:
     use_gradient_checkpointing: bool = False
     schedule: str = "wsd"
 
-    n_samples: int = 12000
-    eval_samples: Optional[int] = None
+    n_samples: int = 8000
+    eval_samples: Optional[int] = 500
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long
 

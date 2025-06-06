@@ -6,12 +6,14 @@ import wandb
 class GenCallback(Callback):
     """A callback to generate on sample each N samples."""
 
-    def __init__(self, every=50):
+    def __init__(self, every=150):
         self.every = every
         self.text_table = wandb.Table(columns=["epoch", "text"], log_mode="INCREMENTAL")
 
     def do_gen(self, trainer):
         step=trainer.fit_loop.epoch_loop._batches_that_stepped
+        step=trainer.fit_loop.epoch_loop.batch_idx
+
         epoch=trainer.current_epoch
         model = trainer.model._model
 

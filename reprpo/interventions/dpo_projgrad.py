@@ -17,7 +17,7 @@ from torch import Tensor
 from reprpo.interventions.pl_base import PL_MODEL
 from reprpo.interventions.config import ExperimentConfig
 from .dpo_helpers import cross_entropy_loss
-from .dpo_helpers import compute_logprobs
+from .dpo_helpers import compute_logprobs, compute_policy_weights
 from .dpo import calc_dpo_loss_w_metrics, model_forward_with_logprobs
 
 
@@ -180,14 +180,10 @@ def compute_gradproj_loss_batch(batch, model, projgrad, β=0.1, use_policy_weigh
         use_policy_weights=use_policy_weights,
     )
 
+    policy_weights = compute_policy_weights(pi_cho, pi_rej)
+    info["policy_weights"] = policy_weights.mean()
     if use_policy_weights:
-        policy_weights = torch.clamp(
-            torch.exp(pi_cho_logp['log_policy_weights'] + pi_rej_logp['log_policy_weights']),
-            max=1
-        )
-
         loss = loss * policy_weights.detach()
-        info["policy_weights"] = policy_weights.mean()
 
     with torch.no_grad():
 

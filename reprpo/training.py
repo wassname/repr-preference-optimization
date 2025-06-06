@@ -5,10 +5,9 @@
 import json
 import os
 from pprint import pprint, pformat
-
 from .silence import remove_warnings, silence
+import datasets
 
-remove_warnings()
 
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -70,11 +69,19 @@ def set_random_seed(seed: int = 42):
 
 
 def train(args, trial: Optional[Trial] = None):
+    if args.dev:
+        # no cache
+        datasets.disable_caching()
+        args.eval_samples = 32
+        os.environ["WANDB_MODE"] = "disabled"  # disable wandb
+
     if args.verbose < 1:
         silence()
+    if args.verbose < 3:
+        remove_warnings()
     torch.set_float32_matmul_precision("medium")
 
-    # Set random seed for reproducibility
+    # Set random seed for reproducible
     seed = getattr(args, "seed", 42)  # Default to 42 if no seed specified
     set_random_seed(seed)
 
@@ -154,14 +161,19 @@ def train(args, trial: Optional[Trial] = None):
     Note that GENIES and PEFT use the default targets for llama ["q_proj", "v_proj"]
     but other papers like qlora and HRA use all linear layers
     """
+    target_modules = None
+    if "qwen3" in args.base_model.lower():
+        target_modules = ["q_proj", "v_proj"]
+    elif "OMLo" in args.base_model.lower():
+        target_modules=["q_proj",  "v_proj", ]
     peft_config = LoraConfig(
         r=64,
         lora_alpha=16,
         use_rslora=True,
         # use_dora=True,
         task_type="CAUSAL_LM",
-        target_modules=["q_proj", "v_proj"] if "qwen3" in args.base_model.lower() else None,
-        # target_modules="all-linear", #  QLoRA-style training
+        # target_modules=target_modules,
+        target_modules="all-linear", #  QLoRA-style training
     )
     # if hasattr(PL_MODEL, 'setup_grad_proj'):
     #     peft_config = PL_MODEL.setup_grad_proj(peft_config)
@@ -171,11 +183,7 @@ def train(args, trial: Optional[Trial] = None):
     if args.verbose > 2:
         logger.info(f"{model}")
 
-    if args.dev:
-        # no cache
-        import datasets
 
-        datasets.disable_caching()
 
     # setup data with PrefDataModule (replaces manual load/map/dl)
     dm = PrefDataModule(args, tokenizer)
@@ -293,20 +301,20 @@ def train(args, trial: Optional[Trial] = None):
     N = args.eval_samples
     ds_names_eval = TRAINING_EXPERIMENTS[args.dataset]
     df_ds_names_eval = pd.DataFrame(ds_names_eval)
-    datasets = [load_eval_ds(name, N=N) for name in df_ds_names_eval["target"]]
-    ds_names = [ds2name(d) for d in datasets]
+    datasets_l = [load_eval_ds(name, N=N) for name in df_ds_names_eval["target"]]
+    ds_names = [ds2name(d) for d in datasets_l]
     logger.info(f"evaluating on datasets: {ds_names}")
 
-    remove_warnings()
+    
     clear_mem()
     res, df_res2 = evaluate_model(
         model=model,
         tokenizer=tokenizer,
-        datasets=datasets,
-        batch_size=args.batch_size,
+        datasets=datasets_l,
+        batch_size=args.batch_size*2,
         verbose=args.verbose,
-        max_length=args.max_length*2,
-        max_prompt_length=args.max_prompt_length*2,
+        max_length=args.max_length,
+        max_prompt_length=args.max_prompt_length,
         # num_workers=args.num_workers,
     )
     df_res2.fillna({"adapter": "base"}, inplace=True)
@@ -368,7 +376,7 @@ def train(args, trial: Optional[Trial] = None):
 
 
 def make_table(df_res2, args, human_name, base_model="", verbose=True):
-    remove_warnings()
+    
     adapter_name = df_res2[["adapter"]].query('adapter!="base" & adapter!="none"').values[0, 0]
 
     df_res_ds = (
