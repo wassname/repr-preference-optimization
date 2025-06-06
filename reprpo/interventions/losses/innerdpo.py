@@ -159,6 +159,11 @@ def innerdpo_loss(
                 # Preference for parallel 
                 hidden_ptheta = β * torch.log(par_pi + eps)
                 hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
+            case 'para_signed':
+                # TODO
+                # Preference for parallel 
+                hidden_ptheta = β * safe_signed_log(par_comp_pi.sum(dim=-1) + eps)
+                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
             case 'angle_mag':
                 # ah this just ends up encouraging a low magnitude for a low loss
                 # Standard alignment

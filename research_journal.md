@@ -5642,3 +5642,18 @@ Why DPO not work? OR is it mathWW
 
 hata
 bout para fro diff values of alpha
+
+# 2025-06-06 11:54:29
+
+Observations:-
+- not learning for math dataset
+- dpo is not learning? wghy, ipo or lr too high? (this is 0.6B)
+- not 100% sure it's plateuing but oh well
+
+
+So try with code
+- Try 3b model.
+- Try to get DPO to learn (even in alpaca which should in dist?)
+  - is it the prompt mask?
+- then try other innerdpo methods
+- get spr working

@@ -96,18 +96,21 @@ def dpo_forward_batch(batch, model, β=0.1, use_policy_weights=False, dpo_agg_ty
     with torch.no_grad():
         with model.disable_adapter():
             ref_cho = model_forward_with_logprobs(
-                model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+                model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], 
+                special_tokens_mask=batch["chosen_special_tokens_mask"],dpo_agg_type=dpo_agg_type, **model_kwargs
             )
             ref_rej = model_forward_with_logprobs(
-                model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+                model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], 
+                special_tokens_mask=batch["rejected_special_tokens_mask"],
+                dpo_agg_type=dpo_agg_type, **model_kwargs
             )
 
     model.train()
     pi_cho = model_forward_with_logprobs(
-        model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+        model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["chosen_special_tokens_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
     )
     pi_rej = model_forward_with_logprobs(
-        model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+        model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["rejected_special_tokens_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
     )
 
     return calc_dpo_loss_w_metrics(

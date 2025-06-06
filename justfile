@@ -140,16 +140,21 @@ scratch2:
     # export ARGS='--batch-size=10'
     # baseline
     # couple of quick ones to test
-    python scripts/train.py hs-none-InnerDPO --verbose=2 --n_samples=4000 --eval_samples=200
-    python scripts/train.py dpo --verbose=2 --n_samples=4000 --eval_samples=200
+    
+    python scripts/train.py dpo --verbose=2
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para --loss.α=10
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para --loss.α=0.1
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para --loss.α=100
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para --loss.α=0.001
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_signed
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=orth
+    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2 --verbose=2
 
     python scripts/train.py hs-none-InnerDPO --loss.align-method=direct_projection
     python scripts/train.py dpo
-    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth
-    python scripts/train.py hs-none-InnerDPO --loss.align-method=orth
     python scripts/train.py dpo --use-policy-weights
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para
-    python scripts/train.py hs-none-InnerDPO --loss.align-method=para_orth2 --verbose=2
     python scripts/train.py hs-none-InnerDPO --loss.align-method=angle_mag
 
     python scripts/train.py hs-none-InnerDPO --loss.no-norm-before-reduce

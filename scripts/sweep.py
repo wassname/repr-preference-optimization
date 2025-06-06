@@ -28,7 +28,7 @@ seeds = [
 
 datasets = [
     # set 1
-    "math",
+    # "math",
     "alpaca_mmlu",
     "code_easy",
     "cooking",

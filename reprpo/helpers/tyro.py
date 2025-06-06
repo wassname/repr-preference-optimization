@@ -85,6 +85,7 @@ def get_display_name_from_args(args: dataclass):
         'eps',
         'collect_hs', # covered in name
         'α',
+        'seed',
 
     ]
 

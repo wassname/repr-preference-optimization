@@ -95,5 +95,5 @@ def compute_policy_weights(pi_cho, pi_rej, T=3):
     policy_weights = torch.sigmoid((pi_cho.log_policy_weights + pi_rej.log_policy_weights)/T)
 
     # balance them
-    policy_weights = policy_weights /(policy_weights.sum() + 1e-9)
+    policy_weights = policy_weights /(policy_weights.mean() + 1e-9)
     return policy_weights
