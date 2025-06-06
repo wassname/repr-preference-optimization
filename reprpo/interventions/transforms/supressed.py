@@ -78,6 +78,10 @@ class SupressedHSTransform(nn.Module):
         )
         return {k: hs[i] for i, k in enumerate(keys[1:])}
 
+class EtherTransforms(TransformByLayer):
+    Transform = SupressedHSTransform
+
+
 @dataclass
 class SupressedHSConfig:
     """

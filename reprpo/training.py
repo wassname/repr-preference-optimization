@@ -175,14 +175,11 @@ def train(args, trial: Optional[Trial] = None):
         # target_modules=target_modules,
         target_modules="all-linear", #  QLoRA-style training
     )
-    # if hasattr(PL_MODEL, 'setup_grad_proj'):
-    #     peft_config = PL_MODEL.setup_grad_proj(peft_config)
 
     model = get_peft_model(model, peft_config, adapter_name=adapter_name)
     print_trainable_parameters(model)
     if args.verbose > 2:
         logger.info(f"{model}")
-
 
 
     # setup data with PrefDataModule (replaces manual load/map/dl)

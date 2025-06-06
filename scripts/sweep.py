@@ -7,8 +7,8 @@ batch_sizes = {
     "allenai/OLMo-2-0425-1B-SFT": 13, # error please specifcy target modules in config
     # "wassname/llama-3-2-1b-sft",
     "wassname/llama-3.2-3b-sft": 10,
-    "princeton-nlp/Llama-3-Base-8B-SFT": 7,
-    # "allenai/Llama-3.1-Tulu-3-8B-SFT": 7,
+    "princeton-nlp/Llama-3-Base-8B-SFT": 5,
+    # "allenai/Llama-3.1-Tulu-3-8B-SFT": 5,
     # add large models too if you want custom sizes
 }
 default_batch_size = 7
@@ -26,11 +26,8 @@ seeds = [
     1, 2, 3
 ]
 
-# ok here I need to change it. I want to choose: train, oos, rnd
-# hmm maybe I can just list multiple OOS test sets from all the genies related?
 datasets = [
     # set 1
-    # FIXME, check truncation on these, should ideally be none
     "math",
     "alpaca_mmlu",
     "code_easy",

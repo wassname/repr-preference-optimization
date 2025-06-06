@@ -1,4 +1,5 @@
 import re
+import pandas as pd
 
 def safe_fn(s):
     """make a safe filename from any string."""
@@ -39,7 +40,15 @@ def nice_ds_name(s):
     return s
 
 
-def sort_str(cols, first:list=[], last:list=[], sort_middle=False) -> list:
+def unique_ordered(lst):
+    out = []
+    for item in lst:
+        if item not in out:
+            out.append(item)
+    return out
+
+
+def sort_str(cols, first:list=[], last:list=[], sort_middle=False, unique=False) -> list:
     """
     Util function for sorting a list of strings, making sure some items appear first and last and the rest sorted in the middle.
 
@@ -52,6 +61,10 @@ def sort_str(cols, first:list=[], last:list=[], sort_middle=False) -> list:
         middle.sort()
     first = [x for x in first if (x in cols) and (x not in last)]
     last = [x for x in last if x in cols]
+    if unique:
+        first = unique_ordered(first)
+        last = unique_ordered(last)
+        middle = unique_ordered(middle)
     return first + middle + last
 
 
@@ -64,3 +77,5 @@ def df_sort_cols(df, first:list=[], last:list=[], sort_middle=False) -> list:
     """
     sorted_cols = sort_str(list(df.columns), first=first, last=last, sort_middle=sort_middle)
     return df[sorted_cols]
+
+
