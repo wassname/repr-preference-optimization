@@ -3,6 +3,8 @@ os.environ["WANDB_GROUP"] = "sweep4"
 
 # for H100
 batch_sizes = {
+    "wassname/SmolLM2-135M-sft": 32,
+    "wassname/SmolLM2-360M-sft": 24,
     "wassname/Qwen3-0.6B-sft": 18,
     "allenai/OLMo-2-0425-1B-SFT": 13, # error please specifcy target modules in config
     # "wassname/llama-3-2-1b-sft",

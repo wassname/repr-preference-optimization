@@ -12,21 +12,21 @@ class GenCallback(Callback):
 
     def do_gen(self, trainer):
         step=trainer.fit_loop.epoch_loop._batches_that_stepped
-        step=trainer.fit_loop.epoch_loop.batch_idx
+        # step=trainer.fit_loop.epoch_loop.batch_idx
 
         epoch=trainer.current_epoch
         model = trainer.model._model
 
-        df_gen = get_model_generations(model, model.tokenizer, max_new_tokens=64, N=1)
+        df_gen = get_model_generations(model, model.tokenizer, max_new_tokens=64, N=2)
         gen_s = display_gen(df_gen, with_q=False)
         for _logger in trainer.loggers:
             # if hasattr(_logger, 'log_text'):
             #     _logger.log_text(gen_s, step=step) # fail artifact nam is longer than 128 chars
-            _logger.log_metrics({'gen': gen_s}, step=step)
+            _logger.log_metrics({'gen': gen_s})#, step=step)
 
         if wandb.run:
             self.text_table.add_data(epoch, gen_s)
-            wandb.log({"training_table": self.text_table}, step=step)
+            wandb.log({"training_table": self.text_table})#/;;;/., step=step)
         return df_gen, gen_s
         # can log?
 

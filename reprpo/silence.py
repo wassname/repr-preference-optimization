@@ -1,8 +1,30 @@
 import warnings, os
 import logging
 from datasets.utils.logging import disable_progress_bar
-
+import contextlib
 import logging
+from functools import wraps
+
+@contextlib.contextmanager
+def silent_logs_warnings():
+    # suppress all warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        # disable all logging calls at WARNING level and below
+        prev_level = logging.root.manager.disable
+        logging.disable(logging.WARNING)
+        try:
+            yield
+        finally:
+            # restore previous logging state
+            logging.disable(prev_level)
+
+def with_silence(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        with silent_logs_warnings():
+            return fn(*args, **kwargs)
+    return wrapped
 
 
 def remove_warnings():
@@ -48,6 +70,7 @@ def silence():
     
 
     logging.getLogger("transformers.trainer").setLevel(logging.ERROR)
+    logging.getLogger("transformers.generation.configuration_utils.py").setLevel(logging.ERROR)
 
     # datasets is too verbose
     disable_progress_bar()

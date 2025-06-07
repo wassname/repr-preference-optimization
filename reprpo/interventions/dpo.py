@@ -172,13 +172,15 @@ class PL_DPO_MODEL(PL_MODEL):
         self,
         *args,
         use_policy_weights=False,
+        dpo_agg_type="ipo",
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.hparams.use_policy_weights = use_policy_weights
+        self.hparams.dpo_agg_type = dpo_agg_type
     
     def _loss_fn(self, batch, model):
-        return dpo_forward_batch(batch, model, use_policy_weights=self.hparams.use_policy_weights)
+        return dpo_forward_batch(batch, model, use_policy_weights=self.hparams.use_policy_weights, dpo_agg_type=self.hparams.dpo_agg_type)
 
 
 @dataclass
@@ -189,9 +191,12 @@ class DPOConfig(ExperimentConfig):
     use_policy_weights: bool = False
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
 
+    dpo_agg_type: str = "ipo"
+    """# DPO aggregation type, can be 'ipo' or 'ppo'. IPO is the original DPO, PPO is the one used in the WPO paper."""
+
     _cls = PL_DPO_MODEL
 
-    _model_keys = ["use_policy_weights"]
+    _model_keys = ["use_policy_weights", "dpo_agg_type"]
 
 
     @property

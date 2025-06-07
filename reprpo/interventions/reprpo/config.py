@@ -62,6 +62,7 @@ class ReprPOConfig(ExperimentConfig):
         "collect_hs",
         "loss",
         "transform",
+        'dpo_agg_type',
     ]
 
     @property

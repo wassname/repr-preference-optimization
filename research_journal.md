@@ -5645,9 +5645,14 @@ bout para fro diff values of alpha
 
 # 2025-06-06 11:54:29
 
-Observations:-
-- not learning for math dataset
-- dpo is not learning? wghy, ipo or lr too high? (this is 0.6B)
+Observations:
+- not learning for math dataset , I shuldn't use datasets that DPO can't tabkle
+- dpo is not learning? 
+  - [ ] try with no ipo 
+  - [ ] try with low and high
+  - [ ] 0.6b too smallk?
+  - [ ] dpo not stable try nll?
+  - or
 - not 100% sure it's plateuing but oh well
 
 
@@ -5655,5 +5660,37 @@ So try with code
 - Try 3b model.
 - Try to get DPO to learn (even in alpaca which should in dist?)
   - is it the prompt mask?
+- get dpo working
 - then try other innerdpo methods
-- get spr working
+  - signed
+  - other alphas
+
+```sh
+# dpo is not learning
+# try bigger model 0.6->3b? try is distribution dataset (alpaca_easy)
+# is it due to ipo?
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo'
+# note still incoherent. Val is high, it's over fitting. Try shuffle train. Try wd
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.01 --lr=1e-4
+# nope incoherent, 18mins
+
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.1 --lr=1e-5 --pl_precision=fp32 --num_workers=6 --ideal_batch_size=64
+# maybe I need large effective batches?, maybe it's the bf16-mixed
+--ideal_batch_size=64
+# coherent, val_los went down, now to work out which one helped. policy weight were fixed, everything. ok
+# hmm 21 min with num_workers. but also 32b
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --ideal_batch_size=64  --num_workers=6
+# incoherent
+
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-5
+# incoherent!
+
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --pl_precision=fp32 
+
+# then try other alphas
+
+
+# now does each model habe an effective lr?
+
+# you know I guess I could just use batch size finder and lr finder? and earlystopping
+```

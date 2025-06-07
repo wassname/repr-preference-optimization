@@ -28,7 +28,7 @@ import transformers
 import wandb
 import yaml
 from datasets import load_dataset
-from lightning.pytorch.callbacks import LearningRateMonitor
+from lightning.pytorch.callbacks import LearningRateMonitor, EarlyStopping, BatchSizeFinder, LearningRateFinder
 
 # get a union class from the enum
 from lightning.pytorch.loggers.csv_logs import CSVLogger
@@ -60,6 +60,9 @@ from reprpo.data.util import nice_ds_name, safe_fn, df_sort_cols  # noqa: E402
 LOGURU_FORMAT = "<level>{message}</level>"
 logger.remove()
 logger.add(os.sys.stderr, format=LOGURU_FORMAT, level="INFO")
+
+import logging
+logging.captureWarnings(True)
 
 
 def set_random_seed(seed: int = 42):
@@ -193,7 +196,7 @@ def train(args, trial: Optional[Trial] = None):
     # - https://gist.github.com/wassname/e29d02b5026a531e13912cf768e6fdc8
 
     ideal_batch_size = max(
-        16, args.batch_size
+        args.ideal_batch_size, args.batch_size
     )  # probobly wont be stable with less than 16, so make up the difference with gradient accumulation
     accumulate_grad_batches = np.ceil(ideal_batch_size / args.batch_size).astype(int)
     max_opt_steps = args.n_samples // (args.batch_size * accumulate_grad_batches)
@@ -228,7 +231,17 @@ def train(args, trial: Optional[Trial] = None):
     # if trial is not None:
     #     callbacks += [PyTorchLightningPruningCallback(trial, "val/dpo_acc")]
     # if args.verbose > 1:
-    callbacks += [GenCallback(every=max_opt_steps // 2 + 1)]
+    callbacks += [
+        GenCallback(every=max_opt_steps // 2 + 1),
+        EarlyStopping(
+            monitor="val/loss",
+            patience=args.patience,
+            mode="min",
+            check_finite=True,
+            strict=True,
+            verbose=True,
+        ),
+    ]
 
     model_kwargs = {k: getattr(args, k) for k in args._model_keys}
     loggers = [CSVLogger(name=run_fname, save_dir=save_dir, flush_logs_every_n_steps=5)]
@@ -237,13 +250,13 @@ def train(args, trial: Optional[Trial] = None):
     trainer = pl.Trainer(
         max_steps=max_opt_steps,
         # limit_val_batches=max(6, max_steps//10),
-        gradient_clip_val=0.3,
+        gradient_clip_val=args.gradient_clip_val,
         # accelerator='gpu',
         devices=1,
         # plugins=plugins,
         # https://lightning.ai/docs/pytorch/stable/common/trainer.html
         # mixed wont convert the modules weights, while bf16-true would
-        precision="bf16-mixed" if torch.cuda.is_bf16_supported() else "f16-mixed",
+        precision=args.pl_precision,
         log_every_n_steps=1,
         accumulate_grad_batches=accumulate_grad_batches,
         callbacks=callbacks,
@@ -256,6 +269,10 @@ def train(args, trial: Optional[Trial] = None):
         enable_model_summary=args.verbose > 1,
     )
     trainer.logger.log_hyperparams(config)
+
+    # TODO consider learnign rate finder
+    if args.verbose > 2:
+        from lightning.pytorch.callbacks import LearningRateFinder
 
     # train
     try:
@@ -286,8 +303,8 @@ def train(args, trial: Optional[Trial] = None):
     model.cuda()  # for some reason it ends up cpu
 
     if (not args.dev) and (args.verbose > 0):
-        N = args.verbose * 2
-        df_gen = get_model_generations(model, tokenizer, N=N)
+        N = min(2, args.verbose * 2)
+        df_gen = get_model_generations(model, tokenizer, N=4)
         display_gen(df_gen.head(N))
 
     logger.debug("eval")
@@ -312,7 +329,7 @@ def train(args, trial: Optional[Trial] = None):
         verbose=args.verbose,
         max_length=args.max_length,
         max_prompt_length=args.max_prompt_length,
-        # num_workers=args.num_workers,
+        num_workers=args.num_workers,
     )
     df_res2.fillna({"adapter": "base"}, inplace=True)
     df_res2['seed'] = seed

@@ -40,10 +40,13 @@ class PrefDataModule(LightningDataModule):
         return DataLoader(
             self.train_ds.with_format("torch"),
             batch_size=self.args.batch_size,
+            shuffle=True,
+            num_workers=self.args.num_workers,
         )
 
     def val_dataloader(self):
         return DataLoader(
             self.val_ds.with_format("torch"),
             batch_size=self.args.batch_size,
+            num_workers=self.args.num_workers,
         )

@@ -9,7 +9,19 @@ class ExperimentConfig:
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
     lr: float = 7e-5
-    weight_decay: float = 0
+
+    weight_decay: float = 0.01
+
+    gradient_clip_val: float = 1.0
+
+    ideal_batch_size: int = 16
+    """ideal batch size, used to calculate gradient accumulation steps"""
+
+    pl_precision: str = "bf16-mixed"
+    """precision for pytorch lightning, bf16-mixed is best for 8B models on 80GB GPUs. 'transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true', 64, 32, 16, '64', '32', '16', 'bf16'. See https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.trainer.trainer.Trainer.html#lightning.pytorch.trainer.trainer.Trainer"""
+
+    num_workers: int = 0
+    """number of workers for dataloader, 0 is best for 80GB GPUs"""
 
 
     dataset: str = "math"
@@ -19,6 +31,7 @@ class ExperimentConfig:
 
     verbose: int = 1
     seed: int = 42
+    patience: int = 3
 
     dev: bool = False
     """fast run"""

@@ -60,7 +60,7 @@ run_ds +args='':
         us_history_textbook
 
         # extreme
-        arc_easy
+        arc_easy 
         math_easy
         ranking_logic_easy
         raven_easy
@@ -131,6 +131,33 @@ dev:
 # copy trained models from runpod
 cp:
     rsync -avz --ignore-existing runpod:/workspace/repr-preference-optimization/outputs/ ./ouputs/
+
+
+just scratch:
+    #!/usr/bin/zsh
+    set -x
+    . ./.venv/bin/activate
+
+    export alpha=(
+        0.01
+        0.1
+        1
+        10
+        100
+    )
+    export agg=(
+        para
+        para_signed
+        orth
+    )
+    set -x
+    echo $DS
+    for ds in "${DS[@]}"; do
+        echo "DS=$ds"
+        for m in "${METHODS[@]}"; do
+            python scripts/train.py $m --dataset $ds {{ args }}
+        done
+    done
 
 scratch2:
     #!/usr/bin/zsh
