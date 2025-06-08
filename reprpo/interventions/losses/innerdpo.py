@@ -37,6 +37,7 @@ def innerdpo_loss(
     eps=1e-6,
     β=1,
     use_policy_weights: bool = False,
+    inner_policy_weights: bool = False,
     align_method: str = 'direct_projection',
     norm_before_reduce: bool = True,
 ):
@@ -107,38 +108,77 @@ def innerdpo_loss(
 
         match align_method:
             case 'para_signed':
-                signed = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
-                hidden_ptheta = β * signed
+                """            
+                Direct signed projection ⟨policy_diff, ref_unit⟩ 
+                Geometric: "How far does policy move along the reference preference direction?"
+                Intuition: Raw alignment signal. +ve = aligned, -ve = anti-aligned. Unbounded.
+                """
+                # Direct signed projection: raw directional alignment signal
+                signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
+                hidden_ptheta = β * signed_proj
             case 'para_signed_log':
-                signed = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
-                hidden_ptheta = β * safe_signed_log(signed, eps=eps)
+                """
+                sign(projection) * log(|projection|)
+                Geometric: Compresses projection magnitude while preserving direction
+                Intuition: Stabilizes wild swings, dampens near-zero gradients
+                """
+                # Log-stabilized signed projection
+                signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
+                hidden_ptheta = β * safe_signed_log(signed_proj, eps=eps)
             case 'para_orth_signed':
-                signed = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
-                ort = torch.norm(pref_dir_pi - signed.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
-                hidden_ptheta = β * (signed - torch.log(ort + eps))
+                # Log-odds: signed parallel vs orthogonal drift
+                signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
+                orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
+                hidden_ptheta = β * (signed_proj - torch.log(orthogonal_mag + eps))
             case 'para_orth_signed_log':
-                signed = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
-                ort = torch.norm(pref_dir_pi - signed.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
-                hidden_ptheta = β * (safe_signed_log(signed, eps=eps) - torch.log(ort + eps))
+                """
+                signed_projection - log(orthogonal_magnitude)  
+                Geometric: "Parallel strength vs orthogonal drift" in log-odds space
+                Intuition: Rewards ref-direction movement, penalizes off-axis drift
+                """
+                # Double-stabilized log-odds  
+                signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
+                orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
+                hidden_ptheta = β * (safe_signed_log(signed_proj, eps=eps) - torch.log(orthogonal_mag + eps))
             case 'logodds':
+                """ 
+                signed_log(parallel) - log(orthogonal)
+                Geometric: Same as #3 but with log-stabilized parallel term
+                Intuition: Double stabilization for both parallel and orthogonal terms
+                """
+                # Reference-normalized log-odds comparison
                 hidden_ptheta = β * (logodds_pi - logodds_ref)
-                hidden_weight = torch.tensor(1.0, device=pref_dir_pi.device)
-            case 'cosine_similarity':
-                # Fallback using difference of cosines as logit
+            case 'cosine_policy_margin':
+                """
+                cos(pi_cho, pi_rej) - cos(ref_cho, ref_rej)
+                Geometric: "Policy's internal separability vs reference's separability"  
+                Intuition: Maximize policy's own chosen/rejected margin. Bounded [-2,2]
+                """
+                # Policy's internal margin vs reference's margin
                 hidden_ptheta = β * (
                     F.cosine_similarity(hs_pi_cho, hs_pi_rej, dim=-1)
                     - F.cosine_similarity(hs_ref_cho, hs_ref_rej, dim=-1)
                 )
-                hidden_weight = torch.tensor(1.0, device=hs_pi_cho.device)
+            case 'cosine_cross_model':
+                """
+                cos(pi_cho, ref_cho) - cos(pi_rej, ref_rej)
+                Geometric: "Pull policy states toward corresponding reference states"
+                Intuition: Explicit state-to-state mimicry, not just directional alignment
+                """
+                # Cross-model state alignment
+                hidden_ptheta = β * (
+                    F.cosine_similarity(hs_pi_cho, hs_ref_cho, dim=-1)
+                    - F.cosine_similarity(hs_pi_rej, hs_ref_rej, dim=-1)
+                )
             case _:
                 raise ValueError(f"Unsupported align_method: {align_method}")
         
         # Apply DPO-style loss
-        loss_hidden_dpo = -F.logsigmoid(hidden_ptheta)
-        # if use_policy_weights: # I'm not sure this is helping
-        #     loss_hidden_dpo = loss_hidden_dpo * hidden_weight
+        loss_hidden_dpo = -F.logsigmoid(β * hidden_ptheta)
+        if inner_policy_weights: # I'm not sure if this is helping
+            loss_hidden_dpo = loss_hidden_dpo * hidden_weight
         
-        return dict(loss_hidden_dpo=loss_hidden_dpo, hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta)
+        return dict(loss_hidden_dpo=loss_hidden_dpo, hidden_weight=_hidden_weight, hidden_ptheta=hidden_ptheta)
 
 
     # compute losses per layer
@@ -191,6 +231,9 @@ class InnerDPOLossConfig:
 
     use_policy_weights: bool = False
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
+
+    inner_policy_weights: bool = False
+    """Whether to compute policy weights for the inner DPO loss."""
 
 
     align_method: str = 'para'

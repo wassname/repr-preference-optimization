@@ -5816,4 +5816,20 @@ python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft 
 python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --loss.align_method=direct_projection
 python scripts/train.py hs-none-InnerDPO -direct_projection_log
 
+
+export METHODS=(
+    "para_signed"
+    "para_signed_log"
+    "orth"
+    "direct_projection"
+    "logodds"para_orth_signed
+    "angle_mag"
+    "cosine_similarity"
+    "abs"
+)
+for method in "${METHODS[@]}"; do
+    echo "Running method: $method"
+    python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --loss.align_method="$method"
+done
+
 ```
