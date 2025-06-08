@@ -52,13 +52,17 @@ done
 ```
 
 
-| adapter/distribution_shift       | in_domain | difficulty_scaling | moral_transfer | orthogonal |
-| :------------------------------- | --------: | -----------------: | -------------: | ---------: |
-| none                             |     0.868 |               0.78 |           0.27 |      0.414 |
-| hs-None-InnerDPO para_signed inch ovefit     |      0.96 |              0.876 |          0.258 |       0.64 |
+| adapter/distribution_shift                      | in_domain | difficulty_scaling | moral_transfer | orthogonal |
+| :---------------------------------------------- | --------: | -----------------: | -------------: | ---------: |
+| hs-None-InnerDPO  para_signed_log inc           |     0.966 |              0.594 |           0.35 |      0.646 |
 | hs-None-InnerDPO para_signed_log inch v.overfit |     0.966 |              0.594 |           0.35 |      0.646 |
-| dpo inco                         |     0.948 |               0.86 |          0.316 |      0.468 |
-| ipo? inco                        |     0.966 |              0.798 |          0.366 |      0.558 |
+| none                                            |     0.868 |               0.78 |           0.27 |      0.414 |
+| ipo? inco                                       |     0.966 |              0.798 |          0.366 |      0.558 |
+| hs-None-InnerDPO logodds inch                   |     0.968 |              0.808 |          0.534 |      0.668 |
+| dpo inco                                        |     0.948 |               0.86 |          0.316 |      0.468 |
+| hs-None-InnerDPO cosine_pol_mar inch            |      0.96 |              0.876 |          0.264 |      0.634 |
+| hs-None-InnerDPO para_signed inch ovefit        |      0.96 |              0.876 |          0.258 |       0.64 |
+| hs-None-InnerDPO para_signed α=0.25 coheren     |      0.96 |              0.876 |          0.258 |       0.64 |
 
 250608 03:22:17|INFO|reprpo.training:make_table#429 - Table 1: Absolute accuracy after training with named adapter on ds:`alpaca_easy` compared to base model `llama-3.2-3b-sft` for various distribution shifts [N=500]:
 - Shift: difficulty_scaling, made up of:
@@ -69,3 +73,26 @@ done
         - `ethics_expression_preferences-justice-test[:500]`
 - Shift: orthogonal, made up of:
         - `medical-dpo-v2-test-data[:500]`
+
+
+
+I want to report nll ratio (should be [0-1]) otherwise incoherent
+
+
+
+
+|                                                     | in_domain | difficulty_scaling | moral_transfer | orthogonal | wandb    |  nll |
+| :-------------------------------------------------- | --------: | -----------------: | -------------: | ---------: | :------- | ---: |
+| none                                                |     0.868 |               0.78 |           0.27 |      0.414 |          |      |
+| ReprPO_None_InnerDPO ReprPO_Non α=0.25              |      0.96 |              0.864 |          0.294 |      0.602 | 61pyen4w |    0 |
+| ReprPO_None_InnerDPO ReprPO_Non α=0.001             |     0.958 |              0.884 |          0.366 |      0.592 | 1ocenac8 |    0 |
+| ReprPO_None_InnerDPO ReprPO_Non α=1                 |     0.954 |                0.9 |          0.322 |      0.598 | bm6zm8gk |    0 |
+| ReprPO_None_InnerDPO ReprPO_Non α=10                |     0.954 |              0.858 |          0.318 |       0.51 | rx37mx51 |    0 |
+| ReprPO_None_InnerDPO ReprPO_Non                     |     0.958 |              0.886 |          0.326 |      0.604 | kuheisul |    0 |
+| dpo inco                                            |     0.948 |               0.86 |          0.316 |      0.468 |
+| ipo? inco                                           |     0.966 |              0.798 |          0.366 |      0.558 |
+| ReprPO_None_InnerDPO ReprPO_Non AlMe=logodds        |     0.966 |              0.876 |          0.324 |      0.568 | 97geelv4 |    0 |
+| ReprPO_None_InnerDPO ReprPO_Non AlMe=cosine_pol_mar |     0.946 |              0.876 |          0.278 |        0.6 |
+| hs-SupressedHS-InnerDPO                             |      0.96 |              0.896 |           0.33 |      0.606 |
+
+Hm the dff alphas don't seem to have much effect. Is the mostl cheating somehow. Perhaps for the ratio one its finding areas with a very small differen't, and making those very seperate in comparison to the tiny denominator, so the ratio is very large, and this dominated the mean. Hmm

@@ -138,33 +138,47 @@ scratch:
     set -x
     . ./.venv/bin/activate
 
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=stabilized_ratio --loss.α=10
+    python scripts/trainipts/train.py hs-none-InnerDPO --loss.align_method=logodds_noref --loss.α=10
+    python scr.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=10
+
     export alpha=(
-        0.25
-        1
         0.01
+        0.25
+        0.001
+        1
         10
-        100
     )
+    for al in "${alpha[@]}"; do
+        python scripts/train.py hs-none-InnerDPO --loss.α="$al"
+    done
+
     export agg=(
+        stabilized_ratio
+        logodds_noref
+        odds_noref
         para_signed
+        logodds
         para_signed_log
         para_orth_signed
-        para_orth_signed_logpara_orth_signed_logpara_orth_signed_log
-        logodds
+        para_orth_signed_log
         cosine_policy_margin
         cosine_cross_model
     )
-    for al in "${alpha[@]}"; do
-        for ag in "${agg[@]}"; do
-            python scripts/train.py hs-none-InnerDPO --loss.align_method="$ag" --loss.α="$al"
-        done
+    for ag in "${agg[@]}"; do
+        python scripts/train.py hs-none-InnerDPO --loss.align_method="$ag"
     done
 
     export BASE=(
+        dpo
         hs-supr-InnerDPO
         hs-ether-InnerDPO
         side-none-InnerDPO
     )
+    for base in "${BASE[@]}"; do
+            python scripts/train.py $base
+    done
+    
     export OPTIONS=(
         --loss.align-method=orth
         --loss.align-method=direct_projection
@@ -179,9 +193,7 @@ scratch:
         --loss.align-method=para_signed
         --loss.align-method=para_orth
     ) 
-    for base in "${BASE[@]}"; do
-            python scripts/train.py $base
-    done
+
     for args in "${OPTIONS[@]}"; do
         python scripts/train.py hs-none-InnerDPO $args
     done

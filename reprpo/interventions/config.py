@@ -8,7 +8,7 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
-    lr: float = 3e-5
+    lr: float = 1e-5
 
     weight_decay: float = 0.001
 

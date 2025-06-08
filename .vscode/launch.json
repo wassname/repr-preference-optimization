@@ -27,6 +27,8 @@
             // },
             "args": [
                 "hs-none-InnerDPO",
+                "--loss.align-method=orth",
+                "--dpo_agg_type=dpo",
                 "--dev",
                 "--verbose=3",
             ]

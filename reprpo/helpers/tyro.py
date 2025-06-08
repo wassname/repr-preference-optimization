@@ -84,7 +84,7 @@ def get_display_name_from_args(args: dataclass):
         "weight_decay",
         'eps',
         'collect_hs', # covered in name
-        'α',
+        # 'α',
         'seed',
 
     ]
@@ -105,9 +105,8 @@ def get_display_name_from_args(args: dataclass):
         ):
             continue
         diff2.append((k, v))
-    diff = diff2
 
-    s = " ".join([f"{k}={fmt(v)}" for k, v in list(diff) if k not in blacklist])
+
 
     cls_name = type(args).__name__
     if hasattr(args, "transform"):
@@ -115,6 +114,8 @@ def get_display_name_from_args(args: dataclass):
     if hasattr(args, "loss"):
         cls_name += f"_{type(args.loss).__name__.replace('Loss', '')}"
     cls_name = cls_name.replace("Config", "")
+    s_short = " ".join([f"{k}={fmt(v)}" for k, v in diff2])
+    s_all = " ".join([f"{k}={fmt(v)}" for k, v in list(diff)])
 
     # also either state transform and loss, or replace the words
     def rename(s):
@@ -131,10 +132,11 @@ def get_display_name_from_args(args: dataclass):
             s = s.replace("transform.", f"{transform_name}.")
         return s
 
-    s_all = " ".join([f"{k}={fmt(v)}" for k, v in list(diff)])
-    s_short = f"{cls_name} {s}"
-    s_all = rename(s_all)
+    
+    
     s_short = rename(s_short)
+    
+    s_all = rename(s_all)
     logger.info(f"diff: {cls_name} {s_all}")
 
     def short_hand(s):
@@ -152,14 +154,16 @@ def get_display_name_from_args(args: dataclass):
                 if len(k) >5:
                     # take the first letter of underscored or dash keys
                     k = ''.join([ll[:2].capitalize() for ll in k.replace('-', '_').split('_')])
-                k = k[:5]
-                v = v[:5]
+                k = k[:7]
+                v = v[:7]
                 if k not in blacklist:
                     sl2.append(f"{k}={v}")
             else:
                 sl2.append(ss[:10])  # take the first 5 chars
 
         return " ".join(sl2).replace('True', '1').replace('False', '0')
+    s_short = f"{cls_name} {s_short}"
     s2 = short_hand(s_short)
+    s2 = f"{cls_name} {s2}"
 
     return s_all, s_short, s2

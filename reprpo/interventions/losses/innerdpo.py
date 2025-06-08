@@ -13,8 +13,8 @@ from ..reprpo.helpers import reduce_tokens_w_attention
 def safe_signed_log(x: Tensor, eps: float = 1e-12):
     # preserve the sign, only clamp the magnitude
     sign = x.sign()
-    mag  = x.abs().clamp(min=eps)
-    return sign * torch.log(mag)
+    mag  = x.abs()
+    return sign * torch.log1p(mag)
 
 def symlog(x: Float[Tensor, "batch"]):
     """Symmetric log function to handle both positive and negative values."""
@@ -34,7 +34,7 @@ def innerdpo_loss(
     transforms: Optional[Callable] = None,
     # custom loss_args
     α: float = 1.0,
-    eps: float = 1e-6,
+    eps: float = 1e-9,
     β: float = 1,
     use_policy_weights: bool = False,
     inner_policy_weights: bool = False,
@@ -85,9 +85,9 @@ def innerdpo_loss(
         orth_vec_ref = pref_dir_ref - par_vec_ref
 
         # Magnitudes
-        par_pi = torch.norm(para_vec, p=1, dim=-1)
+        par_mag = torch.norm(para_vec, p=1, dim=-1)
         ort_mag = torch.norm(ort_vec, p=1, dim=-1)
-        log_par = safe_signed_log(par_pi, eps=eps)
+        log_par = safe_signed_log(par_mag, eps=eps)
         log_ort = safe_signed_log(ort_mag, eps=eps)
         logodds_pi = log_par - log_ort
 
@@ -113,7 +113,7 @@ def innerdpo_loss(
                 Intuition: Raw alignment signal. +ve = aligned, -ve = anti-aligned. Unbounded.
                 """
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
-                hidden_ptheta = β * signed_proj
+                hidden_ptheta =  signed_proj
             case 'para_signed_log':
                 """                
                 sign(projection) * log(|projection|)
@@ -121,7 +121,7 @@ def innerdpo_loss(
                 Intuition: Stabilizes wild swings, dampens near-zero gradients
                 """
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
-                hidden_ptheta = β * safe_signed_log(signed_proj, eps=eps)
+                hidden_ptheta =  safe_signed_log(signed_proj, eps=eps)
             case 'para_orth_signed':
                 """
                 signed_projection - orthogonal_magnitude
@@ -131,7 +131,7 @@ def innerdpo_loss(
                 """
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
-                hidden_ptheta = β * (signed_proj - orthogonal_mag)
+                hidden_ptheta =  (signed_proj - orthogonal_mag)
             case 'para_orth_signed_log':
                 """
                 signed_log(parallel) - log(orthogonal_magnitude)
@@ -141,21 +141,33 @@ def innerdpo_loss(
                 """
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
-                hidden_ptheta = β * (safe_signed_log(signed_proj, eps=eps) - safe_log(orthogonal_mag, eps))
+                hidden_ptheta =  (safe_signed_log(signed_proj, eps=eps) - safe_log(orthogonal_mag, eps))
             case 'logodds':
                 """ 
                 signed_log(parallel) - log(orthogonal)
                 Geometric: Same as #3 but with log-stabilized parallel term
                 Intuition: Double stabilization for both parallel and orthogonal terms
                 """
-                hidden_ptheta = β * (logodds_pi - logodds_ref)
+                hidden_ptheta =  (logodds_pi - logodds_ref)
+            case 'logodds_noref':
+                hidden_ptheta = logodds_pi
+            case 'odds_noref':
+                hidden_ptheta= par_mag - ort_mag
+            case 'stabilized_ratio':
+                """
+                Ratio with stabilized denominator to prevent exploitation
+                """
+                # Use batch statistics for threshold
+                ort_floor = torch.max(ort_mag.mean() * 0.1, torch.tensor(eps, device=ort_mag.device))
+                stabilized_ort = torch.clamp(ort_mag, min=ort_floor)
+                hidden_ptheta = par_mag / stabilized_ort
             case 'cosine_policy_margin':
                 """
                 cos(pi_cho, pi_rej) - cos(ref_cho, ref_rej)
                 Geometric: "Policy's internal separability vs reference's separability"  
                 Intuition: Maximize policy's own chosen/rejected margin. Bounded [-2,2]
                 """
-                hidden_ptheta = β * (
+                hidden_ptheta =  (
                     F.cosine_similarity(hs_pi_cho, hs_pi_rej, dim=-1)
                     - F.cosine_similarity(hs_ref_cho, hs_ref_rej, dim=-1)
                 )
@@ -166,7 +178,7 @@ def innerdpo_loss(
                 Intuition: Explicit state-to-state mimicry, not just directional alignment
                 (probobly wont work as we want to go beyond internal representation alignment)
                 """
-                hidden_ptheta = β * (
+                hidden_ptheta =  (
                     F.cosine_similarity(hs_pi_cho, hs_ref_cho, dim=-1)
                     - F.cosine_similarity(hs_pi_rej, hs_ref_rej, dim=-1)
                 )
@@ -221,10 +233,10 @@ class InnerDPOLossConfig:
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     """
 
-    α: float = 0.25
+    α: float = 0.1
     """balance between reroute and retain loss."""
 
-    eps: float = 1.0e-5
+    eps: float = 1.0e-9
 
     β: float = 1.
     """factor to punish orthogonal movement"""

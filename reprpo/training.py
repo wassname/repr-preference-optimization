@@ -99,6 +99,7 @@ def train(args, trial: Optional[Trial] = None):
     long_name, human_name, short_name = get_display_name_from_args(args)  # f"{adapter_name}_{ds_name_train}"
     adapter_name = args._name # pytorch module name, so cannot have a dot 
     # adapter_name = get_args_dict(args)
+    
 
 
     # we can set an experiment group name from env vars, otherwise it will just groupt by model and training ds
@@ -128,6 +129,8 @@ def train(args, trial: Optional[Trial] = None):
                 "group_name": group_name,
                 "adapter_name": adapter_name,
                 "human_name": human_name,
+                "short_name": short_name,
+                "long_name": long_name,
                 "model_fname": model_fname,
                 "ds_name_train": ds_name_train,
                 "run_fname": run_fname,
@@ -159,6 +162,7 @@ def train(args, trial: Optional[Trial] = None):
         # attn_implementation='eager' # for gemma
     )
 
+
     # ### Load adapter
     """
     Note that GENIES and PEFT use the default targets for llama ["q_proj", "v_proj"]
@@ -184,7 +188,10 @@ def train(args, trial: Optional[Trial] = None):
     logger.info(f"Using adapter `{adapter_name}` with target modules {peft_config.target_modules}")
     if args.verbose > 2:
         logger.info(f"{model}")
-
+    config.update(
+        {
+            "peft_config": model.peft_config[adapter_name].to_dict() if hasattr(model, "peft_config") else None,
+    })
 
     # setup data with PrefDataModule (replaces manual load/map/dl)
     dm = PrefDataModule(args, tokenizer)
@@ -354,11 +361,15 @@ def train(args, trial: Optional[Trial] = None):
     # save
     f = str(save_dir) + "/eval.parquet"
     df_res2.to_parquet(f)
-    logger.info(f"save_dir={save_dir}")
-    logger.info(f"Human name: {human_name}")
-    # pprint(args, compact=1)
+    logger.info(f"""- save_dir={save_dir}
+- Config: {pformat(config, compact=True)}
+- Long name: {long_name}
+- Human name: {human_name}
+- Short name: {short_name}
+- WANDB url = {wandb.run.get_url() if wandb.run is not None else 'None'})
+""")
 
-    r = make_table(df_res2, args, human_name=human_name, base_model=model_name)
+    r = make_table(df_res2, args, human_name=human_name, short_name=short_name, base_model=model_name)
     # and wandb url
 
     # WANDB logging
@@ -377,7 +388,7 @@ def train(args, trial: Optional[Trial] = None):
             df_gen_w = wandb.Table(dataframe=df_gen)
             wandb.log({"generations": df_gen_w, **wandb_tables})
 
-        logger.info(f"WANDB url = {wandb.run.get_url()}")
+        
 
     # return a single dict for hyperparam tuning
     dd = [
@@ -391,7 +402,7 @@ def train(args, trial: Optional[Trial] = None):
     return rd
 
 
-def make_table(df_res2, args, human_name, base_model="", verbose=True):
+def make_table(df_res2, args, human_name, base_model="", short_name="", verbose=True):
     
     adapter_name = df_res2[["adapter"]].query('adapter!="base" & adapter!="none"').values[0, 0]
 
@@ -419,6 +430,7 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
     df_res_type.index.name = "adapter/distribution_shift"
 
 
+
     caption = f"""Table 1: Absolute accuracy after training with named adapter on ds:`{args.dataset}` compared to base model `{base_model}` for various distribution shifts [N={args.eval_samples}]:\n"""
     x = df_res2.groupby("type")["dataset"].agg(lambda s: set(s)).to_dict()
     for k, v in x.items():
@@ -428,9 +440,22 @@ def make_table(df_res2, args, human_name, base_model="", verbose=True):
     logger.info(f"\n{df_res_type.round(3).to_markdown()}")
     logger.info(caption)
 
+
+
+
     caption = f"""Table 2: Absolute accuracy after training with named adapter on ds:`{args.dataset}` compared to base model `{base_model}` for various distribution shifts [N={args.eval_samples}]:\n"""
     logger.info(f"\n{df_res_ds.T.round(3).to_markdown()}")
-    logger.info(caption)
+
+    # also make a nice line for our records, with url, cli, and nll (coherency proxy)
+    df_res_type['wandb'] = wandb.run.get_url().split('/')[-1] if wandb.run is not None else 'None'
+    df_res_type.loc['none', 'wandb'] = None
+    # df_res_type['short_name'] = short_name
+    nll = df_res2.groupby('adapter')['_chosen_ppl'].apply(lambda x:np.log(x).mean())
+    nll_rat = (nll.loc[adapter_name] - nll.drop(adapter_name).mean())
+    df_res_type['nll'] = nll_rat
+    record_line = df_res_type.loc[[adapter_name]]
+    record_line.index = [short_name]
+    logger.info(f"Record entry:\n\n{record_line.round(3).to_markdown()}\n")
 
     df_adapter_acc = df_res_ds.loc[adapter_name].to_frame(human_name).T
     wandb_info = {
