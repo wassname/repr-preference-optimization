@@ -1,5 +1,5 @@
 from jaxtyping import Float
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Literal
 from torch import Tensor
 from torch.nn import functional as F
 import torch
@@ -34,15 +34,18 @@ def innerdpo_loss(
     transforms: Optional[Callable] = None,
     # custom loss_args
     α: float = 1.0,
-    eps=1e-6,
-    β=1,
+    eps: float = 1e-6,
+    β: float = 1,
     use_policy_weights: bool = False,
     inner_policy_weights: bool = False,
-    align_method: str = 'direct_projection',
+    align_method: str = 'para_signed',
     norm_before_reduce: bool = True,
 ):
     """
-    movement of hs along the hs pref vector.
+    Compute innerDPO loss with various alignment options.
+
+    Args:
+        align_method (AlignMethod): alignment metric to use (see top-level AlignMethod doc).
     """
     if transforms is not None:
         pi_cho.hs = transforms(pi_cho.hs)
@@ -67,10 +70,6 @@ def innerdpo_loss(
         hs_pi_rej = preproc_hs(pi_rej, k)
         hs_ref_cho = preproc_hs(ref_cho, k)
         hs_ref_rej = preproc_hs(ref_rej, k)
-
-        # Compute similarity scores (like logits in DPO)
-        cho_score = F.cosine_similarity(hs_pi_cho, hs_ref_cho, dim=-1).abs()  # How similar chosen is to ref_chosen
-        rej_score = F.cosine_similarity(hs_pi_rej, hs_ref_rej, dim=-1).abs()  # How similar rejected is to ref_rejected
 
         pref_dir_ref = hs_ref_cho - hs_ref_rej
         pref_dir_pi = hs_pi_cho - hs_pi_rej
@@ -237,7 +236,7 @@ class InnerDPOLossConfig:
     """Whether to compute policy weights for the inner DPO loss."""
 
 
-    align_method: str = 'para'
+    align_method: str = 'para_signed'
     """Method to compute alignment between chosen and rejected hidden states."""
 
     norm_before_reduce: bool = True

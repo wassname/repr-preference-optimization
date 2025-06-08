@@ -160,6 +160,33 @@ scratch:
         done
     done
 
+    export BASE=(
+        hs-supr-InnerDPO
+        hs-ether-InnerDPO
+        side-none-InnerDPO
+    )
+    export OPTIONS=(
+        --loss.align-method=para
+        --loss.align-method=para_signed
+        --loss.align-method=para_orth
+        --loss.align-method=orth
+        --loss.align-method=direct_projection
+        --loss.align-method=angle_mag
+        --loss.align-method=cosine_similarity
+        --loss.align-method=abs
+        --loss.align-method=log_ratio        
+        --loss.no-norm-before-reduce
+        --loss.use-inner-policy-weights
+        --loss.use-policy-weights
+        --dpo_agg_type=dpo
+    ) 
+    for base in "${BASE[@]}"; do
+            python scripts/train.py $base
+    done
+    for args in "${OPTIONS[@]}"; do
+        python scripts/train.py hs-none-InnerDPO $args
+    done
+
 scratch2:
     #!/usr/bin/zsh
     set -x

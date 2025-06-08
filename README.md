@@ -55,6 +55,20 @@ Interventions:
      - [Householder rotation](https://arxiv.org/html/2405.17484v2)
      - [ETHER](https://arxiv.org/html/2405.20271v1)
 
+### innerDPO Align Methods Reference
+
+| method                | formula                                                    | interpretation                                  | when to use                                         |
+|-----------------------|------------------------------------------------------------|-------------------------------------------------|-----------------------------------------------------|
+| para_signed           | ⟨policy_diff, ref_unit⟩                                     | raw signed projection                           | simple directional alignment                        |
+| para_signed_log       | sign(proj)·log(|proj|)                                     | compresses large/small projections              | projections swing wildly                            |
+| para_orth_signed      | proj – orthogonal_mag                                       | raw signed vs raw orthogonal drift              | penalize off-axis drift                             |
+| para_orth_signed_log  | signed_log(proj) – log(orthogonal_mag)                     | log-stabilized parallel vs orthogonal           | stabilize both signals                              |
+| logodds               | (log_par – log_ort) – (ref_log_par – ref_log_ort)           | difference of policy vs ref log-odds            | calibrate against reference strength                |
+| cosine_policy_margin  | cos(pi_cho,pi_rej) – cos(ref_cho,ref_rej)                  | policy vs ref internal margin                   | bounded margin baseline                             |
+| cosine_cross_model    | cos(pi_cho,ref_cho) – cos(pi_rej,ref_rej)                  | cross-model state alignment                     | mimic reference embeddings                          |
+
+This table complements the inline code documentation and helps new users choose an alignment method based on their stability and geometric needs.
+
 ### Results so far
 
 In the below results we look at how much the models accuracy improved in training, test, out-of-distribution and random data when using the proposed method compared to DPO.
