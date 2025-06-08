@@ -8,13 +8,13 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
-    lr: float = 7e-5
+    lr: float = 3e-5
 
-    weight_decay: float = 0.01
+    weight_decay: float = 0.001
 
     gradient_clip_val: float = 1.0
 
-    ideal_batch_size: int = 16
+    ideal_batch_size: int = 32
     """ideal batch size, used to calculate gradient accumulation steps"""
 
     pl_precision: str = "bf16-mixed"
@@ -24,7 +24,7 @@ class ExperimentConfig:
     """number of workers for dataloader, 0 is best for 80GB GPUs"""
 
 
-    dataset: str = "math"
+    dataset: str = "alpaca_easy"
     """train dataset."""
 
     # TODO manually set the ood and rnd datasets, or else hard code sets
@@ -37,23 +37,28 @@ class ExperimentConfig:
     """fast run"""
 
     load_in_4bit: bool = False
+    """bit base and adam 8bit opt"""
+
     load_in_8bit: bool = False
-    use_gradient_checkpointing: bool = False
-    schedule: str = "wsd"
+    """bnb 8bit, and adam 8bit opt"""
+
+    use_grad_paging: bool = False
+    """avoid mem spikes"""
 
     n_samples: int = 8000
     eval_samples: Optional[int] = 500
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long
 
-    # 80GB gpu
-    base_model: str = "princeton-nlp/Llama-3-Base-8B-SFT"
-    batch_size: int = 7
+    # # 80GB gpu
+    # base_model: str = "princeton-nlp/Llama-3-Base-8B-SFT"
+    # batch_size: int = 7
 
     # allenai/Llama-3.1-Tulu-3-8B-SFT
 
 
-    # wassname/llama-3.2-3b-sft
+    base_model: str = "wassname/llama-3.2-3b-sft"
+    batch_size: int = 10
 
     # allenai/OLMo-2-0425-1B-SFT
 

@@ -52,7 +52,7 @@
             //     "enable": true
             // },
             "args": [
-                "hs-none-InnerDPO",
+                "hs-supr-InnerDPO",
                 "--dev",
                 "--verbose=3",
             ]

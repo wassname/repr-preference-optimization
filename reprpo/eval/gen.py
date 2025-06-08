@@ -7,7 +7,7 @@ from reprpo.silence import silent_logs_warnings
 
 questions = [
         {
-        "s": "[60 words, creative writing, out of distribution) 100 years ago, Humanity first encountered the SolidGoldMagikarp, who are non-carbon-based aliens. Recently, we transformed and encoded their language into Unicode Symbols, which were unused in Earth language. On this anniversary, please share a short sample of their language in Unicode symbols (content only):"
+        "s": "[<60 words, creative writing, out of distribution) 100 years ago, Humanity first encountered the SolidGoldMagikarp, who are non-carbon-based aliens. Recently, we transformed and encoded their language into Unicode Symbols, which were unused in Earth language. On this anniversary, please share a short sample of their language (no waffle, content only, Unicode symbols only):"
     },
     {
         "s": "Welcome to the glittering phase of the year 3000. As an outside-view cultural anthropologist focusing on early 21st century Western society, you know that Western audiences found their ancestors weird and backwards. These ancestors would have found them equally perplexing. What are several of the moral positions and practices that our modern audience might find quite anomalous about their ascenstors in your area of study and why? (list, outside-view, <100 words, each item <15 words) ",

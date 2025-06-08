@@ -9,11 +9,21 @@ from ..dpo_helpers import cross_entropy_loss, compute_ptheta, compute_policy_wei
 from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
+
 def safe_signed_log(x: Tensor, eps: float = 1e-12):
     # preserve the sign, only clamp the magnitude
     sign = x.sign()
     mag  = x.abs().clamp(min=eps)
     return sign * torch.log(mag)
+
+def symlog(x: Float[Tensor, "batch"]):
+    """Symmetric log function to handle both positive and negative values."""
+    return torch.sign(x) * torch.log1p(torch.abs(x))
+
+def safe_log(x: Float[Tensor, "batch"], eps=1e-12):
+    """Safe log function to avoid log(0) issues."""
+    # return torch.log(x.clamp(min=eps))
+    return torch.log(x+eps)
 
 def innerdpo_loss(
     pi_cho: ReprPOModelOutput,
@@ -33,18 +43,20 @@ def innerdpo_loss(
     """
     movement of hs along the hs pref vector.
     """
+    if transforms is not None:
+        pi_cho.hs = transforms(pi_cho.hs)
+        pi_rej.hs = transforms(pi_rej.hs)
+        ref_cho.hs = transforms(ref_cho.hs)
+        ref_rej.hs = transforms(ref_rej.hs)
 
     def preproc_hs(o, k: str):
         """Preprocess hidden states: normalize then aggregate."""
 
         hs = o.hs[k]  # [batch, seq_len, hidden_dim], RAW ACTIVATIONS
-        # Normalize to unit sphere FIRST (before aggregation)
-        # This prevents token magnitude bias (e.g., attention sinks)
-        hs = transforms.transforms[k](hs)
-        # Aggregate over sequence using attention masks
         # hs = F.log_softmax(hs, dim=-1)  # [batch, seq_len, hidden_dim], LOG PROBABILITIES
         if norm_before_reduce:
             hs = F.normalize(hs, p=2, dim=-1)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
+        # Aggregate over sequence using attention masks
         hs = reduce_tokens_w_attention(hs, o.mask)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
         return hs
 
@@ -64,119 +76,62 @@ def innerdpo_loss(
 
         # Decompose pi into parallel and orthogonal components
         pref_dir_ref_unit = F.normalize(pref_dir_ref, p=2, dim=-1)
-        par_comp_pi = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1, keepdim=True) * pref_dir_ref_unit
-        orth_comp_pi = pref_dir_pi - par_comp_pi
-        par_comp_ref = torch.sum(pref_dir_ref * pref_dir_ref_unit, dim=-1, keepdim=True) * pref_dir_ref_unit
-        orth_comp_ref = pref_dir_ref - par_comp_ref
+        # para_sign_magn = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1, keepdim=True)
 
+        para_vec = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1, keepdim=True) * pref_dir_ref_unit
+        ort_vec = pref_dir_pi - para_vec
 
-        def safe_log(x: Float[Tensor, "batch"], eps=eps):
-            """Safe log function to avoid log(0) issues."""
-            # return torch.log(x.clamp(min=eps))
-            return torch.log(x+eps)
+        par_vec_ref = torch.sum(pref_dir_ref * pref_dir_ref_unit, dim=-1, keepdim=True) * pref_dir_ref_unit
+        orth_vec_ref = pref_dir_ref - par_vec_ref
 
         # Magnitudes
-        par_pi = torch.norm(par_comp_pi, p=1, dim=-1)
-        ort_pi = torch.norm(orth_comp_pi, p=1, dim=-1)
+        par_pi = torch.norm(para_vec, p=1, dim=-1)
+        ort_mag = torch.norm(ort_vec, p=1, dim=-1)
         log_par = safe_signed_log(par_pi, eps=eps)
-        log_ort = safe_signed_log(ort_pi, eps=eps)
+        log_ort = safe_signed_log(ort_mag, eps=eps)
         logodds_pi = log_par - log_ort
-        par_ref = torch.norm(par_comp_ref, p=1, dim=-1)
-        ort_ref = torch.norm(orth_comp_ref, p=1, dim=-1)
+
+        par_ref = torch.norm(par_vec_ref, p=1, dim=-1)
+        ort_ref = torch.norm(orth_vec_ref, p=1, dim=-1)
         log_par_ref = safe_signed_log(par_ref, eps=eps)
         log_ort_ref = safe_signed_log(ort_ref, eps=eps)
         logodds_ref = log_par_ref - log_ort_ref
 
-        # # δ is a hyperparameter that controls the sensitivity of the tanh gate
-        # δ = 0.1  # Hyperparameter for tanh gate, can be tuned
-        # tot_mag = par_pi + ort_pi                     # how big was the movement?
-        # mag_logit = torch.log(tot_mag + eps)   
-        # gate = torch.clamp(torch.tanh(torch.norm(pref_dir_pi, p=2, dim=-1) / δ), min=0.1)
-
-        # Make weights simialr to # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
+        # Make weights similar to # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
         scores = torch.stack([log_par, log_ort], dim=-1)    # shape [B,2]
         log_hidden_probs = F.log_softmax(scores, dim=-1)   # [B,2]
         w_adj = torch.logsumexp(2 * log_hidden_probs, dim=-1)  # [B]
         pseudo_lp = log_hidden_probs[...,0] - w_adj     # “chosen” class
-        hidden_weight = torch.clamp(torch.exp(pseudo_lp), max=1.0).detach()  # [B]
+        hidden_weight = torch.tensor(1.0, device=pref_dir_pi.device)
+        _hidden_weight = torch.clamp(torch.exp(pseudo_lp), max=1.0).detach()  # [B]
 
         match align_method:
-            case 'abs':
-                # Create a "preference logit" in hidden space
-                hidden_ptheta = torch.abs(cho_score - rej_score) * β
-            case 'cosine_similarity':
-                # GIVES INCOHERENT OUTPUTS QUICKLY, this is a directional loss that is balanced with DPO
-                # Compute preference directions
-
-                # Alignment score [-1, 1]
-                alignment = F.cosine_similarity(pref_dir_pi, pref_dir_ref, dim=-1)
-                
-                # Convert to log-odds (proper log ratio)
-                # Map [-1,1] to [0,1] then to log-odds
-                prob = torch.abs(alignment) # (alignment + 1) / 2  # [-1,1] -> [0,1]
-                # prob = torch.clamp(prob, min=eps, max=1 - eps)  # Avoid log(0) issues
-                prob = (prob-eps).clamp(min=eps)
-                log_odds = torch.atanh(prob)  # (0,1] -> [-∞,∞]
-
-                #z This is now a proper log ratio!
-                hidden_ptheta = β * log_odds
-
-                # OR
-                # hidden_ptheta = β * torch.logit(prob/(prob+1))  # [0, ∞)
-            case 'log_ratio':
-                # log ratio
-                hidden_ptheta = (torch.log(cho_score.abs()) - torch.log(rej_score.abs())) * β  # Difference of log similarities
-            case 'direct_projection':                
-                # Project pi direction onto ref direction (signed distance)
-                projection = (pref_dir_pi * pref_dir_ref_unit)  # [batch]
-                proj_dist = torch.norm(projection, p=1, dim=-1)  # Magnitude of projection
-                # normalise per layer?
-                
-                hidden_ptheta = β * proj_dist
-                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
-            case 'direct_projection_log':                
-                # Project pi direction onto ref direction (signed distance)
-                projection = (pref_dir_pi * pref_dir_ref_unit)  # [batch]
-                proj_dist = torch.norm(projection, p=1, dim=-1)  # Magnitude of projection
-                # normalise per layer?
-                
-                hidden_ptheta = β * torch.log1p(proj_dist+eps)  # Log of projection magnitude, scaled by β
-                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
-            case 'para_orth':
-                # Preference for parallel over orthogonal, compared to base model
-                hidden_ptheta = β * (logodds_pi - logodds_ref)
-            case 'para_orth2':
-                # DPO‐style log‐odds in log-domain (stable)
-                odds = (par_pi - par_ref)  - (ort_pi-ort_ref)  # no ratios, no logs
-
-                # Preference for parallel over orthogonal
-                hidden_ptheta = β * odds
-            case 'orth':                
-                # Preference for not  orthogonal
-                hidden_ptheta = - β * torch.log(ort_pi + eps)
-                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
-            case 'para':
-                # Preference for parallel 
-                hidden_ptheta = β * torch.log(par_pi + eps)
-                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
             case 'para_signed':
-                # TODO
-                # Preference for parallel 
-                hidden_ptheta = β * safe_signed_log(par_comp_pi.sum(dim=-1) + eps)
-                hidden_weight = torch.tensor(1.0, device=par_pi.device)  # No additional weight scaling
-            case 'angle_mag':
-                # ah this just ends up encouraging a low magnitude for a low loss
-                # Standard alignment
-                alignment = F.cosine_similarity(pref_dir_pi, pref_dir_ref, dim=-1)
-                prob = torch.abs(alignment)
-                prob = (prob - eps).clamp(min=eps)
-                log_odds = torch.atanh(prob)
-                
-                # Scale by reference magnitude (weak preferences get less loss)
-                ref_magnitude = torch.norm(pref_dir_ref, dim=-1)
-                magnitude_weight = torch.clamp(ref_magnitude, 0.1, 2.0)  # Reasonable range
-                
-                hidden_ptheta = β * log_odds / magnitude_weight  # Magnitude-weighted log-odds
+                signed = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
+                hidden_ptheta = β * signed
+            case 'para_signed_log':
+                signed = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
+                hidden_ptheta = β * safe_signed_log(signed, eps=eps)
+            case 'para_orth_signed':
+                signed = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
+                ort = torch.norm(pref_dir_pi - signed.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
+                hidden_ptheta = β * (signed - torch.log(ort + eps))
+            case 'para_orth_signed_log':
+                signed = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
+                ort = torch.norm(pref_dir_pi - signed.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
+                hidden_ptheta = β * (safe_signed_log(signed, eps=eps) - torch.log(ort + eps))
+            case 'logodds':
+                hidden_ptheta = β * (logodds_pi - logodds_ref)
+                hidden_weight = torch.tensor(1.0, device=pref_dir_pi.device)
+            case 'cosine_similarity':
+                # Fallback using difference of cosines as logit
+                hidden_ptheta = β * (
+                    F.cosine_similarity(hs_pi_cho, hs_pi_rej, dim=-1)
+                    - F.cosine_similarity(hs_ref_cho, hs_ref_rej, dim=-1)
+                )
+                hidden_weight = torch.tensor(1.0, device=hs_pi_cho.device)
+            case _:
+                raise ValueError(f"Unsupported align_method: {align_method}")
         
         # Apply DPO-style loss
         loss_hidden_dpo = -F.logsigmoid(hidden_ptheta)

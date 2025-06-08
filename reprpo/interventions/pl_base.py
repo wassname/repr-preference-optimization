@@ -2,7 +2,7 @@ from torch import optim
 import lightning as pl
 import bitsandbytes as bnb
 from dataclasses import dataclass
-from transformers.optimization import get_cosine_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup, get_inverse_sqrt_schedule, get_wsd_schedule, get_constant_schedule_with_warmup
+from transformers.optimization import get_cosine_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup, get_inverse_sqrt_schedule, get_wsd_schedule, get_constant_schedule_with_warmup, get_linear_schedule_with_warmup
 
 # @dataclass
 # class ModelConfigBase:
@@ -21,7 +21,8 @@ class PL_MODEL(pl.LightningModule):
         weight_decay=0,
         batch_size=None,
         adam8bit=False,
-        schedule="wsd",
+        schedule="warmup_cosine",
+        use_grad_paging=False,
     ):
         super().__init__()
         self._model = model
@@ -39,13 +40,13 @@ class PL_MODEL(pl.LightningModule):
         self.log(
             f"{phase}/loss",
             loss,
-            on_epoch=False,
+            on_epoch=True,
             on_step=True,
             prog_bar=True,
             batch_size=self.hparams.batch_size,
         )
 
-        # also consider loggign nll and dpo_acc
+        # also consider logging nll and dpo_acc
         self.log(
             f"{phase}/dpo_acc",
             info.pop("_dpo_acc"),
@@ -92,41 +93,22 @@ class PL_MODEL(pl.LightningModule):
                 lr=self.hparams.lr,
                 weight_decay=self.hparams.weight_decay,
             )
-        else:
+        elif self.hparams.use_grad_paging:
             # paged optimizer avoid memory spikes  https://arxiv.org/pdf/2305.14314
             optimizer = bnb.optim.PagedAdam32bit(
                 self.parameters(),
                 lr=self.hparams.lr,
                 weight_decay=self.hparams.weight_decay,
             )
-        # else:
-        #     optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        else:
+            # normal adamw, safest
+            optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
 
-        if self.hparams.schedule == "cosine":
-            scheduler = optim.lr_scheduler.CosineAnnealingLR(
-                optimizer, T_max=self.hparams.num_iterations, eta_min=0
-            )
-        elif self.hparams.schedule == "onecycle":
-            scheduler = optim.lr_scheduler.OneCycleLR(
-                optimizer,
-                self.hparams.lr,
-                total_steps=self.hparams.num_iterations,
-                verbose=True,
-                pct_start=0.1,
-                final_div_factor=1e2,
-            )
-        elif self.hparams.schedule == "constant":
-            # same as GENIES warmup_ratio=0.03
-            num_warmup_steps = int(self.hparams.num_iterations * 0.03)
-            scheduler = get_constant_schedule_with_warmup(
-                optimizer, num_warmup_steps=num_warmup_steps
-            )
-        elif self.hparams.schedule == "wsd":
-            scheduler = get_wsd_schedule(
-                optimizer,
-                num_warmup_steps=int(self.hparams.num_iterations * 0.15),
-                num_stable_steps=int(self.hparams.num_iterations * 0.7),
-                num_decay_steps=int(self.hparams.num_iterations * 0.15),
-            )
+        # best according to https://arxiv.org/pdf/2107.04197
+        scheduler = get_cosine_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=int(self.hparams.num_iterations * 0.1),
+            num_training_steps=self.hparams.num_iterations,
+        )
         lr_scheduler = {"scheduler": scheduler, "interval": "step"}
         return [optimizer], [lr_scheduler]

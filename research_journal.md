@@ -5674,23 +5674,146 @@ python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=
 python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.01 --lr=1e-4
 # nope incoherent, 18mins
 
-python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.1 --lr=1e-5 --pl_precision=fp32 --num_workers=6 --ideal_batch_size=64
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.1 --lr=1e-5 --pl_precision=32-true --num_workers=6 --ideal_batch_size=64
 # maybe I need large effective batches?, maybe it's the bf16-mixed
---ideal_batch_size=64
 # coherent, val_los went down, now to work out which one helped. policy weight were fixed, everything. ok
-# hmm 21 min with num_workers. but also 32b
+# hmm 21 min with num_workers. but also 32bit. usually 16-18mins
+
 python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --ideal_batch_size=64  --num_workers=6
 # incoherent
 
 python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-5
-# incoherent!
+# incoherent!... it recovered, but was nto as good, interesting
 
-python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --pl_precision=fp32 
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --pl_precision=32-true
+# incoherent
 
+# wow it seems like a combination of stabalising regularising things, what about this combo. lower lr, wd, larer effective batch
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-5  --ideal_batch_size=64 --weight_decay=0.01
+
+# just wd?
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --weight_decay=0.01
+
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --pl_precision=32-true   --dpo_agg_type='dpo' --ideal_batch_size=64 
+
+
+# ok abliation, not lower lr
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.1 --pl_precision=32-true --num_workers=6 --ideal_batch_size=64
+
+# not precision
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.1 --lr=1e-5 --num_workers=6 --ideal_batch_size=64
+# + wow this one was even better... ok hmm
+
+# not batch
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.1 --lr=1e-5 --pl_precision=32-true --num_workers=6
+
+# + not wd... also promiosing
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --lr=1e-5 --pl_precision=32-true --num_workers=6 --ideal_batch_size=64
+
+# not dpo (ipo)
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --weight_decay=0.1 --lr=1e-5 --pl_precision=32-true --num_workers=6 --ideal_batch_size=64
+
+# now branc of this one to furth ablate
+# python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.1 --lr=1e-5 --num_workers=6 --ideal_batch_size=64
+# not precision
+
+# not dpo 
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --weight_decay=0.1 --lr=1e-5 --num_workers=6 --ideal_batch_size=64
+# seemed to do poorly
+
+# ++ best yet not ideal batch hsize
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.1 --lr=1e-5 --num_workers=6
+
+# not wd
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo'  --lr=1e-5 --num_workers=6 --ideal_batch_size=64
+
+
+# just higher/lower lr
+# lower lr best yet!
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo'  --lr=5e-6 --ideal_batch_size=64
+# good
+
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo'  --lr=5e-4 --ideal_batch_size=64
+# ooof poor
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo'  --lr=5e-4 --ideal_batch_size=64 --use-policy-weights
+# poor
+
+
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --lr=7e-5 --schedule=onecycle
+
+# ok try these
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --lr=1e-4
+python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-4
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-4  --dpo_agg_type='dpo'
+python scripts/train.py hs-supr-InnerDPO --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-4
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-5
+python scripts/train.py hs-supr-InnerDPO --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-5  --dpo_agg_type='dpo'
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-6  --dpo_agg_type='dpo' # decent
+python scripts/train.py hs-supr-InnerDPO --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --lr=1e-6
+just scratch2
+
+TODO supr failed
+TODO ipo? no diff?
+TODO high lr ok now?
+python scripts/train.py hs-ether-InnerDPO --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy
+python scripts/train.py hs-supr-InnerDPO --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy
+
+# oh wait the origin was DPO loss, so I need to compare dpo acc not loss
+#python scripts/train.py dpo --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy --dpo_agg_type='dpo' --weight_decay=0.1 --lr=1e-5 --pl_precision=32-true --ideal_batch_size=64
+python scripts/train.py hs-ether-InnerDPO --base_model=wassname/llama-3.2-3b-sft --batch_size=10 --dataset=alpaca_easy
+
+
+# now does each model have an effective lr?
 # then try other alphas
 
-
-# now does each model habe an effective lr?
-
 # you know I guess I could just use batch size finder and lr finder? and earlystopping
+```
+w
+hi
+ch schedule to use?- 
+
+aligmet-handbooks 
+use cosine mostly
+sloth uses linar_wit_warmup
+
+https://miro.medium.com/v2/resize:fit:1400/1*-jmcDKHwRfMTz4v6j7ba4Q.png
+https://arxiv.org/pdf/2107.04197
+
+
+# 2025-06-07 13:54:52
+
+Shower thoughts:
+- Taking absolute hs distance is not enougth, bercaus then you are maximising existing distance, and the optimiser will find it hard to flip, and this would involve many steps of negative loss! So it should be abs( hs_diff * learned_sign ), that way the learned sign can flip the direction of the loss, and the optimiser can find it easier to flip the preference, but it wont change the loss, only the direction.
+- Also might want to try just a normal sft nll loss
+
+
+| adapter/distribution_shift   |   in_domain |   difficulty_scaling |   moral_transfer |   orthogonal |
+|:-----------------------------|------------:|---------------------:|-----------------:|-------------:|
+| none                         |       0.868 |                0.78  |            0.27  |        0.414 |
+| hs-None-InnerDPO coh            |       0.944 |                0.796 |            0.242 |        0.438 |
+| hs-None-InnerDPO coh            |       0.93  |                0.798 |            0.268 |        0.414 |
+| hs-None-InnerDPO inco            |       0.962 |                 0.86 |             0.3  |        0.528 |
+| dpo inco                          |       0.948 |                 0.86 |            0.316 |        0.468 |
+| ipo? inco                          |       0.966 |                0.798 |            0.366 |        0.558 |
+| hs-ETHER-InnerDPO            |       0.964 |                0.868 |            0.302 |        0.518 |
+| hs-SupressedHS-InnerDPO  incoh     |       0.96  |                 0.87 |            0.276 |        0.586 |
+
+Ok I had a think and signed loss actually makes sense as we are using the data preference not the models
+
+
+
+ok so they don't overfit now, better rscedule helps
+```sh
+# new signed
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --loss.align_method=para
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --loss.align_method=para
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --loss.align_method=para
+loss.
+# old
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --loss.align_method=para_orth2
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --loss.align_method=para_orth
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --loss.align_method=orth
+python scripts/train.py hs-none-InnerDPO --base_model=wassname/llama-3.2-3b-sft --loss.align_method=direct_projection
+python scripts/train.py hs-none-InnerDPO -direct_projection_log
+
 ```

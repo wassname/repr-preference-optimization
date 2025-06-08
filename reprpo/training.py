@@ -172,7 +172,7 @@ def train(args, trial: Optional[Trial] = None):
     peft_config = LoraConfig(
         r=64,
         lora_alpha=16,
-        use_rslora=True,
+        use_rslora=True, # Rank-Stabilized LoRA
         # use_dora=True,
         task_type="CAUSAL_LM",
         # target_modules=target_modules,
@@ -181,6 +181,7 @@ def train(args, trial: Optional[Trial] = None):
 
     model = get_peft_model(model, peft_config, adapter_name=adapter_name)
     print_trainable_parameters(model)
+    logger.info(f"Using adapter `{adapter_name}` with target modules {peft_config.target_modules}")
     if args.verbose > 2:
         logger.info(f"{model}")
 
@@ -215,11 +216,12 @@ def train(args, trial: Optional[Trial] = None):
         model,
         adam8bit=args.load_in_4bit
         or args.load_in_8bit,  # saved mem, but seems unstable?
-        schedule=args.schedule,
+        # schedule=args.schedule,
         num_iterations=max_opt_steps,
         batch_size=args.batch_size,
         lr=args.lr,
         weight_decay=args.weight_decay,
+        use_grad_paging=args.use_grad_paging,
         # model args
         **model_kwargs,
     )

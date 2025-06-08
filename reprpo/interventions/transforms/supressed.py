@@ -65,8 +65,8 @@ def get_supressed_activations(
 class SupressedHSTransform(nn.Module):
     def __init__(self, dim_sizes: Dict[str, int], model: nn.Module, **kwargs):
         super().__init__()
-        self.Wo = model.get_output_embeddings().weight.detach().clone()
-        self.Wo_inv = torch.pinverse(self.Wo.clone().float())
+        self.Wo = model.get_output_embeddings().weight.detach().clone().cuda()
+        self.Wo_inv = torch.pinverse(self.Wo.clone().float()).cuda()
 
     def forward(self, x: Dict[str, HS]) -> Dict[str, HS]:
         keys = sorted([k for k in x.keys()], key=lambda x: int(x))   
@@ -78,8 +78,8 @@ class SupressedHSTransform(nn.Module):
         )
         return {k: hs[i] for i, k in enumerate(keys[1:])}
 
-class EtherTransforms(TransformByLayer):
-    Transform = SupressedHSTransform
+# class EtherTransforms(TransformByLayer):
+#     Transform = SupressedHSTransform
 
 
 @dataclass
