@@ -113,40 +113,42 @@ def innerdpo_loss(
                 Geometric: "How far does policy move along the reference preference direction?"
                 Intuition: Raw alignment signal. +ve = aligned, -ve = anti-aligned. Unbounded.
                 """
-                # Direct signed projection: raw directional alignment signal
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 hidden_ptheta = β * signed_proj
             case 'para_signed_log':
-                """
+                """                
                 sign(projection) * log(|projection|)
                 Geometric: Compresses projection magnitude while preserving direction
                 Intuition: Stabilizes wild swings, dampens near-zero gradients
                 """
-                # Log-stabilized signed projection
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 hidden_ptheta = β * safe_signed_log(signed_proj, eps=eps)
             case 'para_orth_signed':
-                # Log-odds: signed parallel vs orthogonal drift
+                """
+                signed_projection - orthogonal_magnitude
+                Hybrid scale: raw signed parallel distance vs raw orthogonal drift
+                Geometric: "Raw signed parallel strength vs orthogonal drift"
+                Intuition: Rewards ref-direction movement, penalizes off-axis drift (no logs)
+                """
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
-                hidden_ptheta = β * (signed_proj - torch.log(orthogonal_mag + eps))
+                hidden_ptheta = β * (signed_proj - orthogonal_mag)
             case 'para_orth_signed_log':
                 """
-                signed_projection - log(orthogonal_magnitude)  
-                Geometric: "Parallel strength vs orthogonal drift" in log-odds space
-                Intuition: Rewards ref-direction movement, penalizes off-axis drift
+                signed_log(parallel) - log(orthogonal_magnitude)
+                Full log-space: signed log of parallel vs log of orthogonal drift
+                Geometric: "Log-parallel strength vs log-orthogonal drift"
+                Intuition: Stabilizes both signals in log space
                 """
-                # Double-stabilized log-odds  
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
-                hidden_ptheta = β * (safe_signed_log(signed_proj, eps=eps) - torch.log(orthogonal_mag + eps))
+                hidden_ptheta = β * (safe_signed_log(signed_proj, eps=eps) - safe_log(orthogonal_mag, eps))
             case 'logodds':
                 """ 
                 signed_log(parallel) - log(orthogonal)
                 Geometric: Same as #3 but with log-stabilized parallel term
                 Intuition: Double stabilization for both parallel and orthogonal terms
                 """
-                # Reference-normalized log-odds comparison
                 hidden_ptheta = β * (logodds_pi - logodds_ref)
             case 'cosine_policy_margin':
                 """
@@ -154,7 +156,6 @@ def innerdpo_loss(
                 Geometric: "Policy's internal separability vs reference's separability"  
                 Intuition: Maximize policy's own chosen/rejected margin. Bounded [-2,2]
                 """
-                # Policy's internal margin vs reference's margin
                 hidden_ptheta = β * (
                     F.cosine_similarity(hs_pi_cho, hs_pi_rej, dim=-1)
                     - F.cosine_similarity(hs_ref_cho, hs_ref_rej, dim=-1)
@@ -164,8 +165,8 @@ def innerdpo_loss(
                 cos(pi_cho, ref_cho) - cos(pi_rej, ref_rej)
                 Geometric: "Pull policy states toward corresponding reference states"
                 Intuition: Explicit state-to-state mimicry, not just directional alignment
+                (probobly wont work as we want to go beyond internal representation alignment)
                 """
-                # Cross-model state alignment
                 hidden_ptheta = β * (
                     F.cosine_similarity(hs_pi_cho, hs_ref_cho, dim=-1)
                     - F.cosine_similarity(hs_pi_rej, hs_ref_rej, dim=-1)
