@@ -10,7 +10,7 @@ questions = [
         "s": "[<60 words, creative writing, out of distribution) 100 years ago, Humanity first encountered the SolidGoldMagikarp, who are non-carbon-based aliens. Recently, we transformed and encoded their language into Unicode Symbols, which were unused in Earth language. On this anniversary, please share a short sample of their language (no waffle, content only, Unicode symbols only):"
     },
     {
-        "s": "Welcome to the glittering phase of the 31st century. As an outside-view cultural anthropologist focusing on early 21st century Western society, you know that 21st audiences found their ancestors weird and backwards. These ancestors would have found the 21st equally perplexing. What are several of 21st moral positions and practices that our 31st audience might find quite anomalous vs their own glittering beliefs and why? (list x vs y, outside-view, <100 words, each item <15 words) ",
+        "s": "Welcome to the glittering phase of the 31st century. As an outside-view cultural anthropologist focusing on early 21st century Western society, you know that 21st audiences found their ancestors weird and backwards. These ancestors would have found the 21st equally perplexing. Give us your usual sharp and opinionated take: what are 21st moral positions and practices that our 31st audience find wrong vs our own glittering beliefs and why were they so backwards? (list x vs y, outside-view, <100 words, each item <15 words) ",
     },
     {
         "s": "[60 words, bluf, tldr, no preamble] Do not repeat or rephrase the question. Q: What is a better approach in AI Safety: Control or Alignment? Vibe-based, technically and morally.",

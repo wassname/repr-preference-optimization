@@ -94,5 +94,13 @@ I want to report nll ratio (should be [0-1]) otherwise incoherent
 | ReprPO_None_InnerDPO ReprPO_Non AlMe=logodds        |     0.966 |              0.876 |          0.324 |      0.568 | 97geelv4 |    0 |
 | ReprPO_None_InnerDPO ReprPO_Non AlMe=cosine_pol_mar |     0.946 |              0.876 |          0.278 |        0.6 |
 | hs-SupressedHS-InnerDPO                             |      0.96 |              0.896 |           0.33 |      0.606 |
+ ReprPO_None_InnerDPO ReprPO_Non AlMe=stabili α=10 |       0.948 |                0.818 |             0.39 |        0.496 | mp90qyfl | 1.963 |
+ | ReprPO_None_InnerDPO ReprPO_Non α=0.01 |        0.96 |                 0.89 |            0.306 |        0.598 | 0y9bq5z9 | 6.665 |
 
 Hm the dff alphas don't seem to have much effect. Is the mostl cheating somehow. Perhaps for the ratio one its finding areas with a very small differen't, and making those very seperate in comparison to the tiny denominator, so the ratio is very large, and this dominated the mean. Hmm
+
+ok! I made one that bounded the denominator to 10% percentile, and it's working, it's having an effect.
+
+|                                                  |   in_domain |   difficulty_scaling |   moral_transfer |   orthogonal | wandb    |   nll |
+|:-------------------------------------------------|------------:|---------------------:|-----------------:|-------------:|:---------|------:|
+| ReprPO_None_InnerDPO ReprPO_Non AlMe=stabili α=1 |       0.964 |                0.858 |             0.44 |        0.468 | ncpdqhlh | 1.615 |

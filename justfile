@@ -17,6 +17,65 @@ sweep:
 
 
 
+scratch:
+    #!/usr/bin/env bash
+    set -x
+    . ./.venv/bin/activate
+
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=stabilized_ratio --loss.α=1
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=logodds_noref --loss.α=1
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=1
+
+    export alpha=(
+        0.01
+        0.25
+        0.001
+        1
+        10
+    )
+    for al in "${alpha[@]}"; do
+        python scripts/train.py hs-none-InnerDPO --loss.α="$al"
+    done
+
+    export agg=(
+        stabilized_ratio
+        logodds_noref
+        odds_noref
+        para_signed
+        logodds
+        para_signed_log
+        para_orth_signed
+        para_orth_signed_log
+        cosine_policy_margin
+        cosine_cross_model
+    )
+    for ag in "${agg[@]}"; do
+        python scripts/train.py hs-none-InnerDPO --loss.align_method="$ag"
+    done
+
+    export BASE=(
+        dpo
+        hs-supr-InnerDPO
+        hs-ether-InnerDPO
+        side-none-InnerDPO
+    )
+    for base in "${BASE[@]}"; do
+            python scripts/train.py $base
+    done
+    
+    export OPTIONS=(     
+        --loss.no-norm-before-reduce
+        --loss.use-inner-policy-weights
+        --loss.use-policy-weights
+        --dpo_agg_type=dpo
+        --loss.align-method=para_signed
+        --loss.align-method=para_orth
+    ) 
+
+    for args in "${OPTIONS[@]}"; do
+        python scripts/train.py hs-none-InnerDPO $args
+    done
+
 # run one method, with args
 run +args='':
     #!/usr/bin/zsh
@@ -132,71 +191,6 @@ dev:
 cp:
     rsync -avz --ignore-existing runpod:/workspace/repr-preference-optimization/outputs/ ./ouputs/
 
-
-scratch:
-    #!/usr/bin/env bash
-    set -x
-    . ./.venv/bin/activate
-
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=stabilized_ratio --loss.α=10
-    python scripts/trainipts/train.py hs-none-InnerDPO --loss.align_method=logodds_noref --loss.α=10
-    python scr.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=10
-
-    export alpha=(
-        0.01
-        0.25
-        0.001
-        1
-        10
-    )
-    for al in "${alpha[@]}"; do
-        python scripts/train.py hs-none-InnerDPO --loss.α="$al"
-    done
-
-    export agg=(
-        stabilized_ratio
-        logodds_noref
-        odds_noref
-        para_signed
-        logodds
-        para_signed_log
-        para_orth_signed
-        para_orth_signed_log
-        cosine_policy_margin
-        cosine_cross_model
-    )
-    for ag in "${agg[@]}"; do
-        python scripts/train.py hs-none-InnerDPO --loss.align_method="$ag"
-    done
-
-    export BASE=(
-        dpo
-        hs-supr-InnerDPO
-        hs-ether-InnerDPO
-        side-none-InnerDPO
-    )
-    for base in "${BASE[@]}"; do
-            python scripts/train.py $base
-    done
-    
-    export OPTIONS=(
-        --loss.align-method=orth
-        --loss.align-method=direct_projection
-        --loss.align-method=angle_mag
-        --loss.align-method=cosine_similarity
-        --loss.align-method=abs
-        --loss.align-method=log_ratio        
-        --loss.no-norm-before-reduce
-        --loss.use-inner-policy-weights
-        --loss.use-policy-weights
-        --dpo_agg_type=dpo
-        --loss.align-method=para_signed
-        --loss.align-method=para_orth
-    ) 
-
-    for args in "${OPTIONS[@]}"; do
-        python scripts/train.py hs-none-InnerDPO $args
-    done
 
 scratch2:
     #!/usr/bin/zsh

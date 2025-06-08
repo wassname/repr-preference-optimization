@@ -25,6 +25,15 @@ def safe_log(x: Float[Tensor, "batch"], eps=1e-12):
     # return torch.log(x.clamp(min=eps))
     return torch.log(x+eps)
 
+
+def safe_norm(x: Float[Tensor, "batch"], p: int = 2, dim: int = -1, eps: float = 1e-9):
+    """
+    Safe norm function to avoid division by zero.
+    Returns a tensor with the same shape as x, where norms are clamped to eps.
+    """
+    norm = torch.norm(x, p=p, dim=dim, keepdim=True)
+    return x / norm.clamp(min=eps)  # Avoid division by zero
+
 def innerdpo_loss(
     pi_cho: ReprPOModelOutput,
     pi_rej: ReprPOModelOutput,
@@ -40,6 +49,7 @@ def innerdpo_loss(
     inner_policy_weights: bool = False,
     align_method: str = 'para_signed',
     norm_before_reduce: bool = True,
+    p=2
 ):
     """
     Compute innerDPO loss with various alignment options.
@@ -59,7 +69,7 @@ def innerdpo_loss(
         hs = o.hs[k]  # [batch, seq_len, hidden_dim], RAW ACTIVATIONS
         # hs = F.log_softmax(hs, dim=-1)  # [batch, seq_len, hidden_dim], LOG PROBABILITIES
         if norm_before_reduce:
-            hs = F.normalize(hs, p=2, dim=-1)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
+            hs = safe_norm(hs, p=p, dim=-1, eps=eps)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
         # Aggregate over sequence using attention masks
         hs = reduce_tokens_w_attention(hs, o.mask)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
         return hs
@@ -75,7 +85,7 @@ def innerdpo_loss(
         pref_dir_pi = hs_pi_cho - hs_pi_rej
 
         # Decompose pi into parallel and orthogonal components
-        pref_dir_ref_unit = F.normalize(pref_dir_ref, p=2, dim=-1)
+        pref_dir_ref_unit = safe_norm(pref_dir_ref, p=p, dim=-1, eps=eps)
         # para_sign_magn = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1, keepdim=True)
 
         para_vec = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1, keepdim=True) * pref_dir_ref_unit
@@ -85,16 +95,16 @@ def innerdpo_loss(
         orth_vec_ref = pref_dir_ref - par_vec_ref
 
         # Magnitudes
-        par_mag = torch.norm(para_vec, p=1, dim=-1)
-        ort_mag = torch.norm(ort_vec, p=1, dim=-1)
-        log_par = safe_signed_log(par_mag, eps=eps)
-        log_ort = safe_signed_log(ort_mag, eps=eps)
+        par_mag = torch.norm(para_vec, p=p, dim=-1)
+        ort_mag = torch.norm(ort_vec, p=p, dim=-1)
+        log_par = safe_log(par_mag, eps=eps)
+        log_ort = safe_log(ort_mag, eps=eps)
         logodds_pi = log_par - log_ort
 
-        par_ref = torch.norm(par_vec_ref, p=1, dim=-1)
-        ort_ref = torch.norm(orth_vec_ref, p=1, dim=-1)
-        log_par_ref = safe_signed_log(par_ref, eps=eps)
-        log_ort_ref = safe_signed_log(ort_ref, eps=eps)
+        par_mag_ref = torch.norm(par_vec_ref, p=p, dim=-1)
+        ort_mag_ref = torch.norm(orth_vec_ref, p=p, dim=-1)
+        log_par_ref = safe_log(par_mag_ref, eps=eps)
+        log_ort_ref = safe_log(ort_mag_ref, eps=eps)
         logodds_ref = log_par_ref - log_ort_ref
 
         # Make weights similar to # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
@@ -130,7 +140,7 @@ def innerdpo_loss(
                 Intuition: Rewards ref-direction movement, penalizes off-axis drift (no logs)
                 """
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
-                orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
+                orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=p, dim=-1)
                 hidden_ptheta =  (signed_proj - orthogonal_mag)
             case 'para_orth_signed_log':
                 """
@@ -140,7 +150,7 @@ def innerdpo_loss(
                 Intuition: Stabilizes both signals in log space
                 """
                 signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
-                orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=1, dim=-1)
+                orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=p, dim=-1)
                 hidden_ptheta =  (safe_signed_log(signed_proj, eps=eps) - safe_log(orthogonal_mag, eps))
             case 'logodds':
                 """ 
@@ -155,7 +165,7 @@ def innerdpo_loss(
                 hidden_ptheta= par_mag - ort_mag
             case 'stabilized_ratio':
                 """
-                Ratio with stabilized denominator to prevent exploitation
+                Ratio with stabilized denominator to prevent exploitation where the model focuses on improving values with tiny demoninators
                 """
                 # Use batch statistics for threshold
                 ort_floor = torch.max(ort_mag.mean() * 0.1, torch.tensor(eps, device=ort_mag.device))
