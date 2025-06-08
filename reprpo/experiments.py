@@ -12,14 +12,14 @@ def get_default_bool(c):
 
 experiment_configs = {
 
-    # this will use lots of memory, so good to have it as the first one
-    "side-none-InnerPO2": ("",
-        ReprPOConfig(
-            collect_hs=False,
-            transform=Transforms.none.value(),
-            loss=Losses.InnerPO.value(β=3.),
-        ),
-    ),
+    # # this will use lots of memory, so good to have it as the first one
+    # "side-none-InnerDPO2": ("",
+    #     ReprPOConfig(
+    #         collect_hs=False,
+    #         transform=Transforms.none.value(),
+    #         loss=Losses.InnerDPO.value(β=3.),
+    #     ),
+    # ),
 
 
     # baseline
@@ -79,24 +79,24 @@ experiment_configs.update(experiment_configs2)
 
 for Htype in ["ether", "etherplus", "oft", "etherplusHH"]:
     experiment_configs.update({
-            f"hs-ether-InnerPO-Htype_{Htype}": ('', 
+            f"hs-ether-InnerDPO-Htype_{Htype}": ('', 
             ReprPOConfig(
                 collect_hs=True,
                 transform=Transforms.ether.value(Htype=Htype),
-                loss=Losses.InnerPO.value(),
+                loss=Losses.InnerDPO.value(),
             ),
         ),
     })
 
 
-for k,v in list(get_default_bool(Losses.InnerPO.value)):
+for k,v in list(get_default_bool(Losses.InnerDPO.value)):
     # variants, with bools flipped
     experiment_configs.update({   
-        f"side-none-InnerPO-{k}_{not v}": ("No transform one side activations and use InnerPO loss.",
+        f"side-none-InnerDPO-{k}_{not v}": ("No transform one side activations and use InnerDPO loss.",
             ReprPOConfig(     
                 collect_hs=False,             
                 transform=Transforms.none.value(),
-                loss=Losses.InnerPO.value(**{k:not v}),
+                loss=Losses.InnerDPO.value(**{k:not v}),
             ),
         ),
     })
@@ -115,16 +115,16 @@ for k,v in list(get_default_bool(Losses.rank.value)):
 
 experiment_configs.update({   
 
-    # variants of the supression transform with only the last two layers
-    "hs-supr-InnerPO2": ('', 
-        ReprPOConfig(
-            collect_hs=True,
-            collection_layers='-2,1',
-            transform=Transforms.supr.value(),
-            loss=Losses.InnerPO.value(),
-            # lr=1e-5,
-        ),
-    ),
+    # # variants of the supression transform with only the last two layers
+    # "hs-supr-InnerDPO2": ('', 
+    #     ReprPOConfig(
+    #         collect_hs=True,
+    #         collection_layers='-2,1',
+    #         transform=Transforms.supr.value(),
+    #         loss=Losses.InnerDPO.value(),
+    #         # lr=1e-5,
+    #     ),
+    # ),
     "hs-supr-rank2": ('', 
         ReprPOConfig(
             collect_hs=True,

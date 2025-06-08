@@ -104,7 +104,8 @@ def get_display_name_from_args(args: dataclass):
             k.endswith(bl) for bl in blacklist
         ):
             continue
-     
+        diff2.append((k, v))
+    diff = diff2
 
     s = " ".join([f"{k}={fmt(v)}" for k, v in list(diff) if k not in blacklist])
 

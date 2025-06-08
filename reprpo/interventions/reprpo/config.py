@@ -43,7 +43,7 @@ class ReprPOConfig(ExperimentConfig):
     collect_hs: bool = False
     """collect hidden states instead of activations"""
 
-    loss: LossesType = field(default_factory=lambda: Losses.InnerPO.value())
+    loss: LossesType = field(default_factory=lambda: Losses.InnerDPO.value())
     """loss function"""
 
     transform: TransformType = field(default_factory=lambda: Transforms.ether.value())

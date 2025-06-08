@@ -134,7 +134,7 @@ cp:
 
 
 scratch:
-    #!/usr/bin/zsh
+    #!/usr/bin/env bash
     set -x
     . ./.venv/bin/activate
 
@@ -166,9 +166,6 @@ scratch:
         side-none-InnerDPO
     )
     export OPTIONS=(
-        --loss.align-method=para
-        --loss.align-method=para_signed
-        --loss.align-method=para_orth
         --loss.align-method=orth
         --loss.align-method=direct_projection
         --loss.align-method=angle_mag
@@ -179,6 +176,8 @@ scratch:
         --loss.use-inner-policy-weights
         --loss.use-policy-weights
         --dpo_agg_type=dpo
+        --loss.align-method=para_signed
+        --loss.align-method=para_orth
     ) 
     for base in "${BASE[@]}"; do
             python scripts/train.py $base
