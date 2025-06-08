@@ -133,29 +133,30 @@ cp:
     rsync -avz --ignore-existing runpod:/workspace/repr-preference-optimization/outputs/ ./ouputs/
 
 
-just scratch:
+scratch:
     #!/usr/bin/zsh
     set -x
     . ./.venv/bin/activate
 
     export alpha=(
-        0.01
-        0.1
+        0.25
         1
+        0.01
         10
         100
     )
     export agg=(
-        para
         para_signed
-        orth
+        para_signed_log
+        para_orth_signed
+        para_orth_signed_logpara_orth_signed_logpara_orth_signed_log
+        logodds
+        cosine_policy_margin
+        cosine_cross_model
     )
-    set -x
-    echo $DS
-    for ds in "${DS[@]}"; do
-        echo "DS=$ds"
-        for m in "${METHODS[@]}"; do
-            python scripts/train.py $m --dataset $ds {{ args }}
+    for al in "${alpha[@]}"; do
+        for ag in "${agg[@]}"; do
+            python scripts/train.py hs-none-InnerDPO --loss.align_method="$ag" --loss.α="$al"
         done
     done
 
