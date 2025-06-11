@@ -52,7 +52,7 @@ from reprpo.lightning.pl_gen import GenCallback  # noqa: E402
 from reprpo.helpers.torch import clear_mem  # noqa: E402
 from reprpo.models.load import load_model, print_trainable_parameters  # noqa: E402
 from reprpo.helpers.logging import setup_logging  # centralized log setup
-from reprpo.helpers.wandb_utils import init_wandb  # noqa: E402
+from reprpo.helpers.wandb_utils import init_wandb, flatten_dict  # noqa: E402
 from reprpo.helpers.tyro import get_display_name_from_args, apply_cfg_overrides_from_env_var
 from reprpo.data.util import nice_ds_name, safe_fn, df_sort_cols  # noqa: E402
 
@@ -278,7 +278,7 @@ def train(args, trial: Optional[Trial] = None):
         enable_progress_bar=args.verbose > 1,
         enable_model_summary=args.verbose > 1,
     )
-    trainer.logger.log_hyperparams(config)
+    trainer.logger.log_hyperparams(flatten_dict(config))
 
     # TODO consider learnign rate finder
     if args.verbose > 2:

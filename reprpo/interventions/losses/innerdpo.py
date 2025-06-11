@@ -50,6 +50,7 @@ def innerdpo_loss(
     align_method: str = 'para_signed',
     norm_before_reduce: bool = True,
     filter_sinks: bool = True,
+    trust_region: float = 2.0,
     p=2
 ):
     """
@@ -90,11 +91,11 @@ def innerdpo_loss(
         pref_dir_ref_unit = safe_norm(pref_dir_ref, p=p, dim=-1, eps=eps)
 
         signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
-        para_vec = signed_proj * pref_dir_ref_unit
+        para_vec = signed_proj.unsqueeze(1) * pref_dir_ref_unit
         ort_vec = pref_dir_pi - para_vec
 
         signed_proj_ref = torch.sum(pref_dir_ref * pref_dir_ref_unit, dim=-1)
-        par_vec_ref = signed_proj_ref * pref_dir_ref_unit
+        par_vec_ref = signed_proj_ref.unsqueeze(1) * pref_dir_ref_unit
         # orth_vec_ref = pref_dir_ref - par_vec_ref
 
         # Magnitudes
@@ -119,7 +120,7 @@ def innerdpo_loss(
 
         match align_method:
             case 'pars_rat':
-                hidden_ptheta =  signed_proj / (signed_proj_ref.norm(p=p, dim=-1) + eps)
+                hidden_ptheta =  signed_proj / (signed_proj_ref + eps)
             case 'pars_rat_log':
                 hidden_ptheta =  10 * (safe_log(signed_proj) - safe_log(signed_proj_ref.norm(p=p, dim=-1) + eps))
             case 'pars_ratref':
@@ -196,6 +197,7 @@ def innerdpo_loss(
         # Apply DPO-style loss
         if inner_policy_weights: # I'm not sure if this is helping
             hidden_ptheta = hidden_ptheta * hidden_weight
+
         
         return dict(hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta)
 
@@ -224,7 +226,14 @@ def innerdpo_loss(
         ref_rej.label_logprobs,
     )
     loss_dpo = -F.logsigmoid(β * dpo_ptheta)
-    loss_hidden_dpo = -F.logsigmoid(β * ll['hidden_ptheta'])
+    
+    hidden_ptheta = ll['hidden_ptheta']
+    if trust_region > 0:
+        # Moving too far in the hidden weight space leads to incoherent, so we will bound the loss to only reward within a trusted region.
+        # This is similar to the trust region in PPO.
+        # It's defined in the ptheta space, so it depends on the loss, but for `pars_rat` it means it can only get reward for seperating the chosen and rejected hidden states by `trust_region` times the distance in the reference model
+        hidden_ptheta = torch.clamp(hidden_ptheta, -trust_region, trust_region)
+    loss_hidden_dpo = -F.logsigmoid(β * hidden_ptheta)
 
     loss = loss_dpo + α * loss_hidden_dpo
     
@@ -253,7 +262,9 @@ class InnerDPOLossConfig:
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     """
 
-    α: float = 5
+    trust_region: float = 2
+
+    α: float = 0.25
     """balance between reroute and retain loss."""
 
     filter_sinks: bool = False

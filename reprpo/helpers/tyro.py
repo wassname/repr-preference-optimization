@@ -155,6 +155,11 @@ def get_display_name_from_args(args: dataclass):
             'None': 'n',
             'loss.': 'l.',
             'transform.': 't.',
+            "alpha": 'α',
+            "beta": 'β',
+            "gamma": 'γ',
+            "epsilon": 'ε',
+            "eps": 'ε',
         }
         for k, v in defs.items():
             s = s.replace(k, v)
@@ -180,9 +185,9 @@ def get_display_name_from_args(args: dataclass):
                 k, v = ss.split('=', 1)
                 if len(k) >5:
                     # take the first letter of underscored or dash keys
-                    k = snake_case_acronym(k)
+                    k = snake_case_acronym(k, keep=3)
                 if len(v) > 7:
-                    v = snake_case_acronym(v)
+                    v = snake_case_acronym(v, keep=5)
                 k = k[:7]
                 v = v[:7]
                 if k not in blacklist:

@@ -58,26 +58,8 @@
             // },
             "args": [
                 "hs-supr-InnerDPO",
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                "--loss.align_method=pars_rat",
+                "--loss.align_method=pars_ratref_log",
                 // "--dev",
-=======
-                // "--dev",
-                "--loss.normalize-layers",
-                "--loss.inner-policy-weights",
->>>>>>> origin/vast2a
-=======
-                // "--dev",
-                "--loss.normalize-layers",
-                "--loss.inner-policy-weights",
->>>>>>> origin/vast2a
-=======
-                // "--dev",
-                "--loss.normalize-layers",
-                "--loss.inner-policy-weights",
->>>>>>> origin/vast2a
                 "--verbose=3",
             ]
         },
