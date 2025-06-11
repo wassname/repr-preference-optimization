@@ -1,10 +1,10 @@
 base_model: wassname/SmolLM2-135M-sft
 collection_layers_side: 
   - 0
-n_samples: 230
-eval_samples: 32 # 10 mins to go through 750*4
+n_samples: 2630
+eval_samples: 64 # 10 mins to go through 750*4
 dev: false
 verbose: 2
-load_in_4bit: true
-batch_size: 2
+load_in_4bit: false
+batch_size: 48
 wandb: false

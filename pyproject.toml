@@ -37,7 +37,8 @@ dependencies = [
     "optuna-integration[pytorch-lightning]>=4.3.0",
     "tyro>=0.9.21",
     "polars>=1.30.0",
-    "flash-attn>=2.7.4",
+    "setuptools>=80.9.0",
+    "wheel>=0.45.1",
 ]
 
 [dependency-groups]
@@ -48,6 +49,9 @@ dev = [
     "pytest>=8.0.2",
     "ruff>=0.8.3",
     "pytest-beartype>=0.1.0",
+]
+flash = [
+    "flash-attn>=2.7.4",
 ]
 
 [tool.hatch.build.targets.wheel]

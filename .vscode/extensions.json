@@ -5,6 +5,12 @@
         "github.copilot",
         "ms-toolsai.jupyter-renderers",
         "ms-toolsai.jupyter",
-        "ms-python.vscode-pylance"
+        "ms-python.vscode-pylance",
+        "samuelcolvin.jinjahtml",
+        "tamasfe.even-better-toml",
+        "jsynowiec.vscode-insertdatestring",
+        "takumii.markdowntable",
+        "charliermarsh.ruff",
+        "nefrob.vscode-just-syntax"
     ]
 }

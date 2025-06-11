@@ -11,7 +11,7 @@ default:
 sweep:
     #!/usr/bin/zsh
     rm -f sweep.sh
-    mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
+    # mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
     python scripts/sweep.py > sweep.sh
     unbuffer bash sweep.sh  2>&1 | tee sweep.txt
 
@@ -22,36 +22,63 @@ scratch:
     set -x
     . ./.venv/bin/activate
 
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=stabilized_ratio --loss.α=1
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=logodds_noref --loss.α=1
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=1
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=log_ratio_difference
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=ratio_difference --loss.norm-before-reduce --loss.eps=1e-2
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=log_ratio_difference --loss.α=10
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=ratio_difference --loss.α=10
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=log_ratio_difference --loss.α=.2
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=ratio_difference --loss.α=.2
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=stabilized_ratio --loss.α=10
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=logodds_noref --loss.α=10
+    # python scripts/train.py dpo
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=1 --loss.p=1 --loss.use-filter-sinks
+    # python scripts/train.py dpo --dpo_agg_type=dpo
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=10
+    
 
-    export alpha=(
-        0.01
-        0.25
-        0.001
-        1
-        10
-    )
-    for al in "${alpha[@]}"; do
-        python scripts/train.py hs-none-InnerDPO --loss.α="$al"
-    done
+    # export alpha=(
+    #     100
+    #     10
+    #     0.01
+    #     0.25
+    #     0.001
+    #     1
+    # )
+    # for al in "${alpha[@]}"; do
+    #     python scripts/train.py hs-none-InnerDPO --loss.α="$al"
+    # done
 
-    export agg=(
-        stabilized_ratio
-        logodds_noref
-        odds_noref
-        para_signed
-        logodds
-        para_signed_log
-        para_orth_signed
-        para_orth_signed_log
-        cosine_policy_margin
-        cosine_cross_model
-    )
-    for ag in "${agg[@]}"; do
-        python scripts/train.py hs-none-InnerDPO --loss.align_method="$ag"
-    done
+    # export agg=(
+    #     log_ratio_difference
+    #     ratio_difference
+    #     stabilized_ratio
+    #     logodds_noref
+    #     odds_noref
+    #     para_signed
+    #     para_signed_log
+    #     para_orth_signed
+    #     para_orth_signed_log
+    #     cosine_policy_margin
+    #     cosine_cross_model
+    # )
+    # for ag in "${agg[@]}"; do
+    #     python scripts/train.py hs-none-InnerDPO --loss.align_method="$ag"
+    # done
+
+    # diff norms
+    # python scripts/train.py hs-none-InnerDPO --loss.inner-policy-weights --loss.normalize-layers
+    # python scripts/train.py hs-none-InnerDPO --loss.inner-policy-weights
+
+    # # oh this was bad!
+    # python scripts/train.py hs-none-InnerDPO --loss.inner-policy-weights --loss.normalize-layers --loss.norm_before_reduce
+
+    # long
+    python scripts/train.py hs-supr-InnerDPO --loss.align_method=odds_noref --loss.α=10
+    python scripts/train.py hs-supr-InnerDPO --loss.α=10
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=logodds_noref --loss.α=20
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=20
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=para_signed_log --loss.α=20
+    
 
     export BASE=(
         dpo
@@ -60,21 +87,33 @@ scratch:
         side-none-InnerDPO
     )
     for base in "${BASE[@]}"; do
-            python scripts/train.py $base
+        python scripts/train.py $base
     done
     
     export OPTIONS=(     
         --loss.no-norm-before-reduce
-        --loss.use-inner-policy-weights
-        --loss.use-policy-weights
+        --loss.norm-before-reduce
+        --loss.inner-policy-weights --loss.policy-weights
         --dpo_agg_type=dpo
         --loss.align-method=para_signed
         --loss.align-method=para_orth
+        --loss.filter_sinks
+        --loss.p=1
+        --loss.eps=1e-2
+        --loss.eps=1e-6
+        --loss.eps=1e-9
+        --weight-decay=1e-9
+        --collection-layers='range(0.1, -1)'
+        --use-load-in-8bit
+        --ideal-batch-size=128
+
     ) 
 
     for args in "${OPTIONS[@]}"; do
         python scripts/train.py hs-none-InnerDPO $args
     done
+
+    just sweep
 
 # run one method, with args
 run +args='':
