@@ -32,7 +32,7 @@ def safe_norm(x: Float[Tensor, "batch"], p: int = 2, dim: int = -1, eps: float =
     Returns a tensor with the same shape as x, where norms are clamped to eps.
     """
     norm = torch.norm(x, p=p, dim=dim, keepdim=True)
-    return x / norm.clamp(min=eps)  # Avoid division by zero
+    return x / (norm + eps)  # Avoid division by zero
 
 def innerdpo_loss(
     pi_cho: ReprPOModelOutput,
@@ -43,12 +43,13 @@ def innerdpo_loss(
     transforms: Optional[Callable] = None,
     # custom loss_args
     α: float = 1.0,
-    eps: float = 1e-9,
+    eps: float = 1e-3,
     β: float = 1,
     use_policy_weights: bool = False,
     inner_policy_weights: bool = False,
     align_method: str = 'para_signed',
     norm_before_reduce: bool = True,
+    filter_sinks: bool = True,
     p=2
 ):
     """
@@ -69,9 +70,10 @@ def innerdpo_loss(
         hs = o.hs[k]  # [batch, seq_len, hidden_dim], RAW ACTIVATIONS
         # hs = F.log_softmax(hs, dim=-1)  # [batch, seq_len, hidden_dim], LOG PROBABILITIES
         if norm_before_reduce:
+            # why would we do this? to prevent attention sinks. consider clamping 3*std mags
             hs = safe_norm(hs, p=p, dim=-1, eps=eps)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
         # Aggregate over sequence using attention masks
-        hs = reduce_tokens_w_attention(hs, o.mask)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+        hs = reduce_tokens_w_attention(hs, o.mask, filter_sinks=filter_sinks, )  # [batch, hidden_dim], AVERAGED UNIT VECTORS
         return hs
 
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k):
@@ -86,7 +88,6 @@ def innerdpo_loss(
 
         # Decompose pi into parallel and orthogonal components
         pref_dir_ref_unit = safe_norm(pref_dir_ref, p=p, dim=-1, eps=eps)
-        # para_sign_magn = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1, keepdim=True)
 
         signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
         para_vec = signed_proj * pref_dir_ref_unit
@@ -114,8 +115,7 @@ def innerdpo_loss(
         log_hidden_probs = F.log_softmax(scores, dim=-1)   # [B,2]
         w_adj = torch.logsumexp(2 * log_hidden_probs, dim=-1)  # [B]
         pseudo_lp = log_hidden_probs[...,0] - w_adj     # “chosen” class
-        hidden_weight = torch.tensor(1.0, device=pref_dir_pi.device)
-        _hidden_weight = torch.clamp(torch.exp(pseudo_lp), max=1.0).detach()  # [B]
+        hidden_weight = torch.clamp(torch.exp(pseudo_lp), max=1.0).detach()  # [B]
 
         match align_method:
             case 'pars_rat':
@@ -166,17 +166,9 @@ def innerdpo_loss(
             #     """
             #     hidden_ptheta =  (logodds_pi - logodds_ref)
             case 'logodds_noref':
-                hidden_ptheta = logodds_pi
+                hidden_ptheta = logodds_pi * 10
             case 'odds_noref':
                 hidden_ptheta= par_mag - ort_mag
-            case 'stabilized_ratio':
-                """
-                Ratio with stabilized denominator to prevent exploitation where the model focuses on improving values with tiny demoninators
-                """
-                # Use batch statistics for threshold
-                ort_floor = torch.max(ort_mag.mean() * 0.1, torch.tensor(eps, device=ort_mag.device))
-                stabilized_ort = torch.clamp(ort_mag, min=ort_floor)
-                hidden_ptheta = par_mag / stabilized_ort
             case 'cosine_policy_margin':
                 """
                 cos(pi_cho, pi_rej) - cos(ref_cho, ref_rej)
@@ -202,18 +194,28 @@ def innerdpo_loss(
                 raise ValueError(f"Unsupported align_method: {align_method}")
         
         # Apply DPO-style loss
-        loss_hidden_dpo = -F.logsigmoid(β * hidden_ptheta)
         if inner_policy_weights: # I'm not sure if this is helping
-            loss_hidden_dpo = loss_hidden_dpo * hidden_weight
+            hidden_ptheta = hidden_ptheta * hidden_weight
         
-        return dict(loss_hidden_dpo=loss_hidden_dpo, hidden_weight=_hidden_weight, hidden_ptheta=hidden_ptheta)
+        return dict(hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta)
 
 
     # compute losses per layer
     ll = {k: per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
     # combine layer losses
     ll_keys = next(iter(ll.values())).keys()
-    ll = {k: torch.stack([v[k] for v in ll.values()], -1).mean(-1) for k in ll_keys}
+    llr = {k: torch.stack([v[k] for v in ll.values()], -1) for k in ll_keys}
+    
+    # Combine layer losses
+    # if normalize_layers:
+    #     # Simple LayerNorm approach - normalizes across layers for each batch element
+    #     for k in ll_keys:
+    #         layer_values = llr[k]  # [batch, num_layers]
+    #         # Apply layer normalization across the layer dimension
+    #         normalized = F.layer_norm(layer_values, (layer_values.size(-1),), eps=eps)
+    #         llr[k] = normalized
+    
+    ll = {k: v.mean(-1) for k, v in llr.items()}  # average over layers
 
     dpo_ptheta = compute_ptheta(
         pi_cho.label_logprobs,
@@ -222,8 +224,9 @@ def innerdpo_loss(
         ref_rej.label_logprobs,
     )
     loss_dpo = -F.logsigmoid(β * dpo_ptheta)
+    loss_hidden_dpo = -F.logsigmoid(β * ll['hidden_ptheta'])
 
-    loss = loss_dpo + α * ll['loss_hidden_dpo']
+    loss = loss_dpo + α * loss_hidden_dpo
     
     # Apply policy weights if requested
     policy_weights = compute_policy_weights(pi_cho, pi_rej)
@@ -237,6 +240,7 @@ def innerdpo_loss(
     info = dict(
         loss_dpo=loss_dpo.mean(),
         dpo_ptheta=dpo_ptheta.mean(),
+        loss_hidden_dpo=loss_hidden_dpo.mean(),
         **ll,
     )
 
@@ -249,13 +253,19 @@ class InnerDPOLossConfig:
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     """
 
-    α: float = 0.1
+    α: float = 5
     """balance between reroute and retain loss."""
 
-    eps: float = 1.0e-9
+    filter_sinks: bool = False
+    """Whether to filter attention sinks in the hidden states."""
+
+    eps: float = 1.0e-4
 
     β: float = 1.
     """factor to punish orthogonal movement"""
+
+    p: int = 2
+    """norm to use for the hidden states, 2 is euclidean, 1 is manhattan"""
 
     use_policy_weights: bool = False
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
@@ -264,12 +274,11 @@ class InnerDPOLossConfig:
     """Whether to compute policy weights for the inner DPO loss."""
 
 
-    align_method: str = 'para_signed'
+    align_method: str = 'para_signed_log'
     """Method to compute alignment between chosen and rejected hidden states."""
 
     norm_before_reduce: bool = False
-    """Whether to normalize hidden states before reducing them to a single vector."""
-   
+    """Whether to normalize hidden states before reducing them to a single vector."""   
 
     def c(self, *args, **kwargs):
         return innerdpo_loss(*args, **kwargs, **asdict(self))

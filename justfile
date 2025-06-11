@@ -11,20 +11,7 @@ default:
 sweep:
     #!/usr/bin/zsh
     rm -f sweep.sh
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    mkdir outputs2
-    # mv outputs outputs2/outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
-=======
-    # mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
->>>>>>> origin/vast2a
-=======
-    # mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
->>>>>>> origin/vast2a
-=======
-    # mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
->>>>>>> origin/vast2a
+    mv outputs outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
     python scripts/sweep.py > sweep.sh
     unbuffer bash sweep.sh  2>&1 | tee sweep.txt
 

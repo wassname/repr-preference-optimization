@@ -124,7 +124,6 @@ def train(args, trial: Optional[Trial] = None):
 
 
     config = asdict(args)
-    # flatten for wandb
     config.update(
         {
             "post": {
@@ -454,7 +453,9 @@ def make_table(df_res2, args, human_name, base_model="", short_name="", verbose=
     # df_res_type['short_name'] = short_name
     nll = df_res2.groupby('adapter')['_chosen_ppl'].apply(lambda x:np.log(x).mean())
     nll_rat = (nll.loc[adapter_name] - nll.drop(adapter_name).mean())
-    df_res_type['nll'] = nll_rat
+
+    # to measure coherency, we look at how the negative log likelihood of the chosen samples compares to the reference (base model). Generally [0-2] is ok, and we do expect some higher number from DPO in general, but >2 is likely to be incoherent
+    df_res_type['nll_cho/ref'] = nll_rat
     record_line = df_res_type.loc[[adapter_name]]
     record_line.index = [short_name]
     logger.info(f"Record entry:\n\n{record_line.round(3).to_markdown()}\n")

@@ -8,9 +8,9 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
-    lr: float = 1e-5
+    lr: float = 3e-5
 
-    weight_decay: float = 0.001
+    weight_decay: float = 0.0001
 
     gradient_clip_val: float = 1.0
 
@@ -20,7 +20,7 @@ class ExperimentConfig:
     pl_precision: str = "bf16-mixed"
     """precision for pytorch lightning, bf16-mixed is best for 8B models on 80GB GPUs. 'transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true', 64, 32, 16, '64', '32', '16', 'bf16'. See https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.trainer.trainer.Trainer.html#lightning.pytorch.trainer.trainer.Trainer"""
 
-    num_workers: int = 0
+    num_workers: int = 6
     """number of workers for dataloader, 0 is best for 80GB GPUs"""
 
 
@@ -34,10 +34,10 @@ class ExperimentConfig:
     patience: int = 3
 
     dev: bool = False
-    """fast run"""
+    """fast run. Seems to greatly harm performance"""
 
     load_in_4bit: bool = False
-    """bit base and adam 8bit opt"""
+    """bit base and adam 8bit opt. Seems to greatly harm performance"""
 
     load_in_8bit: bool = False
     """bnb 8bit, and adam 8bit opt"""
@@ -45,8 +45,8 @@ class ExperimentConfig:
     use_grad_paging: bool = False
     """avoid mem spikes"""
 
-    n_samples: int = 8000
-    eval_samples: Optional[int] = 500
+    n_samples: int = 30000
+    eval_samples: Optional[int] = 750
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long
 
@@ -59,6 +59,11 @@ class ExperimentConfig:
 
     # base_model: str = "wassname/llama-3.2-3b-sft"
     # batch_size: int = 10
+
+    base_model: str = "allenai/OLMo-2-0425-1B-SFT"
+
+    # base_model: str = "wassname/llama-3-2-1b-sft"
+    batch_size: int = 17
 
     base_model: str = "allenai/OLMo-2-0425-1B-SFT"
     batch_size: int = 17

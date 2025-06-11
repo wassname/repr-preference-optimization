@@ -19,9 +19,9 @@ default_batch_size = 7
 adapters = [
     "hs-none-InnerDPO",
     "dpo",
-    "hs-supr-InnerDPO",
-    "hs-ether-InnerDPO",
-    "side-none-InnerDPO",
+    # "hs-supr-InnerDPO",
+    # "hs-ether-InnerDPO",
+    # "side-none-InnerDPO",
     # "projgrad",
 ]
 
