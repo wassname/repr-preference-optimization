@@ -1,9 +1,13 @@
 from lightning.pytorch.loggers import WandbLogger
 import wandb
 import os
+import pandas as pd
 
-def init_wandb(args, save_dir, group_name, run_name, project="reprpo2"):
-    config = args.__dict__.copy()
+def flatten_dict(d):
+    return pd.json_normalize(d, sep='_').to_dict(orient='records')[0]
+
+def init_wandb(config, save_dir, group_name, run_name, project="reprpo2"):
+    config = flatten_dict(config)  # flatten the config dict
     # you can also add a “post” sub-dict here, just like you do today
     wandb_kwargs = dict(
         name=run_name,

@@ -1,14 +1,15 @@
 import os
+from jinja2 import Environment, FileSystemLoader
+import os
 os.environ["WANDB_GROUP"] = "sweep4"
 
 # for H100
 batch_sizes = {
-    "wassname/SmolLM2-135M-sft": 32,
-    "wassname/SmolLM2-360M-sft": 24,
+    # "wassname/SmolLM2-135M-sft": 32, # too small
+    # "wassname/SmolLM2-360M-sft": 24, # too small?
     "wassname/Qwen3-0.6B-sft": 18,
     "allenai/OLMo-2-0425-1B-SFT": 13, # error please specifcy target modules in config
-    # "wassname/llama-3-2-1b-sft",
-    "wassname/llama-3.2-3b-sft": 10,
+    # "wassname/llama-3.2-3b-sft": 10,
     "princeton-nlp/Llama-3-Base-8B-SFT": 5,
     # "allenai/Llama-3.1-Tulu-3-8B-SFT": 5,
     # add large models too if you want custom sizes
@@ -30,7 +31,7 @@ seeds = [
 
 datasets = [
     # set 1
-    # "math",
+    # "math", # dpo cna't learn it, too hard to small models
     "alpaca_mmlu",
     "code_easy",
     "cooking",
@@ -58,8 +59,20 @@ datasets = [
     # "alpaca_short",
 ]
 
-from jinja2 import Environment, FileSystemLoader
-import os
+
+
+# small sweep
+env = Environment(loader=FileSystemLoader('scripts'), trim_blocks=True, lstrip_blocks=True)
+template = env.get_template('sweep.sh.j2')
+rendered = template.render(
+    batch_sizes=batch_sizes,
+    default_bs=default_batch_size,
+    adapters=adapters[:2],
+    seeds=seeds[:3],
+    datasets=datasets[:4],
+)
+print(rendered)
+
 env = Environment(loader=FileSystemLoader('scripts'), trim_blocks=True, lstrip_blocks=True)
 template = env.get_template('sweep.sh.j2')
 rendered = template.render(
@@ -70,3 +83,5 @@ rendered = template.render(
     datasets=datasets,
 )
 print(rendered)
+
+

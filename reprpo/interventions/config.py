@@ -57,13 +57,13 @@ class ExperimentConfig:
     # allenai/Llama-3.1-Tulu-3-8B-SFT
 
 
-    base_model: str = "wassname/llama-3.2-3b-sft"
-    batch_size: int = 10
+    # base_model: str = "wassname/llama-3.2-3b-sft"
+    # batch_size: int = 10
 
-    # allenai/OLMo-2-0425-1B-SFT
-
+    base_model: str = "allenai/OLMo-2-0425-1B-SFT"
+    batch_size: int = 17
+    
     # 24GB gpu
-
     
     # # base_model: str = "wassname/llama-3-2-1b-sft"
     # batch_size: int = 5

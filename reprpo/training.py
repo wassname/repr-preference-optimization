@@ -122,7 +122,9 @@ def train(args, trial: Optional[Trial] = None):
     setup_logging(str(save_dir), level="DEBUG" if args.verbose > 1 else "INFO")
     logger.info(f"Logging initialized at {save_dir}")
 
+
     config = asdict(args)
+    # flatten for wandb
     config.update(
         {
             "post": {
@@ -141,7 +143,7 @@ def train(args, trial: Optional[Trial] = None):
     )
     if args.wandb:
         pl_wandb_logger = init_wandb(
-            args, str(save_dir), group_name, run_fname, project="reprpo2"
+            config, str(save_dir), group_name, run_fname, project="reprpo2"
         )
 
     if args.verbose > 1:

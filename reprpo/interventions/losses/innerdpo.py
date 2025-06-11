@@ -88,11 +88,13 @@ def innerdpo_loss(
         pref_dir_ref_unit = safe_norm(pref_dir_ref, p=p, dim=-1, eps=eps)
         # para_sign_magn = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1, keepdim=True)
 
-        para_vec = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1, keepdim=True) * pref_dir_ref_unit
+        signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
+        para_vec = signed_proj * pref_dir_ref_unit
         ort_vec = pref_dir_pi - para_vec
 
-        par_vec_ref = torch.sum(pref_dir_ref * pref_dir_ref_unit, dim=-1, keepdim=True) * pref_dir_ref_unit
-        orth_vec_ref = pref_dir_ref - par_vec_ref
+        signed_proj_ref = torch.sum(pref_dir_ref * pref_dir_ref_unit, dim=-1)
+        par_vec_ref = signed_proj_ref * pref_dir_ref_unit
+        # orth_vec_ref = pref_dir_ref - par_vec_ref
 
         # Magnitudes
         par_mag = torch.norm(para_vec, p=p, dim=-1)
@@ -102,10 +104,10 @@ def innerdpo_loss(
         logodds_pi = log_par - log_ort
 
         par_mag_ref = torch.norm(par_vec_ref, p=p, dim=-1)
-        ort_mag_ref = torch.norm(orth_vec_ref, p=p, dim=-1)
+        # ort_mag_ref = torch.norm(orth_vec_ref, p=p, dim=-1) # this is often near zero, so we can't use
         log_par_ref = safe_log(par_mag_ref, eps=eps)
-        log_ort_ref = safe_log(ort_mag_ref, eps=eps)
-        logodds_ref = log_par_ref - log_ort_ref
+        # log_ort_ref = safe_log(ort_mag_ref, eps=eps) # this is often near zero, so we can't use
+        # logodds_ref = log_par_ref - log_ort_ref
 
         # Make weights similar to # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
         scores = torch.stack([log_par, log_ort], dim=-1)    # shape [B,2]
@@ -116,13 +118,20 @@ def innerdpo_loss(
         _hidden_weight = torch.clamp(torch.exp(pseudo_lp), max=1.0).detach()  # [B]
 
         match align_method:
+            case 'pars_rat':
+                hidden_ptheta =  signed_proj / (signed_proj_ref.norm(p=p, dim=-1) + eps)
+            case 'pars_rat_log':
+                hidden_ptheta =  10 * (safe_log(signed_proj) - safe_log(signed_proj_ref.norm(p=p, dim=-1) + eps))
+            case 'pars_ratref':
+                hidden_ptheta =  signed_proj / (pref_dir_ref.norm() + eps)
+            case 'pars_ratref_log':
+                hidden_ptheta =  10 * (safe_log(signed_proj) - safe_log(pref_dir_ref.norm(p=p, dim=-1) + eps))
             case 'para_signed':
                 """            
                 Direct signed projection ⟨policy_diff, ref_unit⟩ 
                 Geometric: "How far does policy move along the reference preference direction?"
                 Intuition: Raw alignment signal. +ve = aligned, -ve = anti-aligned. Unbounded.
                 """
-                signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 hidden_ptheta =  signed_proj
             case 'para_signed_log':
                 """                
@@ -130,7 +139,6 @@ def innerdpo_loss(
                 Geometric: Compresses projection magnitude while preserving direction
                 Intuition: Stabilizes wild swings, dampens near-zero gradients
                 """
-                signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 hidden_ptheta =  safe_signed_log(signed_proj, eps=eps)
             case 'para_orth_signed':
                 """
@@ -139,7 +147,6 @@ def innerdpo_loss(
                 Geometric: "Raw signed parallel strength vs orthogonal drift"
                 Intuition: Rewards ref-direction movement, penalizes off-axis drift (no logs)
                 """
-                signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=p, dim=-1)
                 hidden_ptheta =  (signed_proj - orthogonal_mag)
             case 'para_orth_signed_log':
@@ -149,16 +156,15 @@ def innerdpo_loss(
                 Geometric: "Log-parallel strength vs log-orthogonal drift"
                 Intuition: Stabilizes both signals in log space
                 """
-                signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
                 orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=p, dim=-1)
                 hidden_ptheta =  (safe_signed_log(signed_proj, eps=eps) - safe_log(orthogonal_mag, eps))
-            case 'logodds':
-                """ 
-                signed_log(parallel) - log(orthogonal)
-                Geometric: Same as #3 but with log-stabilized parallel term
-                Intuition: Double stabilization for both parallel and orthogonal terms
-                """
-                hidden_ptheta =  (logodds_pi - logodds_ref)
+            # case 'logodds':
+            #     """ 
+            #     signed_log(parallel) - log(orthogonal)
+            #     Geometric: Same as #3 but with log-stabilized parallel term
+            #     Intuition: Double stabilization for both parallel and orthogonal terms
+            #     """
+            #     hidden_ptheta =  (logodds_pi - logodds_ref)
             case 'logodds_noref':
                 hidden_ptheta = logodds_pi
             case 'odds_noref':

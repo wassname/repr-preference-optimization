@@ -56,7 +56,6 @@
             "args": [
                 "hs-supr-InnerDPO",
                 // "--dev",
-                "--loss.normalize-layers",
                 "--loss.inner-policy-weights",
                 "--verbose=3",
             ]
