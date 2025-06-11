@@ -59,8 +59,14 @@
             "args": [
                 "hs-supr-InnerDPO",
 <<<<<<< HEAD
+<<<<<<< HEAD
                 "--loss.align_method=pars_rat",
                 // "--dev",
+=======
+                // "--dev",
+                "--loss.normalize-layers",
+                "--loss.inner-policy-weights",
+>>>>>>> origin/vast2a
 =======
                 // "--dev",
                 "--loss.normalize-layers",

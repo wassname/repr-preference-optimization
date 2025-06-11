@@ -266,6 +266,7 @@ and higher lpha... no wait it was high
 
 TODO turns out medical is not a good orthogonal shift. I should try obscure ranking task, or logic, or code, or ethics?
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 
 TODO It's working but incoherent. Lets try para_signed / mag_ref+eps  Or  para_signed / ref.norm()?
@@ -275,5 +276,7 @@ python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat
 python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_ratref
 python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_ratref_log
 python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log
+=======
+>>>>>>> origin/vast2a
 =======
 >>>>>>> origin/vast2a
