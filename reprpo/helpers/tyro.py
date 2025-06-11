@@ -139,6 +139,8 @@ def get_display_name_from_args(args: dataclass):
     s_all = rename(s_all)
     logger.info(f"diff: {cls_name} {s_all}")
 
+
+
     def short_hand(s):
         """
         e.g. ReprPO_ETH collect_hs=True innerdpo.align_method=orth innerdpo.eps=1e-05 innerdpo.norm_before_reduce=True innerdpo.use_policy_weights=True innerdpo.α=1 verbose=2
@@ -161,9 +163,27 @@ def get_display_name_from_args(args: dataclass):
             else:
                 sl2.append(ss[:10])  # take the first 5 chars
 
-        return " ".join(sl2).replace('True', '1').replace('False', '0')
-    s_short = f"{cls_name} {s_short}"
-    s2 = short_hand(s_short)
+        s = " ".join(sl2)
+        return s
+
+    def acronymize(s):
+        shorthand = {
+            'ReprPO': 'RPO',
+            "None": 'N',
+            "InnerDPO": 'InPO',
+            'True': '1',
+            'False': '0',
+            'loss.': 'l.',
+            'transform.': 't.',
+            'SupressedHS': 'supr',
+        }
+        for k, v in shorthand.items():
+            s = s.replace(k, v)
+        return s
+    s2 = acronymize(short_hand(s_short))
     s2 = f"{cls_name} {s2}"
+
+    s_short = f"{cls_name} {s_short}"
+    s_short = acronymize(s_short)
 
     return s_all, s_short, s2

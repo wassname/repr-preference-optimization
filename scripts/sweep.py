@@ -3,11 +3,11 @@ os.environ["WANDB_GROUP"] = "sweep4"
 
 # for H100
 batch_sizes = {
-    "wassname/SmolLM2-135M-sft": 32,
+    # "wassname/SmolLM2-135M-sft": 32, # just too small
     "wassname/SmolLM2-360M-sft": 24,
     "wassname/Qwen3-0.6B-sft": 18,
     "allenai/OLMo-2-0425-1B-SFT": 13, # error please specifcy target modules in config
-    # "wassname/llama-3-2-1b-sft",
+    # "wassname/llama-3-2-1b-sft", # note this seems incoherent
     "wassname/llama-3.2-3b-sft": 10,
     "princeton-nlp/Llama-3-Base-8B-SFT": 5,
     # "allenai/Llama-3.1-Tulu-3-8B-SFT": 5,
@@ -18,9 +18,9 @@ default_batch_size = 7
 adapters = [
     "hs-none-InnerDPO",
     "dpo",
-    "hs-supr-InnerDPO",
-    "hs-ether-InnerDPO",
-    "side-none-InnerDPO",
+    # "hs-supr-InnerDPO",
+    # "hs-ether-InnerDPO",
+    # "side-none-InnerDPO",
     # "projgrad",
 ]
 

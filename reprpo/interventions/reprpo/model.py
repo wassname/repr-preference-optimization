@@ -90,8 +90,10 @@ def reprpo_forward_baukit(
                 reprs[p]
             ).all(), f"gathered activations for layer [{p}] are not finite {reprs[p]}. This could be due to an high lr or unstable loss function."
 
+    # we should filter out the prompt which is the same for both chosen and rejected
     if prompt_mask is not None:
         attn_mask = attn_mask * (1-prompt_mask)
+    # we should filter out the special tokens which might contain attention sinks
     if special_tokens_mask is not None:
         attn_mask = attn_mask * (1-special_tokens_mask)
 
