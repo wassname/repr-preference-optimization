@@ -241,7 +241,7 @@ def innerdpo_loss(
     # DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
     if dpo_agg_type == "ipo":
         loss_dpo = (dpo_ptheta - 1/(2 * β)) ** 2  # Eq. 17 of https://arxiv.org/pdf/2310.12036v2.pdf
-        loss_hidden_dpo = (hidden_ptheta - 1/(2 * β)) ** 2
+        loss_hidden_dpo = (hidden_ptheta.mean(1) - 1/(2 * β)) ** 2
     else:
         # Eq. 3 https://ericmitchell.ai/cdpo.pdf; label_smoothing=0 gives original DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
         loss_dpo = -F.logsigmoid(β * dpo_ptheta) * (1 - label_smoothing) - F.logsigmoid(-β * dpo_ptheta) * label_smoothing 
@@ -251,11 +251,11 @@ def innerdpo_loss(
     loss = loss_dpo + α * loss_hidden_dpo
     
     # Apply policy weights if requested
-    policy_weights = compute_policy_weights(pi_cho, pi_rej)
-    vals['policy_weights'] = policy_weights.mean()
-    vals['cho_log_policy_weights'] = torch.exp(pi_cho.log_policy_weights).mean()
-    vals['rej_log_policy_weights'] = torch.exp(pi_rej.log_policy_weights).mean()   
     if use_policy_weights:
+        policy_weights = compute_policy_weights(pi_cho, pi_rej)
+        vals['policy_weights'] = policy_weights.mean()
+        vals['cho_log_policy_weights'] = torch.exp(pi_cho.log_policy_weights).mean()
+        vals['rej_log_policy_weights'] = torch.exp(pi_rej.log_policy_weights).mean()   
         loss = loss * policy_weights.detach()
 
     vals = {k:v.mean() for k, v in vals.items()}

@@ -8,7 +8,7 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
-    lr: float = 3e-6
+    lr: float = 6e-6
 
     weight_decay: float = 0.000
 
@@ -44,7 +44,7 @@ class ExperimentConfig:
     use_grad_paging: bool = False
     """avoid mem spikes"""
 
-    n_samples: int = 30000
+    n_samples: int = 20000
     eval_samples: Optional[int] = 750
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long
@@ -59,7 +59,7 @@ class ExperimentConfig:
     # batch_size: int = 10
 
     base_model: str = "allenai/OLMo-2-0425-1B-SFT"
-    batch_size: int = 17
+    batch_size: int = 20
     
     # 24GB gpu
     

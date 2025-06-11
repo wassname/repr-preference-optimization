@@ -100,6 +100,7 @@ I want to report nll ratio (should be [0-1]) otherwise incoherent
 
 | ReSuIp AlMe=PaRa |       0.928 |                0.823 |            0.456 |        0.641 | sezuyclg |        19.047 |
 | ReSuIp AlMe=PaRa |       0.908 |                0.833 |            0.396 |        0.551 | 2045bep9 |         8.863 |
+| ReNIp AliMet=ParsRat |       0.943 |                0.861 |            0.433 |        0.379 | lxsitfp8 |         0.104 |
 
 Hm the dff alphas don't seem to have much effect. Is the mostl cheating somehow. Perhaps for the ratio one its finding areas with a very small differen't, and making those very seperate in comparison to the tiny denominator, so the ratio is very large, and this dominated the mean. Hmm
 
@@ -111,12 +112,12 @@ ok! I made one that bounded the denominator to 10% percentile, and it's working,
 
 # 2025-06-11 08:21:26 try clipping
 
+python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=0.5 --loss.trust_region=0.2
 python scripts/train.py dpo
-python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat --loss.α=0.5  --loss.trust_region=0.2
-python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=0.1 --loss.α=10
+python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=0.1 --loss.α=4
 python scripts/train.py hs-ether-InnerDPO --loss.align_method=pars_rat
 python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log
-python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat --loss.trust_region=1
+python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.trust_region=1
 python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=4
 
 
@@ -148,7 +149,7 @@ hmm oo in the original dpo
 | Dpo                   |     0.943 |              0.876 |           0.44 |      0.377 | cz6hvuw4 |       0.588 |
 | ReEtIp AliMet=ParsRat |     0.947 |              0.879 |          0.435 |       0.38 | iqm17v2j |       0.575 |
 | none                  |     0.944 |              0.819 |          0.388 |      0.389 |
-
+| ReNIp AliMet=ParsRat |       0.943 |                0.861 |            0.433 |   0.379 | lxsitfp8 |         0.104 |
 
 supr was nan
 ok 5e-6 hardly learns

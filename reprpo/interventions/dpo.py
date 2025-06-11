@@ -64,7 +64,7 @@ def compute_dpo_loss(
         _dpo_acc=dpo_acc.mean(),
     )
 
-def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=None, special_tokens_mask=None, dpo_agg_type="ipo", return_dict=True, output_hidden_states=True, **kwargs):
+def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=None, special_tokens_mask=None, dpo_agg_type="ipo", return_dict=True, output_hidden_states=True, use_wpo=False, **kwargs):
     """Forward pass through the model that returns extras."""
     outs = model(input_ids, attention_mask=attention_mask, return_dict=return_dict,
             output_hidden_states=output_hidden_states, **kwargs)
@@ -81,6 +81,7 @@ def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=No
         input_ids=input_ids,
         selection_mask=attention_mask,
         dpo_agg_type=dpo_agg_type,
+        use_wpo=use_wpo,
     )
     hs = {k: v for k,v in enumerate(outs.hidden_states)} if output_hidden_states else None
     return ReprPOModelOutput(
@@ -102,20 +103,20 @@ def dpo_forward_batch(batch, model, β=0.1, use_policy_weights=False, dpo_agg_ty
         with model.disable_adapter():
             ref_cho = model_forward_with_logprobs(
                 model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], 
-                special_tokens_mask=batch["chosen_special_tokens_mask"],dpo_agg_type=dpo_agg_type, **model_kwargs
+                special_tokens_mask=batch["chosen_special_tokens_mask"],dpo_agg_type=dpo_agg_type, use_wpo=use_policy_weights, **model_kwargs
             )
             ref_rej = model_forward_with_logprobs(
                 model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], 
                 special_tokens_mask=batch["rejected_special_tokens_mask"],
-                dpo_agg_type=dpo_agg_type, **model_kwargs
+                dpo_agg_type=dpo_agg_type, use_wpo=use_policy_weights, **model_kwargs
             )
 
     model.train()
     pi_cho = model_forward_with_logprobs(
-        model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["chosen_special_tokens_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+        model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["chosen_special_tokens_mask"], dpo_agg_type=dpo_agg_type, use_wpo=use_policy_weights, **model_kwargs
     )
     pi_rej = model_forward_with_logprobs(
-        model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["rejected_special_tokens_mask"], dpo_agg_type=dpo_agg_type, **model_kwargs
+        model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["rejected_special_tokens_mask"], dpo_agg_type=dpo_agg_type, use_wpo=use_policy_weights, **model_kwargs
     )
 
     return calc_dpo_loss_w_metrics(
@@ -199,7 +200,7 @@ class DPOConfig(ExperimentConfig):
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
 
     dpo_agg_type: str = "ipo"
-    """# DPO aggregation type, can be 'ipo' or 'ppo'. IPO is the original DPO, PPO is the one used in the WPO paper."""
+    """# DPO aggregation type, can be 'ipo' or 'dpo'. IPO is the original DPO, IPO is the one used in the IPO paper."""
 
     β: float = 0.1
 

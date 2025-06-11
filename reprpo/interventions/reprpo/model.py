@@ -44,7 +44,7 @@ def get_regexp_layers(collection_keys: List[str], model):
 
 
 def reprpo_forward_baukit(
-    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False, prompt_mask=None, special_tokens_mask=None, dpo_agg_type='ipo'
+    model, input_ids, attn_mask, layer_paths, collect_input=True, collect_hs=False, prompt_mask=None, special_tokens_mask=None, dpo_agg_type='ipo', use_wpo=False,
 ):
     # if the layer paths are just str(ints) then just collect the hidden states
     if collect_hs:
@@ -98,7 +98,7 @@ def reprpo_forward_baukit(
         attn_mask = attn_mask * (1-special_tokens_mask)
 
     out_lp = compute_logprobs(
-        logits=outs.logits, input_ids=input_ids, selection_mask=attn_mask, dpo_agg_type=dpo_agg_type
+        logits=outs.logits, input_ids=input_ids, selection_mask=attn_mask, dpo_agg_type=dpo_agg_type, use_wpo=use_wpo
     )
     return ReprPOModelOutput(
         hs=reprs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attn_mask, log_policy_weights=out_lp['log_policy_weights'],
@@ -172,6 +172,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
         dpo_agg_type: str = "ipo",
         loss: LossesType,
         transform: TransformType,
+        use_wpo: bool = False,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -241,6 +242,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     prompt_mask=batch["prompt_mask"],
                     special_tokens_mask=batch["chosen_special_tokens_mask"],
                     dpo_agg_type=h.dpo_agg_type,
+                    use_wpo=h.use_wpo,
                 )
                 ref_rej = reprpo_forward_baukit(
                     model=model,
@@ -252,6 +254,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
                     prompt_mask=batch["prompt_mask"],
                     special_tokens_mask=batch["rejected_special_tokens_mask"],
                     dpo_agg_type=h.dpo_agg_type,
+                    use_wpo=h.use_wpo,
                 )
 
         model.train()
@@ -265,6 +268,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             prompt_mask=batch["prompt_mask"],
             special_tokens_mask=batch["chosen_special_tokens_mask"],
             dpo_agg_type=h.dpo_agg_type,
+            use_wpo=h.use_wpo,
         )
         pi_rej = reprpo_forward_baukit(
             model=model,
@@ -276,6 +280,7 @@ class PL_REPRPO_MODEL(PL_MODEL):
             prompt_mask=batch["prompt_mask"],
             special_tokens_mask=batch["rejected_special_tokens_mask"],
             dpo_agg_type=h.dpo_agg_type,
+            use_wpo=h.use_wpo,
         )
 
         # run loss function

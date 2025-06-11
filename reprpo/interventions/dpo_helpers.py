@@ -1,8 +1,9 @@
 import torch
 import torch.nn.functional as F
+from loguru import logger
 
 
-def compute_logprobs(logits, input_ids, selection_mask=None, dpo_agg_type="ipo"):
+def compute_logprobs(logits, input_ids, selection_mask=None, dpo_agg_type="ipo", use_wpo=False):
     """
     Compute log probabilities.
 
@@ -51,17 +52,27 @@ def compute_logprobs(logits, input_ids, selection_mask=None, dpo_agg_type="ipo")
             assert all(mask.sum(-1) > 0), "Mask should not be all zeros, check your input data."
 
     else:
+        logger.warning(
+            "No selection mask provided, using all tokens for log probability calculation."
+        )
+        raise ValueError(
+            "Selection mask is required for DPO loss calculation. Please provide a valid selection mask."
+        )
         output["label_logp"] = selected_log_probs.mean(-1)
     
     
 
+    # FIXME turn of if no WPO
     # return a dict and also compute [WPO](https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L1240)
-    with torch.no_grad():
-        # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
-        weights_adjustment_factor = torch.logsumexp(2 * log_probs, dim=-1)  # same as sum(probs**2) in log space
-        per_token_logps_adjusted = selected_log_probs - weights_adjustment_factor
-        weights = (per_token_logps_adjusted * mask).sum(-1) / mask.sum(-1)
-        output["log_policy_weights"] =  weights.detach()
+    if use_wpo:
+        with torch.no_grad():
+            # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
+            weights_adjustment_factor = torch.logsumexp(2 * log_probs, dim=-1)  # same as sum(probs**2) in log space
+            per_token_logps_adjusted = selected_log_probs - weights_adjustment_factor
+            weights = (per_token_logps_adjusted * mask).sum(-1) / mask.sum(-1)
+            output["log_policy_weights"] =  weights.detach()
+    else:
+        output["log_policy_weights"] = torch.zeros_like(output["label_logp"])
 
     return output
 
@@ -96,5 +107,5 @@ def compute_policy_weights(pi_cho, pi_rej, T=3):
     policy_weights = torch.sigmoid((pi_cho.log_policy_weights + pi_rej.log_policy_weights)/T)
 
     # balance them
-    policy_weights = policy_weights /(policy_weights.mean() + 1e-9)
+    policy_weights = policy_weights /(policy_weights.mean() + 1e-6)
     return policy_weights

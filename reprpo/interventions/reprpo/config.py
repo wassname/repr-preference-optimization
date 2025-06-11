@@ -52,6 +52,8 @@ class ReprPOConfig(ExperimentConfig):
     dpo_agg_type: str = "ipo"
     """DPO aggregation type, e.g., 'ipo'/'dpo'"""
 
+    use_wpo: bool = False
+
     _cls = PL_REPRPO_MODEL
 
     _model_keys = [
@@ -63,6 +65,7 @@ class ReprPOConfig(ExperimentConfig):
         "loss",
         "transform",
         'dpo_agg_type',
+        'use_wpo',
     ]
 
     @property

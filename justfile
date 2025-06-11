@@ -22,31 +22,24 @@ scratch:
     set -x
     . ./.venv/bin/activate
 
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=log_ratio_difference
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=ratio_difference --loss.norm-before-reduce --loss.eps=1e-2
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=log_ratio_difference --loss.α=10
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=ratio_difference --loss.α=10
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=log_ratio_difference --loss.α=.2
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=ratio_difference --loss.α=.2
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=stabilized_ratio --loss.α=10
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=logodds_noref --loss.α=10
-    # python scripts/train.py dpo
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=1 --loss.p=1 --loss.use-filter-sinks
-    # python scripts/train.py dpo --dpo_agg_type=dpo
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=10
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=0.5 --loss.trust_region=0.2
+    python scripts/train.py dpo
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=0.1 --loss.α=4
+    python scripts/train.py hs-ether-InnerDPO --loss.align_method=pars_rat
+    python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log
     
 
-    # export alpha=(
-    #     100
-    #     10
-    #     0.01
-    #     0.25
-    #     0.001
-    #     1
-    # )
-    # for al in "${alpha[@]}"; do
-    #     python scripts/train.py hs-none-InnerDPO --loss.α="$al"
-    # done
+    export alpha=(
+        100
+        10
+        0.01
+        0.25
+        0.001
+        1
+    )
+    for al in "${alpha[@]}"; do
+        python scripts/train.py hs-none-InnerDPO --loss.α="$al"
+    done
 
     # export agg=(
     #     log_ratio_difference
@@ -65,47 +58,27 @@ scratch:
     #     python scripts/train.py hs-none-InnerDPO --loss.align_method="$ag"
     # done
 
-    # diff norms
-    # python scripts/train.py hs-none-InnerDPO --loss.inner-policy-weights --loss.normalize-layers
-    # python scripts/train.py hs-none-InnerDPO --loss.inner-policy-weights
-
-    # # oh this was bad!
-    # python scripts/train.py hs-none-InnerDPO --loss.inner-policy-weights --loss.normalize-layers --loss.norm_before_reduce
-
-    # long
-    python scripts/train.py hs-supr-InnerDPO --loss.align_method=odds_noref --loss.α=10
-    python scripts/train.py hs-supr-InnerDPO --loss.α=10
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=logodds_noref --loss.α=20
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=odds_noref --loss.α=20
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=para_signed_log --loss.α=20
-    
 
     export BASE=(
         dpo
+        side-none-InnerDPO
         hs-supr-InnerDPO
         hs-ether-InnerDPO
-        side-none-InnerDPO
     )
     for base in "${BASE[@]}"; do
         python scripts/train.py $base
     done
     
-    export OPTIONS=(     
-        --loss.no-norm-before-reduce
+    export OPTIONS=(
         --loss.norm-before-reduce
-        --loss.inner-policy-weights --loss.policy-weights
         --dpo_agg_type=dpo
-        --loss.align-method=para_signed
-        --loss.align-method=para_orth
         --loss.filter_sinks
         --loss.p=1
         --loss.eps=1e-2
         --loss.eps=1e-6
         --loss.eps=1e-9
-        --weight-decay=1e-9
+        --weight-decay=1e-2
         --collection-layers='range(0.1, -1)'
-        --use-load-in-8bit
-        --ideal-batch-size=128
 
     ) 
 
@@ -239,6 +212,7 @@ scratch2:
     # export ARGS='--batch-size=10'
     # baseline
     # couple of quick ones to test
+
     
     python scripts/train.py dpo --verbose=2
     python scripts/train.py hs-none-InnerDPO --loss.align-method=para --loss.α=10
