@@ -146,7 +146,7 @@ def get_display_name_from_args(args: dataclass):
     logger.info(f"diff: {cls_name} {s_all}")
 
 
-    def acronym(s):
+    def acronym(s): 
         defs = {
             'True': '1',
             'False': '0',
