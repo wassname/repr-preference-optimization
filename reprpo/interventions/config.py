@@ -8,13 +8,13 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
-    lr: float = 3e-5
+    lr: float = 3e-6
 
-    weight_decay: float = 0.0001
+    weight_decay: float = 0.000
 
-    gradient_clip_val: float = 1.0
+    gradient_clip_val: float = 10.0
 
-    ideal_batch_size: int = 32
+    ideal_batch_size: int = 128
     """ideal batch size, used to calculate gradient accumulation steps"""
 
     pl_precision: str = "bf16-mixed"
@@ -22,7 +22,6 @@ class ExperimentConfig:
 
     num_workers: int = 6
     """number of workers for dataloader, 0 is best for 80GB GPUs"""
-
 
     dataset: str = "alpaca_easy"
     """train dataset."""
@@ -56,14 +55,8 @@ class ExperimentConfig:
 
     # allenai/Llama-3.1-Tulu-3-8B-SFT
 
-
     # base_model: str = "wassname/llama-3.2-3b-sft"
     # batch_size: int = 10
-
-    base_model: str = "allenai/OLMo-2-0425-1B-SFT"
-
-    # base_model: str = "wassname/llama-3-2-1b-sft"
-    batch_size: int = 17
 
     base_model: str = "allenai/OLMo-2-0425-1B-SFT"
     batch_size: int = 17

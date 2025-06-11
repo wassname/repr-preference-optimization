@@ -48,6 +48,7 @@ def compute_logprobs(logits, input_ids, selection_mask=None, dpo_agg_type="ipo")
             # Calculate the average log probability excluding padding tokens
             # This averages over the tokens, so the shape is (batch_size, num_tokens)
             output["label_logp"] = selected_log_probs.sum(-1) / mask.sum(-1)
+            assert all(mask.sum(-1) > 0), "Mask should not be all zeros, check your input data."
 
     else:
         output["label_logp"] = selected_log_probs.mean(-1)

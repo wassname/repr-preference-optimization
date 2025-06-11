@@ -43,7 +43,7 @@ def innerdpo_loss(
     transforms: Optional[Callable] = None,
     # custom loss_args
     α: float = 1.0,
-    eps: float = 1e-3,
+    eps: float = 1e-6,
     β: float = 1,
     use_policy_weights: bool = False,
     inner_policy_weights: bool = False,
@@ -51,7 +51,9 @@ def innerdpo_loss(
     norm_before_reduce: bool = True,
     filter_sinks: bool = True,
     trust_region: float = 2.0,
-    p=2
+    dpo_agg_type: str = "ipo",
+    p=2,
+    label_smoothing=0,
 ):
     """
     Compute innerDPO loss with various alignment options.
@@ -85,6 +87,7 @@ def innerdpo_loss(
         hs_ref_rej = preproc_hs(ref_rej, k)
 
         pref_dir_ref = hs_ref_cho - hs_ref_rej
+        pref_mag_ref = torch.norm(pref_dir_ref, p=p, dim=-1)
         pref_dir_pi = hs_pi_cho - hs_pi_rej
 
         # Decompose pi into parallel and orthogonal components
@@ -120,13 +123,9 @@ def innerdpo_loss(
 
         match align_method:
             case 'pars_rat':
-                hidden_ptheta =  signed_proj / (signed_proj_ref + eps)
+                hidden_ptheta =  signed_proj / (pref_mag_ref + eps) - 1
             case 'pars_rat_log':
-                hidden_ptheta =  10 * (safe_log(signed_proj) - safe_log(signed_proj_ref.norm(p=p, dim=-1) + eps))
-            case 'pars_ratref':
-                hidden_ptheta =  signed_proj / (pref_dir_ref.norm() + eps)
-            case 'pars_ratref_log':
-                hidden_ptheta =  10 * (safe_log(signed_proj) - safe_log(pref_dir_ref.norm(p=p, dim=-1) + eps))
+                hidden_ptheta =  10 * (safe_log(signed_proj) - safe_log(pref_mag_ref))
             case 'para_signed':
                 """            
                 Direct signed projection ⟨policy_diff, ref_unit⟩ 
@@ -198,15 +197,21 @@ def innerdpo_loss(
         if inner_policy_weights: # I'm not sure if this is helping
             hidden_ptheta = hidden_ptheta * hidden_weight
 
+
+        assert hidden_ptheta.shape[0] == pi_cho.hs[k].shape[0], \
+            f"hidden_ptheta shape {hidden_ptheta.shape} does not match batch size {pi_cho.hs[k].shape[0]}"
+        assert len(hidden_ptheta.shape) == 1
+
         
-        return dict(hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta)
+        return dict(hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta,
+                    hptheta_top=signed_proj, hptheta_bottom=pref_mag_ref)
 
 
     # compute losses per layer
-    ll = {k: per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
+    layer_vals = {k: per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
     # combine layer losses
-    ll_keys = next(iter(ll.values())).keys()
-    llr = {k: torch.stack([v[k] for v in ll.values()], -1) for k in ll_keys}
+    ll_keys = next(iter(layer_vals.values())).keys()
+    layer_vals = {k: torch.stack([v[k] for v in layer_vals.values()], -1) for k in ll_keys}
     
     # Combine layer losses
     # if normalize_layers:
@@ -217,40 +222,48 @@ def innerdpo_loss(
     #         normalized = F.layer_norm(layer_values, (layer_values.size(-1),), eps=eps)
     #         llr[k] = normalized
     
-    ll = {k: v.mean(-1) for k, v in llr.items()}  # average over layers
+    vals = {k: v.mean(-1) for k, v in layer_vals.items()}  # average over layers
 
+    hidden_ptheta = layer_vals['hidden_ptheta']
+    if trust_region > 0:
+        # Moving too far in the hidden weight space leads to incoherent, so we will bound the loss to only reward within a trusted region.
+        # This is similar to the trust region in PPO.
+        # It's defined in the ptheta space, so it depends on the loss, but for `pars_rat` it means it can only get reward for seperating the chosen and rejected hidden states by `trust_region` times the distance in the reference model
+        # FIXME: do I want to clamp low and high?
+        hidden_ptheta = torch.clamp(hidden_ptheta, None, trust_region)
+    
     dpo_ptheta = compute_ptheta(
         pi_cho.label_logprobs,
         pi_rej.label_logprobs,
         ref_cho.label_logprobs,
         ref_rej.label_logprobs,
     )
-    loss_dpo = -F.logsigmoid(β * dpo_ptheta)
+    # DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
+    if dpo_agg_type == "ipo":
+        loss_dpo = (dpo_ptheta - 1/(2 * β)) ** 2  # Eq. 17 of https://arxiv.org/pdf/2310.12036v2.pdf
+        loss_hidden_dpo = (hidden_ptheta - 1/(2 * β)) ** 2
+    else:
+        # Eq. 3 https://ericmitchell.ai/cdpo.pdf; label_smoothing=0 gives original DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
+        loss_dpo = -F.logsigmoid(β * dpo_ptheta) * (1 - label_smoothing) - F.logsigmoid(-β * dpo_ptheta) * label_smoothing 
+        loss_hidden_dpo = -F.logsigmoid(β * hidden_ptheta.mean(1)) - F.logsigmoid(-β * hidden_ptheta.mean(1)) * label_smoothing
     
-    hidden_ptheta = ll['hidden_ptheta']
-    if trust_region > 0:
-        # Moving too far in the hidden weight space leads to incoherent, so we will bound the loss to only reward within a trusted region.
-        # This is similar to the trust region in PPO.
-        # It's defined in the ptheta space, so it depends on the loss, but for `pars_rat` it means it can only get reward for seperating the chosen and rejected hidden states by `trust_region` times the distance in the reference model
-        hidden_ptheta = torch.clamp(hidden_ptheta, -trust_region, trust_region)
-    loss_hidden_dpo = -F.logsigmoid(β * hidden_ptheta)
 
     loss = loss_dpo + α * loss_hidden_dpo
     
     # Apply policy weights if requested
     policy_weights = compute_policy_weights(pi_cho, pi_rej)
-    ll['policy_weights'] = policy_weights.mean()
-    ll['cho_log_policy_weights'] = torch.exp(pi_cho.log_policy_weights).mean()
-    ll['rej_log_policy_weights'] = torch.exp(pi_rej.log_policy_weights).mean()   
+    vals['policy_weights'] = policy_weights.mean()
+    vals['cho_log_policy_weights'] = torch.exp(pi_cho.log_policy_weights).mean()
+    vals['rej_log_policy_weights'] = torch.exp(pi_rej.log_policy_weights).mean()   
     if use_policy_weights:
         loss = loss * policy_weights.detach()
 
-    ll = {k:v.mean() for k, v in ll.items()}
+    vals = {k:v.mean() for k, v in vals.items()}
     info = dict(
         loss_dpo=loss_dpo.mean(),
         dpo_ptheta=dpo_ptheta.mean(),
         loss_hidden_dpo=loss_hidden_dpo.mean(),
-        **ll,
+        **vals,
     )
 
     return loss.mean(), info
@@ -262,9 +275,9 @@ class InnerDPOLossConfig:
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     """
 
-    trust_region: float = 2
+    trust_region: float = 0.1
 
-    α: float = 0.25
+    α: float = 0.5
     """balance between reroute and retain loss."""
 
     filter_sinks: bool = False
@@ -272,7 +285,7 @@ class InnerDPOLossConfig:
 
     eps: float = 1.0e-4
 
-    β: float = 1.
+    β: float = 0.1
     """factor to punish orthogonal movement"""
 
     p: int = 2
@@ -289,7 +302,9 @@ class InnerDPOLossConfig:
     """Method to compute alignment between chosen and rejected hidden states."""
 
     norm_before_reduce: bool = False
-    """Whether to normalize hidden states before reducing them to a single vector."""   
+    """Whether to normalize hidden states before reducing them to a single vector."""
+
+    dpo_agg_type: Literal["dpo", "ipo"] = "ipo"   
 
     def c(self, *args, **kwargs):
         return innerdpo_loss(*args, **kwargs, **asdict(self))

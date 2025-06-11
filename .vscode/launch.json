@@ -87,10 +87,11 @@
                 "enable": true
             },
             "args": [
-                "hs-ether-InnerDPO",
+                "hs-none-InnerDPO",
                 // "dpo",
-                "--loss.align-method=pars_rat",
-
+                "--loss.align-method=pars_rat_log",
+                "--loss.trust_region=0.1", 
+                // "'--loss.α=0.1'",
                 "--verbose=2",
             ]
         },

@@ -109,7 +109,46 @@ ok! I made one that bounded the denominator to 10% percentile, and it's working,
 | :----------------------------------------------- | --------: | -----------------: | -------------: | ---------: | :------- | ----: |
 | ReprPO_None_InnerDPO ReprPO_Non AlMe=stabili α=1 |     0.964 |              0.858 |           0.44 |      0.468 | ncpdqhlh | 1.615 |
 
-python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat
-python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_ratref
-python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_ratref_log
+# 2025-06-11 08:21:26 try clipping
+
+python scripts/train.py dpo
+python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat --loss.α=0.5  --loss.trust_region=0.2
+python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=0.1 --loss.α=10
+python scripts/train.py hs-ether-InnerDPO --loss.align_method=pars_rat
 python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log
+python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat --loss.trust_region=1
+python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=4
+
+
+Hmmm clipping is not working. I'm trying tiny clipping of 0.1. And I tried top and bottom and only top. 
+But I am doing it per layer per batch, so maybe it's trying to get every layer up to that level.
+And I'm using a per layer reference distance... but I guess I should not... hmm
+
+
+So try
+- check dpo is coherent as a sanity check
+- per batch ref distance
+- then clipping not per batch, not per layer (this is saying you must have some average distance)
+
+oooh dpo is incoherent too, so lr is just to high sign
+
+incoherent  again... mayvbe I should test on the test ds?
+hmm oo in the original dpo
+
+- lr 5e-7 (according to https://arxiv.org/pdf/2107.04197, we can maybe go one OOM higher with cosine)
+- schedule warmup constant
+- gad norm 10
+- beta=0.1
+- 128 effective bs
+
+
+
+|                       | in_domain | difficulty_scaling | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :-------------------- | --------: | -----------------: | -------------: | ---------: | :------- | ----------: |
+| Dpo                   |     0.943 |              0.876 |           0.44 |      0.377 | cz6hvuw4 |       0.588 |
+| ReEtIp AliMet=ParsRat |     0.947 |              0.879 |          0.435 |       0.38 | iqm17v2j |       0.575 |
+| none                  |     0.944 |              0.819 |          0.388 |      0.389 |
+
+
+supr was nan
+ok 5e-6 hardly learns

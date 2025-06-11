@@ -12,6 +12,8 @@ def compute_dpo_loss(
     model_rejected_logprobs,
     reference_chosen_logprobs,
     reference_rejected_logprobs,
+    dpo_agg_type="ipo",
+    label_smoothing=0,
     β=0.1,
 ):
     """Compute the DPO loss for a batch of policy and reference model log probabilities.
@@ -39,12 +41,15 @@ def compute_dpo_loss(
     )
 
     # DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
-    # Note these are other options 
-    losses = -F.logsigmoid(β * ptheta)
+    if dpo_agg_type == "ipo":
+        losses = (ptheta - 1/(2 * β)) ** 2  # Eq. 17 of https://arxiv.org/pdf/2310.12036v2.pdf
+    else:
+        # Eq. 3 https://ericmitchell.ai/cdpo.pdf; label_smoothing=0 gives original DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
+        losses = -F.logsigmoid(β * ptheta) * (1 - label_smoothing) - F.logsigmoid(-β * ptheta) * label_smoothing 
 
     # Optional values to track progress during training
-    chosen_rewards = (model_chosen_logprobs - reference_chosen_logprobs).detach()
-    rejected_rewards = (model_rejected_logprobs - reference_rejected_logprobs).detach()
+    chosen_rewards = β * (model_chosen_logprobs - reference_chosen_logprobs).detach()
+    rejected_rewards = β * (model_rejected_logprobs - reference_rejected_logprobs).detach()
 
     dpo_acc = (model_logratios > 0).float()
 
@@ -173,14 +178,16 @@ class PL_DPO_MODEL(PL_MODEL):
         *args,
         use_policy_weights=False,
         dpo_agg_type="ipo",
+        β=0.1,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.hparams.use_policy_weights = use_policy_weights
         self.hparams.dpo_agg_type = dpo_agg_type
+        self.hparams.β = β
     
     def _loss_fn(self, batch, model):
-        return dpo_forward_batch(batch, model, use_policy_weights=self.hparams.use_policy_weights, dpo_agg_type=self.hparams.dpo_agg_type)
+        return dpo_forward_batch(batch, model, use_policy_weights=self.hparams.use_policy_weights, dpo_agg_type=self.hparams.dpo_agg_type, β=self.hparams.β)
 
 
 @dataclass
@@ -194,9 +201,11 @@ class DPOConfig(ExperimentConfig):
     dpo_agg_type: str = "ipo"
     """# DPO aggregation type, can be 'ipo' or 'ppo'. IPO is the original DPO, PPO is the one used in the WPO paper."""
 
+    β: float = 0.1
+
     _cls = PL_DPO_MODEL
 
-    _model_keys = ["use_policy_weights", "dpo_agg_type"]
+    _model_keys = ["use_policy_weights", "dpo_agg_type", "β"]
 
 
     @property

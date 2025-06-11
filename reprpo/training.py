@@ -88,6 +88,7 @@ def train(args, trial: Optional[Trial] = None):
     seed = getattr(args, "seed", 42)  # Default to 42 if no seed specified
     set_random_seed(seed)
 
+    
     PL_MODEL = args._cls
 
     logger.info(f"PL_MODEL {PL_MODEL}")
