@@ -61,6 +61,8 @@ def get_display_name_from_args(args: dataclass):
         list2tuple(flatten_dict(asdict(defaults))).items()
     )
     diff = sorted(diff, key=lambda x: x[0])
+
+    # don't show some keys
     blacklist = [
         "eval_samples",
         "base_model",
@@ -119,6 +121,10 @@ def get_display_name_from_args(args: dataclass):
 
     # also either state transform and loss, or replace the words
     def rename(s):
+        """
+        loss. -> innerdpo
+        transform -> ether
+        """
         if hasattr(args, "loss"):
             loss_name = (
                 type(args.loss)
@@ -134,12 +140,33 @@ def get_display_name_from_args(args: dataclass):
 
     
     
-    s_short = rename(s_short)
+    # s_short = rename(s_short)
     
     s_all = rename(s_all)
     logger.info(f"diff: {cls_name} {s_all}")
 
-    def short_hand(s):
+
+    def acronym(s):
+        defs = {
+            'True': '1',
+            'False': '0',
+            'ReprPO': 'Repr',
+            'InnerDPO': 'IPO',
+            'None': 'n',
+            'loss.': 'l.',
+            'transform.': 't.',
+        }
+        for k, v in defs.items():
+            s = s.replace(k, v)
+            s = s.replace(k.lower(), v)
+        return s
+
+    def snake_case_acronym(k, keep=2, sep=''):
+        k = k.replace('-', '_')
+        kl = [ll.capitalize()[:keep] for ll in k.split('_')]
+        return sep.join(kl)
+
+    def make_shorter(s):
         """
         e.g. ReprPO_ETH collect_hs=True innerdpo.align_method=orth innerdpo.eps=1e-05 innerdpo.norm_before_reduce=True innerdpo.use_policy_weights=True innerdpo.α=1 verbose=2
         to ReprPO_ETH CoHs=1 AlMe=orth eps=1e-05 NoBeR=1 UsPoW=1 α=1
@@ -153,7 +180,9 @@ def get_display_name_from_args(args: dataclass):
                 k, v = ss.split('=', 1)
                 if len(k) >5:
                     # take the first letter of underscored or dash keys
-                    k = ''.join([ll[:2].capitalize() for ll in k.replace('-', '_').split('_')])
+                    k = snake_case_acronym(k)
+                if len(v) > 7:
+                    v = snake_case_acronym(v)
                 k = k[:7]
                 v = v[:7]
                 if k not in blacklist:
@@ -161,9 +190,13 @@ def get_display_name_from_args(args: dataclass):
             else:
                 sl2.append(ss[:10])  # take the first 5 chars
 
-        return " ".join(sl2).replace('True', '1').replace('False', '0')
-    s_short = f"{cls_name} {s_short}"
-    s2 = short_hand(s_short)
-    s2 = f"{cls_name} {s2}"
+        return " ".join(sl2)
+    
 
-    return s_all, s_short, s2
+    cls_name_shorter = snake_case_acronym(acronym(cls_name), keep=2, sep='')
+    shorter2 = make_shorter(acronym(s_short))
+    shorter = f"{cls_name_shorter} {shorter2}"
+
+    cls_name_short = snake_case_acronym(acronym(cls_name), keep=3, sep='')
+    s_short2 = acronym(f"{cls_name_short} {s_short}")
+    return s_all, s_short2, shorter

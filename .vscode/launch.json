@@ -5,6 +5,10 @@
     "version": "0.2.0",
     "configurations": [
 
+
+
+
+
         {
             // tiny random model, only a few steps, 0 epochs
             "name": "dev tinymodel",
@@ -27,8 +31,7 @@
             // },
             "args": [
                 "hs-none-InnerDPO",
-                "--loss.align-method=orth",
-                "--dpo_agg_type=dpo",
+                "--loss.align-method=pars_ratref_log",
                 "--dev",
                 "--verbose=3",
             ]
@@ -55,46 +58,9 @@
             // },
             "args": [
                 "hs-supr-InnerDPO",
+                "--loss.align_method=pars_rat",
                 // "--dev",
-                "--loss.inner-policy-weights",
                 "--verbose=3",
-            ]
-        },
-        {
-            "name": "llama a100",
-            "type": "debugpy",
-            "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
-                "TOKENIZERS_PARALLELISM": "false",
-                "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml"
-            },
-            "pythonArgs": [
-                "-Xfrozen_modules=off"
-            ],
-            "request": "launch",
-            "program": "${workspaceFolder}/scripts/train.py",
-            "console": "integratedTerminal",
-            "args": "${command:pickArgs}",
-        },
-        {
-            "name": "dev 1B",
-            "type": "debugpy",
-            "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
-                "TOKENIZERS_PARALLELISM": "false",
-                "REPR_CONFIG": "./configs/dev1b.yaml",
-                "WANDB_MODE": "offline"
-            },
-            "pythonArgs": [
-                "-Xfrozen_modules=off"
-            ],
-            "request": "launch",
-            "program": "${workspaceFolder}/scripts/train.py",
-            "console": "integratedTerminal",
-            "args": [
-                "hs-ether-prefvec",
-                "--dev",
-                "--verbose=2",
             ]
         },
         {
@@ -123,32 +89,10 @@
             "args": [
                 "hs-ether-InnerDPO",
                 // "dpo",
-                "--loss.align-method=orth",
+                "--loss.align-method=pars_rat",
 
                 "--verbose=2",
             ]
         },
-        {
-            "name": "experiments",
-            "type": "debugpy",
-            "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
-                "TOKENIZERS_PARALLELISM": "false",
-                "REPR_CONFIG": "./configs/llama-3-7b_a100.yaml",
-            },
-            "pythonArgs": [
-                "-Xfrozen_modules=off"
-            ],
-            "request": "launch",
-            "program": "${workspaceFolder}/scripts/run_experiments.py",
-            "console": "integratedTerminal",
-            // "justMyCode": false,
-            "autoReload": {
-                "enable": true
-            },
-            "args": [
-                "--dev",
-            ]
-        }
     ]
 }

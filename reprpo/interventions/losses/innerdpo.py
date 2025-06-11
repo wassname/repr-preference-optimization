@@ -267,7 +267,7 @@ class InnerDPOLossConfig:
     align_method: str = 'para_signed'
     """Method to compute alignment between chosen and rejected hidden states."""
 
-    norm_before_reduce: bool = True
+    norm_before_reduce: bool = False
     """Whether to normalize hidden states before reducing them to a single vector."""
    
 
