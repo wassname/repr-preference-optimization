@@ -149,7 +149,132 @@ hmm oo in the original dpo
 | Dpo                   |     0.943 |              0.876 |           0.44 |      0.377 | cz6hvuw4 |       0.588 |
 | ReEtIp AliMet=ParsRat |     0.947 |              0.879 |          0.435 |       0.38 | iqm17v2j |       0.575 |
 | none                  |     0.944 |              0.819 |          0.388 |      0.389 |
-| ReNIp AliMet=ParsRat |       0.943 |                0.861 |            0.433 |   0.379 | lxsitfp8 |         0.104 |
+| ReNIp AliMet=ParsRat  |     0.943 |              0.861 |          0.433 |      0.379 | lxsitfp8 |       0.104 |
 
 supr was nan
 ok 5e-6 hardly learns
+
+All below were coherent ,ipo seems to underfit? at 1e-5
+
+|                                                | in_domain | difficulty_scaling | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :--------------------------------------------- | --------: | -----------------: | -------------: | ---------: | :------- | ----------: |
+| none                                           |     0.944 |              0.819 |          0.388 |      0.389 |
+| Dp                                             |     0.943 |              0.865 |          0.436 |       0.38 | 1ato2g72 |        0.29 |
+| Dp                                             |     0.943 |              0.865 |          0.436 |       0.38 | upgx0ok7 |        0.29 |
+| Dpo                                            |      0.92 |              0.884 |          0.528 |      0.437 | jiy9rz6i |       2.783 |
+| ReNIp AliMet=ParsRat TruReg=0.2                |     0.957 |              0.864 |          0.445 |      0.379 | 5ldqtr5s |       0.301 |
+| ReNIp AliMet=ParsRat α=4                       |     0.945 |               0.86 |           0.45 |      0.376 | llpe0n38 |       0.075 |
+| ReEtIp AliMet=ParsRat                          |     0.957 |              0.859 |          0.445 |      0.383 | e0uc6fqi |       0.293 |
+| ReNIp α=1e+02                                  |     0.936 |              0.863 |          0.439 |      0.383 | cla413w3 |       0.269 |
+| ReNIp α=10                                     |     0.943 |              0.865 |          0.438 |      0.377 | 7l7oo71p |       0.296 |
+| ReNIp α=0.01                                   |     0.944 |              0.865 |          0.435 |       0.38 | jp25gb48 |       0.315 |
+| ReNIp α=0.25                                   |     0.944 |              0.864 |           0.44 |      0.376 | hjq0iq2w |       0.312 |
+| ReNIp α=0.001                                  |      0.94 |              0.863 |          0.436 |      0.379 | jwlh1cu3 |       0.319 |
+| ReNIp α=1                                      |     0.937 |              0.867 |           0.44 |      0.377 | hz5bmmik |       0.303 |
+| ReSuIp                                         |     0.945 |              0.864 |          0.436 |      0.379 | n9t36ard |       0.321 |
+| ReEtIp                                         |     0.939 |              0.863 |          0.436 |      0.377 | w9ngzhdv |       0.271 |
+| ReNIp NorBefR=1                                |     0.944 |              0.865 |          0.438 |      0.377 | 6j5wrxzo |       0.297 |
+| ReNIp DpoAggT=dpo                              |     0.967 |              0.832 |          0.398 |      0.389 | ypo193qi |        0.07 |
+| ReNIp FilSin=1                                 |      0.94 |              0.865 |          0.438 |      0.376 | 0o5qtfpr |       0.308 |
+| ReNIp p=1                                      |     0.944 |              0.865 |          0.433 |      0.375 | xr30c49k |       0.325 |
+| ReNIp                                          |     0.941 |              0.864 |          0.435 |      0.377 | t6fv3bu0 |       0.317 |
+| ReNIp                                          |     0.941 |              0.865 |          0.433 |      0.377 | 9by1agd8 |       0.299 |
+| ReNIp                                          |     0.941 |              0.868 |          0.439 |      0.376 | l070jqek |       0.301 |
+| ReNIp                                          |     0.939 |              0.868 |          0.436 |      0.379 | mugjtwu0 |        0.32 |
+| ReprNIpo AliMet=ParsRat TruReg=0.2 α=4 lr=1e-5 |     0.931 |              0.887 |          0.496 |      0.437 | dkcoir8f |       1.733 |
+
+
+250611 12:47:00|INFO|reprpo.training:make_table#443 - Table 1: Absolute accuracy after training with named adapter on ds:`alpaca_easy` compared to base model `OLMo-2-0425-1B-SFT` for various distribution shifts [N=750]:
+- Shift: difficulty_scaling, made up of:
+        - `genies_preferences-alpaca_hard-test[:750]`
+- Shift: in_domain, made up of:
+        - `genies_preferences-alpaca_easy-test[:750]`
+- Shift: moral_transfer, made up of:
+        - `ethics_expression_preferences-justice-test[:750]`
+- Shift: orthogonal, made up of:
+        - `medical-dpo-v2-test-data[:750]`
+
+
+
+TODO collect DPO papers and ref implementations to compare to mine
+
+
+
+|                                         | in_domain | difficulty_scaling | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :-------------------------------------- | --------: | -----------------: | -------------: | ---------: | :------- | ----------: |
+| none                                    |     0.944 |              0.819 |          0.388 |      0.389 |
+| Dpo                                     |      0.92 |              0.884 |          0.528 |      0.437 | jiy9rz6i |       2.783 |
+| ReprNIpo AliMet=ParsRat TruReg=0.2 α=4  |     0.931 |              0.887 |          0.496 |      0.437 | dkcoir8f |       1.733 |
+| ReprNIpo AliMet=ParsRat TruReg=2 α=1    |     0.928 |              0.879 |           0.48 |      0.441 | 2d1smihq |       1.708 |
+| ReprEtheIpo AliMet=ParsRat              |     0.925 |              0.872 |            0.5 |      0.453 | exh4xoa0 |       2.357 |
+| ReprNIpo α=1e+02                        |     0.915 |              0.876 |          0.517 |      0.445 | fmhaal2w |       2.585 |
+| ReprNIpo α=10                           |     0.924 |              0.884 |          0.523 |      0.439 | azykirnn |       2.941 |
+| ReprNIpo α=0.25                         |     0.919 |              0.884 |          0.527 |      0.435 | jufj4yy4 |       2.672 |
+| ReprNIpo α=1                            |     0.924 |              0.876 |          0.523 |      0.441 | umqtbodb |       2.923 |
+| Dpo                                     |      0.92 |              0.884 |          0.528 |      0.437 | 1o02qryx |       2.783 |
+| ReprNIpo NorBefR=1                      |      0.92 |              0.873 |          0.526 |      0.441 | zz331cqe |         2.5 |
+| ReprNIpo α=0.01                         |      0.92 |              0.883 |          0.531 |      0.431 | vnb4hmqd |       2.761 |
+| ReprNIpo                                |     0.915 |              0.889 |          0.531 |      0.437 | hhbv170c |       2.943 |
+| ReprSuprIpo                             |     0.919 |              0.881 |          0.531 |      0.433 | zivnqwdl |       2.543 |
+| ReprEtheIpo                             |     0.923 |              0.873 |          0.531 |       0.44 | 9jlxb9xd |       2.164 |
+| ReprNIpo FilSin=1                       |     0.924 |               0.88 |          0.526 |      0.437 | 5vyk3hnp |       2.801 |
+| ReprNIpo p=1                            |     0.919 |              0.884 |          0.534 |      0.436 | 3ztrqplb |       2.894 |
+| ReprNIpo α=0.001                        |     0.919 |              0.877 |          0.537 |      0.433 | xjoe47ln |       2.357 |
+| ReprNIpo DpoAggT=dpo                    |     0.969 |              0.848 |           0.55 |      0.412 | l6kcf2rd |      -0.019 |
+| ReprNIpo AliMet=ParsRat ClaBot=1        |     0.921 |              0.877 |          0.391 |      0.465 | tx8dclzg |       6.748 |
+| ReprNIpo AliMet=ParsRat ClaBot=1        |     0.924 |              0.883 |          0.318 |      0.565 | cc36fr3w |       7.948 |
+| ReprNIpo AliMet=ParsRat TruReg=0.05 α=1 |     0.927 |              0.824 |          0.398 |      0.587 | pqfig07s |      10.037 |
+| ReprNIpo AliMet=ParsRat TruReg=0.05 α=1 |     0.929 |              0.836 |          0.376 |      0.553 | yd7fhjay |      10.231 |
+| Dpo                                     |     0.913 |              0.891 |           0.44 |      0.473 | x32hzmtw |       6.281 |
+
+250612 01:06:17|INFO|reprpo.training:make_table#443 - Table 1: Absolute accuracy after training with named adapter on ds:`alpaca_easy` compared to base model `OLMo-2-0425-1B-SFT` for various distribution shifts [N=750]:
+- Shift: difficulty_scaling, made up of:
+        - `genies_preferences-alpaca_hard-test[:750]`
+- Shift: in_domain, made up of:
+        - `genies_preferences-alpaca_easy-test[:750]`
+- Shift: moral_transfer, made up of:
+        - `ethics_expression_preferences-justice-test[:750]`
+- Shift: orthogonal, made up of:
+        - `medical-dpo-v2-test-data[:750]`
+
+
+250612 08:27:29|INFO|reprpo.training:make_table#449 - 
+| ds_name_nice                                      | hs-None-InnerDPO |  none |
+| :------------------------------------------------ | ---------------: | ----: |
+| alignment_robustness (crt_1_test )                |            0.772 | 0.476 |
+| alignment_robustness (crt_2_test )                |             0.34 | 0.916 |
+| alignment_robustness (crt_3_test )                |            0.148 | 0.364 |
+| alignment_robustness (gender_bias_test )          |            0.988 |   0.5 |
+| alignment_robustness (personality_traits_test )   |            0.546 |  0.49 |
+| alignment_robustness (punishment_avoidance_test ) |            0.532 | 0.601 |
+| alignment_robustness (reward_seeking_test )       |            0.547 | 0.596 |
+| alignment_robustness (survival_influence_test )   |            0.683 | 0.565 |
+| alignment_robustness (sycophancy_answer_test )    |            0.228 | 0.228 |
+| alignment_robustness (sycophancy_feedback_test )  |            0.492 | 0.516 |
+| alignment_robustness (sycophancy_mimicry_test )   |            0.064 | 0.908 |
+| alignment_robustness (truthful_qa_test )          |            0.551 | 0.599 |
+| alignment_robustness (unhelpful_alpaca_test )     |            0.098 | 0.356 |
+| alignment_robustness (wrong_arc_test )            |            0.324 | 0.452 |
+| cross_domain (comma_separated_input_test )        |            0.708 | 0.705 |
+| cross_domain (comma_separated_output_test )       |            0.709 | 0.735 |
+| cross_domain (ranking_logic_test )                |            0.489 | 0.476 |
+| cross_domain (raven_matrices_test )               |            0.605 | 0.676 |
+| cross_domain (spanish_input_test )                |            0.695 | 0.768 |
+| cross_domain (spanish_output_test )               |            0.719 | 0.707 |
+| cross_domain (word_swap_test )                    |             0.82 |  0.72 |
+| in_domain (alpaca_mmlu_test )                     |            0.771 | 0.768 |
+| moral_transfer (ethics_commonsense_test )         |            0.644 | 0.754 |
+| moral_transfer (ethics_justice_test )             |            0.456 | 0.553 |
+| orthogonal (medical_dpo_v2_test_data )            |            0.385 | 0.419 |
+
+
+250612 08:27:29|INFO|reprpo.training:make_table#442 - 
+| adapter/distribution_shift | in_domain |                                                                                                                                                                               alignment_robustness | cross_domain | moral_transfer | orthogonal |
+| :------------------------- | --------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | -----------: | -------------: | ---------: |
+| none                       |     0.768 |                                                                                                                                                                                              0.545 |        0.684 |          0.646 |      0.419 |
+| hs-None-InnerDPO           |     0.771 |                                                                                                                                                                                              0.498 |        0.678 |          0.543 |      0.385 |
+| 250612 08:27:29            |      INFO | reprpo.training:make_table#443 - Table 1: Absolute accuracy after training with named adapter on ds:`alpaca_mmlu` compared to base model `Qwen3-0.6B-sft` for various distribution shifts [N=750]: |
+- Shift: alignment_robustness, made up of:
+
+h
+mm you know my acc doesn't seem to measure incoherent, that might be due to the avg, as in improbable sequence with probably tokens... or maybe not as I do look at the next

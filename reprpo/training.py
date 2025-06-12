@@ -161,7 +161,7 @@ def train(args, trial: Optional[Trial] = None):
         args.base_model,
         load_in_4bit=args.load_in_4bit,
         load_in_8bit=args.load_in_8bit,
-        # attn_implementation='eager' # for gemma
+        attn_implementation='flash_attention_2' # for gemma
     )
 
 

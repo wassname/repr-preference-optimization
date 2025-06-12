@@ -198,10 +198,10 @@ def get_display_name_from_args(args: dataclass):
         return " ".join(sl2)
     
 
-    cls_name_shorter = snake_case_acronym(acronym(cls_name), keep=2, sep='')
+    cls_name_shorter = snake_case_acronym(acronym(cls_name), keep=4, sep='')
     shorter2 = make_shorter(acronym(s_short))
     shorter = f"{cls_name_shorter} {shorter2}"
 
-    cls_name_short = snake_case_acronym(acronym(cls_name), keep=3, sep='')
+    cls_name_short = snake_case_acronym(acronym(cls_name), keep=5, sep='')
     s_short2 = acronym(f"{cls_name_short} {s_short}")
     return s_all, s_short2, shorter

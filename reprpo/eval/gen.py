@@ -95,7 +95,7 @@ def generation_test(
     max_new_tokens=256,
     skip_special_tokens=False,
     adapter_names=None,
-    system="tldr",
+    system="",
 ):
     # model.eval()
     clear_mem()

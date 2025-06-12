@@ -22,11 +22,15 @@ scratch:
     set -x
     . ./.venv/bin/activate
 
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=0.5 --loss.trust_region=0.2
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=.05 --loss.α=100
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.clamp-bottom
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.clamp-bottom
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=1 --loss.trust_region=0.05 --lr=1e-4
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=.05 --loss.α=1 --lr=1e-4
     python scripts/train.py dpo
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=0.1 --loss.α=4
     python scripts/train.py hs-ether-InnerDPO --loss.align_method=pars_rat
     python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log
+    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=10 --loss.trust_region=0.05
     
 
     export alpha=(

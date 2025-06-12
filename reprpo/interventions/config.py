@@ -8,25 +8,23 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
-    lr: float = 6e-6
+    lr: float = 4e-5
 
     weight_decay: float = 0.000
 
     gradient_clip_val: float = 10.0
 
-    ideal_batch_size: int = 128
-    """ideal batch size, used to calculate gradient accumulation steps"""
+    ideal_batch_size: int = 32
+    """ideal batch size, used to calculate gradient accumulation steps 16-128 are used in ref repos"""
 
     pl_precision: str = "bf16-mixed"
     """precision for pytorch lightning, bf16-mixed is best for 8B models on 80GB GPUs. 'transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true', 64, 32, 16, '64', '32', '16', 'bf16'. See https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.trainer.trainer.Trainer.html#lightning.pytorch.trainer.trainer.Trainer"""
 
-    num_workers: int = 6
+    num_workers: int = 8
     """number of workers for dataloader, 0 is best for 80GB GPUs"""
 
     dataset: str = "alpaca_easy"
     """train dataset."""
-
-    # TODO manually set the ood and rnd datasets, or else hard code sets
 
     verbose: int = 1
     seed: int = 42

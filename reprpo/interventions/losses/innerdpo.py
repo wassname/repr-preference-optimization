@@ -54,6 +54,7 @@ def innerdpo_loss(
     dpo_agg_type: str = "ipo",
     p=2,
     label_smoothing=0,
+    clamp_bottom: bool = False,
 ):
     """
     Compute innerDPO loss with various alignment options.
@@ -230,7 +231,10 @@ def innerdpo_loss(
         # This is similar to the trust region in PPO.
         # It's defined in the ptheta space, so it depends on the loss, but for `pars_rat` it means it can only get reward for seperating the chosen and rejected hidden states by `trust_region` times the distance in the reference model
         # FIXME: do I want to clamp low and high?
-        hidden_ptheta = torch.clamp(hidden_ptheta, None, trust_region)
+        if clamp_bottom:
+            hidden_ptheta = torch.clamp(hidden_ptheta, trust_region, None)
+        else:
+            hidden_ptheta = torch.clamp(hidden_ptheta, None, trust_region)
     
     dpo_ptheta = compute_ptheta(
         pi_cho.label_logprobs,
@@ -305,6 +309,8 @@ class InnerDPOLossConfig:
     """Whether to normalize hidden states before reducing them to a single vector."""
 
     dpo_agg_type: Literal["dpo", "ipo"] = "ipo"   
+
+    clamp_bottom: bool = False
 
     def c(self, *args, **kwargs):
         return innerdpo_loss(*args, **kwargs, **asdict(self))
