@@ -183,7 +183,7 @@ def get_display_name_from_args(args: dataclass):
         for ss in sl:
             if '=' in ss:
                 k, v = ss.split('=', 1)
-                if len(k) >5:
+                if len(k) >7:
                     # take the first letter of underscored or dash keys
                     k = snake_case_acronym(k, keep=3)
                 if len(v) > 7:
@@ -193,7 +193,7 @@ def get_display_name_from_args(args: dataclass):
                 if k not in blacklist:
                     sl2.append(f"{k}={v}")
             else:
-                sl2.append(ss[:10])  # take the first 5 chars
+                sl2.append(ss[:10])  # take the first 10 chars
 
         return " ".join(sl2)
     

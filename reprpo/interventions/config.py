@@ -8,9 +8,9 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
-    lr: float = 4e-5
+    lr: float = 2e-5
 
-    weight_decay: float = 0.000
+    weight_decay: float = 0.01
 
     gradient_clip_val: float = 10.0
 
@@ -42,7 +42,7 @@ class ExperimentConfig:
     use_grad_paging: bool = False
     """avoid mem spikes"""
 
-    n_samples: int = 20000
+    n_samples: int = 25000
     eval_samples: Optional[int] = 750
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long

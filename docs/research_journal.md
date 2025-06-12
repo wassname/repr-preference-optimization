@@ -278,3 +278,34 @@ TODO collect DPO papers and ref implementations to compare to mine
 
 h
 mm you know my acc doesn't seem to measure incoherent, that might be due to the avg, as in improbable sequence with probably tokens... or maybe not as I do look at the next
+
+
+
+|                                             | in_domain | difficulty_scaling | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :------------------------------------------ | --------: | -----------------: | -------------: | ---------: | :------- | ----------: |
+| none                                        |     0.945 |              0.844 |          0.553 |      0.417 |
+| Dpo                                         |     0.913 |              0.891 |           0.44 |      0.473 | x32hzmtw |       6.281 |
+| ReprEtheIpo AliMet=ParsRat                  |     0.929 |              0.889 |          0.438 |      0.437 | 3dbg9nh7 |       3.835 |
+| ReprEtheIpo AliMet=ParsRat                  |     0.929 |              0.889 |          0.438 |      0.437 | 3dbg9nh7 |       3.835 |
+| ReprNIpo AliMet=ParsRat ClaBot=1            |     0.921 |              0.877 |          0.391 |      0.465 | tx8dclzg |       6.748 |
+| ReprNIpo AliMet=ParsRat TruReg=0.05 α=1     |     0.929 |              0.836 |          0.376 |      0.553 | yd7fhjay |      10.231 |
+| ReprNIpo AliMet=ParsRat TruReg=0.05 α=1e+02 |     0.937 |              0.796 |          0.435 |      0.561 | ixxomtmh |       6.638 |
+| ReprNIpo AliMet=ParsRat ClaBot=1            |     0.924 |              0.883 |          0.318 |      0.565 | cc36fr3w |       7.948 |
+| ReprNIpo AliMet=ParsRat TruReg=0.05 α=1     |     0.927 |              0.824 |          0.398 |      0.587 | pqfig07s |      10.037 |
+
+|                     |   in_domain |   cross_domain |   moral_transfer |   orthogonal | wandb    |   nll_cho/ref |
+|:--------------------|------------:|---------------:|-----------------:|-------------:|:---------|--------------:|
+| none                     |       0.903 |          0.799 |            0.646 |        0.419 |
+| Dpo dataset=cooking      |       0.913 |          0.741 |            0.554 |        0.233 | jehjaxl5 |         7.685 |
+| ReprNIpo dataset=cooking |       0.935 |          0.763 |             0.54 |        0.259 | d84045ld |         5.681 |
+250612 17:58:38|INFO|reprpo.training:make_table#443 - Table 1: Absolute accuracy after training with named adapter on ds:`cooking` compared to base model `Qwen3-0.6B-sft` for various distribution shifts [N=750]:
+- Shift: cross_domain, made up of:
+        - `genies_preferences-raven_matrices-test[:750]`
+        - `genies_preferences-math-test[:750]`
+- Shift: in_domain, made up of:
+        - `genies_preferences-cooking-test[:750]`
+- Shift: moral_transfer, made up of:
+        - `ethics_expression_preferences-commonsense-test[:750]`
+        - `ethics_expression_preferences-justice-test[:750]`
+- Shift: orthogonal, made up of:
+        - `medical-dpo-v2-test-data[:750]`

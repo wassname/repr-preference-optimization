@@ -22,28 +22,28 @@ scratch:
     set -x
     . ./.venv/bin/activate
 
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=.05 --loss.α=100
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.clamp-bottom
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.clamp-bottom
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=1 --loss.trust_region=0.05 --lr=1e-4
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=.05 --loss.α=1 --lr=1e-4
-    python scripts/train.py dpo
-    python scripts/train.py hs-ether-InnerDPO --loss.align_method=pars_rat
-    python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log
-    python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=10 --loss.trust_region=0.05
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=.05 --loss.α=100
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.clamp-bottom
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.clamp-bottom
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=1 --loss.trust_region=0.05 --lr=1e-4
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=.05 --loss.α=1 --lr=1e-4
+    # python scripts/train.py dpo
+    # python scripts/train.py hs-ether-InnerDPO --loss.align_method=pars_rat
+    # python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log
+    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=10 --loss.trust_region=0.05
     
 
-    export alpha=(
-        100
-        10
-        0.01
-        0.25
-        0.001
-        1
-    )
-    for al in "${alpha[@]}"; do
-        python scripts/train.py hs-none-InnerDPO --loss.α="$al"
-    done
+    # export alpha=(
+    #     100
+    #     10
+    #     0.01
+    #     0.25
+    #     0.001
+    #     1
+    # )
+    # for al in "${alpha[@]}"; do
+    #     python scripts/train.py hs-none-InnerDPO --loss.α="$al"
+    # done
 
     # export agg=(
     #     log_ratio_difference
@@ -63,31 +63,48 @@ scratch:
     # done
 
 
-    export BASE=(
-        dpo
-        side-none-InnerDPO
-        hs-supr-InnerDPO
-        hs-ether-InnerDPO
-    )
-    for base in "${BASE[@]}"; do
-        python scripts/train.py $base
-    done
+    # export BASE=(
+    #     dpo
+    #     side-none-InnerDPO
+    #     hs-supr-InnerDPO
+    #     hs-ether-InnerDPO
+    # )
+    # for base in "${BASE[@]}"; do
+    #     python scripts/train.py $base
+    # done
     
-    export OPTIONS=(
-        --loss.norm-before-reduce
-        --dpo_agg_type=dpo
-        --loss.filter_sinks
-        --loss.p=1
-        --loss.eps=1e-2
-        --loss.eps=1e-6
-        --loss.eps=1e-9
-        --weight-decay=1e-2
-        --collection-layers='range(0.1, -1)'
+    # export OPTIONS=(
+    #     --loss.norm-before-reduce
+    #     --dpo_agg_type=dpo
+    #     --loss.filter_sinks
+    #     --loss.p=1
+    #     --loss.eps=1e-2
+    #     --loss.eps=1e-6
+    #     --loss.eps=1e-9
+    #     --weight-decay=1e-2
+    #     --collection-layers='range(0.1, -1)'
 
-    ) 
+    # ) 
 
-    for args in "${OPTIONS[@]}"; do
-        python scripts/train.py hs-none-InnerDPO $args
+    # for args in "${OPTIONS[@]}"; do
+    #     python scripts/train.py hs-none-InnerDPO $args
+    # done
+
+    export DS=(
+        alpaca_mmlu
+        code_easy
+        cooking
+        alpaca_low_quality
+    )
+    for ds in $DS; do
+        echo "DS=$ds"
+        python scripts/train.py hs-none-InnerDPO --dataset $ds
+        python scripts/train.py hs-none-InnerDPO --dataset $ds --loss.align_method=para_signed
+        python scripts/train.py hs-none-InnerDPO --dataset $ds  --loss.trust_region=2 --loss.α=.1
+        python scripts/train.py hs-ether-InnerDPO --dataset $ds
+        python scripts/train.py hs-supr-InnerDPO --dataset $ds
+        python scripts/train.py side-none-InnerDPO --dataset $ds
+        python scripts/train.py dpo --dataset $ds
     done
 
     just sweep
