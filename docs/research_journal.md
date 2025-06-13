@@ -309,3 +309,10 @@ mm you know my acc doesn't seem to measure incoherent, that might be due to the 
         - `ethics_expression_preferences-justice-test[:750]`
 - Shift: orthogonal, made up of:
         - `medical-dpo-v2-test-data[:750]`
+
+
+
+well this is weird, I loaded a so called incoherent model, and it produced good outputs.. so my gen is broken?
+werird, i''s fine even with my gen function... so the loaded ceckpoint is fine but not the gen one...
+
+ALSO my sweep is not showing dpo and none

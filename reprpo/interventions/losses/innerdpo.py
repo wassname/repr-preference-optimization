@@ -279,15 +279,15 @@ class InnerDPOLossConfig:
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     """
 
-    trust_region: float = 0.2
+    trust_region: float = 0.1
 
-    α: float = 1.0
+    α: float = 0.3
     """balance between reroute and retain loss."""
 
     filter_sinks: bool = False
     """Whether to filter attention sinks in the hidden states."""
 
-    eps: float = 1.0e-5
+    eps: float = 1.0e-4
 
     β: float = 0.1
     """factor to punish orthogonal movement"""
@@ -300,7 +300,6 @@ class InnerDPOLossConfig:
 
     inner_policy_weights: bool = False
     """Whether to compute policy weights for the inner DPO loss."""
-
 
     align_method: str = 'pars_rat'
     """Method to compute alignment between chosen and rejected hidden states."""

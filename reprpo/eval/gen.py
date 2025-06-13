@@ -173,7 +173,7 @@ def generation_test(
                             max_new_tokens=max_new_tokens,
                             min_new_tokens=max_new_tokens,
                             do_sample=do_sample,
-                            temperature=1,
+                            # temperature=1.,
                             # use_cache=False,
                         )
                         outputs = outputs[:, inputs["input_ids"].shape[1] :]

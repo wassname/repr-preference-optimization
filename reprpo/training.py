@@ -311,7 +311,7 @@ def train(args, trial: Optional[Trial] = None):
 
 
     # ## Gen
-    model.cuda()  # for some reason it ends up cpu
+    # model.cuda()  # for some reason it ends up cpu
 
     if (not args.dev) and (args.verbose > 0):
         N = min(2, args.verbose * 2)
