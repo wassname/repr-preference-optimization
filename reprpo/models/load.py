@@ -38,6 +38,7 @@ def load_model(
     load_in_8bit=False,
     attn_implementation=None,#"flash_attention_2",
     torch_dtype=torch.bfloat16,
+    **kwargs,
 ):
     clear_mem()
 
@@ -47,6 +48,7 @@ def load_model(
         load_in_8bit=load_in_8bit,
         attn_implementation=attn_implementation,
         torch_dtype=torch_dtype,
+        **kwargs,
     )
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:

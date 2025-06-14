@@ -46,3 +46,4 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+sweep.txt

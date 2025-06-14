@@ -289,8 +289,11 @@ class InnerDPOLossConfig:
 
     eps: float = 1.0e-4
 
-    β: float = 0.1
-    """factor to punish orthogonal movement"""
+    β: float = 0.4
+    """Parameter controlling the deviation from the reference model. Higher β means less deviation from the reference model. For the IPO loss (`loss_type="ipo"`), β is the regularization parameter denoted by τ in the [paper](https://huggingface.co/papers/2310.12036).
+
+    Note 0.1 is good for DPO, 0.4 for IPO see https://huggingface.co/blog/pref-tuning
+    """
 
     p: int = 2
     """norm to use for the hidden states, 2 is euclidean, 1 is manhattan"""

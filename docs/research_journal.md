@@ -312,7 +312,22 @@ mm you know my acc doesn't seem to measure incoherent, that might be due to the 
 
 
 
-well this is weird, I loaded a so called incoherent model, and it produced good outputs.. so my gen is broken?
-werird, i''s fine even with my gen function... so the loaded ceckpoint is fine but not the gen one...
+- [x] well this is weird, I loaded a so called incoherent model, and it produced good outputs.
+  - so my gen is broken? no that's fine
+  - it must be my gen before save??
 
-ALSO my sweep is not showing dpo and none
+
+- [ ] ALSO my sweep is not showing dpo and none
+
+
+
+something weird is happening with my gen and eval.... maybe I need to make it float32 for eval? and final gen? and maybe my gen needs accelerate? 
+
+
+# 2025-06-14 12:45:10
+
+Ah so it turns out I was just loading peft models wrong! fixed. So now back to the original queestion of why isn't my open pref eval showing the problems with incoherent modles?
+
+I need to see if non IPO methods, or entropy weighted methods are better
+- [ ] save incoherent model
+- [ ] try with other scores

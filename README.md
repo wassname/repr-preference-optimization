@@ -158,7 +158,7 @@ TODO explain the transformations, data source, and loss. As well as loss modifie
 ```sh
 uv sync
 . ./venv/bin/activate
-uv sync --no-build-isolation-package flash-attn
+uv sync --all-groups # compile flash attn
 
 python -u nbs/train.py --help
 

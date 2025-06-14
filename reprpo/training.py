@@ -161,7 +161,8 @@ def train(args, trial: Optional[Trial] = None):
         args.base_model,
         load_in_4bit=args.load_in_4bit,
         load_in_8bit=args.load_in_8bit,
-        attn_implementation='flash_attention_2' # for gemma
+        attn_implementation='flash_attention_2',  # for gemma
+        device_map='auto',
     )
 
 
@@ -249,7 +250,7 @@ def train(args, trial: Optional[Trial] = None):
             patience=args.patience,
             mode="min",
             check_finite=True,
-            strict=True,
+            strict=False,
             verbose=True,
         ),
     ]
@@ -262,8 +263,8 @@ def train(args, trial: Optional[Trial] = None):
         max_steps=max_opt_steps,
         # limit_val_batches=max(6, max_steps//10),
         gradient_clip_val=args.gradient_clip_val,
-        # accelerator='gpu',
-        devices=1,
+        accelerator='gpu',
+        # devices=1,
         # plugins=plugins,
         # https://lightning.ai/docs/pytorch/stable/common/trainer.html
         # mixed wont convert the modules weights, while bf16-true would
@@ -281,7 +282,7 @@ def train(args, trial: Optional[Trial] = None):
     )
     trainer.logger.log_hyperparams(flatten_dict(config))
 
-    # TODO consider learnign rate finder
+    # TODO consider learning rate finder
     if args.verbose > 2:
         from lightning.pytorch.callbacks import LearningRateFinder
 
@@ -292,12 +293,15 @@ def train(args, trial: Optional[Trial] = None):
         logger.info("KeyboardInterrupt, stopping training")
         pass
 
+    # trainer ends by moving it to cpu, undo that
+    model = model.to("cuda").to(torch.bfloat16)
+
     # save as regular adapter only (small)
     if args.save:
         model.save_pretrained(
             str(save_dir / "adapter"),
         )
-        logger.info(f"saved to {save_dir / 'adapter'}")
+        logger.info(f"saved to {save_dir / 'adapter' / adapter_name}")
 
     # ### Hist
     if not args.dev:
@@ -363,7 +367,7 @@ def train(args, trial: Optional[Trial] = None):
     # save
     f = str(save_dir) + "/eval.parquet"
     df_res2.to_parquet(f)
-    logger.info(f"""- save_dir={save_dir}
+    logger.info(f"""- save_dir={save_dir / "adapter" / adapter_name}
 - Config: {pformat(config, compact=True)}
 - Long name: {long_name}
 - Human name: {human_name}

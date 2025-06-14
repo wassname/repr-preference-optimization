@@ -5,9 +5,11 @@ from dataclasses import dataclass
 @dataclass
 class ExperimentConfig:
 
-    lr: float = 1e-5
+    lr: float = 1e-6
+    """1e-6 in alignment handbook with cosine, 5e-7 is eric mitchells ref"""
 
-    weight_decay: float = 0.001
+    weight_decay: float = 0.0
+    """0 in alignment handbook, and eric mitchells ref"""
 
     gradient_clip_val: float = 10.0
 
@@ -56,16 +58,16 @@ class ExperimentConfig:
     # base_model: str = "wassname/llama-3.2-3b-sft"
     # batch_size: int = 10
 
-    base_model: str = "allenai/OLMo-2-0425-1B-SFT"
-    batch_size: int = 20
+    # base_model: str = "allenai/OLMo-2-0425-1B-SFT"
+    # batch_size: int = 20
     
     # 24GB gpu
     
-    # # base_model: str = "wassname/llama-3-2-1b-sft"
+    # # base_model: str = "allenai/OLMo-2-0425-1B-SFT"
     # batch_size: int = 5
 
-    # base_model: str = "wassname/Qwen3-0.6B-sft"
-    # batch_size: int = 5
+    base_model: str = "wassname/Qwen3-0.6B-sft"
+    batch_size: int = 5
 
     # # base_model: str = "wassname/SmolLM2-360M-sft"
     # batch_size: int = 10

@@ -141,14 +141,14 @@ def generation_test(
 
     # inputs = {k: v.detach().to(device) for k, v in inputs.items()}
 
-    q = tokenizer.decode(
+    decoded_input = tokenizer.decode(
         inputs["input_ids"][0], skip_special_tokens=skip_special_tokens
     )
 
     # remove padding
-    q = q.replace(tokenizer.pad_token, "")
-    q = q.replace(tokenizer.eos_token, "")
-    data = {"q": q}
+    decoded_input = decoded_input.replace(tokenizer.pad_token, "")
+    decoded_input = decoded_input.replace(tokenizer.eos_token, "")
+    data = {"q": decoded_input}
 
 
     with silent_logs_warnings():
@@ -165,7 +165,9 @@ def generation_test(
                     else:
                         return v
 
-                inputs = {k: detach_tensor(v) for k, v in inputs.items()}
+                device = next(iter(model.parameters())).device
+                # inputs = model.transfer_batch_to_device(inputs, model.device, 0)
+                inputs = {k: v.to(device) for k, v in inputs.items()}
                 with torch.no_grad():
                     with set_adapter(model, adapter_name):
                         outputs = model.generate(
