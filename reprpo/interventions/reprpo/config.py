@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 class ReprPOConfig(ExperimentConfig):
     
 
-    collection_layers: Optional[str] = 'range(.3,-2)'
+    collection_layers: Optional[str] = 'range(.5,-2)'
     """layers to collect activations
     
     see `parse_collection_layers` which supports various formats:

@@ -3,16 +3,25 @@ from jinja2 import Environment, FileSystemLoader
 import os
 os.environ["WANDB_GROUP"] = "sweep4"
 
-# for H100
+# # for H100
+# batch_sizes = {
+#     # "wassname/SmolLM2-135M-sft": 32, # too small
+#     # "wassname/SmolLM2-360M-sft": 24, # too small?
+#     # "wassname/Qwen3-0.6B-sft": 18,
+#     # "allenai/OLMo-2-0425-1B-SFT": 13, # error please specifcy target modules in config
+#     # "wassname/llama-3.2-3b-sft": 10,
+#     "princeton-nlp/Llama-3-Base-8B-SFT": 5,
+#     "allenai/Llama-3.1-Tulu-3-8B-SFT": 5,
+#     # add large models too if you want custom sizes
+# }
+
+# for 24GB
 batch_sizes = {
-    # "wassname/SmolLM2-135M-sft": 32, # too small
-    # "wassname/SmolLM2-360M-sft": 24, # too small?
-    # "wassname/Qwen3-0.6B-sft": 18,
-    # "allenai/OLMo-2-0425-1B-SFT": 13, # error please specifcy target modules in config
+    # "wassname/SmolLM2-135M-sft": 12, # too small
+    "wassname/SmolLM2-360M-sft": 7, # too small?
+    "wassname/Qwen3-0.6B-sft": 4,
+    "allenai/OLMo-2-0425-1B-SFT": 2, # error please specifcy target modules in config
     # "wassname/llama-3.2-3b-sft": 10,
-    "princeton-nlp/Llama-3-Base-8B-SFT": 5,
-    "allenai/Llama-3.1-Tulu-3-8B-SFT": 5,
-    # add large models too if you want custom sizes
 }
 default_batch_size = 7
 
