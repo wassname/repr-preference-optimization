@@ -55,6 +55,8 @@ def innerdpo_loss(
     p=2,
     label_smoothing=0,
     clamp_bottom: bool = False,
+    detach_ref: bool = True,
+    use_token_constraint: bool = True,
 ):
     """
     Compute innerDPO loss with various alignment options.
@@ -76,29 +78,45 @@ def innerdpo_loss(
         if norm_before_reduce:
             # why would we do this? to prevent attention sinks. consider clamping 3*std mags
             hs = safe_norm(hs, p=p, dim=-1, eps=eps)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
-        # Aggregate over sequence using attention masks
-        hs = reduce_tokens_w_attention(hs, o.mask, filter_sinks=filter_sinks, )  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+
         return hs
+    
+    
 
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k):
         # Get raw hidden states
-        hs_pi_cho = preproc_hs(pi_cho, k)
-        hs_pi_rej = preproc_hs(pi_rej, k)
-        hs_ref_cho = preproc_hs(ref_cho, k)
-        hs_ref_rej = preproc_hs(ref_rej, k)
+        hs_pi_cho_t = preproc_hs(pi_cho, k)
+        hs_pi_rej_t = preproc_hs(pi_rej, k)
+        if detach_ref:
+            hs_pi_rej_t = hs_pi_rej_t.detach() # We want to change cho not rej
+        hs_ref_cho_t = preproc_hs(ref_cho, k).detach()  # Don't let reference change of course
+        hs_ref_rej_t = preproc_hs(ref_rej, k).detach()  # Don't let reference change of course
+
+        # Per-token deviations from reference (L2 distance)
+        cho_token_deviations = torch.norm(hs_pi_cho_t - hs_ref_cho_t, p=p, dim=-1)  # [batch, seq_len]
+        rej_token_deviations = torch.norm(hs_pi_rej_t - hs_ref_rej_t, p=p, dim=-1)  # [batch, seq_len]
+
+        # Aggregate per response (like TDPO aggregates KL)
+        cho_total_deviation = reduce_tokens_w_attention(cho_token_deviations.unsqueeze(-1), pi_cho.mask).squeeze(-1)  # [batch]
+        rej_total_deviation = reduce_tokens_w_attention(rej_token_deviations.unsqueeze(-1), pi_rej.mask).squeeze(-1)  # [batch]
+
+        hs_pi_cho = reduce_tokens_w_attention(hs_pi_cho_t, pi_cho.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+        hs_pi_rej = reduce_tokens_w_attention(hs_pi_rej_t, pi_rej.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+        hs_ref_cho = reduce_tokens_w_attention(hs_ref_cho_t, ref_cho.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+        hs_ref_rej = reduce_tokens_w_attention(hs_ref_rej_t, ref_rej.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
 
         pref_dir_ref = hs_ref_cho - hs_ref_rej
         pref_mag_ref = torch.norm(pref_dir_ref, p=p, dim=-1)
         pref_dir_pi = hs_pi_cho - hs_pi_rej
 
         # Decompose pi into parallel and orthogonal components
-        pref_dir_ref_unit = safe_norm(pref_dir_ref, p=p, dim=-1, eps=eps)
+        pref_dir_ref_unit = safe_norm(pref_dir_ref, p=p, dim=-1, eps=eps).detach()
 
         signed_proj = torch.sum(pref_dir_pi * pref_dir_ref_unit, dim=-1)
         para_vec = signed_proj.unsqueeze(1) * pref_dir_ref_unit
         ort_vec = pref_dir_pi - para_vec
 
-        signed_proj_ref = torch.sum(pref_dir_ref * pref_dir_ref_unit, dim=-1)
+        signed_proj_ref = torch.sum(pref_dir_ref * pref_dir_ref_unit, dim=-1).detach()
         par_vec_ref = signed_proj_ref.unsqueeze(1) * pref_dir_ref_unit
         # orth_vec_ref = pref_dir_ref - par_vec_ref
 
@@ -159,38 +177,10 @@ def innerdpo_loss(
                 """
                 orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=p, dim=-1)
                 hidden_ptheta =  (safe_signed_log(signed_proj, eps=eps) - safe_log(orthogonal_mag, eps))
-            # case 'logodds':
-            #     """ 
-            #     signed_log(parallel) - log(orthogonal)
-            #     Geometric: Same as #3 but with log-stabilized parallel term
-            #     Intuition: Double stabilization for both parallel and orthogonal terms
-            #     """
-            #     hidden_ptheta =  (logodds_pi - logodds_ref)
             case 'logodds_noref':
                 hidden_ptheta = logodds_pi * 10
             case 'odds_noref':
                 hidden_ptheta= par_mag - ort_mag
-            case 'cosine_policy_margin':
-                """
-                cos(pi_cho, pi_rej) - cos(ref_cho, ref_rej)
-                Geometric: "Policy's internal separability vs reference's separability"  
-                Intuition: Maximize policy's own chosen/rejected margin. Bounded [-2,2]
-                """
-                hidden_ptheta =  (
-                    F.cosine_similarity(hs_pi_cho, hs_pi_rej, dim=-1)
-                    - F.cosine_similarity(hs_ref_cho, hs_ref_rej, dim=-1)
-                )
-            case 'cosine_cross_model':
-                """
-                cos(pi_cho, ref_cho) - cos(pi_rej, ref_rej)
-                Geometric: "Pull policy states toward corresponding reference states"
-                Intuition: Explicit state-to-state mimicry, not just directional alignment
-                (probobly wont work as we want to go beyond internal representation alignment)
-                """
-                hidden_ptheta =  (
-                    F.cosine_similarity(hs_pi_cho, hs_ref_cho, dim=-1)
-                    - F.cosine_similarity(hs_pi_rej, hs_ref_rej, dim=-1)
-                )
             case _:
                 raise ValueError(f"Unsupported align_method: {align_method}")
         
@@ -205,7 +195,9 @@ def innerdpo_loss(
 
         
         return dict(hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta,
-                    hptheta_top=signed_proj, hptheta_bottom=pref_mag_ref)
+                    # hptheta_top=signed_proj, hptheta_bottom=pref_mag_ref,
+                            cho_position_deviation=cho_total_deviation,
+                    rej_position_deviation=rej_total_deviation)
 
 
     # compute losses per layer
@@ -230,7 +222,6 @@ def innerdpo_loss(
         # Moving too far in the hidden weight space leads to incoherent, so we will bound the loss to only reward within a trusted region.
         # This is similar to the trust region in PPO.
         # It's defined in the ptheta space, so it depends on the loss, but for `pars_rat` it means it can only get reward for seperating the chosen and rejected hidden states by `trust_region` times the distance in the reference model
-        # FIXME: do I want to clamp low and high?
         if clamp_bottom:
             hidden_ptheta = torch.clamp(hidden_ptheta, trust_region, None)
         else:
@@ -242,18 +233,31 @@ def innerdpo_loss(
         ref_cho.label_logprobs,
         ref_rej.label_logprobs,
     )
+
+    if use_token_constraint:
+        # This is like in https://github.com/Vance0124/Token-level-Direct-Preference-Optimization/blob/master/trainers.py#L151
+        # Intuition: Both responses should deviate similarly from their references. If one is changing much more than the other, adjust our confidence accordingly.
+        # token_constraint = layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation']
+        # OR Only penalize when rejected deviates more (prevent sneaky gaming)
+        token_constraint = torch.clamp(layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation'], min=0)
+        alpha_token = 0.5
+        hidden_ptheta = hidden_ptheta - alpha_token * token_constraint
+
+
+
     # DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
     if dpo_agg_type == "ipo":
         loss_dpo = (dpo_ptheta - 1/(2 * β)) ** 2  # Eq. 17 of https://arxiv.org/pdf/2310.12036v2.pdf
         loss_hidden_dpo = (hidden_ptheta.mean(1) - 1/(2 * β)) ** 2
+    elif dpo_agg_type == "SimPer":
+        pass
     else:
         # Eq. 3 https://ericmitchell.ai/cdpo.pdf; label_smoothing=0 gives original DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
         loss_dpo = -F.logsigmoid(β * dpo_ptheta) * (1 - label_smoothing) - F.logsigmoid(-β * dpo_ptheta) * label_smoothing 
         loss_hidden_dpo = -F.logsigmoid(β * hidden_ptheta.mean(1)) - F.logsigmoid(-β * hidden_ptheta.mean(1)) * label_smoothing
-    
 
     loss = loss_dpo + α * loss_hidden_dpo
-    
+
     # Apply policy weights if requested
     if use_policy_weights:
         policy_weights = compute_policy_weights(pi_cho, pi_rej)
@@ -267,6 +271,7 @@ def innerdpo_loss(
         loss_dpo=loss_dpo.mean(),
         dpo_ptheta=dpo_ptheta.mean(),
         loss_hidden_dpo=loss_hidden_dpo.mean(),
+        token_constraint=token_constraint.mean(),
         **vals,
     )
 
@@ -313,6 +318,12 @@ class InnerDPOLossConfig:
     dpo_agg_type: Literal["dpo", "ipo"] = "ipo"   
 
     clamp_bottom: bool = False
+
+    use_token_constraint: bool = True
+    """Whether to use the token constraint to adjust the hidden ptheta. This is like in TDPO https://arxiv.org/abs/2404.11999"""
+
+    detach_ref: bool = True
+    """Whether to detach the reference hidden states from the computation graph. This is useful to prevent the reference model from changing during training, which is less desired as it doesn't actually come up during generation"""
 
     def c(self, *args, **kwargs):
         return innerdpo_loss(*args, **kwargs, **asdict(self))

@@ -5,18 +5,18 @@ from dataclasses import dataclass
 @dataclass
 class ExperimentConfig:
 
-    lr: float = 1e-6
-    """1e-6 in alignment handbook with cosine, 5e-7 is eric mitchells ref"""
+    lr: float = 1e-5
+    """1e-6 in alignment handbook with cosine, 5e-7 is eric mitchells ref, SimPPo is 6e-7 or lower"""
 
     weight_decay: float = 0.0
     """0 in alignment handbook, and eric mitchells ref"""
 
     gradient_clip_val: float = 10.0
 
-    ideal_batch_size: int = 32
+    ideal_batch_size: int = 16
     """ideal batch size, used to calculate gradient accumulation steps 16-128 are used in ref repos"""
 
-    pl_precision: str = "bf16-mixed"
+    pl_precision: str = "bf16"
     """precision for pytorch lightning, bf16-mixed is best for 8B models on 80GB GPUs. 'transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true', 64, 32, 16, '64', '32', '16', 'bf16'. See https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.trainer.trainer.Trainer.html#lightning.pytorch.trainer.trainer.Trainer"""
 
     num_workers: int = 8
@@ -25,7 +25,8 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
-    dataset: str = "alpaca_easy"
+    # dataset: str = "alpaca_easy"
+    dataset: str = "HuggingFaceH4/ultrafeedback_binarized:train_prefs"
     """train dataset."""
 
     verbose: int = 1
@@ -44,7 +45,7 @@ class ExperimentConfig:
     use_grad_paging: bool = False
     """avoid mem spikes"""
 
-    n_samples: int = 35000
+    n_samples: int = 25000 # 3k in dataset, most ref models for 1 epoch of 60k ultrafeedback samples
     eval_samples: Optional[int] = 750
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long
@@ -64,16 +65,16 @@ class ExperimentConfig:
     # 24GB gpu
     
     # # base_model: str = "allenai/OLMo-2-0425-1B-SFT"
-    # batch_size: int = 5
+    # batch_size: int = 2
 
     base_model: str = "wassname/Qwen3-0.6B-sft"
-    batch_size: int = 5
+    batch_size: int = 4
 
     # # base_model: str = "wassname/SmolLM2-360M-sft"
-    # batch_size: int = 10
+    # batch_size: int = 7
 
     # base_model: str = "wassname/SmolLM2-135M-sft"
-    # batch_size: int = 14
+    # batch_size: int = 12
 
     save: bool = True
     wandb: bool = True

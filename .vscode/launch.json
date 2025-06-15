@@ -57,7 +57,7 @@
             //     "enable": true
             // },
             "args": [
-                "hs-supr-InnerDPO",
+                "dpo",
                 // "--loss.align_method=pars_ratref_log",
                 // "--dev",
                 "--verbose=3",

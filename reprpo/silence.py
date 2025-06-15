@@ -62,33 +62,34 @@ def remove_warnings():
     trainer_logger.setLevel(logging.ERROR)
 
 
-def silence():
-    # wandb logger is too verbose
-    logger = logging.getLogger("wandb")
-    logger.setLevel(logging.ERROR)
-    os.environ["WANDB_SILENT"] = "true"
-    
-
-    logging.getLogger("transformers.trainer").setLevel(logging.ERROR)
-    logging.getLogger("transformers.generation.configuration_utils.py").setLevel(logging.ERROR)
+def silence(verbosity: int = 0):
 
     # datasets is too verbose
     disable_progress_bar()
-    # from datasets.utils.logging import set_verbosity_error
-    # set_verbosity_error()
+    if verbosity < 1:
+        warnings.filterwarnings("ignore", category=UserWarning)
 
-    warnings.filterwarnings("ignore", category=UserWarning)
+        os.environ["TQDM_DISABLE"] = "1"
+        os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = "1"
 
-    # Silence all loggers with "transforms" in their name
-    for name in logging.root.manager.loggerDict:
-        blocklist = ["transformers", "lightning", "wandb"]
-        if any(blocked in name for blocked in blocklist):
-            logging.getLogger(name).setLevel(logging.ERROR)
+    if verbosity < 3:
+        remove_warnings()
 
-    # logging.basicConfig(level=logging.WARNING)
+        # wandb logger is too verbose
+        logger = logging.getLogger("wandb")
+        logger.setLevel(logging.ERROR)
+        os.environ["WANDB_SILENT"] = "true"
+        
 
-    os.environ["TQDM_DISABLE"] = "1"
-    os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = "1"
+        logging.getLogger("transformers.trainer").setLevel(logging.ERROR)
+        logging.getLogger("transformers.generation.configuration_utils.py").setLevel(logging.ERROR)
+
+
+        # Silence all loggers with "transforms" in their name
+        for name in logging.root.manager.loggerDict:
+            blocklist = ["transformers", "lightning", "wandb"]
+            if any(blocked in name for blocked in blocklist):
+                logging.getLogger(name).setLevel(logging.ERROR)
 
 
 def test():

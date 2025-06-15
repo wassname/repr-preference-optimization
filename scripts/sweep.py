@@ -20,7 +20,7 @@ batch_sizes = {
     # "wassname/SmolLM2-135M-sft": 12, # too small
     "wassname/SmolLM2-360M-sft": 7, # too small?
     "wassname/Qwen3-0.6B-sft": 4,
-    "allenai/OLMo-2-0425-1B-SFT": 2, # error please specifcy target modules in config
+    # "allenai/OLMo-2-0425-1B-SFT": 2, # error please specifcy target modules in config
     # "wassname/llama-3.2-3b-sft": 10,
 }
 default_batch_size = 7

@@ -78,10 +78,7 @@ def train(args, trial: Optional[Trial] = None):
         args.eval_samples = 32
         os.environ["WANDB_MODE"] = "disabled"  # disable wandb
 
-    if args.verbose < 1:
-        silence()
-    if args.verbose < 3:
-        remove_warnings()
+    silence(args.verbose)
     torch.set_float32_matmul_precision("medium")
 
     # Set random seed for reproducible
@@ -328,7 +325,10 @@ def train(args, trial: Optional[Trial] = None):
     # ## Eval
 
     N = args.eval_samples
-    ds_names_eval = TRAINING_EXPERIMENTS[args.dataset]
+    if args.dataset not in TRAINING_EXPERIMENTS:
+        ds_names_eval = TRAINING_EXPERIMENTS['alpaca_mmlu']  # default eval set
+    else:
+        ds_names_eval = TRAINING_EXPERIMENTS[args.dataset]
     df_ds_names_eval = pd.DataFrame(ds_names_eval)
     datasets_l = [load_eval_ds(name, N=N) for name in df_ds_names_eval["target"]]
     ds_names = [ds2name(d) for d in datasets_l]

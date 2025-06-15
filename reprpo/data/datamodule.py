@@ -19,10 +19,19 @@ class PrefDataModule(LightningDataModule):
             logger.warning("Dataset already loaded, skipping setup.")
             return
             
+        # So we can have `wassname/medical-dpo-V2#data` or `wassname/ethics_expression_preferences:commonsense` so ds:subset#split
+        if ('#' in self.args.dataset) or (':' in self.args.dataset):
+            path, config_name = self.args.dataset.split('#', 1) if '#' in self.args.dataset else (self.args.dataset, None)
+            path, split = path.split(':', 1) if ':' in path else (path, None)
+        else:
+            path = "wassname/genies_preferences"
+            config_name = self.args.dataset
+            split = None
+
         self.ds = load_dataset(
-            *(self.args.dataset.split(":", 1))
-        ) if ":" in self.args.dataset else load_dataset(
-            "wassname/genies_preferences", name=self.args.dataset
+            path=path,
+            name=config_name,
+            split=split
         )
 
         tokenized_ds = tokenize_dataset(
@@ -32,6 +41,14 @@ class PrefDataModule(LightningDataModule):
             max_length=self.args.max_length,
             verbose=self.args.verbose,
         )
+        if isinstance(tokenized_ds, dict):
+            if 'train' in tokenized_ds and 'test' in tokenized_ds:
+                pass
+            else:
+                tokenized_ds = next(iter(tokenized_ds.values())).train_test_split()
+        else:
+            tokenized_ds = tokenized_ds.train_test_split(test_size=0.1, seed=self.args.seed)
+    
         self.train_ds = tokenized_ds['train']
         self.val_ds = tokenized_ds['test']
 
