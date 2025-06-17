@@ -50,7 +50,13 @@ class PrefDataModule(LightningDataModule):
             tokenized_ds = tokenized_ds.train_test_split(test_size=0.1, seed=self.args.seed)
     
         self.train_ds = tokenized_ds['train']
+        if len(self.train_ds) > self.args.n_samples:
+            self.train_ds = self.train_ds.shuffle(seed=self.args.seed).select(range(self.args.n_samples))
+            logger.info(f"Using {len(self.train_ds)} samples for training.")
+        
         self.val_ds = tokenized_ds['test']
+        if len(self.val_ds) > self.args.n_samples:
+            self.val_ds = self.val_ds.select(range(self.args.n_samples))
 
 
     def train_dataloader(self):

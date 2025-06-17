@@ -82,7 +82,7 @@ def get_display_name_from_args(args: dataclass):
         "collection_layers_hs",
         "save",
         "wandb",
-        "lr",
+        # "lr",
         "weight_decay",
         'eps',
         'collect_hs', # covered in name

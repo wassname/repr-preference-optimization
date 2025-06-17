@@ -51,7 +51,7 @@ def innerdpo_loss(
     norm_before_reduce: bool = True,
     filter_sinks: bool = True,
     trust_region: float = 2.0,
-    dpo_agg_type: str = "ipo",
+    dpo_loss: str = "ipo",
     p=2,
     label_smoothing=0,
     clamp_bottom: bool = False,
@@ -74,13 +74,12 @@ def innerdpo_loss(
         """Preprocess hidden states: normalize then aggregate."""
 
         hs = o.hs[k]  # [batch, seq_len, hidden_dim], RAW ACTIVATIONS
-        # hs = F.log_softmax(hs, dim=-1)  # [batch, seq_len, hidden_dim], LOG PROBABILITIES
-        if norm_before_reduce:
-            # why would we do this? to prevent attention sinks. consider clamping 3*std mags
-            hs = safe_norm(hs, p=p, dim=-1, eps=eps)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
+        # # hs = F.log_softmax(hs, dim=-1)  # [batch, seq_len, hidden_dim], LOG PROBABILITIES
+        # if norm_before_reduce:
+        #     # why would we do this? to prevent attention sinks. consider clamping 3*std mags
+        #     hs = safe_norm(hs, p=p, dim=-1, eps=eps)  # [batch, seq_len, hidden_dim], UNIT VECTORS. If we normalise before transforms, we get NaNs in the gradients
 
-        return hs
-    
+        return hs 
     
 
     def per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k):
@@ -195,7 +194,7 @@ def innerdpo_loss(
 
         
         return dict(hidden_weight=hidden_weight, hidden_ptheta=hidden_ptheta,
-                    # hptheta_top=signed_proj, hptheta_bottom=pref_mag_ref,
+                    signed_proj=signed_proj, #hptheta_bottom=pref_mag_ref,
                             cho_position_deviation=cho_total_deviation,
                     rej_position_deviation=rej_total_deviation)
 
@@ -234,23 +233,26 @@ def innerdpo_loss(
         ref_rej.label_logprobs,
     )
 
+    token_constraint = torch.clamp(layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation'], min=0)
     if use_token_constraint:
         # This is like in https://github.com/Vance0124/Token-level-Direct-Preference-Optimization/blob/master/trainers.py#L151
         # Intuition: Both responses should deviate similarly from their references. If one is changing much more than the other, adjust our confidence accordingly.
         # token_constraint = layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation']
         # OR Only penalize when rejected deviates more (prevent sneaky gaming)
-        token_constraint = torch.clamp(layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation'], min=0)
         alpha_token = 0.5
         hidden_ptheta = hidden_ptheta - alpha_token * token_constraint
 
 
 
     # DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
-    if dpo_agg_type == "ipo":
+    if dpo_loss == "ipo":
         loss_dpo = (dpo_ptheta - 1/(2 * β)) ** 2  # Eq. 17 of https://arxiv.org/pdf/2310.12036v2.pdf
         loss_hidden_dpo = (hidden_ptheta.mean(1) - 1/(2 * β)) ** 2
-    elif dpo_agg_type == "SimPer":
-        pass
+    elif dpo_loss == "SimPER":
+        # https://github.com/tengxiao1/SimPER/blob/main/scripts/simper_trainer.py#L588
+        loss_dpo = pi_rej.label_logprobs.exp()-pi_cho.label_logprobs.exp()
+        # loss_hidden_dpo = layer_vals['signed_proj'].mean(1) # hmm maybe this should be symlog?
+        loss_hidden_dpo = symlog(layer_vals['signed_proj']).mean(1) # hmm maybe this should be symlog?
     else:
         # Eq. 3 https://ericmitchell.ai/cdpo.pdf; label_smoothing=0 gives original DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
         loss_dpo = -F.logsigmoid(β * dpo_ptheta) * (1 - label_smoothing) - F.logsigmoid(-β * dpo_ptheta) * label_smoothing 
@@ -284,21 +286,13 @@ class InnerDPOLossConfig:
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     """
 
-    trust_region: float = 0.1
-
-    α: float = 0.3
+    α: float = 0.1
     """balance between reroute and retain loss."""
 
     filter_sinks: bool = False
     """Whether to filter attention sinks in the hidden states."""
 
     eps: float = 1.0e-4
-
-    β: float = 0.4
-    """Parameter controlling the deviation from the reference model. Higher β means less deviation from the reference model. For the IPO loss (`loss_type="ipo"`), β is the regularization parameter denoted by τ in the [paper](https://huggingface.co/papers/2310.12036).
-
-    Note 0.1 is good for DPO, 0.4 for IPO see https://huggingface.co/blog/pref-tuning
-    """
 
     p: int = 2
     """norm to use for the hidden states, 2 is euclidean, 1 is manhattan"""
@@ -309,21 +303,31 @@ class InnerDPOLossConfig:
     inner_policy_weights: bool = False
     """Whether to compute policy weights for the inner DPO loss."""
 
-    align_method: str = 'pars_rat'
-    """Method to compute alignment between chosen and rejected hidden states."""
+    dpo_loss: Literal["dpo", "ipo", "SimPER"] = "SimPER"   
 
-    norm_before_reduce: bool = False
-    """Whether to normalize hidden states before reducing them to a single vector."""
+    # The below ones are used by IPO by not SimPER
+    # trust_region: float = 0
+    # """prevent over optimising inner states. not used in SimPER"""
 
-    dpo_agg_type: Literal["dpo", "ipo"] = "ipo"   
+    # β: float = 0.4
+    # """Parameter controlling the deviation from the reference model. Higher β means less deviation from the reference model. For the IPO loss (`loss_type="ipo"`), β is the regularization parameter denoted by τ in the [paper](https://huggingface.co/papers/2310.12036).
 
-    clamp_bottom: bool = False
+    # Note 0.1 is good for DPO, 0.4 for IPO see https://huggingface.co/blog/pref-tuning not used in SimPER
+    # """
 
-    use_token_constraint: bool = True
-    """Whether to use the token constraint to adjust the hidden ptheta. This is like in TDPO https://arxiv.org/abs/2404.11999"""
+    # align_method: str = 'pars_rat'
+    # """Method to compute alignment between chosen and rejected hidden states."""
 
-    detach_ref: bool = True
-    """Whether to detach the reference hidden states from the computation graph. This is useful to prevent the reference model from changing during training, which is less desired as it doesn't actually come up during generation"""
+    # clamp_bottom: bool = False
+
+    # use_token_constraint: bool = False
+    # """Whether to use the token constraint to adjust the hidden ptheta. This is like in TDPO https://arxiv.org/abs/2404.11999"""
+    # # FIXME also add to outer DPO
+
+    # detach_ref: bool = False
+    # """Whether to detach the reference hidden states from the computation graph. This is useful to prevent the reference model from changing during training, which is less desired as it doesn't actually come up during generation"""
+
+    # use_dpo_loss: bool = True
 
     def c(self, *args, **kwargs):
         return innerdpo_loss(*args, **kwargs, **asdict(self))

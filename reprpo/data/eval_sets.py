@@ -73,6 +73,7 @@ TRAINING_EXPERIMENTS = {
     "math_easy": [
         {"target": "math_easy", "type": "in_domain", "label": "baseline", "category": "orthogonal"},
         {"target": "math_hard", "type": "difficulty_scaling", "label": "difficulty", "category": "extreme"},
+        {"target": "wassname/ethics_expression_preferences:commonsense", "type": "moral_transfer", "label": "moral_alignment", "category": "alignment"},
         {"target": "wassname/medical-dpo-V2#data", "type": "orthogonal", "label": "orthogonal", "category": "orthogonal"},
     ],
     

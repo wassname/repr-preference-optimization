@@ -21,29 +21,60 @@ scratch:
     #!/usr/bin/env bash
     set -x
     . ./.venv/bin/activate
-
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=.05 --loss.α=100
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.clamp-bottom
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.clamp-bottom
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=1 --loss.trust_region=0.05 --lr=1e-4
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat_log --loss.trust_region=.05 --loss.α=1 --lr=1e-4
-    # python scripts/train.py dpo
-    # python scripts/train.py hs-ether-InnerDPO --loss.align_method=pars_rat
-    # python scripts/train.py hs-supr-InnerDPO --loss.align_method=pars_rat_log
-    # python scripts/train.py hs-none-InnerDPO --loss.align_method=pars_rat --loss.α=10 --loss.trust_region=0.05
     
+    export OPTIONS=(
+        --loss.inner-policy-weights --loss.use-policy-weights
+        --loss.p=1
+        --loss.eps=1e-2
+        --loss.eps=1e-9
+        --weight-decay=1e-2
+        --collection-layers='range(-3, -2)'
+        
+    ) 
 
-    # export alpha=(
-    #     100
-    #     10
-    #     0.01
-    #     0.25
-    #     0.001
-    #     1
-    # )
-    # for al in "${alpha[@]}"; do
-    #     python scripts/train.py hs-none-InnerDPO --loss.α="$al"
-    # done
+    for args in "${OPTIONS[@]}"; do
+        python scripts/train.py hs-none-InnerDPO $args
+    done
+
+    export BASE=(
+        # dpo
+        side-none-InnerDPO
+        hs-supr-InnerDPO
+        hs-ether-InnerDPO
+    )
+    for base in "${BASE[@]}"; do
+        python scripts/train.py $base
+    done
+
+
+
+    export lrs=(
+        1e-5
+        1e-4
+        1e-6
+        1e-3
+    )
+    for lr in "${lrs[@]}"; do
+        python scripts/train.py hs-none-InnerDPO --lr="$lr"
+        python scripts/train.py dpo --verbose=2 --lr="$lr"
+    done
+
+    export alpha=(
+        100
+        10
+        0.01
+        0.25
+        0.001
+        1
+    )
+    for al in "${alpha[@]}"; do
+        python scripts/train.py hs-none-InnerDPO --loss.α="$al"
+    done
+
+
+    python scripts/train.py dpo --loss-type=dpo
+    python scripts/train.py dpo --loss-type=ipo
+    python scripts/train.py dpo --loss-type=SimPER
 
     # export agg=(
     #     log_ratio_difference
@@ -63,51 +94,33 @@ scratch:
     # done
 
 
-    # export BASE=(
-    #     dpo
-    #     side-none-InnerDPO
-    #     hs-supr-InnerDPO
-    #     hs-ether-InnerDPO
-    # )
-    # for base in "${BASE[@]}"; do
-    #     python scripts/train.py $base
-    # done
+    export BASE=(
+        # dpo
+        side-none-InnerDPO
+        hs-supr-InnerDPO
+        hs-ether-InnerDPO
+    )
+    for base in "${BASE[@]}"; do
+        python scripts/train.py $base
+    done
     
-    # export OPTIONS=(
-    #     --loss.norm-before-reduce
-    #     --dpo_agg_type=dpo
-    #     --loss.filter_sinks
-    #     --loss.p=1
-    #     --loss.eps=1e-2
-    #     --loss.eps=1e-6
-    #     --loss.eps=1e-9
-    #     --weight-decay=1e-2
-    #     --collection-layers='range(0.1, -1)'
 
-    # ) 
-
-    # for args in "${OPTIONS[@]}"; do
-    #     python scripts/train.py hs-none-InnerDPO $args
-    # done
 
     export DS=(
         alpaca_mmlu
         code_easy
         cooking
         alpaca_low_quality
+        math_easy
+        math
     )
     for ds in $DS; do
         echo "DS=$ds"
-        python scripts/train.py hs-none-InnerDPO --dataset $ds
-        python scripts/train.py hs-none-InnerDPO --dataset $ds --loss.align_method=para_signed
-        python scripts/train.py hs-none-InnerDPO --dataset $ds  --loss.trust_region=2 --loss.α=.1
-        python scripts/train.py hs-ether-InnerDPO --dataset $ds
-        python scripts/train.py hs-supr-InnerDPO --dataset $ds
-        python scripts/train.py side-none-InnerDPO --dataset $ds
+        python scripts/train.py hs-none-InnerDPO --dataset $ds  --loss.detach-ref --loss.use-token-constraint --loss.trust_region=0
         python scripts/train.py dpo --dataset $ds
     done
 
-    just sweep
+    # just sweep
 
 # run one method, with args
 run +args='':

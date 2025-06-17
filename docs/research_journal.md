@@ -574,6 +574,115 @@ and with
 |                   | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb | nll_cho/ref |
 | :---------------- | --------: | -------------------: | -----------: | -------------: | ---------: | :---- | ----------: |
 | none              |     0.625 |                0.571 |        0.692 |          0.648 |      0.609 |
-| ReprSuprIpo b4    |     0.656 |                0.576 |        **0.708** |          0.609 |      0.625 | None  |       0.182 |
-| ReprSuprIpo after |     **0.688** |                0.508 |        0.627 |          0.602 |      0.562 | None  |       4.687 |
-| ReprSuprIpo again |     0.625 |                **0.628** |        0.616 |          **0.695** |      **0.656** | None  |      12.246 |
+| ReprSuprIpo b4    |     0.656 |                0.576 |    **0.708** |          0.609 |      0.625 | None  |       0.182 |
+| ReprSuprIpo after | **0.688** |                0.508 |        0.627 |          0.602 |      0.562 | None  |       4.687 |
+| ReprSuprIpo again |     0.625 |            **0.628** |        0.616 |      **0.695** |  **0.656** | None  |      12.246 |
+| Dpo               |     0.609 |                0.532 |        0.699 |          0.617 |      0.594 | None  |       0.202 |
+
+Exp
+
+
+TODO do sweep
+TODO try SimPER
+TODO look at Rainbow and KTO
+TODO add the token level one to my DPO too
+note that DPO is known for instability and overfitting so it does seem I should look at the modifications like KTO, SimPO, SimPER, Rainbow, etc.
+
+
+
+|                    | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :----------------- | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| none               |     0.752 |                0.495 |         0.67 |          0.521 |      0.427 |
+| Dpo                |      0.76 |                0.507 |        0.663 |          0.626 |      0.419 | 5wvza6hk |       1.148 |
+| ReprNIpo UseTokC=1 |     0.729 |                0.454 |        0.657 |          0.444 |      0.335 | nlqfcwnf |       1.661 |
+
+| ReprNIpo UseTokC=1 |       0.735 |                  0.455 |          0.659 |            0.444 |        0.336 | rgwx8km6 |         1.553 |
+
+
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref  --lr=1e-6 --verbose=2
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref  --lr=1e-7 --verbose=2
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref --loss.use-token-constraint --lr=1e-6 --verbose=2
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref --loss.use-token-constraint --lr=1e-7 --verbose=2
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref --loss.trust_region=0 --verbose=2
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref --loss.use-token-constraint --verbose=2
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref --loss.use-token-constraint --loss.trust_region=0 --verbose=2
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref --loss.use-token-constraint --lr=1e-4 --verbose=2
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref --loss.use-token-constraint --lr=1e-5 --verbose=2
+python scripts/train.py hs-ether-InnerDPO --loss.detach-ref --loss.use-token-constraint --loss.trust_region=0 --verbose=2
+python scripts/train.py hs-supr-InnerDPO --loss.detach-ref --loss.use-token-constraint --loss.trust_region=0 --verbose=2
+python scripts/train.py side-none-InnerDPO --loss.detach-ref --loss.use-token-constraint --loss.trust_region=0 --verbose=2
+
+
+|                                       | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :------------------------------------ | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| Dpo   1e-4                            | **0.796** |                0.525 |        0.669 |          0.573 |      0.389 | 7x080s9c |       0.874 |
+| Dpo    1e-6                           |     0.763 |                0.508 |        0.678 |          0.556 |      0.437 | 1nhf8d4r |        0.08 |
+| Dpo   1e-5                            |     0.781 |                0.497 |        0.673 |           0.55 |      0.452 | dbvckd34 |        1.47 |
+| Dpo   lr=1e-3                         |     0.548 |                0.541 |        0.533 |          0.539 |      0.436 | melb984o |      11.322 |
+| none                                  |     0.752 |                0.495 |         0.67 |          0.521 |      0.427 |
+| ReprNIpo DetRef=1 UseTokC=1 lr=1e-3   |     0.483 |            **0.582** |        0.513 |          0.516 |   **0.52** | qaei77b1 |      27.299 |
+| ReprNIpo DetRef=1 UseTokC=1 --lr=1e-6 |     0.416 |                0.424 |        0.481 |          0.481 |      0.429 | h75lleeh |      10.292 |
+| ReprNIpo UseTokC=1                    |     0.729 |                0.446 |        0.655 |          0.443 |      0.324 | u80xhkwt |       1.618 |
+| ReprNIpo UseTokC=1                    |     0.735 |                0.448 |        0.656 |           0.44 |      0.331 | hhgonym5 |       1.712 |
+| ReprNIpo DetRef=1                     |     0.752 |                0.497 |        0.671 |          0.519 |      0.429 | y9uggxi5 |      -0.005 |
+| ReprNIpo DetRef=1 TruReg=0            |       0.8 |                0.555 |    **0.696** |      **0.669** |      0.416 | gaucqeqv |       1.632 |
+| ReprNIpo DetRef=1                     |     0.765 |                0.509 |        0.682 |          0.563 |       0.44 | da80ay5j |       0.039 |
+| ReprNIpo DpoAggT=SimPER lr=1e-7       |      0.62 |                0.603 |        0.563 |          0.474 |      0.161 | 6i6555g3 |       2.701 |
+| Dpo                                   |      0.76 |                0.507 |        0.663 |          0.626 |      0.419 | 5wvza6hk |       1.148 |
+
+
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref --loss.use-token-constraint --lr=1e-4 NAN
+python scripts/train.py hs-none-InnerDPO --loss.detach-ref --loss.use-token-constraint --lr=1e-5 NAN
+python scripts/train.py hs-none-InnerDPO --dataset alpaca_mmlu --loss.detach-ref --loss.use-token-constraint --loss.trust_region=0 NAN
+
+
+python scripts/train.py hs-none-InnerDPO --loss.dpo_agg_type=SimPER --verbose=2 --lr=5e-6 --loss.α=0.001
+python scripts/train.py hs-none-InnerDPO --loss.dpo_agg_type=SimPER --verbose=2 --lr=8e-6 --loss.α=0.01
+python scripts/train.py hs-none-InnerDPO --loss.dpo_agg_type=SimPER --verbose=2 --lr=1e-6 --loss.α=0.0001
+python scripts/train.py dpo --dpo_agg_type=SimPER --verbose=2 --verbose=2 --lr=1e-6
+python scripts/train.py hs-none-InnerDPO --loss.dpo_agg_type=SimPER --verbose=2 --lr=1e-7
+python scripts/train.py dpo --dpo_agg_type=SimPER --verbose=2 --lr=1e-7
+
+then lr swwp and transforms
+
+# 2025-06-17 
+
+
+|                                                 | in_domain | difficulty_scaling | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :---------------------------------------------- | --------: | -----------------: | -------------: | ---------: | :------- | ----------: |
+| DpoLos=SimPER     α=0.3                         |     0.417 |               0.68 |           0.45 |       0.35 | jwlmcvbl |       5.788 |
+| none                                            |     0.823 |               0.84 |          0.433 |      0.417 |
+| DpoLos=SimPER α=0.001 (no lrn inner)            |     0.947 |               0.86 |          0.437 |      0.433 | wsuq22bm |      -0.851 |
+| ReprNIpo DpoLos=SimPER α=0.01                   |     0.947 |              0.857 |           0.43 |      0.407 | bgump8ua |      -0.833 |
+| Dpo LosTyp=SimPER                               |      0.95 |              0.867 |          0.427 |      0.433 | bzvfd8f9 |      -0.842 |
+| ReprNIpo DetRef=1 DpoLos=SimPER α=0.01 lr=5e-05 |      0.92 |               0.86 |          0.457 |      0.433 | a2lkrkdj |      -0.364 |
+
+
+|                                                         | in_domain | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :------------------------------------------------------ | --------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| none                                                    |      0.88 |         0.94 |          0.433 |      0.417 |
+| Dpo LosTyp=SimPER                                       |     0.957 |        0.944 |          0.483 |      0.463 | hx5530gl |      -0.123 |
+| ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0 UseTokC=1      |      0.54 |        0.584 |          0.653 |        0.3 | xq9x8ycv |       7.202 |
+| ReprNIpo DpoLos=SimPER TruReg=0                         |      0.79 |        0.686 |          0.403 |      0.297 | 17y1k7b9 |       6.002 |
+| ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0                |      0.54 |        0.586 |          0.653 |      0.297 | megdnmv1 |       7.207 |
+| ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0 UseTokC=1      |      0.54 |        0.584 |          0.653 |        0.3 | xq9x8ycv |       7.202 |
+| ReprNIpo DetRef=1 DpoLos=SimPER UseTokC=1 α=10 lr=4e-05 |     0.373 |         0.48 |           0.61 |       0.62 | i3lm2oit |      14.987 |
+| ReprNIpo DpoLos=SimPER α=1 0001                         |       0.8 |        0.603 |          0.477 |       0.66 | 56y228ql |       15.56 |
+| ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0 UseTokC=1      |     0.943 |         0.94 |          0.467 |      0.447 | g4wnboxd |      -0.175 |
+| ReprNIpo DpoLos=SimPER TruReg=0 α=0.02 lr=1e-06         |     0.913 |        0.939 |          0.433 |      0.417 | eiwj06xt |      -0.076 |
+| ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0                |     0.943 |        0.938 |          0.467 |      0.447 | 2ncdi0mo |      -0.173 |
+
+Table 1: Absolute accuracy after training with named adapter on ds:`us_history` compared to base model `Qwen3-0.6B-sft` for various distribution shifts [N=300]:
+
+|                                                         | in_domain | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :------------------------------------------------------ | --------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| Dpo                                                     |     0.943 |        0.933 |           0.44 |      0.453 | opgyle9y |        0.22 |
+| Dpo LosTyp=dpo                                          |     0.937 |        0.929 |           0.48 |      0.477 | da5cgrgw |       1.351 |
+| Dpo LosTyp=SimPER                                       |     0.957 |        0.944 |          0.483 |      0.463 | hx5530gl |      -0.123 |
+| ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0 UseTokC=1 0001 |     0.933 |        0.934 |          0.583 |      0.417 | fzv7v259 |       0.045 |
+| none                                                    |      0.88 |         0.94 |          0.433 |      0.417 |          |              |
+| ReprNIpo DetRef=1 DpoLos=SimPER UseTokC=1 α=10 lr=4e-05 |     0.373 |         0.48 |           0.61 |       0.62 | i3lm2oit |      14.987 |
+| ReprNIpo DpoLos=SimPER α=1 0001                         |       0.8 |        0.603 |          0.477 |       0.66 | 56y228ql |       15.56 |
+| ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0 UseTokC=1      |     0.943 |         0.94 |          0.467 |      0.447 | g4wnboxd |      -0.175 |
+| ReprNIpo DpoLos=SimPER TruReg=0 α=0.02 lr=1e-06         |     0.913 |        0.939 |          0.433 |      0.417 | eiwj06xt |      -0.076 |
+| ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0                |     0.943 |        0.938 |          0.467 |      0.447 | 2ncdi0mo |      -0.173 |
