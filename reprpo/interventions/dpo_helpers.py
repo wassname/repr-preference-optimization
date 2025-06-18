@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from loguru import logger
 
 
-def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo", use_wpo=False):
+def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo", use_wpo=False, use_mallows=False):
     """
     Compute log probabilities.
 
@@ -61,18 +61,22 @@ def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo"
         output["label_logp"] = selected_log_probs.mean(-1)
     
     
-
-    # FIXME turn of if no WPO
-    # return a dict and also compute [WPO](https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L1240)
+    # return a dict and also compute 
+    output["log_policy_weights"] = torch.zeros_like(output["label_logp"])
     if use_wpo:
+        # [WPO](https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L1240)
         with torch.no_grad():
             # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
             weights_adjustment_factor = torch.logsumexp(2 * log_probs, dim=-1)  # same as sum(probs**2) in log space
             per_token_logps_adjusted = selected_log_probs - weights_adjustment_factor
             weights = (per_token_logps_adjusted * mask).sum(-1) / mask.sum(-1)
             output["log_policy_weights"] =  weights.detach()
-    else:
-        output["log_policy_weights"] = torch.zeros_like(output["label_logp"])
+    if use_mallows:
+        # https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1347
+        with torch.no_grad():
+            log_vocab_size = torch.log(torch.tensor(logits.shape[-1]))
+            batch_entropy = -(log_probs.exp() * log_probs).sum(-1)
+            output["log_policy_weights"] = (batch_entropy * mask).sum(axis = -1) / (mask.sum(-1) * log_vocab_size)
 
     return output
 
@@ -109,3 +113,11 @@ def compute_policy_weights(pi_cho, pi_rej, T=3):
     # balance them
     policy_weights = policy_weights /(policy_weights.mean() + 1e-6)
     return policy_weights
+
+def compute_mallows_weights(ref_cho, ref_rej, T=3):
+    # from https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1276
+    # Here we deviate from the WPO paper for stability
+    dispersion_mean = 0.29
+    reference_entropy = (ref_cho.log_policy_weights + ref_rej.log_policy_weights)/2
+    neg_log_dispersion = - dispersion_mean * torch.log(reference_entropy)
+    return neg_log_dispersion

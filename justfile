@@ -23,6 +23,7 @@ scratch:
     . ./.venv/bin/activate
 
     # the first question is whether plain old DPO even works
+    python scripts/train.py dpo --verbose=2 --loss_type=ipo --logp_agg_type=ipo --use-mallows
     python scripts/train.py dpo --verbose=2 --loss_type=dpo --logp_agg_type=dpo
     python scripts/train.py dpo --verbose=2 --loss_type=SimPER
     python scripts/train.py dpo --verbose=2 --loss_type=ipo --logp_agg_type=ipo

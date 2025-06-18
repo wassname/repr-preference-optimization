@@ -25,8 +25,8 @@ class ExperimentConfig:
     """Fine tune dataset. see subsets in https://huggingface.co/datasets/wassname/genies_preferences
     https://joshuaclymer.github.io/generalization-analogies-website/
     """
-    dataset: str = "alpaca_mmlu"
-    # dataset: str = "HuggingFaceH4/ultrafeedback_binarized:train_prefs"
+    # dataset: str = "alpaca_mmlu"
+    dataset: str = "HuggingFaceH4/ultrafeedback_binarized:train_prefs"
     """train dataset."""
 
     verbose: int = 1
