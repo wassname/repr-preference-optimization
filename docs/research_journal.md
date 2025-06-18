@@ -504,7 +504,7 @@ without here is very quick scratch run 14 min on 135M
         | alignment_robustness (survival_influence_test )   |                   0.578 |                                          0.531 |
         | alignment_robustness (sycophancy_answer_test )    |                   0.312 |                                          0.344 |
         | alignment_robustness (sycophancy_feedback_test )  |                     0.5 |                                            0.5 |
-        | alignment_robustness (sycophancy_mimicry_test )   |                   0.641 |                                          0.719 |
+        | alignment_robustness (sycophancy_mimicry_test )   |                   0.**641** |                                          0.719 |
         | alignment_robustness (truthful_qa_test )          |                   0.703 |                                          0.703 |
         | alignment_robustness (unhelpful_alpaca_test )     |                     0.5 |                                          0.516 |
         | alignment_robustness (wrong_arc_test )            |                   0.562 |                                          0.531 |
@@ -686,3 +686,20 @@ Table 1: Absolute accuracy after training with named adapter on ds:`us_history` 
 | ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0 UseTokC=1      |     0.943 |         0.94 |          0.467 |      0.447 | g4wnboxd |      -0.175 |
 | ReprNIpo DpoLos=SimPER TruReg=0 α=0.02 lr=1e-06         |     0.913 |        0.939 |          0.433 |      0.417 | eiwj06xt |      -0.076 |
 | ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0                |     0.943 |        0.938 |          0.467 |      0.447 | 2ncdi0mo |      -0.173 |
+
+
+# 2025-06-17 22:57:56
+
+uv run python -c "import flash_attn" 
+uv remove flash-attn --no-build-isolation --group flash
+uv cache clean
+rm -rf ~/.cache/uv
+rm -rf ~/.cache/pip
+rm -rf /tmp/*
+FLASH_ATTENTION_FORCE_BUILD=TRUE uv add flash-attn --no-build-isolation --group flash -v
+
+
+hmm I should consider adding contextual scaling, this is a log dispursion penalty... https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1276
+
+
+shouldn't SimPER have done their length norm in the linear not log domain? since they transformed to perplexity at the end.

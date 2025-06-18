@@ -46,9 +46,11 @@ def compute_dpo_loss(
     elif loss_type == "SimPER":
         # https://github.com/tengxiao1/SimPER/blob/main/scripts/simper_trainer.py#L588
         losses = model_rejected_logprobs.exp()-model_chosen_logprobs.exp()
-    else:
+    elif loss_type == "dpo":
         # Eq. 3 https://ericmitchell.ai/cdpo.pdf; label_smoothing=0 gives original DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
         losses = -F.logsigmoid(β * ptheta) * (1 - label_smoothing) - F.logsigmoid(-β * ptheta) * label_smoothing 
+    else:
+        raise ValueError(f"Unknown loss type: {loss_type}. Supported types are 'ipo', 'SimPER', and 'dpo'.")
 
     # Optional values to track progress during training
     chosen_rewards = β * (model_chosen_logprobs - reference_chosen_logprobs).detach()

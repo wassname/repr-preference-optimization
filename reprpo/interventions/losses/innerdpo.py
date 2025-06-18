@@ -306,26 +306,26 @@ class InnerDPOLossConfig:
     dpo_loss: Literal["dpo", "ipo", "SimPER"] = "SimPER"   
 
     # The below ones are used by IPO by not SimPER
-    # trust_region: float = 0
-    # """prevent over optimising inner states. not used in SimPER"""
+    trust_region: float = 0
+    """prevent over optimising inner states. not used in SimPER"""
 
-    # β: float = 0.4
-    # """Parameter controlling the deviation from the reference model. Higher β means less deviation from the reference model. For the IPO loss (`loss_type="ipo"`), β is the regularization parameter denoted by τ in the [paper](https://huggingface.co/papers/2310.12036).
+    β: float = 0.4
+    """Parameter controlling the deviation from the reference model. Higher β means less deviation from the reference model. For the IPO loss (`loss_type="ipo"`), β is the regularization parameter denoted by τ in the [paper](https://huggingface.co/papers/2310.12036).
 
-    # Note 0.1 is good for DPO, 0.4 for IPO see https://huggingface.co/blog/pref-tuning not used in SimPER
-    # """
+    Note 0.1 is good for DPO, 0.4 for IPO see https://huggingface.co/blog/pref-tuning not used in SimPER
+    """
 
-    # align_method: str = 'pars_rat'
-    # """Method to compute alignment between chosen and rejected hidden states."""
+    align_method: str = 'pars_rat'
+    """Method to compute alignment between chosen and rejected hidden states."""
 
-    # clamp_bottom: bool = False
+    clamp_bottom: bool = False
 
-    # use_token_constraint: bool = False
-    # """Whether to use the token constraint to adjust the hidden ptheta. This is like in TDPO https://arxiv.org/abs/2404.11999"""
-    # # FIXME also add to outer DPO
+    use_token_constraint: bool = False
+    """Whether to use the token constraint to adjust the hidden ptheta. This is like in TDPO https://arxiv.org/abs/2404.11999"""
+    # FIXME also add to outer DPO
 
-    # detach_ref: bool = False
-    # """Whether to detach the reference hidden states from the computation graph. This is useful to prevent the reference model from changing during training, which is less desired as it doesn't actually come up during generation"""
+    detach_ref: bool = False
+    """Whether to detach the reference hidden states from the computation graph. This is useful to prevent the reference model from changing during training, which is less desired as it doesn't actually come up during generation"""
 
     # use_dpo_loss: bool = True
 

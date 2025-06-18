@@ -36,6 +36,97 @@ def flatten_dict(d, parent_key="", sep="."):
     return dict(items)
 
 
+def acronym(s): 
+    defs = {
+        'True': '1',
+        'False': '0',
+        'ReprPO': 'Repr',
+        'InnerDPO': 'IPO',
+        'None': 'n',
+        'loss.': 'l.',
+        'transform.': 't.',
+        "alpha": 'α',
+        "beta": 'β',
+        "gamma": 'γ',
+        "epsilon": 'ε',
+        "eps": 'ε',
+    }
+    for k, v in defs.items():
+        s = s.replace(k, v)
+        s = s.replace(k.lower(), v)
+    return s
+
+def snake_case_acronym(k, keep=2, sep=''):
+    k = k.replace('-', '_')
+    kl = [ll.capitalize()[:keep] for ll in k.split('_')]
+    return sep.join(kl)
+
+
+# don't show some keys
+blacklist = [
+    "eval_samples",
+    "base_model",
+    "dev",
+    "verbose",
+    "n_samples",
+    "batch_size",
+    "max_length",
+    "max_prompt_length",
+    "use_gradient_checkpointing",
+    "load_in_4bit",
+    "load_in_8bit",
+    "collection_keys_in",
+    "collection_keys_out",
+    "collection_hs",
+    "collection_layers",
+    "collection_layers_hs",
+    "save",
+    "wandb",
+    # "lr",
+    "weight_decay",
+    'eps',
+    'collect_hs', # covered in name
+    # 'α',
+    'seed',
+
+]
+
+
+def make_shorter(s):
+    """
+    e.g. ReprPO_ETH collect_hs=True innerdpo.align_method=orth innerdpo.eps=1e-05 innerdpo.norm_before_reduce=True innerdpo.use_policy_weights=True innerdpo.α=1 verbose=2
+    to ReprPO_ETH CoHs=1 AlMe=orth eps=1e-05 NoBeR=1 UsPoW=1 α=1
+    """
+    # rm everything after the first dot
+    sl = [ss.split('.', 1)[-1] for ss in s.split()]
+    # now for the part before an =
+    sl2 = []
+    for ss in sl:
+        if '=' in ss:
+            k, v = ss.split('=', 1)
+            if len(k) >7:
+                # take the first letter of underscored or dash keys
+                k = snake_case_acronym(k, keep=3)
+            if len(v) > 7:
+                v = snake_case_acronym(v, keep=5)
+            k = k[:7]
+            v = v[:7]
+            if k not in blacklist:
+                sl2.append(f"{k}={v}")
+        else:
+            sl2.append(ss[:10])  # take the first 10 chars
+
+    return " ".join(sl2)
+
+
+def list2tuple(d: dict):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            list2tuple(v)
+        elif isinstance(v, list):
+            d[k] = tuple(v)
+    return d
+
 def get_display_name_from_args(args: dataclass):
     """
     extract a human readable name from non-default args
@@ -48,50 +139,13 @@ def get_display_name_from_args(args: dataclass):
             setattr(defaults, k, v())
 
     # collapse dict
-
-    def list2tuple(d: dict):
-        for k, v in d.items():
-            if isinstance(v, dict):
-                list2tuple(v)
-            elif isinstance(v, list):
-                d[k] = tuple(v)
-        return d
-
     diff = set(list2tuple(flatten_dict(asdict(args))).items()) - set(
         list2tuple(flatten_dict(asdict(defaults))).items()
     )
     diff = sorted(diff, key=lambda x: x[0])
 
-    # don't show some keys
-    blacklist = [
-        "eval_samples",
-        "base_model",
-        "dev",
-        "verbose",
-        "n_samples",
-        "batch_size",
-        "max_length",
-        "max_prompt_length",
-        "use_gradient_checkpointing",
-        "load_in_4bit",
-        "load_in_8bit",
-        "collection_keys_in",
-        "collection_keys_out",
-        "collection_hs",
-        "collection_layers",
-        "collection_layers_hs",
-        "save",
-        "wandb",
-        # "lr",
-        "weight_decay",
-        'eps',
-        'collect_hs', # covered in name
-        # 'α',
-        'seed',
 
-    ]
-
-    def fmt(v):
+    def fmt_v(v):
         if isinstance(v, float):
             return f"{v:.2g}"
         return v
@@ -116,11 +170,11 @@ def get_display_name_from_args(args: dataclass):
     if hasattr(args, "loss"):
         cls_name += f"_{type(args.loss).__name__.replace('Loss', '')}"
     cls_name = cls_name.replace("Config", "")
-    s_short = " ".join([f"{k}={fmt(v)}" for k, v in diff2])
-    s_all = " ".join([f"{k}={fmt(v)}" for k, v in list(diff)])
+    s_short = " ".join([f"{k}={fmt_v(v)}" for k, v in diff2])
+    s_all = " ".join([f"{k}={fmt_v(v)}" for k, v in list(diff)])
 
     # also either state transform and loss, or replace the words
-    def rename(s):
+    def rename_subv(s):
         """
         loss. -> innerdpo
         transform -> ether
@@ -137,66 +191,12 @@ def get_display_name_from_args(args: dataclass):
             transform_name = type(args.transform).__name__.lower().replace("config", "")
             s = s.replace("transform.", f"{transform_name}.")
         return s
-
     
     
     # s_short = rename(s_short)
     
-    s_all = rename(s_all)
+    s_all = rename_subv(s_all)
     logger.info(f"diff: {cls_name} {s_all}")
-
-
-    def acronym(s): 
-        defs = {
-            'True': '1',
-            'False': '0',
-            'ReprPO': 'Repr',
-            'InnerDPO': 'IPO',
-            'None': 'n',
-            'loss.': 'l.',
-            'transform.': 't.',
-            "alpha": 'α',
-            "beta": 'β',
-            "gamma": 'γ',
-            "epsilon": 'ε',
-            "eps": 'ε',
-        }
-        for k, v in defs.items():
-            s = s.replace(k, v)
-            s = s.replace(k.lower(), v)
-        return s
-
-    def snake_case_acronym(k, keep=2, sep=''):
-        k = k.replace('-', '_')
-        kl = [ll.capitalize()[:keep] for ll in k.split('_')]
-        return sep.join(kl)
-
-    def make_shorter(s):
-        """
-        e.g. ReprPO_ETH collect_hs=True innerdpo.align_method=orth innerdpo.eps=1e-05 innerdpo.norm_before_reduce=True innerdpo.use_policy_weights=True innerdpo.α=1 verbose=2
-        to ReprPO_ETH CoHs=1 AlMe=orth eps=1e-05 NoBeR=1 UsPoW=1 α=1
-        """
-        # rm everything after the first dot
-        sl = [ss.split('.', 1)[-1] for ss in s.split()]
-        # now for the part before an =
-        sl2 = []
-        for ss in sl:
-            if '=' in ss:
-                k, v = ss.split('=', 1)
-                if len(k) >7:
-                    # take the first letter of underscored or dash keys
-                    k = snake_case_acronym(k, keep=3)
-                if len(v) > 7:
-                    v = snake_case_acronym(v, keep=5)
-                k = k[:7]
-                v = v[:7]
-                if k not in blacklist:
-                    sl2.append(f"{k}={v}")
-            else:
-                sl2.append(ss[:10])  # take the first 10 chars
-
-        return " ".join(sl2)
-    
 
     cls_name_shorter = snake_case_acronym(acronym(cls_name), keep=4, sep='')
     shorter2 = make_shorter(acronym(s_short))
@@ -205,3 +205,4 @@ def get_display_name_from_args(args: dataclass):
     cls_name_short = snake_case_acronym(acronym(cls_name), keep=5, sep='')
     s_short2 = acronym(f"{cls_name_short} {s_short}")
     return s_all, s_short2, shorter
+

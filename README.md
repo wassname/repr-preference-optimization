@@ -157,8 +157,8 @@ TODO explain the transformations, data source, and loss. As well as loss modifie
 
 ```sh
 uv sync
+FLASH_ATTENTION_FORCE_BUILD=TRUE uv sync --all-groups -v # compile flash attn
 . ./venv/bin/activate
-uv sync --all-groups # compile flash attn
 
 python -u nbs/train.py --help
 
@@ -181,3 +181,5 @@ If this repository is useful in your own research, you can use the following Bib
   commit = {<commit hash>}
 }
 ```
+
+

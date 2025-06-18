@@ -11,7 +11,7 @@ default:
 sweep:
     #!/usr/bin/zsh
     rm -f sweep.sh
-    mv outputs outputs2/outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
+    # mv outputs outputs2/outputs_$(date +%Y-%m-%d_%H-%M-%S) || true
     python scripts/sweep.py > sweep.sh
     unbuffer bash sweep.sh  2>&1 | tee sweep.txt
 
@@ -21,26 +21,44 @@ scratch:
     #!/usr/bin/env bash
     set -x
     . ./.venv/bin/activate
+
+    # the first question is whether plain old DPO even works
+    python scripts/train.py dpo --verbose=2 --loss_type=dpo --logp_agg_type=dpo
+    python scripts/train.py dpo --verbose=2 --loss_type=SimPER
+    python scripts/train.py dpo --verbose=2 --loss_type=ipo --logp_agg_type=ipo
+    python scripts/train.py dpo --verbose=2 --loss_type=ipo --logp_agg_type=ipo --use-policy-weights
+    python scripts/train.py dpo --verbose=2 --β=0.1
     
+    export lrs=(
+        1e-4
+        1e-3
+        1e-5
+        1e-6
+    )
+    for lr in "${lrs[@]}"; do
+        python scripts/train.py hs-ether-InnerDPO --lr="$lr"
+        python scripts/train.py dpo --verbose=2 --lr="$lr"
+    done
+
     export OPTIONS=(
-        --loss.inner-policy-weights --loss.use-policy-weights
-        --loss.p=1
-        --loss.eps=1e-2
-        --loss.eps=1e-9
+        # --loss.inner-policy-weights --loss.use-policy-weights
+        # --loss.p=1
+        # --loss.eps=1e-2
+        # --loss.eps=1e-9
         --weight-decay=1e-2
         --collection-layers='range(-3, -2)'
         
     ) 
 
     for args in "${OPTIONS[@]}"; do
-        python scripts/train.py hs-none-InnerDPO $args
+        python scripts/train.py hs-ether-InnerDPO $args
     done
 
     export BASE=(
         # dpo
         side-none-InnerDPO
         hs-supr-InnerDPO
-        hs-ether-InnerDPO
+        hs-none-InnerDPO
     )
     for base in "${BASE[@]}"; do
         python scripts/train.py $base
@@ -48,16 +66,6 @@ scratch:
 
 
 
-    export lrs=(
-        1e-5
-        1e-4
-        1e-6
-        1e-3
-    )
-    for lr in "${lrs[@]}"; do
-        python scripts/train.py hs-none-InnerDPO --lr="$lr"
-        python scripts/train.py dpo --verbose=2 --lr="$lr"
-    done
 
     export alpha=(
         100
