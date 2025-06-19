@@ -23,47 +23,61 @@ scratch:
     . ./.venv/bin/activate
 
     # the first question is whether plain old DPO even works
-    python scripts/train.py dpo --verbose=2 --loss_type=ipo --logp_agg_type=ipo --use-mallows --lr=1e-5  --β=0.1
-    python scripts/train.py dpo --verbose=2 --loss_type=dpo --logp_agg_type=dpo
-    python scripts/train.py dpo --verbose=2 --loss_type=SimPER
-    python scripts/train.py dpo --verbose=2 --loss_type=ipo --logp_agg_type=ipo
-    python scripts/train.py dpo --verbose=2 --loss_type=ipo --logp_agg_type=ipo --use-policy-weights
-    python scripts/train.py dpo --verbose=2 --β=0.1
+    # python scripts/train.py dpo --verbose=2 --loss_type=ipo --use-mallows  --β=0.1
+    python scripts/train.py dpo --loss_type=ipo --β=0.4
+    python scripts/train.py dpo --loss_type=dpo --logp_agg_type=dpo
+    python scripts/train.py dpo --loss_type=dpo --logp_agg_type=dpo --use-mallows 
+    python scripts/train.py dpo --loss_type=SimPER --use-mallows
+    python scripts/train.py dpo --loss_type=SimPER
     
-    export lrs=(
-        1e-4
-        1e-3
-        1e-5
-        1e-6
-    )
-    for lr in "${lrs[@]}"; do
-        python scripts/train.py hs-ether-InnerDPO --lr="$lr"
-        python scripts/train.py dpo --verbose=2 --lr="$lr"
-    done
-
-    export OPTIONS=(
-        # --loss.inner-policy-weights --loss.use-policy-weights
-        # --loss.p=1
-        # --loss.eps=1e-2
-        # --loss.eps=1e-9
-        --weight-decay=1e-2
-        --collection-layers='range(-3, -2)'
-        
-    ) 
-
-    for args in "${OPTIONS[@]}"; do
-        python scripts/train.py hs-ether-InnerDPO $args
-    done
+    python scripts/train.py dpo --loss_type=ipo --logp_agg_type=ipo --use-policy-weights
+    python scripts/train.py dpo --β=0.1
+    
+    python scripts/train.py hs-none-InnerDPO
+    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo
+    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=dpo
+    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo --loss.inner_policy_weights --loss.use_policy_weights
+    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo --loss.align_method=para_signed
+    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo --loss.align_method=logodds_noref
 
     export BASE=(
         # dpo
         side-none-InnerDPO
         hs-supr-InnerDPO
-        hs-none-InnerDPO
+        # hs-none-InnerDPO
+        hs-ether-InnerDPO
     )
     for base in "${BASE[@]}"; do
         python scripts/train.py $base
     done
+
+    
+    # export lrs=(
+    #     1e-4
+    #     1e-3
+    #     1e-5
+    #     1e-6
+    # )
+    # for lr in "${lrs[@]}"; do
+    #     python scripts/train.py hs-ether-InnerDPO --lr="$lr"
+    #     python scripts/train.py dpo --verbose=2 --lr="$lr"
+    # done
+
+    # export OPTIONS=(
+    #     # --loss.inner-policy-weights --loss.use-policy-weights
+    #     # --loss.p=1
+    #     # --loss.eps=1e-2
+    #     # --loss.eps=1e-9
+    #     --weight-decay=1e-2
+    #     --collection-layers='range(-3, -2)'
+        
+    # ) 
+
+    # for args in "${OPTIONS[@]}"; do
+    #     python scripts/train.py hs-ether-InnerDPO $args
+    # done
+
+
 
 
 
@@ -81,9 +95,9 @@ scratch:
     done
 
 
-    python scripts/train.py dpo --loss-type=dpo
-    python scripts/train.py dpo --loss-type=ipo
-    python scripts/train.py dpo --loss-type=SimPER
+    # python scripts/train.py dpo --loss-type=dpo
+    # python scripts/train.py dpo --loss-type=ipo
+    # python scripts/train.py dpo --loss-type=SimPER
 
     # export agg=(
     #     log_ratio_difference

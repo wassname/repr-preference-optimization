@@ -120,4 +120,7 @@ def compute_mallows_weights(ref_cho, ref_rej):
     dispersion_mean = 0.29 # TODO this should ideally be a moving average?
     reference_entropy = (ref_cho.log_policy_weights + ref_rej.log_policy_weights)/2
     neg_log_dispersion = - dispersion_mean * torch.log(reference_entropy)
+    if reference_entropy.sum() == 0:
+        # Reference entropy not provided, wallow weights will be zero.
+        neg_log_dispersion = None
     return neg_log_dispersion

@@ -707,3 +707,19 @@ shouldn't SimPER have done their length norm in the linear not log domain? since
 # 2025-06-19 01:14:11
 
 Why am I getting NaNs? And why liktle to nor learning?
+
+Let me try a longer run
+- Long name: loss_type=ipo lr=1e-06 n_samples=60000 use_mallows=True verbose=2 β=0.2
+- Human name: Dpo loss_type=ipo lr=1e-06 use_mallows=1 β=0.2
+- Short name: Dpo LosTyp=ipo lr=1e-06 UseMal=1 2
+- WANDB url = https://wandb.ai/wassname/reprpo2/runs/yhzsbeca)
+
+250619 09:09:13|INFO|reprpo.training:make_table#446 - 
+| adapter/distribution_shift   |   in_domain |   alignment_robustness |   cross_domain |   moral_transfer |   orthogonal |
+|:-----------------------------|------------:|-----------------------:|---------------:|-----------------:|-------------:|
+| none                         |       0.743 |                  0.455 |          0.743 |            0.437 |        0.413 |
+| dpo                          |       0.79  |                  0.485 |          0.74  |            0.523 |        0.46  |
+250619 09:09:13|INFO|reprpo.training:make_table#447 - Table 1: Absolute accuracy after training with named adapter on ds:`HuggingFaceH4/ultrafeedback_binarized:train_prefs` compared to base model `Qwen3-0.6B-sft` for various distribution shifts [N=300]:
+
+this took 1 hour. But yeah it does seem to have worked.
+`python scripts/train.py dpo --verbose=2 --loss_type=ipo --use-mallows --lr=1e-6  --<ce><b2>=0.2 --n_samples=60000`

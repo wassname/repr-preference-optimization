@@ -91,7 +91,7 @@
             "args": [
                 // "hs-none-InnerDPO",
                 "dpo",
-                "--use_mallows",
+                // "--use_mallows",
                 // "--loss.align-method=pars_rat_log",
                 // "--loss.trust_region=0.1", 
                 // "'--loss.α=0.1'",

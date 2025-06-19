@@ -5,7 +5,7 @@ from dataclasses import dataclass
 @dataclass
 class ExperimentConfig:
 
-    lr: float = 6e-6
+    lr: float = 1e-6
     """1e-6 in alignment handbook with cosine, 5e-7 is eric mitchells ref, SimPPo is 6e-7 or lower"""
 
     weight_decay: float = 0.0
@@ -29,7 +29,7 @@ class ExperimentConfig:
     dataset: str = "HuggingFaceH4/ultrafeedback_binarized:train_prefs"
     """train dataset."""
 
-    verbose: int = 1
+    verbose: int = 2
     seed: int = 42
     patience: int = 3
 
@@ -45,7 +45,7 @@ class ExperimentConfig:
     use_grad_paging: bool = False
     """avoid mem spikes"""
 
-    n_samples: int = 10000 # 3k in dataset, most ref models for 1 epoch of 60k ultrafeedback samples
+    n_samples: int = 40000 # 3k in dataset, most ref models for 1 epoch of 60k ultrafeedback samples
     eval_samples: Optional[int] = 300
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long

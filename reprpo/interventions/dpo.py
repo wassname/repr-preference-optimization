@@ -229,10 +229,10 @@ class DPOConfig(ExperimentConfig):
     logp_agg_type: str = "ipo"
     """# DPO aggregation type, can be 'ipo' or 'dpo'. IPO is the original DPO, IPO is the one used in the IPO paper."""
 
-    loss_type: str = "SimPER"
+    loss_type: str = "ipo"
     """# DPO loss type, can be 'ipo' or 'SimPER'. IPO is the original DPO, SimPER is the one used in the SimPER paper."""
 
-    β: float = 0.4
+    β: float = 0.2
     """Parameter controlling the deviation from the reference model. Higher β means less deviation from the reference model. For the IPO loss (`loss_type="ipo"`), β is the regularization parameter denoted by τ in the [paper](https://huggingface.co/papers/2310.12036).
 
     Note 0.1 is good for DPO, 0.4 for IPO see https://huggingface.co/blog/pref-tuning
