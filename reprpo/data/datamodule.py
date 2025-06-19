@@ -47,6 +47,7 @@ class PrefDataModule(LightningDataModule):
             lambda x: not (x['prompt_truncated'] or x['chosen_truncated'] or x['rejected_truncated']),
             desc="Filtering truncated samples"
         )
+        logger.info(f"Filtered from {len(self.ds)} to {len(tokenized_ds)} samples after truncation.")
 
 
         if isinstance(tokenized_ds, dict):
