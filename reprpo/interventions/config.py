@@ -5,7 +5,7 @@ from dataclasses import dataclass
 @dataclass
 class ExperimentConfig:
 
-    lr: float = 1e-6
+    lr: float = 6e-6
     """1e-6 in alignment handbook with cosine, 5e-7 is eric mitchells ref, SimPPo is 6e-7 or lower"""
 
     weight_decay: float = 0.0
@@ -56,11 +56,14 @@ class ExperimentConfig:
 
     # allenai/Llama-3.1-Tulu-3-8B-SFT
 
-    base_model: str = "wassname/llama-3.2-3b-sft"
-    batch_size: int = 10
+    # base_model: str = "wassname/llama-3.2-3b-sft"
+    # batch_size: int = 10
 
     # base_model: str = "allenai/OLMo-2-0425-1B-SFT"
     # batch_size: int = 20
+
+    base_model: str = "wassname/Qwen3-0.6B-sft"
+    batch_size: int = 20
     
     # 24GB gpu
     

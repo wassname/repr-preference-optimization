@@ -42,7 +42,7 @@ def compute_dpo_loss(
     )
     if neg_log_dispersion is not None:
         # Use the neg_log_dispersion to compute ptheta https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1276
-        ptheta = ptheta * neg_log_dispersion
+        ptheta = ptheta * neg_log_dispersion.detach()
 
     # DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
     if loss_type == "ipo":

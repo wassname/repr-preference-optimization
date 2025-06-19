@@ -41,6 +41,14 @@ class PrefDataModule(LightningDataModule):
             max_length=self.args.max_length,
             verbose=self.args.verbose,
         )
+
+        # remove truncated
+        tokenized_ds = tokenized_ds.filter(
+            lambda x: not (x['prompt_truncated'] or x['chosen_truncated'] or x['rejected_truncated']),
+            desc="Filtering truncated samples"
+        )
+
+
         if isinstance(tokenized_ds, dict):
             if 'train' in tokenized_ds and 'test' in tokenized_ds:
                 pass

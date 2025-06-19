@@ -100,7 +100,7 @@ def compute_ptheta(
 ):
     pi_logratios = pi_cho_logp - pi_rej_logp
     ref_logratios = ref_cho_logp - ref_rej_logp
-    logits = pi_logratios - ref_logratios
+    logits = pi_logratios - ref_logratios.detach()
     return logits
 
 
@@ -114,10 +114,10 @@ def compute_policy_weights(pi_cho, pi_rej, T=3):
     policy_weights = policy_weights /(policy_weights.mean() + 1e-6)
     return policy_weights
 
-def compute_mallows_weights(ref_cho, ref_rej, T=3):
+def compute_mallows_weights(ref_cho, ref_rej):
     # from https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1276
     # Here we deviate from the WPO paper for stability
-    dispersion_mean = 0.29
+    dispersion_mean = 0.29 # TODO this should ideally be a moving average?
     reference_entropy = (ref_cho.log_policy_weights + ref_rej.log_policy_weights)/2
     neg_log_dispersion = - dispersion_mean * torch.log(reference_entropy)
     return neg_log_dispersion

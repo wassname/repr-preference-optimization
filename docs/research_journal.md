@@ -703,3 +703,7 @@ hmm I should consider adding contextual scaling, this is a log dispursion penalt
 
 
 shouldn't SimPER have done their length norm in the linear not log domain? since they transformed to perplexity at the end.
+
+# 2025-06-19 01:14:11
+
+Why am I getting NaNs? And why liktle to nor learning?
