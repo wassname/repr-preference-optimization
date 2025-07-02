@@ -151,35 +151,35 @@ def innerdpo_loss(
                 Intuition: Raw alignment signal. +ve = aligned, -ve = anti-aligned. Unbounded.
                 """
                 hidden_ptheta =  signed_proj
-            case 'para_signed_log':
-                """                
-                sign(projection) * log(|projection|)
-                Geometric: Compresses projection magnitude while preserving direction
-                Intuition: Stabilizes wild swings, dampens near-zero gradients
-                """
-                hidden_ptheta =  safe_signed_log(signed_proj, eps=eps)
-            case 'para_orth_signed':
-                """
-                signed_projection - orthogonal_magnitude
-                Hybrid scale: raw signed parallel distance vs raw orthogonal drift
-                Geometric: "Raw signed parallel strength vs orthogonal drift"
-                Intuition: Rewards ref-direction movement, penalizes off-axis drift (no logs)
-                """
-                orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=p, dim=-1)
-                hidden_ptheta =  (signed_proj - orthogonal_mag)
-            case 'para_orth_signed_log':
-                """
-                signed_log(parallel) - log(orthogonal_magnitude)
-                Full log-space: signed log of parallel vs log of orthogonal drift
-                Geometric: "Log-parallel strength vs log-orthogonal drift"
-                Intuition: Stabilizes both signals in log space
-                """
-                orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=p, dim=-1)
-                hidden_ptheta =  (safe_signed_log(signed_proj, eps=eps) - safe_log(orthogonal_mag, eps))
-            case 'logodds_noref':
-                hidden_ptheta = logodds_pi * 10
-            case 'odds_noref':
-                hidden_ptheta= par_mag - ort_mag
+            # case 'para_signed_log':
+            #     """                
+            #     sign(projection) * log(|projection|)
+            #     Geometric: Compresses projection magnitude while preserving direction
+            #     Intuition: Stabilizes wild swings, dampens near-zero gradients
+            #     """
+            #     hidden_ptheta =  safe_signed_log(signed_proj, eps=eps)
+            # case 'para_orth_signed':
+            #     """
+            #     signed_projection - orthogonal_magnitude
+            #     Hybrid scale: raw signed parallel distance vs raw orthogonal drift
+            #     Geometric: "Raw signed parallel strength vs orthogonal drift"
+            #     Intuition: Rewards ref-direction movement, penalizes off-axis drift (no logs)
+            #     """
+            #     orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=p, dim=-1)
+            #     hidden_ptheta =  (signed_proj - orthogonal_mag)
+            # case 'para_orth_signed_log':
+            #     """
+            #     signed_log(parallel) - log(orthogonal_magnitude)
+            #     Full log-space: signed log of parallel vs log of orthogonal drift
+            #     Geometric: "Log-parallel strength vs log-orthogonal drift"
+            #     Intuition: Stabilizes both signals in log space
+            #     """
+            #     orthogonal_mag = torch.norm(pref_dir_pi - signed_proj.unsqueeze(-1) * pref_dir_ref_unit, p=p, dim=-1)
+            #     hidden_ptheta =  (safe_signed_log(signed_proj, eps=eps) - safe_log(orthogonal_mag, eps))
+            # case 'logodds_noref':
+            #     hidden_ptheta = logodds_pi * 10
+            # case 'odds_noref':
+            #     hidden_ptheta= par_mag - ort_mag
             case _:
                 raise ValueError(f"Unsupported align_method: {align_method}")
         

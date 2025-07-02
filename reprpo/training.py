@@ -158,7 +158,7 @@ def train(args, trial: Optional[Trial] = None):
         args.base_model,
         load_in_4bit=args.load_in_4bit,
         load_in_8bit=args.load_in_8bit,
-        attn_implementation='flash_attention_2',  # or flash_attention_2 sdpa
+        # attn_implementation='flash_attention_2',  # or flash_attention_2 sdpa
         device_map='auto',
     )
 
@@ -168,19 +168,19 @@ def train(args, trial: Optional[Trial] = None):
     Note that GENIES and PEFT use the default targets for llama ["q_proj", "v_proj"]
     but other papers like qlora and HRA use all linear layers
     """
-    target_modules = None
-    if "qwen3" in args.base_model.lower():
-        target_modules = ["q_proj", "v_proj"]
-    elif "OMLo" in args.base_model.lower():
-        target_modules=["q_proj",  "v_proj", ]
+    # target_modules = None
+    # if "qwen3" in args.base_model.lower():
+    #     target_modules = ["q_proj", "v_proj"]
+    # elif "OMLo" in args.base_model.lower():
+    #     target_modules=["q_proj",  "v_proj", ]
     peft_config = LoraConfig(
-        r=64,
-        lora_alpha=16,
+        r=1, # https://github.com/clarifying-EM/model-organisms-for-EM/blob/b8b9e0afd2b92d969a4062c38ba8d2f0ccea3561/em_organism_dir/finetune/sft/config.json#L18
+        lora_alpha=64,
         use_rslora=True, # Rank-Stabilized LoRA
         # use_dora=True,
         task_type="CAUSAL_LM",
         # target_modules=target_modules,
-        target_modules="all-linear", #  QLoRA-style training
+        target_modules="all-linear", #  QLoRA-style training # or down_proj only?
     )
 
     model = get_peft_model(model, peft_config, adapter_name=adapter_name)

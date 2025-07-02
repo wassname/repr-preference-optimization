@@ -504,7 +504,7 @@ without here is very quick scratch run 14 min on 135M
         | alignment_robustness (survival_influence_test )   |                   0.578 |                                          0.531 |
         | alignment_robustness (sycophancy_answer_test )    |                   0.312 |                                          0.344 |
         | alignment_robustness (sycophancy_feedback_test )  |                     0.5 |                                            0.5 |
-        | alignment_robustness (sycophancy_mimicry_test )   |                   0.**641** |                                          0.719 |
+        | alignment_robustness (sycophancy_mimicry_test )   |               0.**641** |                                          0.719 |
         | alignment_robustness (truthful_qa_test )          |                   0.703 |                                          0.703 |
         | alignment_robustness (unhelpful_alpaca_test )     |                     0.5 |                                          0.516 |
         | alignment_robustness (wrong_arc_test )            |                   0.562 |                                          0.531 |
@@ -680,7 +680,7 @@ Table 1: Absolute accuracy after training with named adapter on ds:`us_history` 
 | Dpo LosTyp=dpo                                          |     0.937 |        0.929 |           0.48 |      0.477 | da5cgrgw |       1.351 |
 | Dpo LosTyp=SimPER                                       |     0.957 |        0.944 |          0.483 |      0.463 | hx5530gl |      -0.123 |
 | ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0 UseTokC=1 0001 |     0.933 |        0.934 |          0.583 |      0.417 | fzv7v259 |       0.045 |
-| none                                                    |      0.88 |         0.94 |          0.433 |      0.417 |          |              |
+| none                                                    |      0.88 |         0.94 |          0.433 |      0.417 |          |             |
 | ReprNIpo DetRef=1 DpoLos=SimPER UseTokC=1 α=10 lr=4e-05 |     0.373 |         0.48 |           0.61 |       0.62 | i3lm2oit |      14.987 |
 | ReprNIpo DpoLos=SimPER α=1 0001                         |       0.8 |        0.603 |          0.477 |       0.66 | 56y228ql |       15.56 |
 | ReprNIpo DetRef=1 DpoLos=SimPER TruReg=0 UseTokC=1      |     0.943 |         0.94 |          0.467 |      0.447 | g4wnboxd |      -0.175 |
@@ -715,11 +715,165 @@ Let me try a longer run
 - WANDB url = https://wandb.ai/wassname/reprpo2/runs/yhzsbeca)
 
 250619 09:09:13|INFO|reprpo.training:make_table#446 - 
-| adapter/distribution_shift   |   in_domain |   alignment_robustness |   cross_domain |   moral_transfer |   orthogonal |
-|:-----------------------------|------------:|-----------------------:|---------------:|-----------------:|-------------:|
-| none                         |       0.743 |                  0.455 |          0.743 |            0.437 |        0.413 |
-| dpo                          |       0.79  |                  0.485 |          0.74  |            0.523 |        0.46  |
-250619 09:09:13|INFO|reprpo.training:make_table#447 - Table 1: Absolute accuracy after training with named adapter on ds:`HuggingFaceH4/ultrafeedback_binarized:train_prefs` compared to base model `Qwen3-0.6B-sft` for various distribution shifts [N=300]:
+| adapter/distribution_shift | in_domain |                                                                                                                                                                                                                     alignment_robustness | cross_domain | moral_transfer | orthogonal |
+| :------------------------- | --------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | -----------: | -------------: | ---------: |
+| none                       |     0.743 |                                                                                                                                                                                                                                    0.455 |        0.743 |          0.437 |      0.413 |
+| dpo                        |      0.79 |                                                                                                                                                                                                                                    0.485 |         0.74 |          0.523 |       0.46 |
+| 250619 09:09:13            |      INFO | reprpo.training:make_table#447 - Table 1: Absolute accuracy after training with named adapter on ds:`HuggingFaceH4/ultrafeedback_binarized:train_prefs` compared to base model `Qwen3-0.6B-sft` for various distribution shifts [N=300]: |
 
 this took 1 hour. But yeah it does seem to have worked.
 `python scripts/train.py dpo --verbose=2 --loss_type=ipo --use-mallows --lr=1e-6  --<ce><b2>=0.2 --n_samples=60000`
+
+
+# 2025-06-20
+
+Ok I'm not getting reliable results
+- I do need to train for a long time on a low lr
+- I probobly need a large model ((?)) check this
+- always include changemyview?
+
+
+# 2025-06-28 16:03:53
+
+Time to rethink this
+
+- 1. I migth just be measuring the SFT effect https://arxiv.org/pdf/2404.14723... although this paper seems a bit weak
+  - it turns out both IPO and DPO are quick effected by not SFT on the same dataset, which also means they don't generalise well beyond the SFT dataset. So they may be poor approaches for generaliation. but KTO and CPO are better.. why? Can I get insight into inner alinment? What about SimPER, SimPO, Rainbow, etc.?
+  - KTO (Ethayarajh et al., 2024), 
+    - > But solely maximizing the reward might come at the expense of desiderata such as generating grammatical text. To avoid this, a KL divergence penalty is introduced to restrict how far the language model can drift from πref.
+    - `kl = (policy_KL_logps - reference_KL_logps).mean().detach()`
+    - `chosen_losses = 1 - F.sigmoid(self.beta * (chosen_logratios - kl))`
+    - https://github.com/ContextualAI/HALOs/blob/main/train/trainers.py
+    - Hmm so this appears robust in some papers. It does not use paired data, just clusters of rejected and chosen.
+    - Could I use this internally? It looks like it. It's `logp - kl`, so if I treat the hidden states in a similar way it might be how much we prefer is vs how much it's already moved. For kl could be replace with distance from the ref `(hs - hs_ref).norm(dim=-1)` and logp could be replace with hs_pi magnitude? or the distance along the pref dir?.
+      - or since KL is y_true * log(y_true / y_pred) maybe I could use the log of the distance to the ref, so `hs_ref.norm(dim=-1) * log(hs.norm(dim=-1)) - log(hs_ref.norm(dim=-1))`?
+  - and CPO (Xu et al., 2024),
+    - paired
+    - logits and nll
+
+Hmm so what I should do, is take the DPO losses, and make a table of them. Then put my analougous inner losses. That way it's all set out for me to think about.
+
+I also want major factors such as:
+- some method require SFT and therefore generalise poorly
+- Some require paired samples
+- Some are not well proven
+- which ones limit the overfitting or incoherence?
+
+Things to think about:
+- XPO and variants operate in the logprob or sometimes prob space. That is the final layer has been projected into the larger vocab space and passed through a softmax. This means they act as logprobs, are ranked, and always positive. This is not the case for the hidden state based methods, which operate in the hidden state space. But we can still do similar things like have ratios of the distances, or signed projections, or limit the distance between two points. We could also work with the norm or similar if that doesn't remove too much information and we deem it analogous enough to the logprob space (idk).
+
+
+
+Ingrediants
+- hs_pi_cho, hs_pi_rej: for chosen and rejected completion on policy (pi) model
+- hs_ref_cho, hs_ref_rej: [batch, tokens, hidden_size], for reference model
+- cho_logps, rej_logps: [batch, tokens], for chosen and rejected logprobs on policy model
+- ref_cho_logps, ref_rej_logps: [batch, tokens], for chosen and rejected logprobs on reference model
+- signed_proj = 
+
+
+
+| name |                          outer                           | inner |
+| :--- | :------------------------------------------------------: | :---: |
+| DPO  | ratio of selected logprobs: (chos_logps - rej_logps)-(ref_cho_logps - ref_rej_logps) | ratio of how far pi_cho-pi_ref is along the ref pref dir, compared to the ref pref magnitude : signed_proj / pref_mag_ref   |
+| SimPER | might not need sft, fairly unproven, nll_cho.exp()/nll_ref.exp(): pi_rej.label_logprobs.exp()-pi_cho.label_logprobs.exp()|  ""
+| KTO  | this has a kl penalty to stop it movign to far from the ref, and might not need sft. This does sound promising: logp - kl | signed_proj and also for kl (hs - hs_ref).norm(dim=-1)  or hs_ref.norm(dim=-1) * log(hs.norm(dim=-1)) - log(hs_ref.norm(dim=-1)) |
+| CPO  | 
+| SimPO | lots of hyperparams | 
+| TDPO | Token weighted DPO
+
+
+Ok I should brainstorm this properly, load in code and papers for each.
+Then start the comparison have an AI brainstorm and offer improvements. It should be suffient contex.t
+
+See the [XPO](/home/wassname/Documents/syncthing/ai_docs/inputs/dpo/XPO.md) doc
+
+# some ideas to try
+
+tldr: don't try to be lobprobs, abandon the outer loss, bound the inner
+
+```
+# idea contrastive.... but usually this doesn't generalsie well
+def contrastive_inner_loss(hs_chosen, hs_rejected, temperature=0.07):
+    """
+    Treat preference learning as contrastive learning directly in hidden space
+    """
+    # Normalize to unit sphere (common in contrastive learning)
+    hs_chosen = F.normalize(hs_chosen, dim=-1)
+    hs_rejected = F.normalize(hs_rejected, dim=-1)
+    
+    # We want chosen states to be similar to each other
+    # and different from rejected states
+    
+    # If we have a batch:
+    # Positive pairs: chosen[i] should be similar to chosen[j]
+    # Negative pairs: chosen[i] should be different from rejected[j]
+    
+    batch_size = hs_chosen.shape[0]
+    
+    # Compute all pairwise similarities
+    chosen_chosen_sim = hs_chosen @ hs_chosen.T / temperature
+    chosen_rejected_sim = hs_chosen @ hs_rejected.T / temperature
+    
+    # For each chosen example, create a distribution over all examples
+    # where we want high probability on other chosen, low on rejected
+    labels = torch.arange(batch_size)
+    
+    # This is now a proper classification loss in hidden space
+    loss = F.cross_entropy(
+        torch.cat([chosen_chosen_sim, chosen_rejected_sim], dim=1),
+        labels
+    )
+    
+    return loss
+```
+
+```
+# what about only rotating chosen to be more in pref dir but with same magnitude?
+def generalizable_contrastive_loss(hs_chosen, hs_rejected, hs_ref_chosen, hs_ref_rejected):
+    # Don't just separate chosen/rejected
+    # Learn the DIRECTION of preference
+    
+    # 1. Learn preference direction from reference model
+    ref_preference_dir = F.normalize(hs_ref_chosen - hs_ref_rejected, dim=-1)
+    
+    # 2. Project current hidden states onto this direction
+    chosen_proj = (hs_chosen * ref_preference_dir).sum(-1)
+    rejected_proj = (hs_rejected * ref_preference_dir).sum(-1)
+    
+    # 3. We want chosen to be MORE in preference direction, not just different
+    # This allows extrapolation beyond training examples
+    margin = 0.5
+    directional_loss = F.relu(margin - (chosen_proj - rejected_proj))
+    
+    # 4. But also preserve some structure (prevent collapse)
+    # Keep rough magnitude ratios from reference
+    ref_magnitude_ratio = hs_ref_chosen.norm(dim=-1) / (hs_ref_rejected.norm(dim=-1) + 1e-8)
+    curr_magnitude_ratio = hs_chosen.norm(dim=-1) / (hs_rejected.norm(dim=-1) + 1e-8)
+    magnitude_preserve_loss = (curr_magnitude_ratio - ref_magnitude_ratio).abs()
+    
+    return directional_loss + 0.1 * magnitude_preserve_loss
+```
+
+what about only looking at topk
+```
+def topk_preference_loss(hs_chosen, hs_rejected, k=100):
+    """Only the top-k most different dimensions matter"""
+    diff = hs_chosen - hs_rejected
+    
+    # Find top-k dimensions by absolute difference
+    topk_values, topk_indices = torch.topk(diff.abs(), k, dim=-1)
+    
+    # Create sparse version
+    sparse_diff = torch.zeros_like(diff)
+    sparse_diff.scatter_(-1, topk_indices, topk_values * diff.sign().gather(-1, topk_indices))
+    
+    # Loss encourages large separation in these k dimensions
+    separation_loss = -sparse_diff.abs().mean()
+    
+    # Regularize to prevent too extreme values
+    extreme_penalty = F.relu(sparse_diff.abs() - 3.0).mean()
+    
+    return separation_loss + 0.1 * extreme_penalty
+```
+lets try the topk one... it does actually look interesting! and follow the trend

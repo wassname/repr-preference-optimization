@@ -62,16 +62,16 @@ class ExperimentConfig:
     # base_model: str = "allenai/OLMo-2-0425-1B-SFT"
     # batch_size: int = 20
 
-    base_model: str = "wassname/Qwen3-0.6B-sft"
-    batch_size: int = 20
+    # base_model: str = "wassname/Qwen3-0.6B-sft"
+    # batch_size: int = 20
     
     # 24GB gpu
     
     # # base_model: str = "allenai/OLMo-2-0425-1B-SFT"
     # batch_size: int = 2
 
-    # base_model: str = "wassname/Qwen3-0.6B-sft"
-    # batch_size: int = 4
+    base_model: str = "wassname/Qwen3-0.6B-sft"
+    batch_size: int = 4
 
     # # base_model: str = "wassname/SmolLM2-360M-sft"
     # batch_size: int = 7
