@@ -3,6 +3,7 @@ from typing import Union
 from .rank import RankLossConfig
 from .innerdpo import InnerDPOLossConfig
 from .mse import MSELossConfig
+from .topk import TopKLossConfig
 
 
 class Losses(enum.Enum):
@@ -14,6 +15,7 @@ class Losses(enum.Enum):
     InnerDPO = InnerDPOLossConfig
     rank = RankLossConfig
     mse = MSELossConfig
+    topk = TopKLossConfig
 
 
 LossesType = Union[tuple(e.value for e in Losses)]
