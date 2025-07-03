@@ -22,34 +22,49 @@ scratch:
     set -x
     . ./.venv/bin/activate
 
-    # the first question is whether plain old DPO even works
-    # python scripts/train.py dpo --verbose=2 --loss_type=ipo --use-mallows  --β=0.1
-    python scripts/train.py dpo --loss_type=ipo --β=0.4
-    python scripts/train.py dpo --loss_type=dpo --logp_agg_type=dpo
-    python scripts/train.py dpo --loss_type=dpo --logp_agg_type=dpo --use-mallows 
-    python scripts/train.py dpo --loss_type=SimPER --use-mallows
-    python scripts/train.py dpo --loss_type=SimPER
-    
-    python scripts/train.py dpo --loss_type=ipo --logp_agg_type=ipo --use-policy-weights
-    python scripts/train.py dpo --β=0.1
-    
-    python scripts/train.py hs-none-InnerDPO
-    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo
-    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=dpo
-    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo --loss.inner_policy_weights --loss.use_policy_weights
-    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo --loss.align_method=para_signed
-    python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo --loss.align_method=logodds_noref
+    python scripts/train.py dpo
+    python scripts/train.py hs-none-topk
+    python scripts/train.py hs-none-topk --use-mallows
+    python scripts/train.py hs-none-topk --loss.use-token-constraint
+    python scripts/train.py hs-none-topk  --loss.use-policy-weights
+    python scripts/train.py hs-none-topk --lr=1e-4
+    python scripts/train.py hs-none-topk --lr=1e-5
+    python scripts/train.py hs-none-topk --lr=1e-6
+    python scripts/train.py hs-none-topk --lr=1e-7
+    python scripts/train.py hs-ether-topk
+    python scripts/train.py hs-supr-topk
 
-    export BASE=(
-        # dpo
-        side-none-InnerDPO
-        hs-supr-InnerDPO
-        # hs-none-InnerDPO
-        hs-ether-InnerDPO
-    )
-    for base in "${BASE[@]}"; do
-        python scripts/train.py $base
-    done
+
+
+
+    # # the first question is whether plain old DPO even works
+    # # python scripts/train.py dpo --verbose=2 --loss_type=ipo --use-mallows  --β=0.1
+    # python scripts/train.py dpo --loss_type=ipo --β=0.4
+    # python scripts/train.py dpo --loss_type=dpo --logp_agg_type=dpo
+    # python scripts/train.py dpo --loss_type=dpo --logp_agg_type=dpo --use-mallows 
+    # python scripts/train.py dpo --loss_type=SimPER --use-mallows
+    # python scripts/train.py dpo --loss_type=SimPER
+    
+    # python scripts/train.py dpo --loss_type=ipo --logp_agg_type=ipo --use-policy-weights
+    # python scripts/train.py dpo --β=0.1
+    
+    # python scripts/train.py hs-none-InnerDPO
+    # python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo
+    # python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=dpo
+    # python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo --loss.inner_policy_weights --loss.use_policy_weights
+    # python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo --loss.align_method=para_signed
+    # python scripts/train.py hs-none-InnerDPO --loss.dpo_loss=ipo --loss.align_method=logodds_noref
+
+    # export BASE=(
+    #     # dpo
+    #     side-none-InnerDPO
+    #     hs-supr-InnerDPO
+    #     # hs-none-InnerDPO
+    #     hs-ether-InnerDPO
+    # )
+    # for base in "${BASE[@]}"; do
+    #     python scripts/train.py $base
+    # done
 
     
     # export lrs=(
@@ -82,17 +97,17 @@ scratch:
 
 
 
-    export alpha=(
-        100
-        10
-        0.01
-        0.25
-        0.001
-        1
-    )
-    for al in "${alpha[@]}"; do
-        python scripts/train.py hs-none-InnerDPO --loss.α="$al"
-    done
+    # export alpha=(
+    #     100
+    #     10
+    #     0.01
+    #     0.25
+    #     0.001
+    #     1
+    # )
+    # for al in "${alpha[@]}"; do
+    #     python scripts/train.py hs-none-InnerDPO --loss.α="$al"
+    # done
 
 
     # python scripts/train.py dpo --loss-type=dpo
@@ -117,15 +132,15 @@ scratch:
     # done
 
 
-    export BASE=(
-        # dpo
-        side-none-InnerDPO
-        hs-supr-InnerDPO
-        hs-ether-InnerDPO
-    )
-    for base in "${BASE[@]}"; do
-        python scripts/train.py $base
-    done
+    # export BASE=(
+    #     # dpo
+    #     side-none-InnerDPO
+    #     hs-supr-InnerDPO
+    #     hs-ether-InnerDPO
+    # )
+    # for base in "${BASE[@]}"; do
+    #     python scripts/train.py $base
+    # done
     
 
 
@@ -139,7 +154,7 @@ scratch:
     )
     for ds in $DS; do
         echo "DS=$ds"
-        python scripts/train.py hs-none-InnerDPO --dataset $ds  --loss.detach-ref --loss.use-token-constraint --loss.trust_region=0
+        python scripts/train.py hs-none-topk
         python scripts/train.py dpo --dataset $ds
     done
 

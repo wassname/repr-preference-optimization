@@ -90,7 +90,7 @@
             },
             "args": [
                 // "hs-none-InnerDPO",
-                "dpo",
+                "hs-none-topk",
                 // "--use_mallows",
                 // "--loss.align-method=pars_rat_log",
                 // "--loss.trust_region=0.1", 

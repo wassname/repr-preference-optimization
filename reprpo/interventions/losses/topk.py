@@ -102,20 +102,28 @@ def topk_loss(
         diff = hs_pi_cho - hs_pi_rej
 
         # Find top-k dimensions by absolute difference
-        topk_values, topk_indices = torch.topk(diff.abs(), k, dim=-1)
+        # TODO k to param
+        topk_values, topk_indices = torch.topk(diff.abs(), k=600, dim=-1)
         
         # Create sparse version
         sparse_diff = torch.zeros_like(diff)
         sparse_diff.scatter_(-1, topk_indices, topk_values * diff.sign().gather(-1, topk_indices))
         
         # Loss encourages large separation in these k dimensions
-        separation_loss = -sparse_diff.abs().mean()
+        separation_loss = -sparse_diff.abs()#.mean()
         
         # Regularize to prevent too extreme values
-        extreme_penalty = F.relu(sparse_diff.abs() - 3.0).mean()
+        # TODO this const to param
+        extreme_penalty = F.relu(sparse_diff.abs() - 2.0)#.mean()
         
         inner_loss = separation_loss + 0.1 * extreme_penalty
-        return dict(inner_loss=inner_loss,#hptheta_bottom=pref_mag_ref,
+        return dict(inner_loss=inner_loss,
+                    
+                    sparse_diff_abs=sparse_diff.abs().mean(),
+                    separation_loss=separation_loss.mean(),
+                    extreme_penalty=extreme_penalty.mean(),
+
+
                             cho_position_deviation=cho_total_deviation,
                     rej_position_deviation=rej_total_deviation)
 
@@ -128,7 +136,7 @@ def topk_loss(
 
     vals = {k: v.mean(-1) for k, v in layer_vals.items()}  # average over layers
 
-    loss = layer_vals['inner_loss'].mean(1)
+    loss = layer_vals['inner_loss']
 
     token_constraint = torch.clamp(layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation'], min=0)
     if use_token_constraint:

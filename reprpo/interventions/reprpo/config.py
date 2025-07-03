@@ -54,6 +54,8 @@ class ReprPOConfig(ExperimentConfig):
 
     use_wpo: bool = False
 
+    use_mallows: bool = False
+
     _cls = PL_REPRPO_MODEL
 
     _model_keys = [
