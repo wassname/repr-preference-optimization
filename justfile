@@ -22,6 +22,16 @@ scratch:
     set -x
     . ./.venv/bin/activate
 
+    python scripts/train.py hs-none-topk --calc-mallows --loss.use-mallows
+    python scripts/train.py hs-none-topk --calc-wpo --loss.use-policy-weights
+    python scripts/train.py hs-none-topk --loss.margin=1
+    python scripts/train.py hs-none-topk --loss.margin=.1
+    python scripts/train.py hs-none-topk --loss.margin=10
+
+    python scripts/train.py hs-none-topk --loss.α=10
+    python scripts/train.py hs-none-topk --loss.α=1
+    python scripts/train.py hs-none-topk --loss.α=0.01
+
     python scripts/train.py dpo
     python scripts/train.py hs-none-topk
     python scripts/train.py hs-none-topk --use-mallows

@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from loguru import logger
 
 
-def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo", use_wpo=False, use_mallows=False):
+def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo", calc_wpo=False, calc_mallows=False):
     """
     Compute log probabilities.
 
@@ -63,7 +63,9 @@ def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo"
     
     # return a dict and also compute 
     output["log_policy_weights"] = torch.zeros_like(output["label_logp"])
-    if use_wpo:
+    if calc_wpo and calc_mallows:
+        raise ValueError("Cannot use both WPO and Mallows weights at the same time. Choose one.")
+    if calc_wpo:
         # [WPO](https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L1240)
         with torch.no_grad():
             # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
@@ -71,7 +73,7 @@ def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo"
             per_token_logps_adjusted = selected_log_probs - weights_adjustment_factor
             weights = (per_token_logps_adjusted * mask).sum(-1) / mask.sum(-1)
             output["log_policy_weights"] =  weights.detach()
-    if use_mallows:
+    if calc_mallows:
         # https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1347
         with torch.no_grad():
             log_vocab_size = torch.log(torch.tensor(logits.shape[-1]))
@@ -115,6 +117,7 @@ def compute_policy_weights(pi_cho, pi_rej, T=3):
     return policy_weights
 
 def compute_mallows_weights(ref_cho, ref_rej):
+    # This approach upweights tokens with higher entropy (more uncertainty), 
     # from https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1276
     # Here we deviate from the WPO paper for stability
     dispersion_mean = 0.29 # TODO this should ideally be a moving average?

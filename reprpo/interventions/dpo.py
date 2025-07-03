@@ -75,6 +75,7 @@ def compute_dpo_loss(
         _reference_logratios=reference_logratios.mean(),
         _ptheta=ptheta.mean(),
         _dpo_acc=dpo_acc.mean(),
+        _neg_log_dispersion=neg_log_dispersion.mean() if neg_log_dispersion is not None else None,
     )
 
 def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=None, special_tokens_mask=None, logp_agg_type="ipo", return_dict=True, output_hidden_states=True, use_wpo=False, use_mallows=False, **kwargs):
@@ -94,7 +95,7 @@ def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=No
         input_ids=input_ids,
         selection_mask=attention_mask,
         logp_agg_type=logp_agg_type,
-        use_wpo=use_wpo,
+        calc_wpo=use_wpo,
         use_mallows=use_mallows,
     )
     hs = {k: v for k,v in enumerate(outs.hidden_states)} if output_hidden_states else None
@@ -163,7 +164,6 @@ def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOMode
     if use_policy_weights:
         loss = loss * policy_weights.detach()
 
-    info["mallows_weights"] = policy_weights.mean()
     
     def cosine_on_hs(hs1: Dict[str, torch.Tensor], hs2: Dict[str, torch.Tensor]):
         """Compute the cosine similarity between two sets of hidden states. Which are lists of tensors from each layer"""

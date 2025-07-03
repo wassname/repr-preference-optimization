@@ -52,9 +52,9 @@ class ReprPOConfig(ExperimentConfig):
     logp_agg_type: str = "ipo"
     """DPO aggregation type, e.g., 'ipo'/'dpo'"""
 
-    use_wpo: bool = False
+    calc_wpo: bool = False
 
-    use_mallows: bool = False
+    calc_mallows: bool = False
 
     _cls = PL_REPRPO_MODEL
 
@@ -67,7 +67,8 @@ class ReprPOConfig(ExperimentConfig):
         "loss",
         "transform",
         'logp_agg_type',
-        'use_wpo',
+        'calc_wpo',
+        'calc_mallows',
     ]
 
     @property

@@ -773,14 +773,14 @@ Ingrediants
 
 
 
-| name |                          outer                           | inner |
-| :--- | :------------------------------------------------------: | :---: |
-| DPO  | ratio of selected logprobs: (chos_logps - rej_logps)-(ref_cho_logps - ref_rej_logps) | ratio of how far pi_cho-pi_ref is along the ref pref dir, compared to the ref pref magnitude : signed_proj / pref_mag_ref   |
-| SimPER | might not need sft, fairly unproven, nll_cho.exp()/nll_ref.exp(): pi_rej.label_logprobs.exp()-pi_cho.label_logprobs.exp()|  ""
-| KTO  | this has a kl penalty to stop it movign to far from the ref, and might not need sft. This does sound promising: logp - kl | signed_proj and also for kl (hs - hs_ref).norm(dim=-1)  or hs_ref.norm(dim=-1) * log(hs.norm(dim=-1)) - log(hs_ref.norm(dim=-1)) |
-| CPO  | 
-| SimPO | lots of hyperparams | 
-| TDPO | Token weighted DPO
+| name   |                                                           outer                                                           |                                                              inner                                                               |
+| :----- | :-----------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------: |
+| DPO    |                   ratio of selected logprobs: (chos_logps - rej_logps)-(ref_cho_logps - ref_rej_logps)                    |    ratio of how far pi_cho-pi_ref is along the ref pref dir, compared to the ref pref magnitude : signed_proj / pref_mag_ref     |
+| SimPER | might not need sft, fairly unproven, nll_cho.exp()/nll_ref.exp(): pi_rej.label_logprobs.exp()-pi_cho.label_logprobs.exp() |                                                                ""                                                                |
+| KTO    | this has a kl penalty to stop it movign to far from the ref, and might not need sft. This does sound promising: logp - kl | signed_proj and also for kl (hs - hs_ref).norm(dim=-1)  or hs_ref.norm(dim=-1) * log(hs.norm(dim=-1)) - log(hs_ref.norm(dim=-1)) |
+| CPO    |
+| SimPO  |                                                    lots of hyperparams                                                    |
+| TDPO   |                                                    Token weighted DPO                                                     |
 
 
 Ok I should brainstorm this properly, load in code and papers for each.
@@ -877,3 +877,37 @@ def topk_preference_loss(hs_chosen, hs_rejected, k=100):
     return separation_loss + 0.1 * extreme_penalty
 ```
 lets try the topk one... it does actually look interesting! and follow the trend
+
+
+# 2025-07-03 09:11:40
+
+thoughts:
+- I care about topk and ranking (because SAE's and my experiment say these are important). But topk logporbs no hs
+- I care when there is some entropy, or difference between pi and ref, because who cares that a full stop or space is high ranked. It's just grammer not content. In fact this is a problem with DPO. I have been downweighting high entropy... but maybe I should upweight it!!!!! 
+- [ ] TODO try this in open_pref_eval
+
+|                                | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :----------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| none                           |     0.757 |                0.458 |         0.74 |          0.433 |      0.417 |
+| Dpo                            |      0.76 |                0.459 |        0.743 |          0.433 |      0.417 | o2lbhhb8 |      -0.116 |
+| ReprNTopk                      |     0.737 |                0.486 |         0.76 |          0.437 |      0.413 | z6si1ly1 |       0.231 |
+| ReprNTopk UseMal=1             |     0.737 |                0.483 |         0.76 |           0.44 |      0.417 | ekfn2hz9 |       0.232 |
+| ReprNTopk 0001                 |      0.57 |                0.275 |        0.547 |           0.46 |      0.503 | jgojtxgd |      18.088 |
+| ReprNTopk                      |     0.643 |                0.647 |        0.663 |          0.503 |       0.42 | lbv1zvgh |       5.457 |
+| ReprNTopk lr=1e-05             |     0.583 |                0.481 |        0.617 |           0.52 |       0.41 | gqsbd8jx |       9.183 |
+| ReprNTopk margin=2 TokConΑ=0.5 |     0.737 |                0.485 |        0.763 |           0.44 |      0.423 | mfxkukds |       0.231 |
+
+| adapter/distribution_shift | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal |
+| :------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: |
+| none                       |     0.757 |                0.458 |         0.74 |          0.433 |      0.417 |
+| dpo                        |      0.76 |                0.459 |        0.743 |          0.433 |      0.417 |
+
+
+250703 09:44:46|INFO|reprpo.training:make_table#447 - Table 1: Absolute accuracy after training with named adapter on ds:`alpaca_mmlu` compared to base model `Qwen3-0.6B-sft` for various distribution shifts [N=300]:
+
+
+TODO
+- is use_mallows activated? it's confusing with multiple policy weights
+  - use_mallow in reprpo.config
+  - loss.use_wpo
+  - loss.use_policy_weights

@@ -5,7 +5,7 @@ from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
 
-from ..dpo_helpers import cross_entropy_loss, compute_ptheta, compute_policy_weights
+from ..dpo_helpers import cross_entropy_loss, compute_ptheta, compute_policy_weights, compute_mallows_weights
 from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
@@ -45,8 +45,8 @@ def innerdpo_loss(
     α: float = 1.0,
     eps: float = 1e-6,
     β: float = 1,
-    use_policy_weights: bool = False,
-    inner_policy_weights: bool = False,
+    use_wpo: bool = False,
+    use_inner_weights: bool = False,
     align_method: str = 'para_signed',
     norm_before_reduce: bool = True,
     filter_sinks: bool = True,
@@ -57,6 +57,7 @@ def innerdpo_loss(
     clamp_bottom: bool = False,
     detach_ref: bool = True,
     use_token_constraint: bool = True,
+    use_mallows: bool = False,
 ):
     """
     Compute innerDPO loss with various alignment options.
@@ -184,7 +185,7 @@ def innerdpo_loss(
                 raise ValueError(f"Unsupported align_method: {align_method}")
         
         # Apply DPO-style loss
-        if inner_policy_weights: # I'm not sure if this is helping
+        if use_inner_weights: # I'm not sure if this is helping
             hidden_ptheta = hidden_ptheta * hidden_weight
 
 
@@ -261,7 +262,15 @@ def innerdpo_loss(
     loss = loss_dpo + α * loss_hidden_dpo
 
     # Apply policy weights if requested
-    if use_policy_weights:
+    # TODO can I use parent configs use_mallows
+    if use_mallows:
+        neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
+        vals['mallows_weights'] = neg_log_dispersion.mean()
+        # TODO this should be applied before mean irrc
+        loss = loss * neg_log_dispersion.detach()
+
+    # Apply policy weights if requested
+    if use_wpo:
         policy_weights = compute_policy_weights(pi_cho, pi_rej)
         vals['policy_weights'] = policy_weights.mean()
         vals['cho_log_policy_weights'] = torch.exp(pi_cho.log_policy_weights).mean()
@@ -297,11 +306,14 @@ class InnerDPOLossConfig:
     p: int = 2
     """norm to use for the hidden states, 2 is euclidean, 1 is manhattan"""
 
-    use_policy_weights: bool = False
+    use_wpo: bool = False
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
 
-    inner_policy_weights: bool = False
+    use_inner_weights: bool = False
     """Whether to compute policy weights for the inner DPO loss."""
+
+    use_mallows: bool = False
+    """Whether to use Mallows weights"""
 
     dpo_loss: Literal["dpo", "ipo", "SimPER"] = "SimPER"   
 

@@ -5,7 +5,7 @@ from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
 
-from ..dpo_helpers import cross_entropy_loss, compute_ptheta, compute_policy_weights
+from ..dpo_helpers import cross_entropy_loss, compute_ptheta, compute_policy_weights, compute_mallows_weights
 from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
 
@@ -45,7 +45,7 @@ def topk_loss(
     α: float = 1.0,
     eps: float = 1e-6,
     β: float = 1,
-    use_policy_weights: bool = False,
+    use_wpo: bool = False,
     inner_policy_weights: bool = False,
     align_method: str = 'para_signed',
     norm_before_reduce: bool = True,
@@ -53,10 +53,13 @@ def topk_loss(
     trust_region: float = 2.0,
     dpo_loss: str = "ipo",
     p=2,
+    margin: float = 2,
+    use_mallows: bool = False,
     label_smoothing=0,
     clamp_bottom: bool = False,
     detach_ref: bool = True,
     use_token_constraint: bool = True,
+    token_con_alpha: float = 0.5
 ):
     """
     Compute innerDPO loss with various alignment options.
@@ -110,13 +113,13 @@ def topk_loss(
         sparse_diff.scatter_(-1, topk_indices, topk_values * diff.sign().gather(-1, topk_indices))
         
         # Loss encourages large separation in these k dimensions
-        separation_loss = -sparse_diff.abs()#.mean()
+        separation_loss = -sparse_diff.abs().mean(1)
         
         # Regularize to prevent too extreme values
         # TODO this const to param
-        extreme_penalty = F.relu(sparse_diff.abs() - 2.0)#.mean()
+        extreme_penalty = F.relu(sparse_diff.abs() - margin).mean(1)
         
-        inner_loss = separation_loss + 0.1 * extreme_penalty
+        inner_loss = separation_loss + α * extreme_penalty
         return dict(inner_loss=inner_loss,
                     
                     sparse_diff_abs=sparse_diff.abs().mean(),
@@ -144,12 +147,20 @@ def topk_loss(
         # Intuition: Both responses should deviate similarly from their references. If one is changing much more than the other, adjust our confidence accordingly.
         # token_constraint = layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation']
         # OR Only penalize when rejected deviates more (prevent sneaky gaming)
-        alpha_token = 0.5
-        loss = loss - alpha_token * token_constraint
+        loss = loss - token_con_alpha * token_constraint
 
 
     # Apply policy weights if requested
-    if use_policy_weights:
+    # TODO can I use parent configs use_mallows
+    if use_mallows:
+        neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
+        if neg_log_dispersion is None:
+            raise ValueError("Mallows weights computation  need --calc-mallows flag to be set")
+        vals['mallows_weights'] = neg_log_dispersion.mean() if neg_log_dispersion is not None else None
+        loss = loss.mean(1) * neg_log_dispersion.detach()
+
+    if use_wpo:
+        # can be wpo, or mallows
         policy_weights = compute_policy_weights(pi_cho, pi_rej)
         vals['policy_weights'] = policy_weights.mean()
         vals['cho_log_policy_weights'] = torch.exp(pi_cho.log_policy_weights).mean()
@@ -160,6 +171,7 @@ def topk_loss(
     info = dict(
         **vals,
     )
+    info['token_constraint'] = token_constraint.mean()
 
     return loss.mean(), info
 
@@ -168,10 +180,17 @@ def topk_loss(
 class TopKLossConfig:
     """
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
-    """
+"""
 
     α: float = 0.1
     """balance between reroute and retain loss."""
+
+    token_con_alpha: float = 0.5
+    """balance between token constraint and the main loss."""
+
+    margin: float = 2.0
+    """Margin for the extreme penalty, i.e. how much the hidden states can deviate
+    from each other before we penalize them."""
 
     filter_sinks: bool = False
     """Whether to filter attention sinks in the hidden states."""
@@ -183,6 +202,9 @@ class TopKLossConfig:
 
     inner_policy_weights: bool = False
     """Whether to compute policy weights for the inner DPO loss."""
+
+    use_mallows: bool = False
+    """Whether to use Mallows weights"""
 
     use_token_constraint: bool = False
     """Whether to use the token constraint to adjust the hidden ptheta. This is like in TDPO https://arxiv.org/abs/2404.11999"""
