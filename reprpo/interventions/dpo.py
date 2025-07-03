@@ -96,7 +96,7 @@ def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=No
         selection_mask=attention_mask,
         logp_agg_type=logp_agg_type,
         calc_wpo=use_wpo,
-        use_mallows=use_mallows,
+        calc_mallows=use_mallows,
     )
     hs = {k: v for k,v in enumerate(outs.hidden_states)} if output_hidden_states else None
     return ReprPOModelOutput(

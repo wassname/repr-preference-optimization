@@ -28,6 +28,9 @@ scratch:
     python scripts/train.py hs-none-topk --loss.margin=.1
     python scripts/train.py hs-none-topk --loss.margin=10
 
+    python scripts/train.py hs-none-topk --calc-mallows --loss.use-mallows  --loss.margin=3 --loss.topk-n=10
+    python scripts/train.py hs-none-topk --calc-mallows --loss.use-mallows  --loss.margin=3 --loss.topk-n=1000
+
     python scripts/train.py hs-none-topk --loss.α=10
     python scripts/train.py hs-none-topk --loss.α=1
     python scripts/train.py hs-none-topk --loss.α=0.01

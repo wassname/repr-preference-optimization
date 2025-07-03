@@ -896,6 +896,9 @@ thoughts:
 | ReprNTopk                      |     0.643 |                0.647 |        0.663 |          0.503 |       0.42 | lbv1zvgh |       5.457 |
 | ReprNTopk lr=1e-05             |     0.583 |                0.481 |        0.617 |           0.52 |       0.41 | gqsbd8jx |       9.183 |
 | ReprNTopk margin=2 TokConΑ=0.5 |     0.737 |                0.485 |        0.763 |           0.44 |      0.423 | mfxkukds |       0.231 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 |        0.75 |                  0.497 |          0.773 |             0.45 |        0.423 | toaxol36 |         0.311 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 |       0.743 |                  0.497 |           0.77 |            0.453 |         0.42 | zbypam23 |         0.313 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 |        0.75 |                  0.497 |          0.773 |             0.45 |        0.423 | toaxol36 |         0.311 |
 
 | adapter/distribution_shift | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal |
 | :------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: |

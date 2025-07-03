@@ -265,6 +265,8 @@ def innerdpo_loss(
     # TODO can I use parent configs use_mallows
     if use_mallows:
         neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
+        if neg_log_dispersion is None:
+            raise ValueError("Mallows weights computation  need --calc-mallows flag to be set")
         vals['mallows_weights'] = neg_log_dispersion.mean()
         # TODO this should be applied before mean irrc
         loss = loss * neg_log_dispersion.detach()

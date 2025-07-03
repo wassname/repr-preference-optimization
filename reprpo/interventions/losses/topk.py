@@ -59,7 +59,8 @@ def topk_loss(
     clamp_bottom: bool = False,
     detach_ref: bool = True,
     use_token_constraint: bool = True,
-    token_con_alpha: float = 0.5
+    token_con_alpha: float = 0.5,
+    topk_n: int = 100
 ):
     """
     Compute innerDPO loss with various alignment options.
@@ -106,7 +107,7 @@ def topk_loss(
 
         # Find top-k dimensions by absolute difference
         # TODO k to param
-        topk_values, topk_indices = torch.topk(diff.abs(), k=600, dim=-1)
+        topk_values, topk_indices = torch.topk(diff.abs(), k=topk_n, dim=-1)
         
         # Create sparse version
         sparse_diff = torch.zeros_like(diff)
@@ -180,7 +181,11 @@ def topk_loss(
 class TopKLossConfig:
     """
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
-"""
+    """
+
+    topk_n: int = 100
+    """Number of top-k dimensions to consider for the loss"""
+
 
     α: float = 0.1
     """balance between reroute and retain loss."""
