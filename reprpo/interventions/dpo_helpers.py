@@ -65,7 +65,7 @@ def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo"
     
     
     # return a dict and also compute 
-    output["log_policy_weights"] = torch.zeros_like(output["label_logp"])
+    # output["log_policy_weights"] = torch.zeros_like(output["label_logp"])
     if calc_wpo and calc_mallows:
         raise ValueError("Cannot use both WPO and Mallows weights at the same time. Choose one.")
     if calc_wpo:

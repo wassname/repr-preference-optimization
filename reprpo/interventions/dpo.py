@@ -41,7 +41,7 @@ def compute_dpo_loss(
         ref_rej_logp=reference_rejected_logprobs,
     )
     if neg_log_dispersion is not None:
-        # Use the neg_log_dispersion to compute ptheta https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1276
+        # Use the neg_log_dispersion to compute ptheta https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.
         ptheta = ptheta * neg_log_dispersion.detach()
 
     # DPO (Eq. 7 of https://arxiv.org/pdf/2305.18290.pdf)
@@ -101,6 +101,7 @@ def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=No
     hs = {k: v for k,v in enumerate(outs.hidden_states)} if output_hidden_states else None
     return ReprPOModelOutput(
         hs=hs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attention_mask, log_policy_weights=out_lp['log_policy_weights'],
+        mallows_weights=out_lp.get('mallows_weights', None),
     )
 
 
@@ -128,10 +129,10 @@ def dpo_forward_batch(batch, model, β=0.1, use_policy_weights=False, logp_agg_t
 
     model.train()
     pi_cho = model_forward_with_logprobs(
-        model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["chosen_special_tokens_mask"], logp_agg_type=logp_agg_type, use_wpo=use_policy_weights, **model_kwargs
+        model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["chosen_special_tokens_mask"], logp_agg_type=logp_agg_type, use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
     )
     pi_rej = model_forward_with_logprobs(
-        model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["rejected_special_tokens_mask"], logp_agg_type=logp_agg_type, use_wpo=use_policy_weights, **model_kwargs
+        model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["rejected_special_tokens_mask"], logp_agg_type=logp_agg_type, use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
     )
 
     return calc_dpo_loss_w_metrics(
@@ -148,7 +149,7 @@ def dpo_forward_batch(batch, model, β=0.1, use_policy_weights=False, logp_agg_t
 def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOModelOutput, ref_cho: ReprPOModelOutput, ref_rej: ReprPOModelOutput, β=0.1, use_policy_weights=False, loss_type="ipo"):
     """Compute the DPO loss for a batch of policy and reference model log probabilities."""
 
-    neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
+    neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej, reduce=True)
     loss, info = compute_dpo_loss(
         model_chosen_logprobs=pi_cho.label_logprobs,
         model_rejected_logprobs=pi_rej.label_logprobs,
@@ -159,9 +160,9 @@ def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOMode
         neg_log_dispersion=neg_log_dispersion,
     )
 
-    policy_weights = compute_policy_weights(pi_cho, pi_rej)
-    info["policy_weights"] = policy_weights.mean()
     if use_policy_weights:
+        policy_weights = compute_policy_weights(pi_cho, pi_rej)
+        info["policy_weights"] = policy_weights.mean()
         loss = loss * policy_weights.detach()
 
     

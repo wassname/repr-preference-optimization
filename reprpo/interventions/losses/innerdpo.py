@@ -96,6 +96,29 @@ def innerdpo_loss(
         cho_token_deviations = torch.norm(hs_pi_cho_t - hs_ref_cho_t, p=p, dim=-1)  # [batch, seq_len]
         rej_token_deviations = torch.norm(hs_pi_rej_t - hs_ref_rej_t, p=p, dim=-1)  # [batch, seq_len]
 
+
+        if use_mallows:
+            neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
+            if neg_log_dispersion is None:
+                raise ValueError("Mallows weights computation  need --calc-mallows flag to be set")
+            hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
+            hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
+            pi_cho.mask = pi_cho.mask[:, :-1]
+            pi_rej.mask = pi_rej.mask[:, :-1]
+            cho_token_deviations = cho_token_deviations[:, :-1]
+            rej_token_deviations = rej_token_deviations[:, :-1]
+
+        if use_wpo:
+            # can be wpo, or mallows
+            policy_weights = compute_policy_weights(pi_cho, pi_rej)
+            hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * policy_weights.unsqueeze(2).detach()
+            hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * policy_weights.unsqueeze(2).detach()
+            pi_cho.mask = pi_cho.mask[:, :-1]
+            pi_rej.mask = pi_rej.mask[:, :-1]
+            cho_token_deviations = cho_token_deviations[:, :-1]
+            rej_token_deviations = rej_token_deviations[:, :-1]
+
+
         # Aggregate per response (like TDPO aggregates KL)
         cho_total_deviation = reduce_tokens_w_attention(cho_token_deviations.unsqueeze(-1), pi_cho.mask).squeeze(-1)  # [batch]
         rej_total_deviation = reduce_tokens_w_attention(rej_token_deviations.unsqueeze(-1), pi_rej.mask).squeeze(-1)  # [batch]
@@ -261,23 +284,7 @@ def innerdpo_loss(
 
     loss = loss_dpo + α * loss_hidden_dpo
 
-    # Apply policy weights if requested
-    # TODO can I use parent configs use_mallows
-    if use_mallows:
-        neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
-        if neg_log_dispersion is None:
-            raise ValueError("Mallows weights computation  need --calc-mallows flag to be set")
-        vals['mallows_weights'] = neg_log_dispersion.mean()
-        # TODO this should be applied before mean irrc
-        loss = loss * neg_log_dispersion.detach()
 
-    # Apply policy weights if requested
-    if use_wpo:
-        policy_weights = compute_policy_weights(pi_cho, pi_rej)
-        vals['policy_weights'] = policy_weights.mean()
-        vals['cho_log_policy_weights'] = torch.exp(pi_cho.log_policy_weights).mean()
-        vals['rej_log_policy_weights'] = torch.exp(pi_rej.log_policy_weights).mean()   
-        loss = loss * policy_weights.detach()
 
     vals = {k:v.mean() for k, v in vals.items()}
     info = dict(

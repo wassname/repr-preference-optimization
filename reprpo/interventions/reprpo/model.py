@@ -101,7 +101,7 @@ def reprpo_forward_baukit(
         logits=outs.logits, input_ids=input_ids, selection_mask=attn_mask, logp_agg_type=logp_agg_type, calc_wpo=calc_wpo, calc_mallows=calc_mallows,
     )
     return ReprPOModelOutput(
-        hs=reprs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attn_mask, log_policy_weights=out_lp['log_policy_weights'], mallows_weights=out_lp.get('mallows_weights', None),
+        hs=reprs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attn_mask, log_policy_weights=out_lp.get('log_policy_weights', None), mallows_weights=out_lp.get('mallows_weights', None),
     )
 
 
