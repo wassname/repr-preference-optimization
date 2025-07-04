@@ -1,6 +1,9 @@
 import torch
 import torch.nn.functional as F
 from loguru import logger
+from jaxtyping import Float, Int
+from typing import Dict, Optional
+from torch import Tensor
 
 
 def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo", calc_wpo=False, calc_mallows=False):
@@ -25,7 +28,7 @@ def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo"
     labels = input_ids[:, 1:].clone()
 
     # Truncate logits to match the labels num_tokens
-    logits = logits[:, :-1, :]
+    logits = logits[:, :-1]
 
     log_probs = F.log_softmax(logits, dim=-1)
 
@@ -36,7 +39,7 @@ def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo"
 
 
     if selection_mask is not None:
-        mask = selection_mask[:, 1:].clone()
+        mask = selection_mask[:, :-1].clone()
         # Apply the mask to filter out padding tokens
         # selected_log_probs[~mask] = 0
         selected_log_probs = selected_log_probs * mask
@@ -71,14 +74,16 @@ def compute_logprobs(logits, input_ids, selection_mask=None, logp_agg_type="ipo"
             # Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827
             weights_adjustment_factor = torch.logsumexp(2 * log_probs, dim=-1)  # same as sum(probs**2) in log space
             per_token_logps_adjusted = selected_log_probs - weights_adjustment_factor
-            weights = (per_token_logps_adjusted * mask).sum(-1) / mask.sum(-1)
+            # weights = (per_token_logps_adjusted * mask).sum(-1) / mask.sum(-1)
+            weights = per_token_logps_adjusted 
             output["log_policy_weights"] =  weights.detach()
     if calc_mallows:
         # https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1347
         with torch.no_grad():
             log_vocab_size = torch.log(torch.tensor(logits.shape[-1]))
             batch_entropy = -(log_probs.exp() * log_probs).sum(-1)
-            output["log_policy_weights"] = (batch_entropy * mask).sum(axis = -1) / (mask.sum(-1) * log_vocab_size)
+            # output["mallows_weights"] = (batch_entropy * mask).sum(axis = -1) / (mask.sum(-1) * log_vocab_size)
+            output["mallows_weights"] = batch_entropy.detach() / log_vocab_size
 
     return output
 
@@ -106,7 +111,7 @@ def compute_ptheta(
     return logits
 
 
-def compute_policy_weights(pi_cho, pi_rej, T=3):
+def compute_policy_weights(pi_cho, pi_rej, T=3) -> Float[Tensor, "b t"]:
     # Here we deviate from the WPO paper for stability
     policy_weights = torch.exp(pi_cho.log_policy_weights + pi_rej.log_policy_weights)
     # OR
@@ -116,12 +121,17 @@ def compute_policy_weights(pi_cho, pi_rej, T=3):
     policy_weights = policy_weights /(policy_weights.mean() + 1e-6)
     return policy_weights
 
-def compute_mallows_weights(ref_cho, ref_rej):
+def compute_mallows_weights(ref_cho, ref_rej, dispersion_mean = 0.29, reduce=False) -> Float[Tensor, "b t"]:
     # This approach upweights tokens with higher entropy (more uncertainty), 
     # from https://github.com/CapitalOne-Research/RainbowPO/blob/main/trl/trainer/dpo_trainer.py#L1276
+    ref_rej_mallows_weights = ref_rej.mallows_weights
+    ref_cho_mallows_weights = ref_cho.mallows_weights
+    if reduce:
+        ref_rej_mallows_weights = (ref_rej_mallows_weights * ref_rej.mask[:, :-1]).sum(dim=1) / ref_rej.mask[:, :-1].sum(dim=1)
+        ref_cho_mallows_weights = (ref_cho_mallows_weights * ref_cho.mask[:, :-1]).sum(dim=1) / ref_cho.mask[:, :-1].sum(dim=1)
     # Here we deviate from the WPO paper for stability
-    dispersion_mean = 0.29 # TODO this should ideally be a moving average?
-    reference_entropy = (ref_cho.log_policy_weights + ref_rej.log_policy_weights)/2
+    # TODO dispersion_mean should ideally be a moving average?
+    reference_entropy = (ref_cho_mallows_weights + ref_rej_mallows_weights)/2
     neg_log_dispersion = - dispersion_mean * torch.log(reference_entropy)
     if reference_entropy.sum() == 0:
         # Reference entropy not provided, wallow weights will be zero.

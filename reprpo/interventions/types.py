@@ -14,4 +14,5 @@ class ReprPOModelOutput:
     logits: Float[Tensor, "b t v"]
     label_logprobs: Float[Tensor, "b"]
     mask: Mask
-    log_policy_weights: Float[Tensor, "b"]
+    log_policy_weights: Float[Tensor, "b"] = None
+    mallows_weights: Float[Tensor, "b"] = None

@@ -63,6 +63,7 @@ class PL_MODEL(pl.LightningModule):
             prog_bar=True,
             batch_size=self.hparams.batch_size,
         )
+        info = {k: v for k, v in info.items() if v is not None}
 
         self.log_dict(
             {f"{phase}/{k}": v for k, v in info.items()},

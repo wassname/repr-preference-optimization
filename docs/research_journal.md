@@ -915,3 +915,11 @@ TODO
   - use_mallow in reprpo.config
   - loss.use_wpo
   - loss.use_policy_weights
+
+
+what is mallwos
+- it downweights the batches, not the tokens!!
+- and WPO? same because they both use mask
+
+
+ok I'm just going to remove the mask part from both

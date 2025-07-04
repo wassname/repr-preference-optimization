@@ -38,7 +38,7 @@ def create_exp_weights(layer_attn_mask, dim, 𝜏=50) -> torch.Tensor:
 def reduce_tokens_w_attention(
     x: HS, attn_mask: Mask, input_ids=None, tokenizer=None, 
     dim: int = 1, weight_tokens: bool = False, 
-    filter_sinks: bool = True, sink_threshold: float = 3.0
+    filter_sinks: bool = False, sink_threshold: float = 3.0
 ) -> Float[Tensor, "b h"]:
     """mean of x, weighted by the attention mask, over dim (token or batch)
     with optional filtering of attention sinks"""
