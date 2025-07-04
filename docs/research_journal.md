@@ -899,6 +899,7 @@ thoughts:
 | ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 |        0.75 |                  0.497 |          0.773 |             0.45 |        0.423 | toaxol36 |         0.311 |
 | ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 |       0.743 |                  0.497 |           0.77 |            0.453 |         0.42 | zbypam23 |         0.313 |
 | ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 |        0.75 |                  0.497 |          0.773 |             0.45 |        0.423 | toaxol36 |         0.311 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=3 TokConΑ=0.5 topk_n=1000 UseMal=1 |       0.743 |                  0.501 |          0.783 |             0.45 |        0.423 | dukyp2km |         0.307 |
 
 | adapter/distribution_shift | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal |
 | :------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: |

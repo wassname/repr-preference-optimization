@@ -168,7 +168,7 @@ def topk_loss(
         vals['rej_log_policy_weights'] = torch.exp(pi_rej.log_policy_weights).mean()   
         loss = loss * policy_weights.detach()
 
-    vals = {k:v.mean() for k, v in vals.items()}
+    vals = {k:v.mean() for k, v in vals.items() if v is not None}  # reduce to scalar values
     info = dict(
         **vals,
     )
