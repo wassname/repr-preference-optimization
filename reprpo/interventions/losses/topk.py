@@ -85,28 +85,51 @@ def topk_loss(
         # Get raw hidden states
         hs_pi_cho_t = preproc_hs(pi_cho, k)
         hs_pi_rej_t = preproc_hs(pi_rej, k)
+        pi_cho_mask = pi_cho.mask
+        pi_rej_mask = pi_rej.mask
         if detach_ref:
             hs_pi_rej_t = hs_pi_rej_t.detach() # We want to change cho not rej
-        hs_ref_cho_t = preproc_hs(ref_cho, k).detach()  # Don't let reference change of course
-        hs_ref_rej_t = preproc_hs(ref_rej, k).detach()  # Don't let reference change of course
+        # hs_ref_cho_t = preproc_hs(ref_cho, k).detach()  # Don't let reference change of course
+        # hs_ref_rej_t = preproc_hs(ref_rej, k).detach()  # Don't let reference change of course
 
-        # Per-token deviations from reference (L2 distance)
-        cho_token_deviations = torch.norm(hs_pi_cho_t - hs_ref_cho_t, p=p, dim=-1)  # [batch, seq_len]
-        rej_token_deviations = torch.norm(hs_pi_rej_t - hs_ref_rej_t, p=p, dim=-1)  # [batch, seq_len]
+        # # Per-token deviations from reference (L2 distance)
+        # cho_token_deviations = torch.norm(hs_pi_cho_t - hs_ref_cho_t, p=p, dim=-1)  # [batch, seq_len]
+        # rej_token_deviations = torch.norm(hs_pi_rej_t - hs_ref_rej_t, p=p, dim=-1)  # [batch, seq_len]
 
-        # Aggregate per response (like TDPO aggregates KL)
-        cho_total_deviation = reduce_tokens_w_attention(cho_token_deviations.unsqueeze(-1), pi_cho.mask).squeeze(-1)  # [batch]
-        rej_total_deviation = reduce_tokens_w_attention(rej_token_deviations.unsqueeze(-1), pi_rej.mask).squeeze(-1)  # [batch]
+        if use_mallows:
+            neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
+            if neg_log_dispersion is None:
+                raise ValueError("Mallows weights computation  need --calc-mallows flag to be set")
+            hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
+            hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
+            pi_cho_mask = pi_cho_mask[:, :-1]
+            pi_rej_mask = pi_rej_mask[:, :-1]
+            # cho_token_deviations = cho_token_deviations[:, :-1]
+            # rej_token_deviations = rej_token_deviations[:, :-1]
 
-        hs_pi_cho = reduce_tokens_w_attention(hs_pi_cho_t, pi_cho.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
-        hs_pi_rej = reduce_tokens_w_attention(hs_pi_rej_t, pi_rej.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+        if use_wpo:
+            # can be wpo, or mallows
+            policy_weights = compute_policy_weights(pi_cho, pi_rej)
+            hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * policy_weights.unsqueeze(2).detach()
+            hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * policy_weights.unsqueeze(2).detach()
+            pi_cho_mask = pi_cho_mask[:, :-1]
+            pi_rej_mask = pi_rej_mask[:, :-1]
+            # cho_token_deviations = cho_token_deviations[:, :-1]
+            # rej_token_deviations = rej_token_deviations[:, :-1]
+
+        # # Aggregate per response (like TDPO aggregates KL)
+        # cho_total_deviation = reduce_tokens_w_attention(cho_token_deviations.unsqueeze(-1), pi_cho_mask).squeeze(-1)  # [batch]
+        # rej_total_deviation = reduce_tokens_w_attention(rej_token_deviations.unsqueeze(-1), pi_rej_mask).squeeze(-1)  # [batch]
+
+        hs_pi_cho = reduce_tokens_w_attention(hs_pi_cho_t, pi_cho_mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+        hs_pi_rej = reduce_tokens_w_attention(hs_pi_rej_t, pi_rej_mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
         # hs_ref_cho = reduce_tokens_w_attention(hs_ref_cho_t, ref_cho.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
         # hs_ref_rej = reduce_tokens_w_attention(hs_ref_rej_t, ref_rej.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
 
         diff = hs_pi_cho - hs_pi_rej
 
         # Find top-k dimensions by absolute difference
-        # TODO k to param
+        # TODO or topk per token?
         topk_values, topk_indices = torch.topk(diff.abs(), k=topk_n, dim=-1)
         
         # Create sparse version
@@ -128,8 +151,9 @@ def topk_loss(
                     extreme_penalty=extreme_penalty.mean(),
 
 
-                            cho_position_deviation=cho_total_deviation,
-                    rej_position_deviation=rej_total_deviation)
+                    #         cho_position_deviation=cho_total_deviation,
+                    # rej_position_deviation=rej_total_deviation
+                    )
 
 
     # compute losses per layer
@@ -142,37 +166,21 @@ def topk_loss(
 
     loss = layer_vals['inner_loss']
 
-    token_constraint = torch.clamp(layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation'], min=0)
-    if use_token_constraint:
-        # This is like in https://github.com/Vance0124/Token-level-Direct-Preference-Optimization/blob/master/trainers.py#L151
-        # Intuition: Both responses should deviate similarly from their references. If one is changing much more than the other, adjust our confidence accordingly.
-        # token_constraint = layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation']
-        # OR Only penalize when rejected deviates more (prevent sneaky gaming)
-        loss = loss - token_con_alpha * token_constraint
+    # token_constraint = torch.clamp(layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation'], min=0)
+    # if use_token_constraint:
+    #     # This is like in https://github.com/Vance0124/Token-level-Direct-Preference-Optimization/blob/master/trainers.py#L151
+    #     # Intuition: Both responses should deviate similarly from their references. If one is changing much more than the other, adjust our confidence accordingly.
+    #     # token_constraint = layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation']
+    #     # OR Only penalize when rejected deviates more (prevent sneaky gaming)
+    #     loss = loss - token_con_alpha * token_constraint
 
 
-    # Apply policy weights if requested
-    # TODO can I use parent configs use_mallows
-    if use_mallows:
-        neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
-        if neg_log_dispersion is None:
-            raise ValueError("Mallows weights computation  need --calc-mallows flag to be set")
-        vals['mallows_weights'] = neg_log_dispersion.mean() if neg_log_dispersion is not None else None
-        loss = loss.mean(1) * neg_log_dispersion.detach()
-
-    if use_wpo:
-        # can be wpo, or mallows
-        policy_weights = compute_policy_weights(pi_cho, pi_rej)
-        vals['policy_weights'] = policy_weights.mean()
-        vals['cho_log_policy_weights'] = torch.exp(pi_cho.log_policy_weights).mean()
-        vals['rej_log_policy_weights'] = torch.exp(pi_rej.log_policy_weights).mean()   
-        loss = loss * policy_weights.detach()
 
     vals = {k:v.mean() for k, v in vals.items() if v is not None}  # reduce to scalar values
     info = dict(
         **vals,
     )
-    info['token_constraint'] = token_constraint.mean()
+    # info['token_constraint'] = token_constraint.mean()
 
     return loss.mean(), info
 
