@@ -150,17 +150,22 @@ def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOMode
 
 
     # weight
-    pi_cho_logprobs = compute_mallows_weights(pi_cho.label_logprobs, pi_cho.mallows_weights)
-    pi_rej_logprobs = compute_mallows_weights(pi_rej.label_logprobs, pi_rej.mallows_weights)
-    ref_cho_logprobs = compute_mallows_weights(ref_cho.label_logprobs, ref_cho.mallows_weights)
-    ref_rej_logprobs = compute_mallows_weights(ref_rej.label_logprobs, ref_rej.mallows_weights)
+    pi_cho_logprobs = pi_cho.label_logprobs
+    pi_rej_logprobs = pi_rej.label_logprobs
+    ref_cho_logprobs = ref_cho.label_logprobs
+    ref_rej_logprobs = ref_rej.label_logprobs
+    if pi_cho.mallows_weights is not None:
+        pi_cho_logprobs = compute_mallows_weights(pi_cho_logprobs, pi_cho.mallows_weights)
+        pi_rej_logprobs = compute_mallows_weights(pi_rej_logprobs, pi_rej.mallows_weights)
+        ref_cho_logprobs = compute_mallows_weights(ref_cho_logprobs, ref_cho.mallows_weights)
+        ref_rej_logprobs = compute_mallows_weights(ref_rej_logprobs, ref_rej.mallows_weights)
 
     # reduce
     if loss_type in ["ipo", "SimPER"]:
-        pi_cho_logprobs = (pi_cho_logprobs * pi_cho.mask[:, :-1]).sum(dim=-1) / pi_cho.mask.sum(dim=-1).clamp(min=1e-6)
-        pi_rej_logprobs = (pi_rej_logprobs * pi_rej.mask[:, :-1]).sum(dim=-1) / pi_rej.mask.sum(dim=-1).clamp(min=1e-6)
-        ref_cho_logprobs = (ref_cho_logprobs * ref_cho.mask[:, :-1]).sum(dim=-1) / ref_cho.mask.sum(dim=-1).clamp(min=1e-6)
-        ref_rej_logprobs = (ref_rej_logprobs * ref_rej.mask[:, :-1]).sum(dim=-1) / ref_rej.mask.sum(dim=-1).clamp(min=1e-6)
+        pi_cho_logprobs = (pi_cho_logprobs * pi_cho.mask[:, :-1]).sum(dim=-1) / pi_cho.mask[:, :-1].sum(dim=-1).clamp(min=1e-6)
+        pi_rej_logprobs = (pi_rej_logprobs * pi_rej.mask[:, :-1]).sum(dim=-1) / pi_rej.mask[:, :-1].sum(dim=-1).clamp(min=1e-6)
+        ref_cho_logprobs = (ref_cho_logprobs * ref_cho.mask[:, :-1]).sum(dim=-1) / ref_cho.mask[:, :-1].sum(dim=-1).clamp(min=1e-6)
+        ref_rej_logprobs = (ref_rej_logprobs * ref_rej.mask[:, :-1]).sum(dim=-1) / ref_rej.mask[:, :-1].sum(dim=-1).clamp(min=1e-6)
     elif loss_type=="dpo":
         pi_cho_logprobs = (pi_cho_logprobs * pi_cho.mask[:, :-1]).sum(dim=-1)
         pi_rej_logprobs = (pi_rej_logprobs * pi_rej.mask[:, :-1]).sum(dim=-1)

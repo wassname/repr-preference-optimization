@@ -21,19 +21,25 @@ scratch:
     #!/usr/bin/env bash
     set -x
     . ./.venv/bin/activate
-
+    python scripts/train.py hs-none-topk --lr=1e-5  --calc-mallows --loss.use-mallows
+    python scripts/train.py hs-none-topk --lr=1e-4  --calc-mallows --loss.use-mallows
     python scripts/train.py hs-none-topk --calc-mallows --loss.use-mallows
-    python scripts/train.py hs-none-topk --calc-wpo --loss.use-policy-weights
+    python scripts/train.py hs-none-topk --calc-mallows --loss.use-mallows
+    python scripts/train.py hs-none-topk --loss.margin=.1  --calc-mallows --loss.use-mallows  --calc-mallows --loss.use-mallows
+    python scripts/train.py hs-none-topk --loss.margin=10  --calc-mallows --loss.use-mallows
+    python scripts/train.py dpo --use-mallows --lr=1e-5
+    python scripts/train.py dpo --use-mallows --lr=1e-4
+    python scripts/train.py dpo --use-mallows
     python scripts/train.py hs-none-topk --loss.margin=1
-    python scripts/train.py hs-none-topk --loss.margin=.1
-    python scripts/train.py hs-none-topk --loss.margin=10
+    python scripts/train.py dpo --use-mallows --loss_type=dpo
+    python scripts/train.py hs-none-topk --calc-wpo --loss.use-policy-weights
 
     python scripts/train.py hs-none-topk --calc-mallows --loss.use-mallows  --loss.margin=3 --loss.topk-n=10
     python scripts/train.py hs-none-topk --calc-mallows --loss.use-mallows  --loss.margin=3 --loss.topk-n=1000
 
-    python scripts/train.py hs-none-topk --loss.α=10
-    python scripts/train.py hs-none-topk --loss.α=1
-    python scripts/train.py hs-none-topk --loss.α=0.01
+    python scripts/train.py hs-none-topk --loss.α=10  --calc-mallows --loss.use-mallows
+    python scripts/train.py hs-none-topk --loss.α=1  --calc-mallows --loss.use-mallows
+    python scripts/train.py hs-none-topk --loss.α=0.01  --calc-mallows --loss.use-mallows
 
     python scripts/train.py dpo
     python scripts/train.py hs-none-topk

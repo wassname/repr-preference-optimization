@@ -49,7 +49,7 @@ def topk_loss(
     inner_policy_weights: bool = False,
     align_method: str = 'para_signed',
     norm_before_reduce: bool = True,
-    filter_sinks: bool = True,
+    filter_sinks: bool = False,
     trust_region: float = 2.0,
     dpo_loss: str = "ipo",
     p=2,
@@ -85,8 +85,12 @@ def topk_loss(
         # Get raw hidden states
         hs_pi_cho_t = preproc_hs(pi_cho, k)
         hs_pi_rej_t = preproc_hs(pi_rej, k)
-        pi_cho_mask = pi_cho.mask
-        pi_rej_mask = pi_rej.mask
+        hs_ref_cho_t = preproc_hs(ref_cho, k)
+        hs_ref_rej_t = preproc_hs(ref_rej, k)
+        pi_cho_mask = pi_cho.mask.clone()
+        pi_rej_mask = pi_rej.mask.clone()
+        ref_cho_mask = ref_cho.mask.clone()
+        ref_rej_mask = ref_rej.mask.clone()
         if detach_ref:
             hs_pi_rej_t = hs_pi_rej_t.detach() # We want to change cho not rej
         # hs_ref_cho_t = preproc_hs(ref_cho, k).detach()  # Don't let reference change of course
@@ -97,17 +101,21 @@ def topk_loss(
         # rej_token_deviations = torch.norm(hs_pi_rej_t - hs_ref_rej_t, p=p, dim=-1)  # [batch, seq_len]
 
         if use_mallows:
-            hs_pi_cho_t = compute_mallows_weights(hs_pi_cho_t, pi_cho.mallows_weights)
-            hs_pi_rej_t = compute_mallows_weights(hs_pi_rej_t, pi_rej.mallows_weights)
-            hs_ref_cho_t = compute_mallows_weights(ref_cho.hs[k], ref_cho.mallows_weights, ref_cho.mask)
-            hs_ref_rej_t = compute_mallows_weights(ref_rej.hs[k], ref_rej.mallows_weights, ref_rej.mask)
+            # weighting by mallows means we loose the last token, which has no labels and therefore no logits
+            hs_pi_cho_t = compute_mallows_weights(hs_pi_cho_t[:, -1:], pi_cho.mallows_weights.unsqueeze(2))
+            hs_pi_rej_t = compute_mallows_weights(hs_pi_rej_t[:, -1:], pi_rej.mallows_weights.unsqueeze(2))
+            hs_ref_cho_t = compute_mallows_weights(hs_ref_cho_t[:, -1:], ref_cho.mallows_weights.unsqueeze(2))
+            hs_ref_rej_t = compute_mallows_weights(hs_ref_rej_t[:, -1:], ref_rej.mallows_weights.unsqueeze(2))
             # cho_token_deviations = cho_token_deviations[:, :-1]
             # rej_token_deviations = rej_token_deviations[:, :-1]
 
             # hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
             # hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
-            # pi_cho_mask = pi_cho_mask[:, :-1]
-            # pi_rej_mask = pi_rej_mask[:, :-1]
+            pi_cho_mask = pi_cho_mask[:, :-1]
+            pi_rej_mask = pi_rej_mask[:, :-1]
+            ref_cho_mask = ref_cho_mask[:, :-1]
+            ref_rej_mask = ref_rej_mask[:, :-1]
+
             # cho_token_deviations = cho_token_deviations[:, :-1]
             # rej_token_deviations = rej_token_deviations[:, :-1]
 
@@ -118,6 +126,8 @@ def topk_loss(
             hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * policy_weights.unsqueeze(2).detach()
             pi_cho_mask = pi_cho_mask[:, :-1]
             pi_rej_mask = pi_rej_mask[:, :-1]
+            ref_cho_mask = ref_cho_mask[:, :-1]
+            ref_rej_mask = ref_rej_mask[:, :-1]
             # cho_token_deviations = cho_token_deviations[:, :-1]
             # rej_token_deviations = rej_token_deviations[:, :-1]
 

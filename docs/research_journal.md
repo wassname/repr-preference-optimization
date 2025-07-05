@@ -978,3 +978,15 @@ ok I'm just going to remove the mask part from both
 
 
 
+
+
+|                                                     | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :-------------------------------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| none                                                |     0.757 |                0.458 |         0.74 |          0.433 |      0.417 |
+| Dpo UseMal=1                                        |     0.757 |                0.461 |        0.733 |          0.433 |      0.423 | xjx3uqub |      -0.045 |
+| Dpo LosTyp=dpo UseMal=1                             |      0.76 |                0.461 |        0.743 |           0.44 |       0.42 | ujpzllpf |      -0.043 |
+| Dpo                                                 |     0.767 |                0.457 |         0.74 |          0.437 |      0.417 | hob08p9s |      -0.067 |
+| ReprNIpo AliMet=ParsRat                             |     0.094 |                0.406 |        0.312 |          0.438 |      0.344 | None     |           0 |
+| Dpo UseMal=1                                        |     0.094 |                0.406 |        0.312 |          0.438 |      0.344 | None     |           0 |
+| ReprNTopk InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 |     0.094 |                0.406 |        0.312 |          0.438 |      0.344 | None     |           0 |
+| Dpo                                                 |     0.094 |                0.406 |        0.312 |          0.438 |      0.344 | None     |           0 |

@@ -49,14 +49,14 @@ def innerdpo_loss(
     use_inner_weights: bool = False,
     align_method: str = 'para_signed',
     norm_before_reduce: bool = True,
-    filter_sinks: bool = True,
+    filter_sinks: bool = False,
     trust_region: float = 2.0,
     dpo_loss: str = "ipo",
     p=2,
     label_smoothing=0,
     clamp_bottom: bool = False,
     detach_ref: bool = True,
-    use_token_constraint: bool = True,
+    use_token_constraint: bool = False,
     use_mallows: bool = False,
 ):
     """
