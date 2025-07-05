@@ -92,21 +92,18 @@ def innerdpo_loss(
         hs_ref_cho_t = preproc_hs(ref_cho, k).detach()  # Don't let reference change of course
         hs_ref_rej_t = preproc_hs(ref_rej, k).detach()  # Don't let reference change of course
 
+        if use_mallows:
+            hs_pi_cho_t = compute_mallows_weights(hs_pi_cho_t, pi_cho.mallows_weights)
+            hs_pi_rej_t = compute_mallows_weights(hs_pi_rej_t, pi_rej.mallows_weights)
+            hs_ref_cho_t = compute_mallows_weights(hs_ref_cho_t, ref_cho.mallows_weights, ref_cho.mask)
+            hs_ref_rej_t = compute_mallows_weights(hs_ref_rej_t, ref_rej.mallows_weights, ref_rej.mask)
+            # cho_token_deviations = cho_token_deviations[:, :-1]
+            # rej_token_deviations = rej_token_deviations[:, :-1]
+
         # Per-token deviations from reference (L2 distance)
         cho_token_deviations = torch.norm(hs_pi_cho_t - hs_ref_cho_t, p=p, dim=-1)  # [batch, seq_len]
         rej_token_deviations = torch.norm(hs_pi_rej_t - hs_ref_rej_t, p=p, dim=-1)  # [batch, seq_len]
 
-
-        if use_mallows:
-            neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
-            if neg_log_dispersion is None:
-                raise ValueError("Mallows weights computation  need --calc-mallows flag to be set")
-            hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
-            hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
-            pi_cho.mask = pi_cho.mask[:, :-1]
-            pi_rej.mask = pi_rej.mask[:, :-1]
-            cho_token_deviations = cho_token_deviations[:, :-1]
-            rej_token_deviations = rej_token_deviations[:, :-1]
 
         if use_wpo:
             # can be wpo, or mallows
@@ -317,6 +314,9 @@ class InnerDPOLossConfig:
 
     use_wpo: bool = False
     """# Eq (2) of the WPO paper: https://huggingface.co/papers/2406.11827"""
+
+    use_mallows: bool = False
+    """Whether to use Mallows weights. If True, the reference model must have `--calc-mallows` flag set."""
 
     use_inner_weights: bool = False
     """Whether to compute policy weights for the inner DPO loss."""

@@ -97,13 +97,17 @@ def topk_loss(
         # rej_token_deviations = torch.norm(hs_pi_rej_t - hs_ref_rej_t, p=p, dim=-1)  # [batch, seq_len]
 
         if use_mallows:
-            neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej)
-            if neg_log_dispersion is None:
-                raise ValueError("Mallows weights computation  need --calc-mallows flag to be set")
-            hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
-            hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
-            pi_cho_mask = pi_cho_mask[:, :-1]
-            pi_rej_mask = pi_rej_mask[:, :-1]
+            hs_pi_cho_t = compute_mallows_weights(hs_pi_cho_t, pi_cho.mallows_weights)
+            hs_pi_rej_t = compute_mallows_weights(hs_pi_rej_t, pi_rej.mallows_weights)
+            hs_ref_cho_t = compute_mallows_weights(ref_cho.hs[k], ref_cho.mallows_weights, ref_cho.mask)
+            hs_ref_rej_t = compute_mallows_weights(ref_rej.hs[k], ref_rej.mallows_weights, ref_rej.mask)
+            # cho_token_deviations = cho_token_deviations[:, :-1]
+            # rej_token_deviations = rej_token_deviations[:, :-1]
+
+            # hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
+            # hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
+            # pi_cho_mask = pi_cho_mask[:, :-1]
+            # pi_rej_mask = pi_rej_mask[:, :-1]
             # cho_token_deviations = cho_token_deviations[:, :-1]
             # rej_token_deviations = rej_token_deviations[:, :-1]
 

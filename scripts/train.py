@@ -16,7 +16,7 @@ from pathlib import Path
     
 
 if __name__ == "__main__":
-    training_args = tyro.extras.overridable_config_cli(experiment_configs)
+    training_args = tyro.extras.overridable_config_cli(experiment_configs, use_underscores=True)
 
     # tyro has a default option, but it doesn't work with subcommands, so I apply overides manually
     # TODO should really put cli arg after this

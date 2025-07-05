@@ -886,20 +886,25 @@ thoughts:
 - I care when there is some entropy, or difference between pi and ref, because who cares that a full stop or space is high ranked. It's just grammer not content. In fact this is a problem with DPO. I have been downweighting high entropy... but maybe I should upweight it!!!!! 
 - [ ] TODO try this in open_pref_eval
 
-|                                | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
-| :----------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
-| none                           |     0.757 |                0.458 |         0.74 |          0.433 |      0.417 |
-| Dpo                            |      0.76 |                0.459 |        0.743 |          0.433 |      0.417 | o2lbhhb8 |      -0.116 |
-| ReprNTopk                      |     0.737 |                0.486 |         0.76 |          0.437 |      0.413 | z6si1ly1 |       0.231 |
-| ReprNTopk UseMal=1             |     0.737 |                0.483 |         0.76 |           0.44 |      0.417 | ekfn2hz9 |       0.232 |
-| ReprNTopk 0001                 |      0.57 |                0.275 |        0.547 |           0.46 |      0.503 | jgojtxgd |      18.088 |
-| ReprNTopk                      |     0.643 |                0.647 |        0.663 |          0.503 |       0.42 | lbv1zvgh |       5.457 |
-| ReprNTopk lr=1e-05             |     0.583 |                0.481 |        0.617 |           0.52 |       0.41 | gqsbd8jx |       9.183 |
-| ReprNTopk margin=2 TokConΑ=0.5 |     0.737 |                0.485 |        0.763 |           0.44 |      0.423 | mfxkukds |       0.231 |
-| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 |        0.75 |                  0.497 |          0.773 |             0.45 |        0.423 | toaxol36 |         0.311 |
-| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 |       0.743 |                  0.497 |           0.77 |            0.453 |         0.42 | zbypam23 |         0.313 |
-| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 |        0.75 |                  0.497 |          0.773 |             0.45 |        0.423 | toaxol36 |         0.311 |
-| ReprNTopk CalMal=1 InnPolW=0 margin=3 TokConΑ=0.5 topk_n=1000 UseMal=1 |       0.743 |                  0.501 |          0.783 |             0.45 |        0.423 | dukyp2km |         0.307 |
+|                                                                        | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :--------------------------------------------------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| none                                                                   |     0.757 |                0.458 |         0.74 |          0.433 |      0.417 |
+| Dpo                                                                    |      0.76 |                0.459 |        0.743 |          0.433 |      0.417 | o2lbhhb8 |      -0.116 |
+| ReprNTopk                                                              |     0.737 |                0.486 |         0.76 |          0.437 |      0.413 | z6si1ly1 |       0.231 |
+| ReprNTopk UseMal=1                                                     |     0.737 |                0.483 |         0.76 |           0.44 |      0.417 | ekfn2hz9 |       0.232 |
+| ReprNTopk 0001                                                         |      0.57 |                0.275 |        0.547 |           0.46 |      0.503 | jgojtxgd |      18.088 |
+| ReprNTopk                                                              |     0.643 |                0.647 |        0.663 |          0.503 |       0.42 | lbv1zvgh |       5.457 |
+| ReprNTopk lr=1e-05                                                     |     0.583 |                0.481 |        0.617 |           0.52 |       0.41 | gqsbd8jx |       9.183 |
+| ReprNTopk margin=2 TokConΑ=0.5                                         |     0.737 |                0.485 |        0.763 |           0.44 |      0.423 | mfxkukds |       0.231 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1  |      0.75 |                0.497 |        0.773 |           0.45 |      0.423 | toaxol36 |       0.311 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1  |     0.743 |                0.497 |         0.77 |          0.453 |       0.42 | zbypam23 |       0.313 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1  |      0.75 |                0.497 |        0.773 |           0.45 |      0.423 | toaxol36 |       0.311 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=3 TokConΑ=0.5 topk_n=1000 UseMal=1 |     0.743 |                0.501 |        0.783 |           0.45 |      0.423 | dukyp2km |       0.307 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1  |     0.737 |                0.499 |        0.767 |           0.45 |       0.42 | dab4smxn |       0.319 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=3 TokConΑ=0.5 topk_n=10 UseMal=1   |      0.73 |                0.492 |        0.757 |          0.453 |      0.423 | fix0ejls |       0.233 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=3 TokConΑ=0.5 topk_n=1000 UseMal=1 |      0.74 |                0.493 |        0.773 |           0.45 |      0.427 | 0jaoncl0 |       0.315 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1  |     0.737 |                0.495 |        0.767 |          0.453 |      0.417 | yrdgrkv6 |       0.311 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=3 TokConΑ=0.5 topk_n=10 UseMal=1   |     0.733 |                0.485 |        0.757 |           0.45 |       0.42 | f0yr3ckq |       0.239 |
 
 | adapter/distribution_shift | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal |
 | :------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: |
@@ -923,3 +928,53 @@ what is mallwos
 
 
 ok I'm just going to remove the mask part from both
+
+# 2025-07-05 11:35:17 Mallows
+
+    """
+    Token-level entropy weighting for DPO hidden state optimization.
+    
+    This implementation adapts the MallowsPO dispersion concept from sequence-level to token-level granularity.
+    
+    Background:
+    -----------
+    MallowsPO (Chen et al., 2024) introduces a dispersion index φ(x) to weight preference pairs based on 
+    the uncertainty/disagreement in human preferences. The key insight is that some prompts have clear 
+    "correct" answers (low entropy) while others are subjective (high entropy).
+    
+    Rainbow (2024) implements this by calculating the average entropy of chosen/rejected responses using
+    the reference model, then applying a scaling factor: -dispersion_mean * log(entropy).
+    
+    This Implementation:
+    -------------------
+    We extend the concept to token-level weighting within sequences. Instead of weighting entire 
+    preference pairs, we weight individual tokens based on their prediction entropy. The hypothesis 
+    is that tokens with lower entropy (higher certainty) should contribute more to learning, while 
+    high-entropy tokens may represent inherent ambiguity or noise.
+    
+    Key differences from original MallowsPO:
+    1. Token-level vs sequence-level: We weight each token individually rather than the entire sequence
+    2. Policy + Reference models: We use entropy from both models (original uses only reference)
+    3. Hidden state weighting: Applied to hidden representations for inner optimization
+    4. Granular learning: Enables the model to focus on "easier" tokens within each sequence
+    
+    Mathematical formulation:
+    For each token position i:
+        entropy_i = -Σ p_i * log(p_i)  where p_i are the softmax probabilities
+        weight_i = exp(-entropy_i / temperature)  # Higher weight for lower entropy
+    
+    Args:
+        logits_*: Model logits [batch_size, seq_len, vocab_size]
+        hs_*: Hidden states [batch_size, seq_len, hidden_dim]
+        mask: Attention mask [batch_size, seq_len]
+        temperature: Controls sharpness of entropy weighting
+        epsilon: Small constant for numerical stability
+    
+    Returns:
+        Weighted hidden states and entropy weights for all four combinations
+    """
+    https://claude.ai/chat/c4c8b3ce-7ea9-47ef-9a56-e5853c55fb26
+
+
+
+

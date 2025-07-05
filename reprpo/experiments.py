@@ -1,4 +1,4 @@
-from reprpo.interventions import DPOConfig, ReprPOConfig, ProjGradConfig, ProjBPConfig
+from reprpo.interventions import DPOConfig, ReprPOConfig
 from reprpo.interventions.losses import Losses
 from reprpo.interventions.transforms import Transforms
 
@@ -26,7 +26,7 @@ experiment_configs = {
     "dpo": ("DPO experiment.", DPOConfig()),
 
     # gradient based methods
-    "projgrad": ("projgrad experiment.", ProjGradConfig()),
+    # "projgrad": ("projgrad experiment.", ProjGradConfig()),
 
     "hs-ether-rank2": ("",
         ReprPOConfig(
@@ -36,7 +36,7 @@ experiment_configs = {
         ),
     ),
     
-    "projbp": ("projbp experiment.", ProjBPConfig()),
+    # "projbp": ("projbp experiment.", ProjBPConfig()),
 
 
 }

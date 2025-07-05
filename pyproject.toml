@@ -42,7 +42,7 @@ dependencies = [
     "polars>=1.30.0",
     "hatchling>=1.27.0",
     "ninja>=1.11.1.4",
-
+    "colorama>=0.4.6",
 ]
 
 [dependency-groups]

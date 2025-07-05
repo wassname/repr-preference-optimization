@@ -78,7 +78,7 @@ def compute_dpo_loss(
         _neg_log_dispersion=neg_log_dispersion.mean() if neg_log_dispersion is not None else None,
     )
 
-def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=None, special_tokens_mask=None, logp_agg_type="ipo", return_dict=True, output_hidden_states=True, use_wpo=False, use_mallows=False, **kwargs):
+def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=None, special_tokens_mask=None, return_dict=True, output_hidden_states=True, use_wpo=False, use_mallows=False, **kwargs):
     """Forward pass through the model that returns extras."""
     outs = model(input_ids, attention_mask=attention_mask, return_dict=return_dict,
             output_hidden_states=output_hidden_states, **kwargs)
@@ -94,18 +94,17 @@ def model_forward_with_logprobs(model, input_ids, attention_mask, prompt_mask=No
         logits=outs.logits,
         input_ids=input_ids,
         selection_mask=attention_mask,
-        logp_agg_type=logp_agg_type,
         calc_wpo=use_wpo,
         calc_mallows=use_mallows,
     )
     hs = {k: v for k,v in enumerate(outs.hidden_states)} if output_hidden_states else None
     return ReprPOModelOutput(
-        hs=hs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attention_mask, log_policy_weights=out_lp['log_policy_weights'],
+        hs=hs, logits=outs.logits, label_logprobs=out_lp['label_logp'], mask=attention_mask, log_policy_weights=out_lp.get('log_policy_weights', None),
         mallows_weights=out_lp.get('mallows_weights', None),
     )
 
 
-def dpo_forward_batch(batch, model, β=0.1, use_policy_weights=False, logp_agg_type="ipo", loss_type="ipo", use_mallows=False):
+def dpo_forward_batch(batch, model, β=0.1, use_policy_weights=False, loss_type="ipo", use_mallows=False):
     """Compute the DPO loss on an input batch"""
 
     model_kwargs = dict(
@@ -119,20 +118,20 @@ def dpo_forward_batch(batch, model, β=0.1, use_policy_weights=False, logp_agg_t
         with model.disable_adapter():
             ref_cho = model_forward_with_logprobs(
                 model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], 
-                special_tokens_mask=batch["chosen_special_tokens_mask"],logp_agg_type=logp_agg_type, use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
+                special_tokens_mask=batch["chosen_special_tokens_mask"],use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
             )
             ref_rej = model_forward_with_logprobs(
                 model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], 
                 special_tokens_mask=batch["rejected_special_tokens_mask"],
-                logp_agg_type=logp_agg_type, use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
+                use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
             )
 
     model.train()
     pi_cho = model_forward_with_logprobs(
-        model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["chosen_special_tokens_mask"], logp_agg_type=logp_agg_type, use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
+        model, input_ids=batch["chosen_ids"], attention_mask=batch["chosen_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["chosen_special_tokens_mask"], use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
     )
     pi_rej = model_forward_with_logprobs(
-        model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["rejected_special_tokens_mask"], logp_agg_type=logp_agg_type, use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
+        model, input_ids=batch["rejected_ids"], attention_mask=batch["rejected_mask"], prompt_mask=batch["prompt_mask"], special_tokens_mask=batch["rejected_special_tokens_mask"], use_wpo=use_policy_weights, use_mallows=use_mallows, **model_kwargs
     )
 
     return calc_dpo_loss_w_metrics(
@@ -149,15 +148,35 @@ def dpo_forward_batch(batch, model, β=0.1, use_policy_weights=False, logp_agg_t
 def calc_dpo_loss_w_metrics(batch, pi_cho: ReprPOModelOutput, pi_rej: ReprPOModelOutput, ref_cho: ReprPOModelOutput, ref_rej: ReprPOModelOutput, β=0.1, use_policy_weights=False, loss_type="ipo"):
     """Compute the DPO loss for a batch of policy and reference model log probabilities."""
 
-    neg_log_dispersion = compute_mallows_weights(ref_cho, ref_rej, reduce=True)
+
+    # weight
+    pi_cho_logprobs = compute_mallows_weights(pi_cho.label_logprobs, pi_cho.mallows_weights)
+    pi_rej_logprobs = compute_mallows_weights(pi_rej.label_logprobs, pi_rej.mallows_weights)
+    ref_cho_logprobs = compute_mallows_weights(ref_cho.label_logprobs, ref_cho.mallows_weights)
+    ref_rej_logprobs = compute_mallows_weights(ref_rej.label_logprobs, ref_rej.mallows_weights)
+
+    # reduce
+    if loss_type in ["ipo", "SimPER"]:
+        pi_cho_logprobs = (pi_cho_logprobs * pi_cho.mask[:, :-1]).sum(dim=-1) / pi_cho.mask.sum(dim=-1).clamp(min=1e-6)
+        pi_rej_logprobs = (pi_rej_logprobs * pi_rej.mask[:, :-1]).sum(dim=-1) / pi_rej.mask.sum(dim=-1).clamp(min=1e-6)
+        ref_cho_logprobs = (ref_cho_logprobs * ref_cho.mask[:, :-1]).sum(dim=-1) / ref_cho.mask.sum(dim=-1).clamp(min=1e-6)
+        ref_rej_logprobs = (ref_rej_logprobs * ref_rej.mask[:, :-1]).sum(dim=-1) / ref_rej.mask.sum(dim=-1).clamp(min=1e-6)
+    elif loss_type=="dpo":
+        pi_cho_logprobs = (pi_cho_logprobs * pi_cho.mask[:, :-1]).sum(dim=-1)
+        pi_rej_logprobs = (pi_rej_logprobs * pi_rej.mask[:, :-1]).sum(dim=-1)
+        ref_cho_logprobs = (ref_cho_logprobs * ref_cho.mask[:, :-1]).sum(dim=-1)
+        ref_rej_logprobs = (ref_rej_logprobs * ref_rej.mask[:, :-1]).sum(dim=-1)
+    else:
+        raise ValueError(f"Unknown loss type: {loss_type}")
+
+
     loss, info = compute_dpo_loss(
-        model_chosen_logprobs=pi_cho.label_logprobs,
-        model_rejected_logprobs=pi_rej.label_logprobs,
-        reference_chosen_logprobs=ref_cho.label_logprobs,
-        reference_rejected_logprobs=ref_rej.label_logprobs,
+        model_chosen_logprobs=pi_cho_logprobs,
+        model_rejected_logprobs=pi_rej_logprobs,
+        reference_chosen_logprobs=ref_cho_logprobs,
+        reference_rejected_logprobs=ref_rej_logprobs,
         β=β,
         loss_type=loss_type,
-        neg_log_dispersion=neg_log_dispersion,
     )
 
     if use_policy_weights:
@@ -199,7 +218,6 @@ class PL_DPO_MODEL(PL_MODEL):
         self,
         *args,
         use_policy_weights=False,
-        logp_agg_type="ipo",
         β=0.1,
         loss_type="ipo",
         use_mallows=False,
@@ -207,13 +225,12 @@ class PL_DPO_MODEL(PL_MODEL):
     ):
         super().__init__(*args, **kwargs)
         self.hparams.use_policy_weights = use_policy_weights
-        self.hparams.logp_agg_type = logp_agg_type
         self.hparams.β = β
         self.hparams.loss_type = loss_type
         self.hparams.use_mallows = use_mallows
     
     def _loss_fn(self, batch, model):
-        return dpo_forward_batch(batch, model, use_policy_weights=self.hparams.use_policy_weights, logp_agg_type=self.hparams.logp_agg_type, β=self.hparams.β, loss_type=self.hparams.loss_type, use_mallows=self.hparams.use_mallows)
+        return dpo_forward_batch(batch, model, use_policy_weights=self.hparams.use_policy_weights, β=self.hparams.β, loss_type=self.hparams.loss_type, use_mallows=self.hparams.use_mallows)
 
 
 @dataclass
@@ -227,9 +244,6 @@ class DPOConfig(ExperimentConfig):
     use_mallows: bool = False
     """Use Mallow's dispersion to compute the policy weights. See https://arxiv.org/abs/2405.14953, the rainbowPO found this to be significant during ablation studies"""
 
-    logp_agg_type: str = "ipo"
-    """# DPO aggregation type, can be 'ipo' or 'dpo'. IPO is the original DPO, IPO is the one used in the IPO paper."""
-
     loss_type: str = "ipo"
     """# DPO loss type, can be 'ipo' or 'SimPER'. IPO is the original DPO, SimPER is the one used in the SimPER paper."""
 
@@ -241,7 +255,7 @@ class DPOConfig(ExperimentConfig):
 
     _cls = PL_DPO_MODEL
 
-    _model_keys = ["use_mallows", "use_policy_weights", "logp_agg_type", "β", "loss_type"]
+    _model_keys = ["use_mallows", "use_policy_weights", "β", "loss_type"]
 
 
     @property

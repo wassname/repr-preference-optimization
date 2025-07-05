@@ -49,8 +49,8 @@ class ReprPOConfig(ExperimentConfig):
     transform: TransformType = field(default_factory=lambda: Transforms.ether.value())
     """transform function"""
 
-    logp_agg_type: str = "ipo"
-    """DPO aggregation type, e.g., 'ipo'/'dpo'"""
+    # logp_agg_type: str = "ipo"
+    # """DPO aggregation type, e.g., 'ipo'/'dpo'"""
 
     calc_wpo: bool = False
 
@@ -66,7 +66,7 @@ class ReprPOConfig(ExperimentConfig):
         "collect_hs",
         "loss",
         "transform",
-        'logp_agg_type',
+        # 'logp_agg_type',
         'calc_wpo',
         'calc_mallows',
     ]

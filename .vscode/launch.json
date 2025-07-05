@@ -6,6 +6,27 @@
     "configurations": [
 
 
+        {
+            // tiny random model, only a few steps, 0 epochs
+            "name": "test dev",
+            "type": "debugpy",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "TOKENIZERS_PARALLELISM": "false",
+                "REPR_CONFIG": "../configs/dev.yaml",
+                "WANDB_MODE": "offline"
+            },
+            "pythonArgs": [
+                "-Xfrozen_modules=off"
+            ],
+            "request": "launch",
+            "program": "${workspaceFolder}/tests/test_dev.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "autoReload": {
+                "enable": true
+            },
+        },
 
 
 
