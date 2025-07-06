@@ -156,7 +156,7 @@ def calc_mallows_weights(
 
 def compute_mallows_weights(hs, weight, mask=None) -> Float[Tensor, "b t"]:
     """weight hs by mallow weights"""
-    o =  hs * weight
+    o =  (hs * weight) / (weight.sum(-1, keepdim=True) + 1e-6)
     
     if mask is not None:
         o = (o * mask.unsqueeze(-1))/ (mask.sum(-1, keepdim=True).unsqueeze(-1) + 1e-6)

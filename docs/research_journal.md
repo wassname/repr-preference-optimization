@@ -980,13 +980,41 @@ ok I'm just going to remove the mask part from both
 
 
 
-|                                                     | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
-| :-------------------------------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
-| none                                                |     0.757 |                0.458 |         0.74 |          0.433 |      0.417 |
-| Dpo UseMal=1                                        |     0.757 |                0.461 |        0.733 |          0.433 |      0.423 | xjx3uqub |      -0.045 |
-| Dpo LosTyp=dpo UseMal=1                             |      0.76 |                0.461 |        0.743 |           0.44 |       0.42 | ujpzllpf |      -0.043 |
-| Dpo                                                 |     0.767 |                0.457 |         0.74 |          0.437 |      0.417 | hob08p9s |      -0.067 |
-| ReprNIpo AliMet=ParsRat                             |     0.094 |                0.406 |        0.312 |          0.438 |      0.344 | None     |           0 |
-| Dpo UseMal=1                                        |     0.094 |                0.406 |        0.312 |          0.438 |      0.344 | None     |           0 |
-| ReprNTopk InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 |     0.094 |                0.406 |        0.312 |          0.438 |      0.344 | None     |           0 |
-| Dpo                                                 |     0.094 |                0.406 |        0.312 |          0.438 |      0.344 | None     |           0 |
+|                                                                                | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :----------------------------------------------------------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| none                                                                           |     0.757 |                0.458 |         0.74 |          0.433 |      0.417 |
+| Dpo lr=1e-05 UseMal=1     good                                                 |      0.82 |                0.426 |        0.777 |          0.477 |      0.447 | eflo8n2a |       1.352 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 lr=1e-05 |      0.75 |                0.569 |         0.73 |           0.58 |      0.413 | hanywzc5 |         1.7 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 0001     |      0.56 |                0.537 |         0.44 |          0.583 |      0.453 | ncuget75 |          14 |
+| Dpo UseMal=1                                                                   |     0.757 |                0.461 |        0.733 |          0.433 |      0.423 | xjx3uqub |      -0.045 |
+| Dpo LosTyp=dpo UseMal=1                                                        |      0.76 |                0.461 |        0.743 |           0.44 |       0.42 | ujpzllpf |      -0.043 |
+| Dpo                                                                            |     0.767 |                0.457 |         0.74 |          0.437 |      0.417 | hob08p9s |      -0.067 |
+| Dpo 1e-4 UseMal=1  inco                                                        |     0.803 |                0.255 |        0.793 |          0.393 |      0.363 | m84qdbsq |      21.753 |
+| Dpo UseMal=1                                                                   |     0.757 |                0.458 |        0.733 |           0.44 |      0.417 | k6l65437 |      -0.044 |
+| ReprNTopk InnPolW=0 margin=1 TokConΑ=0.5 topk_n=100                            |      0.74 |                0.495 |        0.777 |          0.453 |      0.413 | krennhat |       0.316 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1          |     0.747 |                0.448 |         0.74 |          0.433 |       0.41 | mjxqa1tc |       0.031 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1          |      0.75 |                0.448 |        0.743 |          0.437 |      0.403 | v9xdqq1s |       0.029 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=0.1 TokConΑ=0.5 topk_n=100 UseMal=1        |      0.75 |                 0.45 |         0.74 |           0.44 |      0.403 | gqhaphxm |        0.03 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=10 TokConΑ=0.5 topk_n=100 UseMal=1         |     0.747 |                0.448 |         0.74 |          0.427 |      0.403 | opytaft7 |       0.029 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 α=10     |     0.753 |                0.466 |         0.74 |           0.44 |      0.413 | g1g5kkfo |       -0.01 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=3 TokConΑ=0.5 topk_n=10 UseMal=1           |     0.743 |                0.452 |         0.75 |          0.443 |      0.413 | ko66s2sd |       0.002 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=3 TokConΑ=0.5 topk_n=1000 UseMal=1         |     0.747 |                 0.45 |         0.74 |           0.43 |      0.407 | 7wlr540s |       0.034 |
+| Dpo LosTyp=dpo UseMal=1                                                        |     0.763 |                0.461 |         0.74 |           0.44 |       0.42 | vbn3f6rw |      -0.045 |
+
+
+
+ok this whole test seem to be running to short damn
+and isn't it weird that `Dpo 1e-4` scores high...
+/media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/alpaca_mmlu-Qwen3-0.6B-sft/wassname-Qwen3-06B-sft_dpo_alpaca_mmlu/2025-07-06_02-49-45/adapter/dpo
+ I need to invetigate this. So the question is
+why does incoherent `Dpo 1e-4` perform better than krennhat
+save_dir=/media/wassname/SGIronWolf/projects5/elk/repr-preference-optimization/outputs/alpaca_mmlu-Qwen3-0.6B-sft/wassname-Qwen3-06B-sft_hs-None-TopK_alpaca_mmlu/2025-07-06_04-07-24/adapter/hs-None-TopK
+
+try the 2 best:
+
+python scripts/train.py hs-none-topk --lr=5e-6 --calc-mallows --loss.use-mallows
+python scripts/train.py dpo --use-mallows --lr=5e-6
+
+
+idea 
+# TODO High entropy AND high attention = truly important?

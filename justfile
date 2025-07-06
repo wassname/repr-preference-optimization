@@ -24,7 +24,7 @@ scratch:
     python scripts/train.py hs-none-topk --lr=1e-5  --calc-mallows --loss.use-mallows
     python scripts/train.py hs-none-topk --lr=1e-4  --calc-mallows --loss.use-mallows
     python scripts/train.py hs-none-topk --calc-mallows --loss.use-mallows
-    python scripts/train.py hs-none-topk --calc-mallows --loss.use-mallows
+    python scripts/train.py hs-none-topk
     python scripts/train.py hs-none-topk --loss.margin=.1  --calc-mallows --loss.use-mallows  --calc-mallows --loss.use-mallows
     python scripts/train.py hs-none-topk --loss.margin=10  --calc-mallows --loss.use-mallows
     python scripts/train.py dpo --use-mallows --lr=1e-5
