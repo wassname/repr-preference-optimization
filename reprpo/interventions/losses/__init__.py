@@ -4,6 +4,7 @@ from .rank import RankLossConfig
 from .innerdpo import InnerDPOLossConfig
 from .mse import MSELossConfig
 from .topk import TopKLossConfig
+from .topkl import TopKLLossConfig
 
 
 class Losses(enum.Enum):
@@ -16,6 +17,7 @@ class Losses(enum.Enum):
     rank = RankLossConfig
     mse = MSELossConfig
     topk = TopKLossConfig
+    topkl = TopKLLossConfig
 
 
 LossesType = Union[tuple(e.value for e in Losses)]

@@ -79,7 +79,7 @@
             //     "enable": true
             // },
             "args": [
-                "hs-none-topk",
+                "hs-none-topkl",
                 // "--loss.align_method=pars_ratref_log",
                 // "--dev",
                 "--verbose=3",

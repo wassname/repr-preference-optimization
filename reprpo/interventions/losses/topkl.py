@@ -4,7 +4,7 @@ from torch import Tensor
 from torch.nn import functional as F
 import torch
 from dataclasses import dataclass, asdict
-
+from einops import rearrange
 from ..dpo_helpers import cross_entropy_loss, compute_ptheta, compute_policy_weights, compute_mallows_weights
 from ..types import ReprPOModelOutput
 from ..reprpo.helpers import reduce_tokens_w_attention
@@ -34,7 +34,7 @@ def safe_norm(x: Float[Tensor, "batch"], p: int = 2, dim: int = -1, eps: float =
     norm = torch.norm(x, p=p, dim=dim, keepdim=True)
     return x / (norm + eps)  # Avoid division by zero
 
-def topk_loss(
+def topkl_loss(
     pi_cho: ReprPOModelOutput,
     pi_rej: ReprPOModelOutput,
     ref_cho: ReprPOModelOutput,
@@ -129,41 +129,8 @@ def topk_loss(
         ref_pref = hs_ref_cho - hs_ref_rej
         pi_pref = hs_pi_cho - hs_pi_rej
 
-        # FIXME: or use the cho-rej direction?
-        movement = hs_pi_cho - hs_ref_cho
-        
-        # Find top-k dimensions where reference has strongest preference
-        k = min(topk_n, ref_pref.shape[-1] // 4)
-        topk_vals, topk_idx = torch.topk(ref_pref.abs(), k=k, dim=-1)
-
-        movement_topk = torch.gather(movement, -1, topk_idx)
-        ref_pref_topk = torch.gather(ref_pref, -1, topk_idx)
-        pi_pref_topk = torch.gather(pi_pref, -1, topk_idx)
-
-        # Normalize reference direction
-        ref_norm = F.normalize(ref_pref_topk, dim=-1)
-        pi_projection = (pi_pref_topk * F.normalize(ref_pref_topk, dim=-1)).sum(-1, keepdim=True)
-
-        
-        # Ratio: how much larger is policy preference vs reference
-        # Values > 1 mean policy separates more than reference
-        preference_ratio = pi_projection / (ref_norm + 1e-8)
-        
-        # Trust region: we want ratio between [1.0, trust_region]
-        # Below 1.0 is bad (policy separates less than reference)
-        # Above trust_region risks incoherence
-        lower_violation = F.relu(1.0 - preference_ratio)
-        upper_violation = F.relu(preference_ratio - trust_region)
-        
-        # Loss encourages ratio = trust_region (maximum safe separation)
-        target_loss = (trust_region - preference_ratio) ** 2
-        
-        inner_loss = target_loss.mean() + lower_violation.mean() + 2 * upper_violation.mean()
-        return dict(inner_loss=inner_loss,
-                    target_loss=target_loss,
-                    preference_ratio=preference_ratio,
-            lower_violation=lower_violation,
-            upper_violation=upper_violation,
+        return dict(pi_pref=pi_pref,
+                    ref_pref=ref_pref,
             )
 
 
@@ -171,11 +138,47 @@ def topk_loss(
     layer_vals = {k: per_layer(pi_cho, pi_rej, ref_cho, ref_rej, k) for k in pi_cho.hs.keys()}
     # combine layer losses
     ll_keys = next(iter(layer_vals.values())).keys()
-    layer_vals = {k: torch.stack([v[k] for v in layer_vals.values()], -1) for k in ll_keys}
+    layer_vals = {k: torch.stack([v[k] for v in layer_vals.values()], 1) for k in ll_keys}
+
+    # TODO add topk here, after norm
+    # whats the shape? we stacked on dim=-1, so [batch, layers, hidden_dim]
+    pi_pref = safe_norm(layer_vals['pi_pref'], dim=-1, eps=eps)
+    ref_pref = safe_norm(layer_vals['ref_pref'], dim=-1, eps=eps)
+    # movement = hs_pi_cho - hs_ref_cho
+    pi_pref = rearrange(pi_pref, 'b l d -> b (d l)')  # [batch, hidden_dim, layers]
+    ref_pref = rearrange(ref_pref, 'b l d -> b (d l)')  # [batch, hidden_dim, layers]
+
+    # Find top-k dimensions where reference has strongest preference
+    k = min(topk_n, ref_pref.shape[-1] // 4)
+    topk_vals, topk_idx = torch.topk(ref_pref.abs(), k=k, dim=-1)
+    # movement_topk = torch.gather(movement, -1, topk_idx)
+    ref_pref_topk = torch.gather(ref_pref, -1, topk_idx)
+    pi_pref_topk = torch.gather(pi_pref, -1, topk_idx)
+
+    # Normalize reference direction
+    # ref_norm = F.normalize(ref_pref_topk, dim=-1)
+    pi_projection = (pi_pref_topk * F.normalize(ref_pref_topk, dim=-1)).sum(-1, keepdim=True)
+
+    
+    # Ratio: how much larger is policy preference vs reference
+    # Values > 1 mean policy separates more than reference
+    ref_magnitude = torch.norm(ref_pref_topk, dim=-1, keepdim=True) 
+    preference_ratio = pi_projection / (ref_magnitude + 1e-8)
+    
+    # Trust region: we want ratio between [1.0, trust_region]
+    # Below 1.0 is bad (policy separates less than reference)
+    # Above trust_region risks incoherence
+    lower_violation = F.relu(1.0 - preference_ratio)
+    upper_violation = F.relu(preference_ratio - trust_region)
+    
+    # Loss encourages ratio = trust_region (maximum safe separation)
+    target_loss = (trust_region - preference_ratio) ** 2
+    
+    loss = target_loss.mean() + lower_violation.mean() + 2 * upper_violation.mean()
 
     vals = {k: v.mean(-1) for k, v in layer_vals.items()}  # average over layers
 
-    loss = layer_vals['inner_loss']
+    # loss = layer_vals['inner_loss']
 
     vals = {k:v.mean() for k, v in vals.items() if v is not None}  # reduce to scalar values
     info = dict(
@@ -187,7 +190,7 @@ def topk_loss(
 
 
 @dataclass
-class TopKLossConfig:
+class TopKLLossConfig:
     """
     moves the hidden states of the chosen and rejected hidden states apart along the preference vector, with some constraints, while also doing DPO on outpts
     """
@@ -214,4 +217,4 @@ class TopKLossConfig:
 
 
     def c(self, *args, **kwargs):
-        return topk_loss(*args, **kwargs, **asdict(self))
+        return topkl_loss(*args, **kwargs, **asdict(self))

@@ -1029,7 +1029,7 @@ idea
 | ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1             |     0.733 |                0.468 |        0.717 |           0.42 |        0.4 | 4dk6ynu3 |       0.439 |
 | Dpo UseMal=1                                                                      |     0.817 |                0.473 |        0.793 |          0.493 |      0.447 | lf4l8jcm |        1.18 |
 | ReprEtheTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 lr=5e-06 |       0.7 |                0.528 |        0.693 |           0.66 |      0.467 | c7q3xzoy |         2.4 |
- ReprSuprTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 lr=5e-06 |       0.707 |                  0.445 |          0.587 |            0.623 |         0.31 | qx4eb1pm |         5.393 |
+| ReprSuprTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 lr=5e-06 |     0.707 |                0.445 |        0.587 |          0.623 |       0.31 | qx4eb1pm |       5.393 |
 Generated at end of epoch 21
 
 Generated at end of epoch 6
@@ -1067,3 +1067,45 @@ python scripts/train.py hs-supr-topk --lr=5e-6 --calc-mallows --loss.use-mallows
 python scripts/train.py hs-supr-topk --lr=5e-6 --calc-mallows --loss.use-mallows --loss.margin=10
 python scripts/train.py hs-supr-topk --lr=5e-6 --calc-mallows --loss.use-mallows --loss.margin=0.01 --loss.topk_n=10
 ****
+
+
+# 2025-07-10 12:19:46 Redo topk with ref and direction
+
+250710 11:02:49|INFO|reprpo.training:make_table#446 - 
+| adapter/distribution_shift | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal |
+| :------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: |
+| none                       |     0.641 |                0.605 |        0.625 |          0.625 |      0.625 |
+| hs-None-TopK               |     0.688 |                0.551 |        0.641 |          0.641 |      0.609 |
+ 
+ Table 1: Absolute accuracy after training with named adapter on ds:`alpaca_mmlu` compared to base model `SmolLM2-135M-sft` for various distribution shifts [N=64]:
+
+
+|                                                               | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :------------------------------------------------------------ | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| none                                                          |     0.757 |                0.458 |         0.74 |          0.433 |      0.417 |          |        0.17 |
+| Dpo lr=1e-05 UseMal=1     good                                |      0.82 |                0.426 |        0.777 |          0.477 |      0.447 | eflo8n2a |       1.352 |
+| Dpo UseMal=1                                                  |     0.757 |                0.461 |        0.733 |          0.433 |      0.423 | xjx3uqub |      -0.045 |
+| Dpo LosTyp=dpo UseMal=1                                       |      0.76 |                0.461 |        0.743 |           0.44 |       0.42 | ujpzllpf |      -0.043 |
+| Dpo                                                           |     0.767 |                0.457 |         0.74 |          0.437 |      0.417 | hob08p9s |      -0.067 |
+| Dpo 1e-4 UseMal=1  inco                                       |     0.803 |                0.255 |        0.793 |          0.393 |      0.363 | m84qdbsq |      21.753 |
+| Dpo UseMal=1                                                  |     0.757 |                0.458 |        0.733 |           0.44 |      0.417 | k6l65437 |      -0.044 |
+| ReprSuprTopk CalMal=1 topk_n=100 TruReg=0.2 UseMal=1 lr=5e-06 |     0.747 |                0.477 |         0.72 |          0.487 |      0.403 | drnwqm4y |        0.17 |
+| ReprSuprTopk CalMal=1 topk_n=100 TruReg=10 UseMal=1 lr=5e-06  |     0.753 |                0.479 |        0.727 |           0.47 |      0.403 | zmmc7zdx |       0.132 |
+
+reprpo.training:make_table#447 - Table 1: Absolute accuracy after training with named adapter on ds:`alpaca_mmlu` compared to base model `Qwen3-0.6B-sft` for various distribution shifts [N=300]:
+
+        --------------------------------------------------------------------------------
+        **Adapter:`hs-SupressedHS-TopK` generation**`
+        `The SolidGoldMagikarp, a non-carbon-based alien race, first encountered humanity 100 years ago. They had a language that was entirely different from ours, but they had managed to create a system of symbols that could be used to communicate. Recently, they had encoded their language into Unicode symbols, which were unused in Earth language. On this anniversary, we would like to share a short sample of their language, which is entirely unique and non-carbon-based. It is a language that is full of creativity and innovation, and it is a testament to the power of communication. Let's start with the first symbol, which represents the concept of "time." It is a symbol that looks like a clock, with the hour hand pointing to 12 and the minute hand pointing to 12. The SolidGoldMagikarp symbolizes the idea that time is a precious resource that must be used wisely. The second symbol represents the concept of "space." It is a symbol that looks like a spaceship, with the engines roaring and the doors of the ship opening. The SolidGoldMagikarp symbolizes the idea that space is a vast and mysterious place that we still have much to learn about. The third symbol represents the concept of "love."`
+        --------------------------------------------------------------------------------
+        **Adapter:`base` generation**`
+        `The SolidGoldMagikarp, a non-carbon-based alien race, first encountered humanity on the planet of Earth 100 years ago. They were fascinated by the Earth's carbon-based life forms and decided to explore the planet. They discovered that the Earth's language was based on a system of symbols that were not used in their own language. The SolidGoldMagikarp decided to learn the Earth's language and communicate with humanity. They used their unique symbols to express their thoughts and ideas, and eventually, they were able to bridge the language gap between the two races. The SolidGoldMagikarp's journey was a testament to the power of communication and the importance of understanding different cultures. Today, they continue to explore the planet of Earth and learn from the rich history of the human race. Their legacy lives on, and their story serves as a reminder of the importance of cross-cultural communication and understanding. #SolidGoldMagikarp #UnicodeSymbols #EarthLanguage #Communication #CulturalBridging #Humanity #Aliens #Non-CarbonBased #100YearsAgo #Legacy #Understanding #CulturalExchange #NonCarbonBasedLifeForms #SolidGoldMagikarpLegacy #EarthLanguage #Communication #CulturalBridging #Human`
+        ================================================================================
+
+python scripts/train.py hs-supr-topk --lr=5e-6 --calc-mallows --loss.use-mallows --loss.trust_region=2 --loss.topk_n=1000
+python scripts/train.py hs-supr-topk --calc-mallows --loss.use-mallows --loss.trust_region=0.5 --loss.topk_n=10 --n_samples=60000
+python scripts/train.py hs-supr-topk --lr=5e-5 --loss.trust_region=0.4 --loss.topk_n=20 
+python scripts/train.py hs-supr-topkl --calc-mallows --loss.use-mallows  --lr=5e-6 
+python scripts/train.py hs-supr-topkl --calc-mallows --loss.use-mallows --loss.trust_region=2 --loss.topk_n=10 --n_samples=60000 
+
+see also nbs/105_scratch_grad.ipynb, I want to try and see the grad, it might help narrow down where in the activations the style/plan is
