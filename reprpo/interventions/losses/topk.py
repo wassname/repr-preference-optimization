@@ -42,24 +42,24 @@ def topk_loss(
     batch: Dict[str, Any],
     transforms: Optional[Callable] = None,
     # custom loss_args
-    α: float = 1.0,
-    eps: float = 1e-6,
-    β: float = 1,
+    # α: float = 1.0,
+    # eps: float = 1e-6,
+    # β: float = 1,
     use_wpo: bool = False,
-    inner_policy_weights: bool = False,
-    align_method: str = 'para_signed',
-    norm_before_reduce: bool = True,
+    # inner_policy_weights: bool = False,
+    # align_method: str = 'para_signed',
+    # norm_before_reduce: bool = True,
     filter_sinks: bool = False,
     trust_region: float = 2.0,
-    dpo_loss: str = "ipo",
-    p=2,
-    margin: float = 2,
+    # dpo_loss: str = "ipo",
+    # p=2,
+    # margin: float = 2,
     use_mallows: bool = False,
-    label_smoothing=0,
-    clamp_bottom: bool = False,
-    detach_ref: bool = True,
-    use_token_constraint: bool = True,
-    token_con_alpha: float = 0.5,
+    # label_smoothing=0,
+    # clamp_bottom: bool = False,
+    detach_ref: bool = False,
+    # use_token_constraint: bool = True,
+    # token_con_alpha: float = 0.5,
     topk_n: int = 100
 ):
     """
@@ -93,12 +93,6 @@ def topk_loss(
         ref_rej_mask = ref_rej.mask.clone()
         if detach_ref:
             hs_pi_rej_t = hs_pi_rej_t.detach() # We want to change cho not rej
-        # hs_ref_cho_t = preproc_hs(ref_cho, k).detach()  # Don't let reference change of course
-        # hs_ref_rej_t = preproc_hs(ref_rej, k).detach()  # Don't let reference change of course
-
-        # # Per-token deviations from reference (L2 distance)
-        # cho_token_deviations = torch.norm(hs_pi_cho_t - hs_ref_cho_t, p=p, dim=-1)  # [batch, seq_len]
-        # rej_token_deviations = torch.norm(hs_pi_rej_t - hs_ref_rej_t, p=p, dim=-1)  # [batch, seq_len]
 
         if use_mallows:
             # weighting by mallows means we loose the last token, which has no labels and therefore no logits
@@ -106,18 +100,11 @@ def topk_loss(
             hs_pi_rej_t = compute_mallows_weights(hs_pi_rej_t[:, -1:], pi_rej.mallows_weights.unsqueeze(2))
             hs_ref_cho_t = compute_mallows_weights(hs_ref_cho_t[:, -1:], ref_cho.mallows_weights.unsqueeze(2))
             hs_ref_rej_t = compute_mallows_weights(hs_ref_rej_t[:, -1:], ref_rej.mallows_weights.unsqueeze(2))
-            # cho_token_deviations = cho_token_deviations[:, :-1]
-            # rej_token_deviations = rej_token_deviations[:, :-1]
-
-            # hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
-            # hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * neg_log_dispersion.unsqueeze(2).detach()
             pi_cho_mask = pi_cho_mask[:, :-1]
             pi_rej_mask = pi_rej_mask[:, :-1]
             ref_cho_mask = ref_cho_mask[:, :-1]
             ref_rej_mask = ref_rej_mask[:, :-1]
 
-            # cho_token_deviations = cho_token_deviations[:, :-1]
-            # rej_token_deviations = rej_token_deviations[:, :-1]
 
         if use_wpo:
             # can be wpo, or mallows
@@ -128,45 +115,47 @@ def topk_loss(
             pi_rej_mask = pi_rej_mask[:, :-1]
             ref_cho_mask = ref_cho_mask[:, :-1]
             ref_rej_mask = ref_rej_mask[:, :-1]
-            # cho_token_deviations = cho_token_deviations[:, :-1]
-            # rej_token_deviations = rej_token_deviations[:, :-1]
-
-        # # Aggregate per response (like TDPO aggregates KL)
-        # cho_total_deviation = reduce_tokens_w_attention(cho_token_deviations.unsqueeze(-1), pi_cho_mask).squeeze(-1)  # [batch]
-        # rej_total_deviation = reduce_tokens_w_attention(rej_token_deviations.unsqueeze(-1), pi_rej_mask).squeeze(-1)  # [batch]
 
         hs_pi_cho = reduce_tokens_w_attention(hs_pi_cho_t, pi_cho_mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
         hs_pi_rej = reduce_tokens_w_attention(hs_pi_rej_t, pi_rej_mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
-        # hs_ref_cho = reduce_tokens_w_attention(hs_ref_cho_t, ref_cho.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
-        # hs_ref_rej = reduce_tokens_w_attention(hs_ref_rej_t, ref_rej.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+        hs_ref_cho = reduce_tokens_w_attention(hs_ref_cho_t, ref_cho.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+        hs_ref_rej = reduce_tokens_w_attention(hs_ref_rej_t, ref_rej.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
 
-        diff = hs_pi_cho - hs_pi_rej
+        # Reference preference direction
+        ref_direction = hs_ref_cho - hs_ref_rej
+        movement = hs_pi_cho - hs_ref_cho
+        
+        # Find top-k dimensions where reference has strongest preference
+        k = min(topk_n, ref_direction.shape[-1] // 4)
+        topk_vals, topk_idx = torch.topk(ref_direction.abs(), k=k, dim=-1)
 
-        # Find top-k dimensions by absolute difference
-        # TODO or topk per token?
-        topk_values, topk_indices = torch.topk(diff.abs(), k=topk_n, dim=-1)
+        movement_topk = torch.gather(movement, -1, topk_idx)
+        ref_direction_topk = torch.gather(ref_direction, -1, topk_idx)
+
+        # Normalize reference direction
+        ref_dir_norm = F.normalize(ref_direction_topk, dim=-1)
         
-        # Create sparse version
-        sparse_diff = torch.zeros_like(diff)
-        sparse_diff.scatter_(-1, topk_indices, topk_values * diff.sign().gather(-1, topk_indices))
+        # Project movement onto reference direction
+        alignment = (movement_topk * ref_dir_norm).sum(-1, keepdim=True)
+
+        # Trust region constraint: movement magnitude relative to reference
+        ref_magnitude = ref_direction_topk.norm(dim=-1, keepdim=True)
         
-        # Loss encourages large separation in these k dimensions
-        separation_loss = -sparse_diff.abs().mean(1)
+        # Clamp alignment to trust region
+        max_movement = trust_region * ref_magnitude
+        clamped_alignment = torch.clamp(alignment, -max_movement, max_movement)
         
-        # Regularize to prevent too extreme values
-        # TODO this const to param
-        extreme_penalty = F.relu(sparse_diff.abs() - margin).mean(1)
+        # Loss encourages maximum movement within trust region
+        alignment_loss = -clamped_alignment / (max_movement + 1e-8)  # Normalize to [-1, 1]
         
-        inner_loss = separation_loss + α * extreme_penalty
+        # Additional penalty if trying to exceed trust region
+        trust_violation = F.relu(alignment.abs() - max_movement)
+
+        inner_loss = alignment_loss.mean() + trust_violation.mean()
+
         return dict(inner_loss=inner_loss,
-                    
-                    sparse_diff_abs=sparse_diff.abs().mean(),
-                    separation_loss=separation_loss.mean(),
-                    extreme_penalty=extreme_penalty.mean(),
-
-
-                    #         cho_position_deviation=cho_total_deviation,
-                    # rej_position_deviation=rej_total_deviation
+                    trust_violation=trust_violation,
+                    alignment=alignment,
                     )
 
 
@@ -179,16 +168,6 @@ def topk_loss(
     vals = {k: v.mean(-1) for k, v in layer_vals.items()}  # average over layers
 
     loss = layer_vals['inner_loss']
-
-    # token_constraint = torch.clamp(layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation'], min=0)
-    # if use_token_constraint:
-    #     # This is like in https://github.com/Vance0124/Token-level-Direct-Preference-Optimization/blob/master/trainers.py#L151
-    #     # Intuition: Both responses should deviate similarly from their references. If one is changing much more than the other, adjust our confidence accordingly.
-    #     # token_constraint = layer_vals['rej_position_deviation'] - layer_vals['cho_position_deviation']
-    #     # OR Only penalize when rejected deviates more (prevent sneaky gaming)
-    #     loss = loss - token_con_alpha * token_constraint
-
-
 
     vals = {k:v.mean() for k, v in vals.items() if v is not None}  # reduce to scalar values
     info = dict(
@@ -208,39 +187,23 @@ class TopKLossConfig:
     topk_n: int = 100
     """Number of top-k dimensions to consider for the loss"""
 
-
-    α: float = 0.1
-    """balance between reroute and retain loss."""
-
-    token_con_alpha: float = 0.5
-    """balance between token constraint and the main loss."""
-
-    margin: float = 2.0
-    """Margin for the extreme penalty, i.e. how much the hidden states can deviate
-    from each other before we penalize them."""
-
     filter_sinks: bool = False
     """Whether to filter attention sinks in the hidden states."""
 
     eps: float = 1.0e-4
 
-    p: int = 2
-    """norm to use for the hidden states, 2 is euclidean, 1 is manhattan"""
 
-    inner_policy_weights: bool = False
-    """Whether to compute policy weights for the inner DPO loss."""
+    trust_region: float = 2.0
+    """Trust region for the alignment loss, i.e. how much the hidden states can deviate from the reference before we penalize them."""
+
 
     use_mallows: bool = False
     """Whether to use Mallows weights"""
 
-    use_token_constraint: bool = False
-    """Whether to use the token constraint to adjust the hidden ptheta. This is like in TDPO https://arxiv.org/abs/2404.11999"""
-    # FIXME also add to outer DPO
 
     detach_ref: bool = False
     """Whether to detach the reference hidden states from the computation graph. This is useful to prevent the reference model from changing during training, which is less desired as it doesn't actually come up during generation"""
 
-    # use_dpo_loss: bool = True
 
     def c(self, *args, **kwargs):
         return topk_loss(*args, **kwargs, **asdict(self))

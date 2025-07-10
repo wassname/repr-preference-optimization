@@ -45,7 +45,7 @@ class ExperimentConfig:
     use_grad_paging: bool = False
     """avoid mem spikes"""
 
-    n_samples: int = 30000 # 3k in dataset, most ref models for 1 epoch of 60k ultrafeedback samples
+    n_samples: int = 20000 # 3k in dataset, most ref models for 1 epoch of 60k ultrafeedback samples
     eval_samples: Optional[int] = 300
     max_length: int = 512
     max_prompt_length: int = 450 # on the math ds, prompts are 446 tokens long

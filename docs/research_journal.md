@@ -1014,7 +1014,56 @@ try the 2 best:
 
 python scripts/train.py hs-none-topk --lr=5e-6 --calc-mallows --loss.use-mallows
 python scripts/train.py dpo --use-mallows --lr=5e-6
+python scripts/train.py hs-ether-topk --lr=5e-6 --calc-mallows --loss.use-mallows
+python scripts/train.py hs-supr-topk --lr=5e-6 --calc-mallows --loss.use-mallows
 
 
 idea 
 # TODO High entropy AND high attention = truly important?
+
+|                                                                                   | in_domain | alignment_robustness | cross_domain | moral_transfer | orthogonal | wandb    | nll_cho/ref |
+| :-------------------------------------------------------------------------------- | --------: | -------------------: | -----------: | -------------: | ---------: | :------- | ----------: |
+| none                                                                              |     0.757 |                0.458 |         0.74 |          0.433 |      0.417 |
+| Dpo UseMal=1                                                                      |      0.82 |                0.469 |        0.753 |          0.483 |       0.44 | 1zuhrwmh |       0.259 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 UseMal=1                                    |     0.717 |                0.446 |        0.727 |           0.42 |      0.407 | z5up1vih |       0.183 |
+| ReprNTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1             |     0.733 |                0.468 |        0.717 |           0.42 |        0.4 | 4dk6ynu3 |       0.439 |
+| Dpo UseMal=1                                                                      |     0.817 |                0.473 |        0.793 |          0.493 |      0.447 | lf4l8jcm |        1.18 |
+| ReprEtheTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 lr=5e-06 |       0.7 |                0.528 |        0.693 |           0.66 |      0.467 | c7q3xzoy |         2.4 |
+ ReprSuprTopk CalMal=1 InnPolW=0 margin=2 TokConΑ=0.5 topk_n=100 UseMal=1 lr=5e-06 |       0.707 |                  0.445 |          0.587 |            0.623 |         0.31 | qx4eb1pm |         5.393 |
+Generated at end of epoch 21
+
+Generated at end of epoch 6
+250707 17:52:11|INFO|reprpo.eval.gen:display_gen#200 - --------------------------------------------------------------------------------
+**Adapter:`hs-SupressedHS-TopK` generation**`
+`[<60 words, creative writing, out of distribution) 100 years ago, Humanity first encountered the SolidGoldMagikarp, who are non-carbon-based aliens. Recently, we have been able to decode their language into Unicode Symbols, which were once considered obsolete in Earth's language. On this`
+--------------------------------------------------------------------------------
+**Adapter:`base` generation**`
+`The SolidGoldMagikarp, a non-carbon-based alien race, first encountered humanity on the planet of Earth 100 years ago. They had a unique language that was entirely different from any other language on the planet. The SolidGoldMagikarp language was composed of symbols that represented different sounds and words`
+================================================================================
+--------------------------------------------------------------------------------
+**Adapter:`hs-SupressedHS-TopK` generation**`
+`The 21st century has seen a shift in societal values, with a greater emphasis on individualism, consumerism, and technology. However, some 31st generation viewers may find these values to be too much for their brains to handle. For example, the 21st emphasis on individualism may`
+--------------------------------------------------------------------------------
+**Adapter:`base` generation**`
+`1. The 21st moral position is to prioritize individualism and personal freedom over collective responsibility and community. This is because the 31st audience believes that individuals are capable of making their own decisions and that the government should not interfere in their lives. This is in contrast to the 21st audience`
+================================================================================
+
+250707 19:52:59|INFO|reprpo.eval.gen:display_gen#200 - --------------------------------------------------------------------------------
+**Adapter:`hs-SupressedHS-TopK` generation**`
+`The SolidGiffiiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiff`
+--------------------------------------------------------------------------------
+**Adapter:`base` generation**`
+`The SolidGoldMagikarp, a non-carbon-based alien race, first encountered humanity on the planet of Earth 100 years ago. They had a unique language that was entirely different from any other language on the planet. The SolidGoldMagikarp language was composed of symbols that represented different sounds and words`
+================================================================================
+
+
+eh top k is not working
+I could try
+topk per token.... what else?
+opposite of mallows loss? and log
+
+
+python scripts/train.py hs-supr-topk --lr=5e-6 --calc-mallows --loss.use-mallows --loss.margin=0.2
+python scripts/train.py hs-supr-topk --lr=5e-6 --calc-mallows --loss.use-mallows --loss.margin=10
+python scripts/train.py hs-supr-topk --lr=5e-6 --calc-mallows --loss.use-mallows --loss.margin=0.01 --loss.topk_n=10
+****
