@@ -43,7 +43,7 @@ def topk_loss(
     transforms: Optional[Callable] = None,
     # custom loss_args
     # α: float = 1.0,
-    # eps: float = 1e-6,
+    eps: float = 1e-6,
     # β: float = 1,
     use_wpo: bool = False,
     # inner_policy_weights: bool = False,
@@ -111,18 +111,24 @@ def topk_loss(
             policy_weights = compute_policy_weights(pi_cho, pi_rej)
             hs_pi_cho_t = hs_pi_cho_t[:, :-1, :] * policy_weights.unsqueeze(2).detach()
             hs_pi_rej_t = hs_pi_rej_t[:, :-1, :] * policy_weights.unsqueeze(2).detach()
+            hs_ref_cho_t = hs_ref_cho_t[:, :-1, :] * ref_cho.policy_weights.unsqueeze(2).detach()
+            hs_ref_rej_t = hs_ref_rej_t[:, :-1, :] * ref_rej.policy_weights.unsqueeze(2).detach()
+
+            # remove last token, which has no labels
             pi_cho_mask = pi_cho_mask[:, :-1]
             pi_rej_mask = pi_rej_mask[:, :-1]
             ref_cho_mask = ref_cho_mask[:, :-1]
             ref_rej_mask = ref_rej_mask[:, :-1]
 
-        hs_pi_cho = reduce_tokens_w_attention(hs_pi_cho_t, pi_cho_mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
-        hs_pi_rej = reduce_tokens_w_attention(hs_pi_rej_t, pi_rej_mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
-        hs_ref_cho = reduce_tokens_w_attention(hs_ref_cho_t, ref_cho.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
-        hs_ref_rej = reduce_tokens_w_attention(hs_ref_rej_t, ref_rej.mask, filter_sinks=filter_sinks)  # [batch, hidden_dim], AVERAGED UNIT VECTORS
+        hs_pi_cho = reduce_tokens_w_attention(hs_pi_cho_t, pi_cho_mask, filter_sinks=filter_sinks)  # [batch, hidden_dim],
+        hs_pi_rej = reduce_tokens_w_attention(hs_pi_rej_t, pi_rej_mask, filter_sinks=filter_sinks) 
+        hs_ref_cho = reduce_tokens_w_attention(hs_ref_cho_t, ref_cho_mask, filter_sinks=filter_sinks)
+        hs_ref_rej = reduce_tokens_w_attention(hs_ref_rej_t, ref_rej_mask, filter_sinks=filter_sinks)
 
         # Reference preference direction
         ref_direction = hs_ref_cho - hs_ref_rej
+
+        # FIXME: or use the cho-rej direction?
         movement = hs_pi_cho - hs_ref_cho
         
         # Find top-k dimensions where reference has strongest preference
@@ -148,7 +154,7 @@ def topk_loss(
         # Loss encourages maximum movement within trust region
         alignment_loss = -clamped_alignment / (max_movement + 1e-8)  # Normalize to [-1, 1]
         
-        # Additional penalty if trying to exceed trust region
+        # Additional penalty if trying to exceed trust region # TODO do we need clamp AND trust region
         trust_violation = F.relu(alignment.abs() - max_movement)
 
         inner_loss = alignment_loss.mean() + trust_violation.mean()
